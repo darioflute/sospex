@@ -1,0 +1,5 @@
+# Compiled python modules.
+*.pyc
+
+# spyder project
+.spyderproject
