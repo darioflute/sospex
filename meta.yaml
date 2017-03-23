@@ -1,11 +1,15 @@
 package:
   name: sospex
-  version: 0.1.alpha
+  version: 0.2.alpha
 
 source:
-  git_rev: v0.1-alpha
+  git_rev: v0.2-alpha
   git_url: https://github.com/darioflute/sospex.git
 
+build:
+  script:
+    -python setup.py install
+  
 requirements:
   build:
     - python
