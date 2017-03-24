@@ -1033,18 +1033,19 @@ class Panel2 (wx.Panel):
         self.ax2.clear()
         self.ax3.clear()
         self.ax4.clear()
-        self.fluxLayer, = self.ax1.plot(spectrum.wave,self.flux,color='blue')
+        self.fluxLayer, = self.ax1.step(spectrum.wave,self.flux,color='blue')
+        self.ax1.grid(True,which='both')
         self.atranLayer, = self.ax2.plot(spectrum.wave, spectrum.atran,color='red')
         self.ax2.set_ylim([0,1.1])
         self.ax4.tick_params(labelright='off',right='off')
-        self.exposureLayer, = self.ax3.plot(spectrum.wave, expos, color='orange')
+        self.exposureLayer, = self.ax3.step(spectrum.wave, expos, color='orange')
         ymax = np.nanmax(self.flux); ymin = np.nanmin(self.flux)
         yumax = np.nanmax(self.uflux); yumin = np.nanmin(self.uflux)
         if yumax > ymax: ymax=yumax
         if yumin < ymin: ymin=yumin
         self.ax1.set_ylim([ymin, ymax*1.15])
         self.ax3.set_ylim([0.5,np.nanmax(expos)*1.04])
-        self.ufluxLayer, = self.ax4.plot(spectrum.wave*(1.+spectrum.baryshift),self.uflux,color='green')
+        self.ufluxLayer, = self.ax4.step(spectrum.wave*(1.+spectrum.baryshift),self.uflux,color='green')
         # Put same y-axis limits on ax4 as ax1:
         self.ax4.set_ylim(self.ax1.get_ylim())
         self.ax1.set_xlim([np.min(spectrum.wave),np.max(spectrum.wave)])
