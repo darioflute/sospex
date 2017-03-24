@@ -14,6 +14,7 @@ requirements:
   build:
     - python
     - setuptools
+    - matplotlib
     - numpy
 
   run:
@@ -21,8 +22,9 @@ requirements:
     - numpy
     - astropy >=1.2.1
     - scipy
+    - matplotlib
     - wxpython
-
+    
     
 test:
   imports:
