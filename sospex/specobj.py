@@ -8,6 +8,7 @@ class specCube(object):
 #        wx.BeginBusyCursor()
         hdl = fits.open(infile)
         header = hdl[0].header
+        self.header = header
         self.filename = infile
         self.wcs = WCS(header).celestial
         self.crval3 = header['CRVAL3']
