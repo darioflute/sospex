@@ -19,6 +19,7 @@ import wx, os, sys, fnmatch
 import numpy as np
 import wx.lib.platebtn as pbtn
 from scipy.spatial import ConvexHull
+from wx.lib.dialogs import ScrolledMessageDialog as ScrolledMessage
 
 
 import wx.lib.agw.pybusyinfo as PBI
@@ -252,8 +253,8 @@ class MyFrame(wx.Frame):
                 
             
     def onClick(self, event):
-        print (event.xdata,event.ydata)
         if event.inaxes == self.panel1.axes:
+            print (event.xdata,event.ydata)
             if  event.button == 1:
                 self.panel2.draw(self.spectrum,self.ellipse)
                 if self.regionlimits is not None: self.shadeSpectrum()
@@ -276,6 +277,8 @@ class MyFrame(wx.Frame):
                     else:
                         color='green'
                     self.panel2.ax1.plot([event.xdata],[event.ydata],'o',color=color)
+                else:
+                    print "wavelength: ","{:.3f}".format(event.xdata),u"\u03BCm (no baryshift:  ", "{:.3f}".format(event.xdata/(1.+self.spectrum.baryshift)),u"\u03BCm )"
             if event.button == 3:
                 self.panel2.OnRightDown(event)
             else:
@@ -667,7 +670,8 @@ class Panel1 (wx.Panel):
         self.contoursBtn  = self.addButton(icons.contours.GetBitmap(),'Overplot flux contours',self.top.showContours,'AliceBlue')
         self.saveBtn  = self.addButton(icons.save.GetBitmap(),'Save current cube',self.top.saveCube,'AliceBlue')
         self.uploadBtn  = self.addButton(icons.upload.GetBitmap(),'Upload image',self.top.uploadImage,'AliceBlue')
-
+        self.showHdr = self.addButton(icons.header.GetBitmap(),'Show header',self.showHeader,'AliceBlue')
+        
         self.toolbar.Realize()
         # Mouse wheel zooming (just to prove the concept)
         self.cidPress = self.figure.canvas.mpl_connect('scroll_event', self.onWheel)
@@ -680,6 +684,35 @@ class Panel1 (wx.Panel):
         self.SetSizer(self.vbox)
         self.frame.Fit()
 
+    def showHeader(self,event):
+        #hdrvalues = self.top.spectrum.header.tostring(sep='\n')
+        header = self.top.spectrum.header
+        hv=header.values()
+        hk= header.keys()
+        hc=header.comments
+        h = []
+        cc = False
+        for k,v,c in zip(hk,hv,hc):
+            if k == 'HISTORY':
+                pass
+            elif k == 'COMMENT':
+                if cc:
+                    h.append('        {0:20}'.format(v)+''+c)
+                else:
+                    h.append('\n        {0:20}'.format(v)+''+c)
+                    cc = True
+            else:
+                if cc:
+                    h.append('\n')
+                    cc = False
+                h.append('{:15s}'.format(k)+ '\t\t=\t {0:15}'.format(v)+' \t\t\t'+c)
+    
+        s = '\n'.join(h)
+        dlg = ScrolledMessage(self,s,'Header',size=(800,400),style=wx.TE_READONLY)
+        dlg.ShowModal()
+        dlg.Destroy()
+
+        
     def addButton(self, icon, label, function, color):
         button = pbtn.PlateButton(self.toolbar, wx.ID_NEW, bmp=icon,style = pbtn.PB_STYLE_DEFAULT)
         button.SetToolTip(wx.ToolTip(label))
@@ -1035,7 +1068,8 @@ class Panel2 (wx.Panel):
         self.ax4.clear()
         self.fluxLayer, = self.ax1.step(spectrum.wave,self.flux,color='blue')
         self.ax1.grid(True,which='both')
-        self.atranLayer, = self.ax2.plot(spectrum.wave, spectrum.atran,color='red')
+        # Atmosphere transmission shifted by the barycentric shift to be aligned to the corrected flux
+        self.atranLayer, = self.ax2.plot(spectrum.wave*(1.+spectrum.baryshift), spectrum.atran,color='red')
         self.ax2.set_ylim([0,1.1])
         self.ax4.tick_params(labelright='off',right='off')
         self.exposureLayer, = self.ax3.step(spectrum.wave, expos, color='orange')
@@ -1045,6 +1079,7 @@ class Panel2 (wx.Panel):
         if yumin < ymin: ymin=yumin
         self.ax1.set_ylim([ymin, ymax*1.15])
         self.ax3.set_ylim([0.5,np.nanmax(expos)*1.04])
+        # Uncorrected flux shifted to be aligned to the corrected flux
         self.ufluxLayer, = self.ax4.step(spectrum.wave*(1.+spectrum.baryshift),self.uflux,color='green')
         # Put same y-axis limits on ax4 as ax1:
         self.ax4.set_ylim(self.ax1.get_ylim())
@@ -1248,8 +1283,6 @@ class PopupMenu2(wx.Menu):
         self.parent.displayExtSpec ^= True
         self.parent.refreshSpectrum()
 
-    
-        
 
 """
 Main code
