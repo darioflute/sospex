@@ -278,7 +278,7 @@ class MyFrame(wx.Frame):
                         color='green'
                     self.panel2.ax1.plot([event.xdata],[event.ydata],'o',color=color)
                 else:
-                    print "wavelength: ","{:.3f}".format(event.xdata),u"\u03BCm (no baryshift:  ", "{:.3f}".format(event.xdata/(1.+self.spectrum.baryshift)),u"\u03BCm )"
+                    print "wavelength: ","{:.3f}".format(event.xdata),u"\u03BCm (no baryshift:  ".encode('utf8'), "{:.3f}".format(event.xdata/(1.+self.spectrum.baryshift)),u"\u03BCm )".encode('utf8')
             if event.button == 3:
                 self.panel2.OnRightDown(event)
             else:
@@ -918,7 +918,7 @@ class Panel1 (wx.Panel):
             intensity = spectrum.exposure
 
         if self.displayMethod == 'Average':
-            medianflux = np.nanmean(intensity[limits[0]:limits[1],:,:],axis=0)
+            medianflux = np.nanmedian(intensity[limits[0]:limits[1],:,:],axis=0)
         else:
             medianflux = intensity[self.top.panel2.plane ,:,:]
         if status == 0:

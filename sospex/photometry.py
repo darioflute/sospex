@@ -1,18 +1,16 @@
-#from matplotlib.patches import Ellipse
-#import matplotlib.pyplot as plt
-#import matplotlib.transforms as transforms
 import numpy as np
 
 
 class DragResizeRotateEllipse:
     lock = None
-    def __init__(self, ellipse, border_tol=0.7, allow_resize=True,
+    def __init__(self, ellipse, border_tol=0.6, allow_resize=True,
                  fixed_aspect_ratio=True, allow_rotate=True):
         self.ellipse = ellipse
         self.border_tol = border_tol
         self.allow_resize = allow_resize
         self.allow_rotate = allow_rotate
         self.fixed_aspect_ratio = fixed_aspect_ratio
+        self.lock = None
         self.press = None
         self.background = None
     def connect(self):
@@ -33,6 +31,7 @@ class DragResizeRotateEllipse:
         x0, y0 = self.ellipse.center
         w0, h0 = self.ellipse.width, self.ellipse.height
         theta0 = self.ellipse.angle
+        self.lock = "pressed"
         self.press = x0, y0, w0, h0, theta0, event.xdata, event.ydata
         DragResizeRotateEllipse.lock = self
         
@@ -78,6 +77,7 @@ class DragResizeRotateEllipse:
 
         self.press = None
         DragResizeRotateEllipse.lock = None
+        self.lock = "released"
 
         # turn off the animation property and reset the background
         self.ellipse.set_animated(False)
@@ -97,25 +97,71 @@ class DragResizeRotateEllipse:
         dx, dy = self.dx, self.dy
         bt = self.border_tol
         # Normalized point (to the circle)
-        xnorm, ynorm = self.ellipse.get_patch_transform().inverted().transform_point((xpress+dx, ypress+dy))
+        xnorm, ynorm = self.ellipse.get_patch_transform().inverted().transform_point((xpress, ypress))
         rnorm = np.sqrt(xnorm*xnorm+ynorm*ynorm)
-        if (rnorm < bt):
-            self.ellipse.center = (x0+dx,y0+dy)
-        else:
+
+        # lock into a mode
+        if self.lock == "pressed":
             anorm = np.arctan2(ynorm,xnorm)*180./np.pi
             dtheta = np.arctan2(ypress+dy-y0,xpress+dx-x0)-np.arctan2(ypress-y0,xpress-x0)
             dtheta *= 180./np.pi
+            
+            if (rnorm > bt) and ((abs(anorm) < 30) or (abs(anorm) > 150) or
+                                 (anorm > 60 and anorm < 120) or (anorm < -60 and anorm > -120)):
+                th0 = theta0/180.*np.pi
+                c, s = np.cos(th0), np.sin(th0)
+                R = np.matrix('{} {}; {} {}'.format(c, s, -s, c))
+                (dx_,dy_), = np.array(np.dot(R,np.array([dx,dy])))
+                if abs(dx_) > 1.2*abs(dy_) and (abs(anorm) < 30.):
+                    self.lock = "xresize"
+                elif abs(dx_) > 1.2*abs(dy_) and (abs(anorm) > 150.):
+                    self.lock = "xresize"
+                elif abs(dy_) > 1.2*abs(dx_) and (anorm > 60. and anorm < 120.):
+                    self.lock = "yresize"
+                elif abs(dy_) > 1.2*abs(dx_) and (anorm < -60. and anorm > -120.):
+                    self.lock = "yresize"
+                else:
+                    self.lock = "rotate"
+            else:
+                self.lock = "move"
+        elif self.lock == "move":
+            xn = x0+dx; yn =y0+dy
+            if xn < 0: xn = x0
+            if yn < 0: yn = y0
+            self.ellipse.center = (xn,yn)
+        elif self.lock == "rotate":
+            dtheta = np.arctan2(ypress+dy-y0,xpress+dx-x0)-np.arctan2(ypress-y0,xpress-x0)
+            dtheta *= 180./np.pi
+            self.ellipse.angle = theta0+dtheta
+        elif self.lock == "xresize":
+            anorm = np.arctan2(ynorm,xnorm)*180./np.pi
             th0 = theta0/180.*np.pi
             c, s = np.cos(th0), np.sin(th0)
             R = np.matrix('{} {}; {} {}'.format(c, s, -s, c))
             (dx_,dy_), = np.array(np.dot(R,np.array([dx,dy])))
-            if abs(dx_) > abs(dy_) and (abs(anorm) < 30.):
-                self.ellipse.width = w0+dx_*2
-            elif abs(dx_) > abs(dy_) and (abs(anorm) > 150.):
-                self.ellipse.width = w0-dx_*2
-            elif abs(dy_) > abs(dx_) and (anorm > 60. and anorm < 120.):
-                self.ellipse.height = h0+dy_*2
-            elif abs(dy_) > abs(dx_) and (anorm < -60. and anorm > -120.):
-                self.ellipse.height = h0-dy_*2
+            if abs(anorm) < 30.:
+                if w0+2*dx_ >= 1:
+                    self.ellipse.width = w0+2*dx_
+                else:
+                    self.lock="released"
             else:
-                self.ellipse.angle = theta0+dtheta
+                if w0-2*dx_ >= 1:    
+                    self.ellipse.width = w0-2*dx_
+                else:
+                    self.lock = "released"
+        elif self.lock == "yresize":
+            anorm = np.arctan2(ynorm,xnorm)*180./np.pi
+            th0 = theta0/180.*np.pi
+            c, s = np.cos(th0), np.sin(th0)
+            R = np.matrix('{} {}; {} {}'.format(c, s, -s, c))
+            (dx_,dy_), = np.array(np.dot(R,np.array([dx,dy])))
+            if anorm > 60. and anorm < 120.:
+                if h0+2*dy_ >= 1:    
+                    self.ellipse.height = h0+dy_*2
+                else:
+                    self.lock = "released"
+            else:
+                if h0-2*dy_ >= 1:    
+                    self.ellipse.height = h0-dy_*2
+                else:
+                    self.lock = "released"
