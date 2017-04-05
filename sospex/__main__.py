@@ -6,6 +6,8 @@
 from matplotlib.backends.backend_wxagg import \
     FigureCanvasWxAgg as FigureCanvas, \
     NavigationToolbar2WxAgg as NavigationToolbar
+from matplotlib.widgets import Slider
+#from photometry import VertSlider
 
 from matplotlib.figure import Figure
 from matplotlib.widgets import SpanSelector
@@ -897,19 +899,12 @@ class Panel1 (wx.Panel):
         
     def view(self, spectrum, limits, status):
 
-        #self.figure.clf()
-        #self.figure.canvas.draw()
-        #try:
-        #    self.figure.delaxes(self.axes)
-        #except:
-        #    pass
-        #self.axes = WCSAxes(self.figure,[0,0,1,1],wcs=spectrum.wcs)
-        #self.figure.add_axes(self.axes)
         self.figure.set_canvas(self.canvas)
         if status == 1:
             self.axes = self.figure.add_subplot(111, projection=spectrum.wcs )
             self.axes.coords[0].set_major_formatter('hh:mm:ss')
         self.axes.clear()
+        self.figure.subplots_adjust(bottom=0.14)
         if self.displayImage == 'Flux':
             intensity = spectrum.flux
         elif self.displayImage == 'Unc. Flux':
@@ -929,9 +924,25 @@ class Panel1 (wx.Panel):
         if status == 0:
             self.axes.set_xlim(xlimits)
             self.axes.set_ylim(ylimits)
-        #print ("median image between ", np.nanmin(medianflux)," and ",np.nanmax(medianflux))
-        cbaxes = self.figure.add_axes([0.90,0.1,0.02,0.8])
+        # Colorbar
+        cbaxes = self.figure.add_axes([0.9,0.1,0.02,0.8])
         self.figure.colorbar(self.image, cax=cbaxes)
+        # Sliders to adjust intensity
+        self.ax_cmin = self.figure.add_axes([0.1, 0.01, 0.8, 0.01])
+        self.ax_cmax = self.figure.add_axes([0.1, 0.04, 0.8, 0.01])
+        #self.ax_cmin = self.figure.add_axes([0.85, 0.1, 0.02, 0.8])
+        #self.ax_cmax = self.figure.add_axes([0.88, 0.1, 0.02, 0.8])
+        self.ax_cmin.clear()
+        self.ax_cmax.clear()
+        vmin0=np.nanmin(medianflux); vmax0=np.nanmax(medianflux)
+        d0 = (vmax0-vmin0)/20.
+        self.s_cmin = Slider(self.ax_cmin, 'min', vmin0-d0, vmax0+d0, valinit=vmin0, facecolor='goldenrod')
+        self.s_cmax = Slider(self.ax_cmax, 'max', vmin0-d0, vmax0+d0, valinit=vmax0, facecolor='goldenrod')
+        self.s_cmin.valtext.set_visible(False)
+        self.s_cmax.valtext.set_visible(False)
+        self.slider1=self.s_cmin.on_changed(self.updateScale)
+        self.slider2=self.s_cmax.on_changed(self.updateScale)
+
         # find maximum of medianflux
         try:
             ijmax = np.unravel_index(np.nanargmax(medianflux), medianflux.shape)
@@ -941,6 +952,16 @@ class Panel1 (wx.Panel):
         self.canvas.draw()
         self.canvas.Refresh()    
         return ijmax
+
+    def updateScale(self,val):
+        _cmin = self.s_cmin.val
+        _cmax = self.s_cmax.val
+        self.image.set_clim([_cmin, _cmax])
+        self.figure.canvas.draw_idle()
+
+        
+        
+
         
     def toggleImage(self, event):
         if self.displayMethod == 'Average':
@@ -986,6 +1007,7 @@ class Panel2 (wx.Panel):
 
         self.toolbar = wx.ToolBar(self,-1)
         self.toolbar.SetBackgroundColour('AliceBlue')
+        self.quitBtn    = self.addButton(icons.quit.GetBitmap(),'Quit',self.top.onQuit,'AliceBlue')
         self.undoBtn = self.addButton(icons.Undo.GetBitmap(),'Undo',self.Undo,'AliceBlue')
         self.panBtn  = self.addButton(icons.pan2.GetBitmap(),'Pan',self.Pan,'AliceBlue')
         self.zoomBtn  = self.addButton(icons.zoom.GetBitmap(),'Zoom',self.Zoom,'AliceBlue')
@@ -994,7 +1016,6 @@ class Panel2 (wx.Panel):
         self.fitBtn    = self.addButton(icons.gauss.GetBitmap(),'Fit lines and continuum',self.top.fitGauss,'AliceBlue')
         self.saveBtn    = self.addButton(icons.save.GetBitmap(),'Save spectrum/fit',self.top.saveSpectrum,'AliceBlue')
         self.uploadBtn    = self.addButton(icons.upload.GetBitmap(),'Upload spectrum',self.top.uploadSpectrum,'AliceBlue')
-        self.quitBtn    = self.addButton(icons.quit.GetBitmap(),'Quit',self.top.onQuit,'AliceBlue')
         self.reloadBtn  = self.addButton(icons.reload.GetBitmap(),'Reload original cube',self.top.reloadCube,'AliceBlue')
         self.nextBtn  = self.addButton(icons.next.GetBitmap(),'Load another cube',self.top.nextCube,'AliceBlue')
 
@@ -1077,7 +1098,7 @@ class Panel2 (wx.Panel):
         yumax = np.nanmax(self.uflux); yumin = np.nanmin(self.uflux)
         if yumax > ymax: ymax=yumax
         if yumin < ymin: ymin=yumin
-        self.ax1.set_ylim([ymin, ymax*1.15])
+        self.ax1.set_ylim([ymin, ymax+(ymax-ymin)/8.])
         self.ax3.set_ylim([0.5,np.nanmax(expos)*1.04])
         # Uncorrected flux shifted to be aligned to the corrected flux
         self.ufluxLayer, = self.ax4.step(spectrum.wave*(1.+spectrum.baryshift),self.uflux,color='green')
@@ -1089,18 +1110,22 @@ class Panel2 (wx.Panel):
         # Line names as annotations
         LinesNames = self.Lines.keys()
         self.annotations = []
-        #xlim = self.ax1.get_xlim()
+        xlim = self.ax1.get_xlim()
         ylim = self.ax1.get_ylim()
         dy = ylim[1]-ylim[0]
         font = FontProperties(family='DejaVu Sans',  size=12)
         for line in LinesNames:
             nline = self.Lines[line][0]
             wline = self.Lines[line][1]
-            if (wline < ylim[1] and wline > ylim[0]):
+            if (wline < xlim[1] and wline > xlim[0]):
                 wdiff = abs(spectrum.wave - wline)
                 y = self.flux[(wdiff == wdiff.min())]
                 y1 = y  # ylim[0]+dy/2.
-                y2 = np.max([y + 0.1*dy,ylim[1]-0.05*dy])
+                #y2 = np.max([y + 0.1*dy,ylim[1]-0.05*dy])
+                if (ylim[1]-(y+0.2*dy)) > ((y-0.2*dy)-ylim[0]):
+                    y2 = y+0.2*dy
+                else:
+                    y2 = y-0.2*dy
                 annotation = self.ax1.annotate(nline, xy=(wline, y1), xytext=(wline, y2),color='blue', alpha=0.4,
                                                 arrowprops=dict(color='blue',facecolor='y', arrowstyle='-',alpha=0.4),
                                                 rotation = 90, fontstyle = 'italic', fontproperties=font, visible=self.displayLines,)
