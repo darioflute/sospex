@@ -31,6 +31,10 @@ class specCube(object):
         self.atran = hdl['TRANSMISSION'].data
         self.response = hdl['RESPONSE'].data
         self.exposure = hdl['EXPOSURE_MAP'].data
+        try:
+            self.redshift = hdl['REDSHIFT'].data
+        except:
+            self.redshift = 0.0
         self.n = self.wave.size
         # Create a grid of points
         xi = np.arange(hdl['FLUX'].header['NAXIS1'])

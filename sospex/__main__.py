@@ -94,14 +94,14 @@ class MyFrame(wx.Frame):
         self.panel1.figure.set_canvas(self.panel1.canvas)
         self.panel1.axes = self.panel1.figure.add_subplot(111)
         self.panel1.figure.suptitle('SOFIA Spectrum Explorer', fontsize=20, fontweight='bold')
-        self.panel1.axes.text(0.03,0.9, u'To start:', fontweight='bold',style='italic',fontsize=15)
-        self.panel1.axes.text(0.03,0.8, u'  Select a file with the double arrow',style='italic',fontsize=15)
-        self.panel1.axes.text(0.03,0.7, u'Icons:', fontweight='bold',style='italic',fontsize=15)
-        self.panel1.axes.text(0.03,0.6, u'  Hover your mouse to know what they do',style='italic',fontsize=15)
-        self.panel1.axes.text(0.03,0.5, u'Mouse:', fontweight='bold',style='italic',fontsize=15)
-        self.panel1.axes.text(0.03,0.4, u'  Right click to select images and plots',style='italic',fontsize=15)
-        self.panel1.axes.text(0.03,0.3, u'Issues/Ideas:', fontweight='bold',style='italic',fontsize=15)
-        self.panel1.axes.text(0.03,0.2, u'  Ask Dario Fadda (darioflute@gmail.com)',style='italic',fontsize=15)
+        self.panel1.axes.text(0.03,0.8, u'To start:', fontweight='bold',style='italic',fontsize=15)
+        self.panel1.axes.text(0.03,0.7, u'  Select a file with the double arrow',style='italic',fontsize=15)
+        self.panel1.axes.text(0.03,0.6, u'Icons:', fontweight='bold',style='italic',fontsize=15)
+        self.panel1.axes.text(0.03,0.5, u'  Hover mouse to know what they do',style='italic',fontsize=15)
+        self.panel1.axes.text(0.03,0.4, u'Mouse:', fontweight='bold',style='italic',fontsize=15)
+        self.panel1.axes.text(0.03,0.3, u'  Right click to select images and plots',style='italic',fontsize=15)
+        self.panel1.axes.text(0.03,0.2, u'Issues/Ideas:', fontweight='bold',style='italic',fontsize=15)
+        self.panel1.axes.text(0.03,0.1, u'  Ask Dario Fadda (darioflute@gmail.com)',style='italic',fontsize=15)
         #self.panel1.axes.axis('off')
         self.panel1.axes.xaxis.label.set_visible(False)
         self.panel1.axes.yaxis.label.set_visible(False)
@@ -666,7 +666,7 @@ class MyFrame(wx.Frame):
 
 class Toolbar1(wx.Panel):
     def __init__(self, parent, xysize):
-        wx.Panel.__init__(self, parent, pos=(0,0), size=wx.Size(xysize[1]*1.2,80))
+        wx.Panel.__init__(self, parent, pos=(0,0), size=wx.Size(xysize[1]*1.2,xysize[1]*0.1))
         self.frame = parent
         self.top = self.GetTopLevelParent()
         self.SetBackgroundColour((240,248,255))
@@ -764,7 +764,7 @@ class Toolbar1(wx.Panel):
     
 class Panel1 (wx.Panel):
     def __init__(self, parent, xysize):
-        wx.Panel.__init__(self, parent, pos=(0,0), size=wx.Size(xysize[1]*1.2,xysize[1]-80))
+        wx.Panel.__init__(self, parent, pos=(0,0), size=wx.Size(xysize[1]*1.2,xysize[1]*.9))
 
         # size
         self.xysize = xysize
@@ -1131,23 +1131,23 @@ class Panel1 (wx.Panel):
 
 class Toolbar2(wx.Panel):
     def __init__(self, parent, xysize):
-        wx.Panel.__init__(self, parent, pos=(0,0), size=wx.Size(xysize[1]*1.2,80))
+        wx.Panel.__init__(self, parent, pos=(0,0), size=wx.Size(xysize[1]*1.2,xysize[1]*0.1))
         self.frame = parent
         self.top = self.GetTopLevelParent()
         self.SetBackgroundColour((240,248,255)) # AliceBlue
 
-        self.nextBtn  = self.addButton(icons.next.GetBitmap(),'Load another cube',self.top.nextCube,'AliceBlue',(20,5))
-        self.quitBtn    = self.addButton(icons.quit.GetBitmap(),'Quit',self.top.onQuit,'AliceBlue',(60,5))
+        self.nextBtn  = self.addButton(icons.next.GetBitmap(),'Load another cube',self.top.nextCube,'AliceBlue',(0,5))
+        self.reloadBtn  = self.addButton(icons.reload.GetBitmap(),'Reload original cube',self.top.reloadCube,'AliceBlue',(40,5))
+        self.quitBtn    = self.addButton(icons.quit.GetBitmap(),'Quit',self.top.onQuit,'AliceBlue',(80,5))
 
-        self.undoBtn = self.addButton(icons.Undo.GetBitmap(),'Undo',self.Undo,'AliceBlue',(160,5))
-        self.panBtn  = self.addButton(icons.pan2.GetBitmap(),'Pan',self.Pan,'AliceBlue',(200,5))
-        self.zoomBtn  = self.addButton(icons.zoom.GetBitmap(),'Zoom',self.Zoom,'AliceBlue',(240,5))
-        self.snapshotBtn  = self.addButton(icons.snapshot.GetBitmap(),'Snapshot',self.Snapshot,'AliceBlue',(280,5))
-        self.cutBtn    = self.addButton(icons.cut.GetBitmap(),'Cut cube as selected spectrum range',self.top.cutCube,'AliceBlue',(320,5))
-        self.fitBtn    = self.addButton(icons.gauss.GetBitmap(),'Fit lines and continuum',self.top.fitGauss,'AliceBlue',(360,5))
-        self.saveBtn    = self.addButton(icons.save.GetBitmap(),'Save spectrum/fit',self.top.saveSpectrum,'AliceBlue',(400,5))
-        self.uploadBtn    = self.addButton(icons.upload.GetBitmap(),'Upload spectrum',self.top.uploadSpectrum,'AliceBlue',(440,5))
-        self.reloadBtn  = self.addButton(icons.reload.GetBitmap(),'Reload original cube',self.top.reloadCube,'AliceBlue',(480,5))
+        self.undoBtn = self.addButton(icons.Undo.GetBitmap(),'Undo',self.Undo,'AliceBlue',(200,5))
+        self.panBtn  = self.addButton(icons.pan2.GetBitmap(),'Pan',self.Pan,'AliceBlue',(240,5))
+        self.zoomBtn  = self.addButton(icons.zoom.GetBitmap(),'Zoom',self.Zoom,'AliceBlue',(280,5))
+        self.snapshotBtn  = self.addButton(icons.snapshot.GetBitmap(),'Snapshot',self.Snapshot,'AliceBlue',(320,5))
+        self.cutBtn    = self.addButton(icons.cut.GetBitmap(),'Cut cube as selected spectrum range',self.top.cutCube,'AliceBlue',(360,5))
+        self.fitBtn    = self.addButton(icons.gauss.GetBitmap(),'Fit lines and continuum',self.top.fitGauss,'AliceBlue',(400,5))
+        self.saveBtn    = self.addButton(icons.save.GetBitmap(),'Save spectrum/fit',self.top.saveSpectrum,'AliceBlue',(440,5))
+        self.uploadBtn    = self.addButton(icons.upload.GetBitmap(),'Upload spectrum',self.top.uploadSpectrum,'AliceBlue',(480,5))
 
         wx.ToolTip.SetDelay(1000)
 
@@ -1174,7 +1174,7 @@ class Toolbar2(wx.Panel):
         
 class Panel2 (wx.Panel):
     def __init__(self, parent, xysize):
-        wx.Panel.__init__(self, parent, pos=(xysize[1],0), size=wx.Size(xysize[0]-xysize[1]*1.2,xysize[1]-80))
+        wx.Panel.__init__(self, parent, pos=(xysize[1],0), size=wx.Size(xysize[0]-xysize[1]*1.2,xysize[1]*0.9))
 
         #self.button1 = wx.Button(self, -1,"Second panel", wx.DefaultPosition, wx.DefaultSize, 0 )
         self.frame = parent
@@ -1311,7 +1311,7 @@ class Panel2 (wx.Panel):
         font = FontProperties(family='DejaVu Sans',  size=12)
         for line in LinesNames:
             nline = self.Lines[line][0]
-            wline = self.Lines[line][1]
+            wline = self.Lines[line][1]*(1.+self.top.spectrum.redshift)
             if (wline < xlim[1] and wline > xlim[0]):
                 wdiff = abs(spectrum.wave - wline)
                 y = self.flux[(wdiff == wdiff.min())]
