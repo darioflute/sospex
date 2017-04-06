@@ -20,10 +20,11 @@ from astropy.nddata import Cutout2D
 import wx, os, sys, fnmatch
 import numpy as np
 import wx.lib.platebtn as pbtn
+from wx.lib.buttons import GenBitmapButton
 from scipy.spatial import ConvexHull
 from wx.lib.dialogs import ScrolledMessageDialog as ScrolledMessage
 
-
+import wx.lib.agw.supertooltip as STT
 import wx.lib.agw.pybusyinfo as PBI
 import time
 
@@ -46,14 +47,16 @@ class MyFrame(wx.Frame):
     def __init__(self, parent, id, title):
         displaySize= wx.DisplaySize()
         self.xysize = (displaySize[0]*.8, displaySize[1]*0.5+50)
-        wx.Frame.__init__(self, None, wx.ID_ANY, " SSPEX  (SOFIA SPectrum EXplorer)",size=self.xysize)
+        wx.Frame.__init__(self, None, wx.ID_ANY, " SOSPEX  (SOfia SPectrum EXplorer)",size=self.xysize)
 
         self.topPanel = wx.Panel(self)
         self.Position = (displaySize[0]*0.1,displaySize[1]*0.3)
         self.BackgroundColor = 'white'
 
         self.panel1 = Panel1(self.topPanel, self.xysize)
+        self.toolbar1 = Toolbar1(self.topPanel, self.xysize)
         self.panel2 = Panel2(self.topPanel, self.xysize)
+        self.toolbar2 = Toolbar2(self.topPanel, self.xysize)
 
         # define path as current directory ...
         self.path = os.getcwd()
@@ -139,8 +142,14 @@ class MyFrame(wx.Frame):
         
     def sizeFrame(self):
         self.sizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.sizer.Add(self.panel1,0,wx.EXPAND|wx.ALL,border=0)
-        self.sizer.Add(self.panel2,0,wx.EXPAND|wx.ALL,border=0)
+        self.vsizer1 = wx.BoxSizer(wx.VERTICAL)
+        self.vsizer1.Add(self.panel1,0,wx.EXPAND|wx.ALL,border=0)
+        self.vsizer1.Add(self.toolbar1,0,wx.EXPAND|wx.ALL,border=0)
+        self.sizer.Add(self.vsizer1,0,wx.EXPAND|wx.ALL,border=0)
+        self.vsizer2 = wx.BoxSizer(wx.VERTICAL)
+        self.vsizer2.Add(self.panel2,0,wx.EXPAND|wx.ALL,border=0)
+        self.vsizer2.Add(self.toolbar2,0,wx.EXPAND|wx.ALL,border=0)
+        self.sizer.Add(self.vsizer2,0,wx.EXPAND|wx.ALL,border=0)
         self.topPanel.SetSizer(self.sizer)
         self.topPanel.Fit()
         self.topPanel.Show()
@@ -160,7 +169,7 @@ class MyFrame(wx.Frame):
                 except:
                     pass
                 self.panel1.displayMethod = 'Average'
-                self.panel1.dispBtn.SetBitmap(icons.lambda2.GetBitmap())
+                self.toolbar1.dispBtn.SetBitmap(icons.lambda2.GetBitmap())
                 self.panel1.view(self.spectrum,self.limits,0)            
                 self.regionlimits = np.array([xmin,xmax])
                 self.drawEllipse()
@@ -619,10 +628,108 @@ class MyFrame(wx.Frame):
         self.contour = self.panel1.axes.contour(medianflux, levels, colors = 'cyan')
         
         return
-        
+
+class Toolbar1(wx.Panel):
+    def __init__(self, parent, xysize):
+        wx.Panel.__init__(self, parent, pos=(0,0), size=wx.Size(xysize[1]*1.2,70))
+        self.frame = parent
+        self.top = self.GetTopLevelParent()
+        self.SetBackgroundColour((240,248,255))
+
+        #self.plotbut = wx.Button(self,-1,"plot", size=(40,30),pos=(10,0))
+        #self.plotbut.Bind(wx.EVT_BUTTON,self.plot)
+        #self.plotbut.SetToolTipString("Plot")
+
+        self.undoBtn = self.addButton(icons.Undo.GetBitmap(),'Undo',self.Undo,'AliceBlue',(20,10))
+        self.panBtn  = self.addButton(icons.pan2.GetBitmap(),'Pan',self.Pan,'AliceBlue',(60,10))
+        self.zoomBtn  = self.addButton(icons.zoom.GetBitmap(),'Zoom',self.Zoom,'AliceBlue',(100,10))
+        self.snapshotBtn  = self.addButton(icons.snapshot.GetBitmap(),'Snapshot',self.Snapshot,'AliceBlue',(140,10))
+        self.dispBtn  = self.addButton(icons.lambda2.GetBitmap(),'Display wav plane or range average',self.toggleImage,'AliceBlue',(180,10))
+        self.fitEllBtn  = self.addButton(icons.ellipse.GetBitmap(),'Fit ellipse inside selected region',self.top.panel1.fitEllipse,'AliceBlue',(220,10))
+        self.cropBtn  = self.addButton(icons.crop.GetBitmap(),'Crop cube on selected image',self.top.panel1.cropCube,'AliceBlue',(260,10))
+        #        self.reloadBtn  = self.addButton(icons.reload.GetBitmap(),'Reload original cube',self.top.reloadCube,'AliceBlue')
+        self.contoursBtn  = self.addButton(icons.contours.GetBitmap(),'Overplot flux contours',self.top.showContours,'AliceBlue',(300,10))
+        self.saveBtn  = self.addButton(icons.save.GetBitmap(),'Save current cube',self.top.saveCube,'AliceBlue',(340,10))
+        self.uploadBtn  = self.addButton(icons.upload.GetBitmap(),'Upload image',self.top.uploadImage,'AliceBlue',(380,10))
+        self.showHdr = self.addButton(icons.header.GetBitmap(),'Show header',self.showHeader,'AliceBlue',(420,10))
+        wx.ToolTip.SetDelay(1000)
+
+    def addButton(self, icon, label, function, color, position):
+        button = wx.BitmapButton(self,wx.ID_NEW,bitmap=icon,size=(33,33),pos=position,style=wx.NO_BORDER | wx.BU_EXACTFIT)
+
+        #tip = STT.SuperToolTip(label)
+        #tip.SetTarget(button)
+        #tip.SetDropShadow(True)
+        #tip.ApplyStyle("Office 2007 Blue")
+        button.SetToolTipString(label)
+        button.Bind(wx.EVT_BUTTON, function)
+        button.SetBackgroundColour((240,248,255))
+
+
+        return button
+
+    def Pan(self,event):
+        self.top.panel1.ntoolbar.pan()    
+
+    def Undo(self, event):
+        self.top.panel1.ntoolbar.home()
+
+    def Zoom(self, event):
+        self.top.panel1.ntoolbar.zoom()
+
+    def Snapshot(self, event):
+        self.top.panel1.ntoolbar.save_figure()
+
+
+    def showHeader(self,event):
+        #hdrvalues = self.top.spectrum.header.tostring(sep='\n')
+        header = self.top.spectrum.header
+        hv=header.values()
+        hk= header.keys()
+        hc=header.comments
+        h = []
+        cc = False
+        for k,v,c in zip(hk,hv,hc):
+            if k == 'HISTORY':
+                pass
+            elif k == 'COMMENT':
+                if cc:
+                    h.append('        {0:20}'.format(v)+''+c)
+                else:
+                    h.append('\n        {0:20}'.format(v)+''+c)
+                    cc = True
+            else:
+                if cc:
+                    h.append('\n')
+                    cc = False
+                h.append('{:15s}'.format(k)+ '\t\t=\t {0:15}'.format(v)+' \t\t\t'+c)
+    
+        s = '\n'.join(h)
+        dlg = ScrolledMessage(self,s,'Header',size=(800,400),style=wx.TE_READONLY)
+        dlg.ShowModal()
+        dlg.Destroy()
+
+    def toggleImage(self, event):
+        if self.top.panel1.displayMethod == 'Average':
+            self.top.shade = 'False'
+            self.top.panel1.displayMethod = 'Plane'
+            self.dispBtn.SetBitmap(icons.xbar2.GetBitmap())
+            self.top.panel2.addSlider()
+        else:
+            self.top.shade = 'True'
+            self.top.panel1.displayMethod = 'Average'
+            self.top.panel2.removeSlider()
+            self.dispBtn.SetBitmap(icons.lambda2.GetBitmap())
+        print('Method is:', self.top.panel1.displayMethod)
+        self.top.shadeSpectrum()
+        self.top.panel2.Layout()
+        self.top.panel1.refreshImage()
+
+
+    
 class Panel1 (wx.Panel):
     def __init__(self, parent, xysize):
-        wx.Panel.__init__(self, parent, pos=(0,0), size=wx.Size(xysize[1]*1.2,xysize[1]))
+        wx.Panel.__init__(self, parent, pos=(0,0), size=wx.Size(xysize[1]*1.2,xysize[1]-70))
 
         # size
         self.xysize = xysize
@@ -636,7 +743,8 @@ class Panel1 (wx.Panel):
         #self.figure.set_tight_layout(True)
         self.canvas=FigureCanvas(self,-1,self.figure)
         self.figure.set_facecolor('AliceBlue')
-        #self.figure.set_tight_layout(True)
+        self.figure.set_edgecolor('none')
+
 
         # Probably switching between slider for frame or averaging in wavelength range
         # Slider
@@ -654,27 +762,27 @@ class Panel1 (wx.Panel):
 #        #self.rbox.SetForegroundColour('Red')
 #        self.rbox.Bind(wx.EVT_RADIOBOX,self.onRadioBox)
         self.displayImage = 'Flux'
-        # Toolbar
+        self.displayMethod = 'Average'
+        ## Toolbar
         self.ntoolbar = NavigationToolbar(self.canvas)
         self.ntoolbar.Hide()
-
-        self.toolbar = wx.ToolBar(self,-1)
-        self.toolbar.SetBackgroundColour('AliceBlue')
-        self.displayMethod = 'Average'
-        self.undoBtn = self.addButton(icons.Undo.GetBitmap(),'Undo',self.Undo,'AliceBlue')
-        self.panBtn  = self.addButton(icons.pan2.GetBitmap(),'Pan',self.Pan,'AliceBlue')
-        self.zoomBtn  = self.addButton(icons.zoom.GetBitmap(),'Zoom',self.Zoom,'AliceBlue')
-        self.snapshotBtn  = self.addButton(icons.snapshot.GetBitmap(),'Snapshot',self.Snapshot,'AliceBlue')
-        self.dispBtn  = self.addButton(icons.lambda2.GetBitmap(),'Display wav plane or range average',self.toggleImage,'AliceBlue')
-        self.fitEllBtn  = self.addButton(icons.ellipse.GetBitmap(),'Fit ellipse inside selected region',self.fitEllipse,'AliceBlue')
-        self.cropBtn  = self.addButton(icons.crop.GetBitmap(),'Crop cube on selected image',self.cropCube,'AliceBlue')
-#        self.reloadBtn  = self.addButton(icons.reload.GetBitmap(),'Reload original cube',self.top.reloadCube,'AliceBlue')
-        self.contoursBtn  = self.addButton(icons.contours.GetBitmap(),'Overplot flux contours',self.top.showContours,'AliceBlue')
-        self.saveBtn  = self.addButton(icons.save.GetBitmap(),'Save current cube',self.top.saveCube,'AliceBlue')
-        self.uploadBtn  = self.addButton(icons.upload.GetBitmap(),'Upload image',self.top.uploadImage,'AliceBlue')
-        self.showHdr = self.addButton(icons.header.GetBitmap(),'Show header',self.showHeader,'AliceBlue')
-        
-        self.toolbar.Realize()
+        #self.toolbar = wx.ToolBar(self,-1)
+        #self.toolbar.SetBackgroundColour((240,248,255))   # Does not work on OS-X, even with the code
+        #self.undoBtn = self.addButton(icons.Undo.GetBitmap(),'Undo',self.Undo,'AliceBlue')
+        #self.panBtn  = self.addButton(icons.pan2.GetBitmap(),'Pan',self.Pan,'AliceBlue')
+        #self.zoomBtn  = self.addButton(icons.zoom.GetBitmap(),'Zoom',self.Zoom,'AliceBlue')
+        #self.snapshotBtn  = self.addButton(icons.snapshot.GetBitmap(),'Snapshot',self.Snapshot,'AliceBlue')
+        #self.dispBtn  = self.addButton(icons.lambda2.GetBitmap(),'Display wav plane or range average',self.toggleImage,'AliceBlue')
+        #self.fitEllBtn  = self.addButton(icons.ellipse.GetBitmap(),'Fit ellipse inside selected region',self.fitEllipse,'AliceBlue')
+        #self.cropBtn  = self.addButton(icons.crop.GetBitmap(),'Crop cube on selected image',self.cropCube,'AliceBlue')
+        ##        self.reloadBtn  = self.addButton(icons.reload.GetBitmap(),'Reload original cube',self.top.reloadCube,'AliceBlue')
+        #self.contoursBtn  = self.addButton(icons.contours.GetBitmap(),'Overplot flux contours',self.top.showContours,'AliceBlue')
+        #self.saveBtn  = self.addButton(icons.save.GetBitmap(),'Save current cube',self.top.saveCube,'AliceBlue')
+        #self.uploadBtn  = self.addButton(icons.upload.GetBitmap(),'Upload image',self.top.uploadImage,'AliceBlue')
+        #self.showHdr = self.addButton(icons.header.GetBitmap(),'Show header',self.showHeader,'AliceBlue')
+        #
+        #self.toolbar.Realize()
+        #wx.ToolTip.SetDelay(1000) 
         # Mouse wheel zooming (just to prove the concept)
         self.cidPress = self.figure.canvas.mpl_connect('scroll_event', self.onWheel)
         # Sizing
@@ -682,7 +790,7 @@ class Panel1 (wx.Panel):
         self.vbox=wx.BoxSizer(wx.VERTICAL)
         self.vbox.Add(self.canvas,2,wx.EXPAND,0)
         self.vbox.Add(self.hbox,0,wx.EXPAND,0)
-        self.vbox.Add(self.toolbar,0,wx.EXPAND) # Add toolbar !
+        #self.vbox.Add(self.toolbar,0,wx.EXPAND) # Add toolbar !
         self.SetSizer(self.vbox)
         self.frame.Fit()
 
@@ -716,11 +824,16 @@ class Panel1 (wx.Panel):
 
         
     def addButton(self, icon, label, function, color):
-        button = pbtn.PlateButton(self.toolbar, wx.ID_NEW, bmp=icon,style = pbtn.PB_STYLE_DEFAULT)
+        ##button = wx.BitmapButton(self.toolbar,wx.ID_NEW,bitmap=icon,size=(33,33),style=wx.NO_BORDER | wx.BU_EXACTFIT)
+        button = pbtn.PlateButton(self.toolbar, wx.ID_NEW, bmp=icon,style = pbtn.PB_STYLE_DEFAULT | pbtn.PB_STYLE_NOBG)
+        ##button = GenBitmapButton(self.toolbar, wx.ID_NEW, bitmap=icon,style = wx.NO_BORDER|wx.BU_EXACTFIT)
         button.SetToolTip(wx.ToolTip(label))
+        #button.SetToolTipString(label)
         self.toolbar.AddControl(button, label)
+        #button = wx.ToolBar.AddTool(self.toolbar,wx.ID_NEW,icon,shortHelpString=label)
         button.Bind(wx.EVT_BUTTON, function)
         button.SetBackgroundColour(color)
+        #self.Bind(wx.EVT_TOOL,function,button)
         return button
 
     def Pan(self,event):
@@ -936,8 +1049,8 @@ class Panel1 (wx.Panel):
         self.ax_cmax.clear()
         vmin0=np.nanmin(medianflux); vmax0=np.nanmax(medianflux)
         d0 = (vmax0-vmin0)/20.
-        self.s_cmin = Slider(self.ax_cmin, 'min', vmin0-d0, vmax0+d0, valinit=vmin0, facecolor='goldenrod')
-        self.s_cmax = Slider(self.ax_cmax, 'max', vmin0-d0, vmax0+d0, valinit=vmax0, facecolor='goldenrod')
+        self.s_cmin = Slider(self.ax_cmin, 'low', vmin0-d0, vmax0+d0, valinit=vmin0, facecolor='goldenrod')
+        self.s_cmax = Slider(self.ax_cmax, 'high', vmin0-d0, vmax0+d0, valinit=vmax0, facecolor='goldenrod')
         self.s_cmin.valtext.set_visible(False)
         self.s_cmax.valtext.set_visible(False)
         self.slider1=self.s_cmin.on_changed(self.updateScale)
@@ -978,10 +1091,54 @@ class Panel1 (wx.Panel):
         self.top.shadeSpectrum()
         self.top.panel2.Layout()
         self.refreshImage()
+
+
+
+class Toolbar2(wx.Panel):
+    def __init__(self, parent, xysize):
+        wx.Panel.__init__(self, parent, pos=(0,0), size=wx.Size(xysize[1]*1.2,70))
+        self.frame = parent
+        self.top = self.GetTopLevelParent()
+        self.SetBackgroundColour((240,248,255)) # AliceBlue
+
+        self.quitBtn    = self.addButton(icons.quit.GetBitmap(),'Quit',self.top.onQuit,'AliceBlue',(20,10))
+        self.undoBtn = self.addButton(icons.Undo.GetBitmap(),'Undo',self.Undo,'AliceBlue',(60,10))
+        self.panBtn  = self.addButton(icons.pan2.GetBitmap(),'Pan',self.Pan,'AliceBlue',(100,10))
+        self.zoomBtn  = self.addButton(icons.zoom.GetBitmap(),'Zoom',self.Zoom,'AliceBlue',(140,10))
+        self.snapshotBtn  = self.addButton(icons.snapshot.GetBitmap(),'Snapshot',self.Snapshot,'AliceBlue',(180,10))
+        self.cutBtn    = self.addButton(icons.cut.GetBitmap(),'Cut cube as selected spectrum range',self.top.cutCube,'AliceBlue',(220,10))
+        self.fitBtn    = self.addButton(icons.gauss.GetBitmap(),'Fit lines and continuum',self.top.fitGauss,'AliceBlue',(260,10))
+        self.saveBtn    = self.addButton(icons.save.GetBitmap(),'Save spectrum/fit',self.top.saveSpectrum,'AliceBlue',(300,10))
+        self.uploadBtn    = self.addButton(icons.upload.GetBitmap(),'Upload spectrum',self.top.uploadSpectrum,'AliceBlue',(340,10))
+        self.reloadBtn  = self.addButton(icons.reload.GetBitmap(),'Reload original cube',self.top.reloadCube,'AliceBlue',(380,10))
+        self.nextBtn  = self.addButton(icons.next.GetBitmap(),'Load another cube',self.top.nextCube,'AliceBlue',(420,10))
+
+        wx.ToolTip.SetDelay(1000)
+
+    def addButton(self, icon, label, function, color, position):
+        button = wx.BitmapButton(self,wx.ID_NEW,bitmap=icon,size=(33,33),pos=position,style=wx.NO_BORDER | wx.BU_EXACTFIT)
+        button.SetToolTipString(label)
+        button.Bind(wx.EVT_BUTTON, function)
+        button.SetBackgroundColour((240,248,255))
+        return button
+
+    def Pan(self,event):
+        self.top.panel2.ntoolbar.pan()    
+
+    def Undo(self, event):
+        self.top.panel2.ntoolbar.home()
+
+    def Zoom(self, event):
+        self.top.panel2.ntoolbar.zoom()
+
+    def Snapshot(self, event):
+        self.top.panel2.ntoolbar.save_figure()
+
+
         
 class Panel2 (wx.Panel):
     def __init__(self, parent, xysize):
-        wx.Panel.__init__(self, parent, pos=(xysize[1],0), size=wx.Size(xysize[0]-xysize[1]*1.2,xysize[1]))
+        wx.Panel.__init__(self, parent, pos=(xysize[1],0), size=wx.Size(xysize[0]-xysize[1]*1.2,xysize[1]-70))
 
         #self.button1 = wx.Button(self, -1,"Second panel", wx.DefaultPosition, wx.DefaultSize, 0 )
         self.frame = parent
@@ -990,6 +1147,7 @@ class Panel2 (wx.Panel):
         # Figure
         self.figure=Figure()
         self.figure.set_facecolor('AliceBlue')
+        self.figure.set_edgecolor('none')
         self.figure.set_tight_layout(True)
         self.canvas=FigureCanvas(self,-1,self.figure)
         self.ax1 = self.figure.add_subplot(111)
@@ -1005,28 +1163,28 @@ class Panel2 (wx.Panel):
         self.ntoolbar = NavigationToolbar(self.canvas)
         self.ntoolbar.Hide()
 
-        self.toolbar = wx.ToolBar(self,-1)
-        self.toolbar.SetBackgroundColour('AliceBlue')
-        self.quitBtn    = self.addButton(icons.quit.GetBitmap(),'Quit',self.top.onQuit,'AliceBlue')
-        self.undoBtn = self.addButton(icons.Undo.GetBitmap(),'Undo',self.Undo,'AliceBlue')
-        self.panBtn  = self.addButton(icons.pan2.GetBitmap(),'Pan',self.Pan,'AliceBlue')
-        self.zoomBtn  = self.addButton(icons.zoom.GetBitmap(),'Zoom',self.Zoom,'AliceBlue')
-        self.snapshotBtn  = self.addButton(icons.snapshot.GetBitmap(),'Snapshot',self.Snapshot,'AliceBlue')
-        self.cutBtn    = self.addButton(icons.cut.GetBitmap(),'Cut cube as selected spectrum range',self.top.cutCube,'AliceBlue')
-        self.fitBtn    = self.addButton(icons.gauss.GetBitmap(),'Fit lines and continuum',self.top.fitGauss,'AliceBlue')
-        self.saveBtn    = self.addButton(icons.save.GetBitmap(),'Save spectrum/fit',self.top.saveSpectrum,'AliceBlue')
-        self.uploadBtn    = self.addButton(icons.upload.GetBitmap(),'Upload spectrum',self.top.uploadSpectrum,'AliceBlue')
-        self.reloadBtn  = self.addButton(icons.reload.GetBitmap(),'Reload original cube',self.top.reloadCube,'AliceBlue')
-        self.nextBtn  = self.addButton(icons.next.GetBitmap(),'Load another cube',self.top.nextCube,'AliceBlue')
-
-        self.toolbar.Realize()
+        #self.toolbar = wx.ToolBar(self,-1)
+        #self.toolbar.SetBackgroundColour('AliceBlue')
+        #self.quitBtn    = self.addButton(icons.quit.GetBitmap(),'Quit',self.top.onQuit,'AliceBlue')
+        #self.undoBtn = self.addButton(icons.Undo.GetBitmap(),'Undo',self.Undo,'AliceBlue')
+        #self.panBtn  = self.addButton(icons.pan2.GetBitmap(),'Pan',self.Pan,'AliceBlue')
+        #self.zoomBtn  = self.addButton(icons.zoom.GetBitmap(),'Zoom',self.Zoom,'AliceBlue')
+        #self.snapshotBtn  = self.addButton(icons.snapshot.GetBitmap(),'Snapshot',self.Snapshot,'AliceBlue')
+        #self.cutBtn    = self.addButton(icons.cut.GetBitmap(),'Cut cube as selected spectrum range',self.top.cutCube,'AliceBlue')
+        #self.fitBtn    = self.addButton(icons.gauss.GetBitmap(),'Fit lines and continuum',self.top.fitGauss,'AliceBlue')
+        #self.saveBtn    = self.addButton(icons.save.GetBitmap(),'Save spectrum/fit',self.top.saveSpectrum,'AliceBlue')
+        #self.uploadBtn    = self.addButton(icons.upload.GetBitmap(),'Upload spectrum',self.top.uploadSpectrum,'AliceBlue')
+        #self.reloadBtn  = self.addButton(icons.reload.GetBitmap(),'Reload original cube',self.top.reloadCube,'AliceBlue')
+        #self.nextBtn  = self.addButton(icons.next.GetBitmap(),'Load another cube',self.top.nextCube,'AliceBlue')
+        #
+        #self.toolbar.Realize()
         
         # Size
         self.hbox = wx.BoxSizer(wx.HORIZONTAL)
         self.vbox = wx.BoxSizer(wx.VERTICAL)
         self.vbox.Add(self.canvas,1,wx.LEFT|wx.TOP|wx.GROW,0)
         self.vbox.Add(self.hbox,0,wx.EXPAND,0)
-        self.vbox.Add(self.toolbar,0,wx.EXPAND) # Add toolbar !
+        #self.vbox.Add(self.toolbar,0,wx.EXPAND) # Add toolbar !
         self.SetSizer(self.vbox)
         self.frame.Fit()
         
@@ -1193,7 +1351,7 @@ class Panel2 (wx.Panel):
         #self.sld.SetThumbLength(5)
         #rect = self.sld.GetRect()
         #self.sld.ClearBackground()
-        self.sld.SetBackgroundColour('AliceBlue')
+        self.sld.SetBackgroundColour((240,248,255))
         #self.sld.SetBackgroundColour('AliceBlue')
         #self.frame.RefreshRect(rect)
         #w,h = self.sld.GetClientSize()
