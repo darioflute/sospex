@@ -655,7 +655,7 @@ class Toolbar1(wx.Panel):
         wx.ToolTip.SetDelay(1000)
 
     def addButton(self, icon, label, function, color, position):
-        button = wx.BitmapButton(self,wx.ID_NEW,bitmap=icon,size=(33,33),pos=position,style=wx.NO_BORDER | wx.BU_EXACTFIT)
+        button = wx.BitmapButton(self,wx.ID_NEW,bitmap=icon,size=(45,45),pos=position,style=wx.NO_BORDER | wx.BU_EXACTFIT)
 
         #tip = STT.SuperToolTip(label)
         #tip.SetTarget(button)
@@ -1116,7 +1116,7 @@ class Toolbar2(wx.Panel):
         wx.ToolTip.SetDelay(1000)
 
     def addButton(self, icon, label, function, color, position):
-        button = wx.BitmapButton(self,wx.ID_NEW,bitmap=icon,size=(33,33),pos=position,style=wx.NO_BORDER | wx.BU_EXACTFIT)
+        button = wx.BitmapButton(self,wx.ID_NEW,bitmap=icon,size=(45,45),pos=position,style=wx.NO_BORDER | wx.BU_EXACTFIT)
         button.SetToolTipString(label)
         button.Bind(wx.EVT_BUTTON, function)
         button.SetBackgroundColour((240,248,255))
