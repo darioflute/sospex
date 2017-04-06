@@ -2,13 +2,20 @@
 # Using UTF8 encoding
 # -*- coding: utf-8 -*-
 
+
+# In the case of MacOS-X, re-executes with pythonw
+import os,sys
+if (len(sys.argv) == 1) or (sys.argv[1] != "MAC"):
+    if sys.platform == 'darwin' and\
+       not sys.executable.endswith('MacOS/Python'):
+        print >>sys.stderr,'re-executing using pythonw'
+        os.execvp('pythonw',['pythonw',__file__,"MAC"] + sys.argv[1:])
+
 # Library imports
 from matplotlib.backends.backend_wxagg import \
     FigureCanvasWxAgg as FigureCanvas, \
     NavigationToolbar2WxAgg as NavigationToolbar
 from matplotlib.widgets import Slider
-#from photometry import VertSlider
-
 from matplotlib.figure import Figure
 from matplotlib.widgets import SpanSelector
 from matplotlib.patches import Ellipse
@@ -17,16 +24,13 @@ from matplotlib.font_manager import FontProperties
 from astropy.io import fits
 from astropy.nddata import Cutout2D
 
-import wx, os, sys, fnmatch
+import wx, fnmatch, time
 import numpy as np
-import wx.lib.platebtn as pbtn
-from wx.lib.buttons import GenBitmapButton
+#import wx.lib.platebtn as pbtn
+#from wx.lib.buttons import GenBitmapButton
 from scipy.spatial import ConvexHull
 from wx.lib.dialogs import ScrolledMessageDialog as ScrolledMessage
-
-import wx.lib.agw.supertooltip as STT
-import wx.lib.agw.pybusyinfo as PBI
-import time
+from wx.lib.agw import pybusyinfo as PBI
 
 
 # Local imports
@@ -37,16 +41,11 @@ import icons
 from fitline import fitContinuum, fitLines, fittedLine
 from specobj import specCube, spectrum
 
-def reexec_with_pythonw():
-    if sys.platform == 'darwin' and\
-           not sys.executable.endswith('MacOS/Python'):
-        print >>sys.stderr,'re-executing using pythonw'
-        os.execvp('pythonw',['pythonw',__file__,"1"] + sys.argv[1:])
         
 class MyFrame(wx.Frame):
     def __init__(self, parent, id, title):
         displaySize= wx.DisplaySize()
-        self.xysize = (displaySize[0]*.8, displaySize[1]*0.5+50)
+        self.xysize = (displaySize[0]*.8, displaySize[1]*0.5+80)
         wx.Frame.__init__(self, None, wx.ID_ANY, " SOSPEX  (SOfia SPectrum EXplorer)",size=self.xysize)
 
         self.topPanel = wx.Panel(self)
@@ -59,8 +58,59 @@ class MyFrame(wx.Frame):
         self.toolbar2 = Toolbar2(self.topPanel, self.xysize)
 
         # define path as current directory ...
-        self.path = os.getcwd()
+        self.path = os.getcwd()        
+
+
+        # Menu
+        # http://zetcode.com/wxpython/menustoolbars/
+        self.menubar = wx.MenuBar()
+        fileMenu = wx.Menu()
+        fitem = fileMenu.Append(wx.ID_EXIT, 'Quit', 'Quit application')
+        self.menubar.Append(fileMenu, '&File')
+        self.SetMenuBar(self.menubar)
+        self.Bind(wx.EVT_MENU, self.onQuit, fitem)
         
+        
+        # Select a region in the image with the mouse (and then plot all the spectra  or the average coadded spectrum)
+        #http://ebanshi.cc/questions/5266620/matplotlib-draw-a-selection-area-in-the-shape-of-a-rectangle-with-the-mouse
+        
+        self.sizeFrame()
+        
+        # States
+        self.extSpectrum = None
+        self.fitState = 0
+        self.displayContours = False
+        self.fit  = None 
+        self.ufit = None 
+        self.shade = False
+        self.regionlimits = None
+        self.panel1.figure.canvas.mpl_connect('button_release_event', self.onClick)
+        self.panel2.figure.canvas.mpl_connect('button_release_event', self.onClick)
+
+        #self.getFile()
+        
+    def welcomeMessage(self):
+
+        self.panel1.figure.set_canvas(self.panel1.canvas)
+        self.panel1.axes = self.panel1.figure.add_subplot(111)
+        self.panel1.figure.suptitle('SOFIA Spectrum Explorer', fontsize=20, fontweight='bold')
+        self.panel1.axes.text(0.03,0.9, u'To start:', fontweight='bold',style='italic',fontsize=15)
+        self.panel1.axes.text(0.03,0.8, u'  Select a file with the double arrow',style='italic',fontsize=15)
+        self.panel1.axes.text(0.03,0.7, u'Icons:', fontweight='bold',style='italic',fontsize=15)
+        self.panel1.axes.text(0.03,0.6, u'  Hover your mouse to know what they do',style='italic',fontsize=15)
+        self.panel1.axes.text(0.03,0.5, u'Mouse:', fontweight='bold',style='italic',fontsize=15)
+        self.panel1.axes.text(0.03,0.4, u'  Right click to select images and plots',style='italic',fontsize=15)
+        self.panel1.axes.text(0.03,0.3, u'Issues/Ideas:', fontweight='bold',style='italic',fontsize=15)
+        self.panel1.axes.text(0.03,0.2, u'  Ask Dario Fadda (darioflute@gmail.com)',style='italic',fontsize=15)
+        #self.panel1.axes.axis('off')
+        self.panel1.axes.xaxis.label.set_visible(False)
+        self.panel1.axes.yaxis.label.set_visible(False)
+        self.panel1.axes.set_yticklabels([])
+        self.panel1.axes.set_xticklabels([])
+        self.panel1.axes.xaxis.set_ticks_position('none') 
+        self.panel1.axes.yaxis.set_ticks_position('none') 
+        
+    def getFile(self):
         if wx.Platform != '__WXMAC__':
             defaultFile = "*WXY*.fits"
             wildcard = "Spectrum cube (*WXY*.fits)|*WXY*.fits"
@@ -110,21 +160,6 @@ class MyFrame(wx.Frame):
                 
         dlg.Destroy()
 
-
-        # Menu
-        # http://zetcode.com/wxpython/menustoolbars/
-        self.menubar = wx.MenuBar()
-        fileMenu = wx.Menu()
-        fitem = fileMenu.Append(wx.ID_EXIT, 'Quit', 'Quit application')
-        self.menubar.Append(fileMenu, '&File')
-        self.SetMenuBar(self.menubar)
-        self.Bind(wx.EVT_MENU, self.onQuit, fitem)
-        
-        
-        # Select a region in the image with the mouse (and then plot all the spectra  or the average coadded spectrum)
-        #http://ebanshi.cc/questions/5266620/matplotlib-draw-a-selection-area-in-the-shape-of-a-rectangle-with-the-mouse
-        
-        self.sizeFrame()
         
     def showmsg(self, message, title):
         d = PBI.PyBusyInfo(message, title=title)
@@ -631,7 +666,7 @@ class MyFrame(wx.Frame):
 
 class Toolbar1(wx.Panel):
     def __init__(self, parent, xysize):
-        wx.Panel.__init__(self, parent, pos=(0,0), size=wx.Size(xysize[1]*1.2,70))
+        wx.Panel.__init__(self, parent, pos=(0,0), size=wx.Size(xysize[1]*1.2,80))
         self.frame = parent
         self.top = self.GetTopLevelParent()
         self.SetBackgroundColour((240,248,255))
@@ -640,18 +675,18 @@ class Toolbar1(wx.Panel):
         #self.plotbut.Bind(wx.EVT_BUTTON,self.plot)
         #self.plotbut.SetToolTipString("Plot")
 
-        self.undoBtn = self.addButton(icons.Undo.GetBitmap(),'Undo',self.Undo,'AliceBlue',(20,10))
-        self.panBtn  = self.addButton(icons.pan2.GetBitmap(),'Pan',self.Pan,'AliceBlue',(60,10))
-        self.zoomBtn  = self.addButton(icons.zoom.GetBitmap(),'Zoom',self.Zoom,'AliceBlue',(100,10))
-        self.snapshotBtn  = self.addButton(icons.snapshot.GetBitmap(),'Snapshot',self.Snapshot,'AliceBlue',(140,10))
-        self.dispBtn  = self.addButton(icons.lambda2.GetBitmap(),'Display wav plane or range average',self.toggleImage,'AliceBlue',(180,10))
-        self.fitEllBtn  = self.addButton(icons.ellipse.GetBitmap(),'Fit ellipse inside selected region',self.top.panel1.fitEllipse,'AliceBlue',(220,10))
-        self.cropBtn  = self.addButton(icons.crop.GetBitmap(),'Crop cube on selected image',self.top.panel1.cropCube,'AliceBlue',(260,10))
+        self.undoBtn = self.addButton(icons.Undo.GetBitmap(),'Undo',self.Undo,'AliceBlue',(20,5))
+        self.panBtn  = self.addButton(icons.pan2.GetBitmap(),'Pan',self.Pan,'AliceBlue',(60,5))
+        self.zoomBtn  = self.addButton(icons.zoom.GetBitmap(),'Zoom',self.Zoom,'AliceBlue',(100,5))
+        self.snapshotBtn  = self.addButton(icons.snapshot.GetBitmap(),'Snapshot',self.Snapshot,'AliceBlue',(140,5))
+        self.dispBtn  = self.addButton(icons.lambda2.GetBitmap(),'Display wav plane or range average',self.toggleImage,'AliceBlue',(180,5))
+        self.fitEllBtn  = self.addButton(icons.ellipse.GetBitmap(),'Fit ellipse inside selected region',self.top.panel1.fitEllipse,'AliceBlue',(220,5))
+        self.cropBtn  = self.addButton(icons.crop.GetBitmap(),'Crop cube on selected image',self.top.panel1.cropCube,'AliceBlue',(260,5))
         #        self.reloadBtn  = self.addButton(icons.reload.GetBitmap(),'Reload original cube',self.top.reloadCube,'AliceBlue')
-        self.contoursBtn  = self.addButton(icons.contours.GetBitmap(),'Overplot flux contours',self.top.showContours,'AliceBlue',(300,10))
-        self.saveBtn  = self.addButton(icons.save.GetBitmap(),'Save current cube',self.top.saveCube,'AliceBlue',(340,10))
-        self.uploadBtn  = self.addButton(icons.upload.GetBitmap(),'Upload image',self.top.uploadImage,'AliceBlue',(380,10))
-        self.showHdr = self.addButton(icons.header.GetBitmap(),'Show header',self.showHeader,'AliceBlue',(420,10))
+        self.contoursBtn  = self.addButton(icons.contours.GetBitmap(),'Overplot flux contours',self.top.showContours,'AliceBlue',(300,5))
+        self.saveBtn  = self.addButton(icons.save.GetBitmap(),'Save current cube',self.top.saveCube,'AliceBlue',(340,5))
+        self.uploadBtn  = self.addButton(icons.upload.GetBitmap(),'Upload image',self.top.uploadImage,'AliceBlue',(380,5))
+        self.showHdr = self.addButton(icons.header.GetBitmap(),'Show header',self.showHeader,'AliceBlue',(420,5))
         wx.ToolTip.SetDelay(1000)
 
     def addButton(self, icon, label, function, color, position):
@@ -729,7 +764,7 @@ class Toolbar1(wx.Panel):
     
 class Panel1 (wx.Panel):
     def __init__(self, parent, xysize):
-        wx.Panel.__init__(self, parent, pos=(0,0), size=wx.Size(xysize[1]*1.2,xysize[1]-70))
+        wx.Panel.__init__(self, parent, pos=(0,0), size=wx.Size(xysize[1]*1.2,xysize[1]-80))
 
         # size
         self.xysize = xysize
@@ -824,8 +859,8 @@ class Panel1 (wx.Panel):
 
         
     def addButton(self, icon, label, function, color):
-        ##button = wx.BitmapButton(self.toolbar,wx.ID_NEW,bitmap=icon,size=(33,33),style=wx.NO_BORDER | wx.BU_EXACTFIT)
-        button = pbtn.PlateButton(self.toolbar, wx.ID_NEW, bmp=icon,style = pbtn.PB_STYLE_DEFAULT | pbtn.PB_STYLE_NOBG)
+        button = wx.BitmapButton(self.toolbar,wx.ID_NEW,bitmap=icon,size=(33,33),style=wx.NO_BORDER | wx.BU_EXACTFIT)
+        #button = pbtn.PlateButton(self.toolbar, wx.ID_NEW, bmp=icon,style = pbtn.PB_STYLE_DEFAULT | pbtn.PB_STYLE_NOBG)
         ##button = GenBitmapButton(self.toolbar, wx.ID_NEW, bitmap=icon,style = wx.NO_BORDER|wx.BU_EXACTFIT)
         button.SetToolTip(wx.ToolTip(label))
         #button.SetToolTipString(label)
@@ -1033,7 +1068,7 @@ class Panel1 (wx.Panel):
             xlimits = self.axes.get_xlim()
             ylimits = self.axes.get_ylim()
         self.image = self.axes.imshow(medianflux, cmap='gist_heat', origin='lower', interpolation='none')
-        self.axes.set_title(self.displayImage)
+        self.figure.suptitle(self.displayImage)
         if status == 0:
             self.axes.set_xlim(xlimits)
             self.axes.set_ylim(ylimits)
@@ -1096,22 +1131,23 @@ class Panel1 (wx.Panel):
 
 class Toolbar2(wx.Panel):
     def __init__(self, parent, xysize):
-        wx.Panel.__init__(self, parent, pos=(0,0), size=wx.Size(xysize[1]*1.2,70))
+        wx.Panel.__init__(self, parent, pos=(0,0), size=wx.Size(xysize[1]*1.2,80))
         self.frame = parent
         self.top = self.GetTopLevelParent()
         self.SetBackgroundColour((240,248,255)) # AliceBlue
 
-        self.quitBtn    = self.addButton(icons.quit.GetBitmap(),'Quit',self.top.onQuit,'AliceBlue',(20,10))
-        self.undoBtn = self.addButton(icons.Undo.GetBitmap(),'Undo',self.Undo,'AliceBlue',(60,10))
-        self.panBtn  = self.addButton(icons.pan2.GetBitmap(),'Pan',self.Pan,'AliceBlue',(100,10))
-        self.zoomBtn  = self.addButton(icons.zoom.GetBitmap(),'Zoom',self.Zoom,'AliceBlue',(140,10))
-        self.snapshotBtn  = self.addButton(icons.snapshot.GetBitmap(),'Snapshot',self.Snapshot,'AliceBlue',(180,10))
-        self.cutBtn    = self.addButton(icons.cut.GetBitmap(),'Cut cube as selected spectrum range',self.top.cutCube,'AliceBlue',(220,10))
-        self.fitBtn    = self.addButton(icons.gauss.GetBitmap(),'Fit lines and continuum',self.top.fitGauss,'AliceBlue',(260,10))
-        self.saveBtn    = self.addButton(icons.save.GetBitmap(),'Save spectrum/fit',self.top.saveSpectrum,'AliceBlue',(300,10))
-        self.uploadBtn    = self.addButton(icons.upload.GetBitmap(),'Upload spectrum',self.top.uploadSpectrum,'AliceBlue',(340,10))
-        self.reloadBtn  = self.addButton(icons.reload.GetBitmap(),'Reload original cube',self.top.reloadCube,'AliceBlue',(380,10))
-        self.nextBtn  = self.addButton(icons.next.GetBitmap(),'Load another cube',self.top.nextCube,'AliceBlue',(420,10))
+        self.nextBtn  = self.addButton(icons.next.GetBitmap(),'Load another cube',self.top.nextCube,'AliceBlue',(20,5))
+        self.quitBtn    = self.addButton(icons.quit.GetBitmap(),'Quit',self.top.onQuit,'AliceBlue',(60,5))
+
+        self.undoBtn = self.addButton(icons.Undo.GetBitmap(),'Undo',self.Undo,'AliceBlue',(160,5))
+        self.panBtn  = self.addButton(icons.pan2.GetBitmap(),'Pan',self.Pan,'AliceBlue',(200,5))
+        self.zoomBtn  = self.addButton(icons.zoom.GetBitmap(),'Zoom',self.Zoom,'AliceBlue',(240,5))
+        self.snapshotBtn  = self.addButton(icons.snapshot.GetBitmap(),'Snapshot',self.Snapshot,'AliceBlue',(280,5))
+        self.cutBtn    = self.addButton(icons.cut.GetBitmap(),'Cut cube as selected spectrum range',self.top.cutCube,'AliceBlue',(320,5))
+        self.fitBtn    = self.addButton(icons.gauss.GetBitmap(),'Fit lines and continuum',self.top.fitGauss,'AliceBlue',(360,5))
+        self.saveBtn    = self.addButton(icons.save.GetBitmap(),'Save spectrum/fit',self.top.saveSpectrum,'AliceBlue',(400,5))
+        self.uploadBtn    = self.addButton(icons.upload.GetBitmap(),'Upload spectrum',self.top.uploadSpectrum,'AliceBlue',(440,5))
+        self.reloadBtn  = self.addButton(icons.reload.GetBitmap(),'Reload original cube',self.top.reloadCube,'AliceBlue',(480,5))
 
         wx.ToolTip.SetDelay(1000)
 
@@ -1138,7 +1174,7 @@ class Toolbar2(wx.Panel):
         
 class Panel2 (wx.Panel):
     def __init__(self, parent, xysize):
-        wx.Panel.__init__(self, parent, pos=(xysize[1],0), size=wx.Size(xysize[0]-xysize[1]*1.2,xysize[1]-70))
+        wx.Panel.__init__(self, parent, pos=(xysize[1],0), size=wx.Size(xysize[0]-xysize[1]*1.2,xysize[1]-80))
 
         #self.button1 = wx.Button(self, -1,"Second panel", wx.DefaultPosition, wx.DefaultSize, 0 )
         self.frame = parent
@@ -1208,7 +1244,8 @@ class Panel2 (wx.Panel):
 #        print self.rbox.GetStringSelection(),' is clicked from Radio Box'
 
     def addButton(self, icon, label, function, color):
-        button = pbtn.PlateButton(self.toolbar, wx.ID_NEW, bmp=icon,style = pbtn.PB_STYLE_DEFAULT)
+        button = wx.BitmapButton(self.toolbar,wx.ID_NEW,bitmap=icon,size=(33,33),style=wx.NO_BORDER | wx.BU_EXACTFIT)
+        #button = pbtn.PlateButton(self.toolbar, wx.ID_NEW, bmp=icon,style = pbtn.PB_STYLE_DEFAULT)
         button.SetToolTip(wx.ToolTip(label))
         self.toolbar.AddControl(button, label)
         button.Bind(wx.EVT_BUTTON, function)
@@ -1475,11 +1512,14 @@ class MyApp(wx.App):
     def OnInit(self):
         frame = MyFrame(None, -1, 'frame')
         frame.Show(True)
+        # Welcome message on panel 1
+        frame.welcomeMessage()
         return True
 
+
 # In the case of MacOS-X, re-executes with pythonw
-if len(sys.argv) == 1:
-    reexec_with_pythonw()
+#if len(sys.argv) == 1:
+#    reexec_with_pythonw()
 # Starting the code
 app = MyApp(0)
 app.MainLoop()
