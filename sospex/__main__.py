@@ -80,7 +80,8 @@ class MyFrame(wx.Frame):
         # States
         self.extSpectrum = None
         self.fitState = 0
-        self.displayContours = False
+        self.momentsState = 0
+        self.panel1.displayContours = 'None'
         self.fit  = None 
         self.ufit = None 
         self.shade = False
@@ -111,56 +112,6 @@ class MyFrame(wx.Frame):
         self.panel1.axes.xaxis.set_ticks_position('none') 
         self.panel1.axes.yaxis.set_ticks_position('none') 
         
-    def getFile(self):
-        if wx.Platform != '__WXMAC__':
-            defaultFile = "*WXY*.fits"
-            wildcard = "Spectrum cube (*WXY*.fits)|*WXY*.fits"
-        else:
-            defaultFile = "*.fits"
-            wildcard = "Spectrum cube (*WXY*.fits)|*.fits"
-            
-        dlg = wx.FileDialog(
-            self, message="Choose a spectrum",
-            defaultDir=self.path, 
-            defaultFile=defaultFile,
-            wildcard=wildcard,
-            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST
-            )
-        if dlg.ShowModal() == wx.ID_OK:
-            infile = dlg.GetPath()
-            print "You chose the following file:", infile
-            # redefine path
-            self.path = os.path.dirname(infile)
-            try:
-                self.spectrum = specCube(infile)
-                self.limits = (0, self.spectrum.n)
-                self.ijmax = self.panel1.view(self.spectrum, self.limits, 1)
-                self.extSpectrum = None
-                
-                # States
-                self.fitState = 0
-                self.displayContours = False
-                self.fit  = None 
-                self.ufit = None 
-            
-                # Add marker to image and plot spectrum (of flux inside ellipse)
-                self.ellipse = Ellipse((self.ijmax[1],self.ijmax[0]), 5, 5, edgecolor='Lime', facecolor='none')
-                self.shade = False
-                self.drawEllipse()
-            
-                # Select range in wavelength to average the cube and display in panel 1
-                self.regionlimits = None  # initialize regionlimits
-                self.span = SpanSelector(self.panel2.ax4, self.onSelect, 'horizontal', useblit=True,
-                                         rectprops=dict(alpha=0.5, facecolor='LightSalmon'),button=1)
-            
-                # Clicks on figure (panel2)
-                self.panel1.figure.canvas.mpl_connect('button_release_event', self.onClick)
-                self.panel2.figure.canvas.mpl_connect('button_release_event', self.onClick)
-            except:
-                print "Invalid file"
-                
-        dlg.Destroy()
-
         
     def showmsg(self, message, title):
         d = PBI.PyBusyInfo(message, title=title)
@@ -195,7 +146,7 @@ class MyFrame(wx.Frame):
         indmin, indmax = np.searchsorted(self.spectrum.wave, (xmin, xmax))
         indmax = min(len(self.spectrum.wave) - 1, indmax)
         if xmin < xmax:
-            if self.fitState == False:
+            if self.fitState == False and self.momentsState == False:
                 print("Data between ", xmin, " and ",xmax)
                 print("indmin - indmax ",indmin, indmax)
                 self.limits = (indmin, indmax)
@@ -215,6 +166,11 @@ class MyFrame(wx.Frame):
                 self.cont1 = np.array([xmin,xmax])
                 self.shadeSpectrum()
                 self.fitState = 2
+            elif self.momentsState == 1:                
+                self.icont1 = (indmin, indmax)
+                self.cont1 = np.array([xmin,xmax])
+                self.shadeSpectrum()
+                self.momentsState = 2
             elif self.fitState == 2:
                 self.icont2 = (indmin, indmax)
                 self.cont2 = np.array([xmin,xmax])
@@ -250,8 +206,13 @@ class MyFrame(wx.Frame):
                 self.fitState = 3
                 # Help for fit
                 self.showmsg("Click on top of line, then click on icon to fit","Help")
-
-            
+            elif self.momentsState == 2:
+                self.icont2 = (indmin, indmax)
+                self.cont2 = np.array([xmin,xmax])
+                self.shadeSpectrum()
+                self.showmsg("Running the fit over the cube","Help")
+                self.momentsState = 0
+                
     def drawEllipse(self):
         # Add marker to image
         try:
@@ -295,6 +256,27 @@ class MyFrame(wx.Frame):
                 pass
             try:
                 self.panel2.regionc2.remove()
+            except:
+                pass
+        if self.momentsState == 1:
+            t1 = self.cont1
+            ylim=self.panel2.ax1.get_ylim()
+            lowlim = np.zeros(2)+ylim[0]
+            upplim = np.zeros(2)+ylim[1]
+            self.panel2.regionm1 = self.panel2.ax1.fill_between(t1,lowlim,upplim,facecolor='Plum',alpha=0.3,linewidth=0)
+        if self.momentsState == 2:
+            t2 = self.cont2
+            ylim=self.panel2.ax1.get_ylim()
+            lowlim = np.zeros(2)+ylim[0]
+            upplim = np.zeros(2)+ylim[1]
+            self.panel2.regionm2 = self.panel2.ax1.fill_between(t2,lowlim,upplim,facecolor='Plum',alpha=0.3,linewidth=0)
+        if self.momentsState == False:
+            try:
+                self.panel2.regionm1.remove()
+            except:
+                pass
+            try:
+                self.panel2.regionm2.remove()
             except:
                 pass
                 
@@ -376,8 +358,9 @@ class MyFrame(wx.Frame):
         
             # States
             self.fitState = 0
-            self.displayContours = False
-            self.fit = None # initialize fit
+            self.momentsState = 0
+            self.panel1.displayContours = 'None'
+            self.fit = None 
             self.extSpectrum = None
 
             # Add marker to image and plot spectrum (of flux inside ellipse)
@@ -489,6 +472,15 @@ class MyFrame(wx.Frame):
             self.showmsg("Select continuum regions dragging the mouse", "Help")
         return
 
+
+    def computeMoments(self,event):
+        if self.momentsState:
+            pass
+        else:
+            self.momentsState=1
+            self.showmsg("Select continuum regions dragging the mouse", "Help")
+        return
+        
     def saveSpectrum(self, event):
             
         """ 
@@ -642,34 +634,42 @@ class MyFrame(wx.Frame):
         self.panel2.displayExtSpec = True
         self.panel2.refreshSpectrum()
 
-
-
         
     def showContours(self, event):
-        self.displayContours ^= True
-        if self.displayContours:
-            self.drawContours()
-        else:
+        if self.panel1.displayContours == 'None':
             try:
                 for coll in self.contour.collections:
                     coll.remove()
             except:
                 pass
+        else:
+            print "Display contours ... "
+            self.drawContours()
         self.panel1.Layout()
         return
         
     def drawContours(self):
         limits = self.limits
+        if self.panel1.displayContours == 'Flux':
+            intensity = self.spectrum.flux
+        elif self.panel1.displayContours == 'Unc. Flux':
+            intensity = self.spectrum.uflux
+        elif self.panel1.displayContours == 'Exposure':
+            intensity = self.spectrum.exposure
+
         if self.panel1.displayMethod == 'Average':
-            medianflux = np.nanmean(self.spectrum.flux[limits[0]:limits[1],:,:], axis=0)
+            medianflux = np.nanmean(intensity[limits[0]:limits[1],:,:], axis=0)
         else:
-            medianflux = self.spectrum.flux[self.panel2.plane ,:,:]
+            medianflux = intensity[self.panel2.plane ,:,:]
+            
         # We should check if we are plotting over the wcs,
         # i.e. we are not using an external image as background (add transform ..)
-        minima = np.nanmin(medianflux)
-        maxima = np.nanmax(medianflux)
-        levels = np.arange(minima,maxima,(maxima-minima)/10.)
-        self.contour = self.panel1.axes.contour(medianflux, levels, colors = 'cyan')
+        minimum = np.nanmin(medianflux)
+        maximum = np.nanmax(medianflux)
+        print "contour limits ",minimum,maximum
+        if minimum < maximum:
+            levels = np.arange(minimum,maximum,(maximum-minimum)/10.)
+            self.contour = self.panel1.axes.contour(medianflux, levels, colors = 'cyan')
         
         return
 
@@ -692,7 +692,7 @@ class Toolbar1(wx.Panel):
         self.fitEllBtn  = self.addButton(icons.ellipse.GetBitmap(),'Fit ellipse inside selected region',self.top.panel1.fitEllipse,'AliceBlue',(140,0))
         self.cropBtn  = self.addButton(icons.crop.GetBitmap(),'Crop cube on selected image',self.top.panel1.cropCube,'AliceBlue',(180,0))
         #        self.reloadBtn  = self.addButton(icons.reload.GetBitmap(),'Reload original cube',self.top.reloadCube,'AliceBlue')
-        self.contoursBtn  = self.addButton(icons.contours.GetBitmap(),'Overplot flux contours',self.top.showContours,'AliceBlue',(220,0))
+        self.contoursBtn  = self.addButton(icons.contours.GetBitmap(),'Overplot flux contours',self.top.panel1.menuContours,'AliceBlue',(220,0))
         self.saveBtn  = self.addButton(icons.save.GetBitmap(),'Save current cube',self.top.saveCube,'AliceBlue',(260,0))
         self.uploadBtn  = self.addButton(icons.upload.GetBitmap(),'Upload image',self.top.uploadImage,'AliceBlue',(300,0))
         self.showHdr = self.addButton(icons.header.GetBitmap(),'Show header',self.showHeader,'AliceBlue',(340,0))
@@ -708,8 +708,6 @@ class Toolbar1(wx.Panel):
         button.SetToolTipString(label)
         button.Bind(wx.EVT_BUTTON, function)
         button.SetBackgroundColour((240,248,255))
-
-
         return button
 
     def Pan(self,event):
@@ -720,8 +718,6 @@ class Toolbar1(wx.Panel):
         self.top.panel1.axes.set_xlim(self.top.panel1.org_xlim)
         self.top.panel1.axes.set_ylim(self.top.panel1.org_ylim)
         self.top.panel1.Layout()
-
-
         
     def Zoom(self, event):
         self.top.panel1.ntoolbar.zoom()
@@ -784,6 +780,7 @@ class Panel1 (wx.Panel):
         self.xysize = xysize
         self.frame = parent
         self.top = self.GetTopLevelParent()
+        self.SetBackgroundColour((240,248,255)) # AliceBlue
 
     
         # Figure
@@ -791,11 +788,12 @@ class Panel1 (wx.Panel):
 
         #self.figure.set_tight_layout(True)
         self.canvas=FigureCanvas(self,-1,self.figure)
-        self.figure.set_facecolor('AliceBlue')
+        self.figure.set_facecolor('#F0F8FF')
         self.figure.set_edgecolor('none')
 
 
         self.displayImage = 'Flux'
+        self.displayContours = 'None'
         self.displayMethod = 'Average'
         ## Toolbar
         self.ntoolbar = NavigationToolbar(self.canvas)
@@ -809,6 +807,10 @@ class Panel1 (wx.Panel):
         #self.vbox.Add(self.hbox,0,wx.EXPAND,0)
         self.SetSizer(self.vbox)
         self.frame.Fit()
+
+
+    def menuContours(self, event):
+        self.PopupMenu(PopupMenuC(self), (self.canvas.Size[0]/2., self.canvas.Size[1]/2.))
 
     def showHeader(self,event):
         #hdrvalues = self.top.spectrum.header.tostring(sep='\n')
@@ -879,7 +881,8 @@ class Panel1 (wx.Panel):
     def refreshImage(self):    
         self.view(self.top.spectrum,self.top.limits,0)
         self.top.drawEllipse()
-        if self.top.displayContours: self.top.drawContours()
+        print "contours: ", self.displayContours
+        if self.displayContours != 'None': self.top.drawContours()
         self.Layout()
 
     def fitEllipse(self, event):
@@ -999,7 +1002,7 @@ class Panel1 (wx.Panel):
                 #self.top.ellipse.axes.yaxis.set_ticklabels([])
                 #print "AXES ",self.axes
                 self.top.drawEllipse()
-                if self.top.displayContours: self.top.drawContours()
+                if self.displayContours != 'None': self.top.drawContours()
                 self.Layout()
                 # Forget previous values
                 self.ntoolbar._views.clear()
@@ -1057,7 +1060,10 @@ class Panel1 (wx.Panel):
             xlimits = self.axes.get_xlim()
             ylimits = self.axes.get_ylim()
         self.image = self.axes.imshow(medianflux, cmap='gist_heat', origin='lower', interpolation='none')
-        self.figure.suptitle(self.displayImage)
+        if self.displayContours == 'None':
+            self.figure.suptitle(self.displayImage)
+        else:
+            self.figure.suptitle(self.displayImage+' ['+self.displayContours+']')
         if status == 0:
             self.axes.set_xlim(xlimits)
             self.axes.set_ylim(ylimits)
@@ -1136,8 +1142,9 @@ class Toolbar2(wx.Panel):
         self.snapshotBtn  = self.addButton(icons.snapshot.GetBitmap(),'Snapshot',self.Snapshot,'AliceBlue',(320,0))
         self.cutBtn    = self.addButton(icons.cut.GetBitmap(),'Cut cube as selected spectrum range',self.top.cutCube,'AliceBlue',(360,0))
         self.fitBtn    = self.addButton(icons.gauss.GetBitmap(),'Fit lines and continuum',self.top.fitGauss,'AliceBlue',(400,0))
-        self.saveBtn    = self.addButton(icons.save.GetBitmap(),'Save spectrum/fit',self.top.saveSpectrum,'AliceBlue',(440,0))
-        self.uploadBtn    = self.addButton(icons.upload.GetBitmap(),'Upload spectrum',self.top.uploadSpectrum,'AliceBlue',(480,0))
+        self.momentsBtn    = self.addButton(icons.maps.GetBitmap(),'Compute moment maps',self.top.computeMoments,'AliceBlue',(440,0))
+        self.saveBtn    = self.addButton(icons.save.GetBitmap(),'Save spectrum/fit',self.top.saveSpectrum,'AliceBlue',(480,0))
+        self.uploadBtn    = self.addButton(icons.upload.GetBitmap(),'Upload spectrum',self.top.uploadSpectrum,'AliceBlue',(520,0))
 
         wx.ToolTip.SetDelay(1000)
 
@@ -1168,7 +1175,8 @@ class Panel2 (wx.Panel):
 
         self.frame = parent
         self.top = self.GetTopLevelParent()
-        
+        self.SetBackgroundColour((240,248,255)) # AliceBlue
+
         # Figure
         self.figure=Figure()
         self.figure.set_facecolor('AliceBlue')
@@ -1347,7 +1355,7 @@ class Panel2 (wx.Panel):
         #        print('Event', self.plane)
         self.top.panel1.view(self.top.spectrum,[0,1],0)
         self.top.drawEllipse()
-        if self.top.displayContours: self.top.drawContours()
+        if self.panel1.displayContours: self.top.drawContours()
         self.top.panel1.Layout()
 
     def addSlider(self):
@@ -1470,6 +1478,40 @@ class PopupMenu2(wx.Menu):
     def showExtSpec(self, event):
         self.parent.displayExtSpec ^= True
         self.parent.refreshSpectrum()
+
+# Choice of contours
+class PopupMenuC(wx.Menu):
+
+    def __init__(self, parent):
+        super(PopupMenuC, self).__init__()
+
+        self.parent = parent
+        self.addItem('None', self.showNone, 'None')
+        self.addItem('Flux', self.showFlux, 'Flux')
+        self.addItem('Uncorrected flux', self.showUncFlux, 'Unc. Flux')
+        self.addItem('Exposure', self.showExposure, 'Exposure')
+        
+    def addItem(self, comment, action, status):
+        item = wx.MenuItem(self, wx.NewId(), comment, kind = wx.ITEM_CHECK)
+        self.AppendItem(item)
+        self.Bind(wx.EVT_MENU, action, item)
+        if self.parent.displayContours == status: item.Check(True)
+
+    def showNone(self, event):
+        self.parent.displayContours = 'None'
+        self.parent.refreshImage()
+
+    def showFlux(self, event):
+        self.parent.displayContours = 'Flux'
+        self.parent.refreshImage()
+
+    def showUncFlux(self, event):
+        self.parent.displayContours = 'Unc. Flux'
+        self.parent.refreshImage()
+
+    def showExposure(self, event):
+        self.parent.displayContours = 'Exposure'
+        self.parent.refreshImage()
 
 
 """
