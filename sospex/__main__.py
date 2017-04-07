@@ -368,6 +368,11 @@ class MyFrame(wx.Frame):
                 pass
             # draw new image
             self.ijmax = self.panel1.view(self.spectrum, self.limits, 1)
+            # Conserve original limits
+            self.panel1.org_xlim = self.panel1.axes.get_xlim()
+            self.panel1.org_ylim = self.panel1.axes.get_ylim()
+        
+
         
             # States
             self.fitState = 0
@@ -679,7 +684,7 @@ class Toolbar1(wx.Panel):
         #self.plotbut.Bind(wx.EVT_BUTTON,self.plot)
         #self.plotbut.SetToolTipString("Plot")
 
-        self.undoBtn = self.addButton(icons.Undo.GetBitmap(),'Undo',self.Undo,'AliceBlue',(20,0))
+        self.undoBtn = self.addButton(icons.Undo.GetBitmap(),'Back to original limits',self.Undo,'AliceBlue',(20,0))
         #self.panBtn  = self.addButton(icons.pan2.GetBitmap(),'Pan',self.Pan,'AliceBlue',(60,0))
         #self.zoomBtn  = self.addButton(icons.zoom.GetBitmap(),'Zoom',self.Zoom,'AliceBlue',(100,0))
         self.snapshotBtn  = self.addButton(icons.snapshot.GetBitmap(),'Snapshot',self.Snapshot,'AliceBlue',(60,0))
@@ -1084,10 +1089,6 @@ class Panel1 (wx.Panel):
         self.canvas.draw()
         self.canvas.Refresh()
 
-        # Conserve original limits
-        self.org_xlim = self.axes.get_xlim()
-        self.org_ylim = self.axes.get_ylim()
-        
         return ijmax
 
     def updateScale(self,val):
@@ -1129,7 +1130,7 @@ class Toolbar2(wx.Panel):
         self.reloadBtn  = self.addButton(icons.reload.GetBitmap(),'Reload original cube',self.top.reloadCube,'AliceBlue',(40,0))
         self.quitBtn    = self.addButton(icons.quit.GetBitmap(),'Quit',self.top.onQuit,'AliceBlue',(80,0))
 
-        self.undoBtn = self.addButton(icons.Undo.GetBitmap(),'Undo',self.Undo,'AliceBlue',(200,0))
+        self.undoBtn = self.addButton(icons.Undo.GetBitmap(),'Back to original limits',self.Undo,'AliceBlue',(200,0))
         self.panBtn  = self.addButton(icons.pan2.GetBitmap(),'Pan',self.Pan,'AliceBlue',(240,0))
         self.zoomBtn  = self.addButton(icons.zoom.GetBitmap(),'Zoom',self.Zoom,'AliceBlue',(280,0))
         self.snapshotBtn  = self.addButton(icons.snapshot.GetBitmap(),'Snapshot',self.Snapshot,'AliceBlue',(320,0))
@@ -1393,9 +1394,9 @@ class PopupMenu1(wx.Menu):
         super(PopupMenu1, self).__init__()
 
         self.parent = parent
-        self.addItem('Show flux', self.showFlux, 'Flux')
-        self.addItem('Show uncorrected flux', self.showUncFlux, 'Unc. Flux')
-        self.addItem('Show exposure', self.showExposure, 'Exposure')
+        self.addItem('Flux', self.showFlux, 'Flux')
+        self.addItem('Uncorrected flux', self.showUncFlux, 'Unc. Flux')
+        self.addItem('Exposure', self.showExposure, 'Exposure')
         
     def addItem(self, comment, action, status):
         item = wx.MenuItem(self, wx.NewId(), comment, kind = wx.ITEM_CHECK)
@@ -1422,14 +1423,14 @@ class PopupMenu2(wx.Menu):
         super(PopupMenu2, self).__init__()
         self.parent = parent
 
-        self.addItem('Show flux', self.showFlux, self.parent.displayFlux)
-        self.addItem('Show uncorrected flux', self.showUncFlux, self.parent.displayUFlux)
-        self.addItem('Show atmospheric transmission', self.showAtmTransm, self.parent.displayATran)
-        self.addItem('Show exposure', self.showExposure, self.parent.displayExposure)
-        self.addItem('Show lines', self.showLines, self.parent.displayLines)
-        self.addItem('Show fit', self.showFit, self.parent.displayLineFit)
-        self.addItem('Show uncorrected fit', self.showUncFit, self.parent.displayUncLineFit)
-        self.addItem('Show external spectrum', self.showExtSpec, self.parent.displayExtSpec)
+        self.addItem('Flux', self.showFlux, self.parent.displayFlux)
+        self.addItem('Uncorrected flux', self.showUncFlux, self.parent.displayUFlux)
+        self.addItem('Atmospheric transmission', self.showAtmTransm, self.parent.displayATran)
+        self.addItem('Exposure', self.showExposure, self.parent.displayExposure)
+        self.addItem('Lines', self.showLines, self.parent.displayLines)
+        self.addItem('Fit', self.showFit, self.parent.displayLineFit)
+        self.addItem('Uncorrected fit', self.showUncFit, self.parent.displayUncLineFit)
+        self.addItem('External spectrum', self.showExtSpec, self.parent.displayExtSpec)
 
 
     def addItem(self, comment, action, status):
