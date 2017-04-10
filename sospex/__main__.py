@@ -66,10 +66,12 @@ class MyFrame(wx.Frame):
         # http://zetcode.com/wxpython/menustoolbars/
         self.menubar = wx.MenuBar()
         fileMenu = wx.Menu()
-        fitem = fileMenu.Append(wx.ID_EXIT, 'Quit', 'Quit application')
+        fitem1 = fileMenu.Append(wx.ID_EXIT, 'Quit', 'Quit application')
+        fitem2 = fileMenu.Append(wx.ID_HELP, 'Help', 'Help application')
         self.menubar.Append(fileMenu, '&File')
         self.SetMenuBar(self.menubar)
-        self.Bind(wx.EVT_MENU, self.onQuit, fitem)
+        self.Bind(wx.EVT_MENU, self.onQuit, fitem1)
+        self.Bind(wx.EVT_MENU, self.onHelp, fitem2)
         
         
         # Select a region in the image with the mouse (and then plot all the spectra  or the average coadded spectrum)
@@ -103,7 +105,7 @@ class MyFrame(wx.Frame):
         self.panel1.axes.text(0.03,0.4, u'Tutorial:', fontweight='bold',style='italic',fontsize=15)
         self.panel1.axes.text(0.03,0.3, u'  github.com/darioflute/sospex',style='italic',fontsize=15)
         self.panel1.axes.text(0.03,0.2, u'Issues/Ideas:', fontweight='bold',style='italic',fontsize=15)
-        self.panel1.axes.text(0.03,0.1, u'  Ask Dario Fadda (darioflute@gmail.com)',style='italic',fontsize=15)
+        self.panel1.axes.text(0.03,0.1, u'  Contact darioflute@gmail.com',style='italic',fontsize=15)
         #self.panel1.axes.axis('off')
         self.panel1.axes.xaxis.label.set_visible(False)
         self.panel1.axes.yaxis.label.set_visible(False)
@@ -660,7 +662,9 @@ class MyFrame(wx.Frame):
             intensity = self.spectrum.uflux
         elif self.panel1.displayContours == 'Exposure':
             intensity = self.spectrum.exposure
-
+        else:
+            return
+            
         if self.panel1.displayMethod == 'Average':
             medianflux = np.nanmean(intensity[limits[0]:limits[1],:,:], axis=0)
         else:
@@ -1145,7 +1149,7 @@ class Toolbar2(wx.Panel):
         self.nextBtn  = self.addButton(icons.next.GetBitmap(),'Load another cube',self.top.nextCube,'AliceBlue',(0,0))
         self.reloadBtn  = self.addButton(icons.reload.GetBitmap(),'Reload original cube',self.top.reloadCube,'AliceBlue',(40,0))
         self.quitBtn    = self.addButton(icons.quit.GetBitmap(),'Quit',self.top.onQuit,'AliceBlue',(80,0))
-        self.helpBtn    = self.addButton(icons.Carrot.GetBitmap(),'Help',self.top.onHelp,'AliceBlue',(120,0))
+        self.helpBtn    = self.addButton(icons.help.GetBitmap(),'Help',self.top.onHelp,'AliceBlue',(120,0))
 
         self.undoBtn = self.addButton(icons.Undo.GetBitmap(),'Back to original limits',self.Undo,'AliceBlue',(200,0))
         self.panBtn  = self.addButton(icons.pan2.GetBitmap(),'Pan',self.Pan,'AliceBlue',(240,0))
@@ -1208,8 +1212,11 @@ class Panel2 (wx.Panel):
         self.ntoolbar.Hide()
         
         # Size
+        self.hbox = wx.BoxSizer(wx.HORIZONTAL)
         self.vbox = wx.BoxSizer(wx.VERTICAL)
         self.vbox.Add(self.canvas,1,wx.LEFT|wx.TOP|wx.GROW,0)
+        self.vbox.Add(self.hbox,0,wx.EXPAND,0)
+#        self.vbox.Add(self.toolbar,0,wx.EXPAND) # Add toolbar !
         self.SetSizer(self.vbox)
         self.frame.Fit()
         
@@ -1366,7 +1373,7 @@ class Panel2 (wx.Panel):
         #        print('Event', self.plane)
         self.top.panel1.view(self.top.spectrum,[0,1],0)
         self.top.drawEllipse()
-        if self.panel1.displayContours: self.top.drawContours()
+        if self.top.panel1.displayContours: self.top.drawContours()
         self.top.panel1.Layout()
 
     def addSlider(self):

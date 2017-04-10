@@ -547,6 +547,37 @@ quit = PyEmbeddedImage(
     "j6utrfct3nkwq4Wzn3sJ9zPZewkIDNxcSA4gGkCMkTHl0T/jw8Q/kLkSmfaH8ycAAAAASUVO"
     "RK5CYII=")
 
+
+#----------------------------------------------------------------------
+
+help = PyEmbeddedImage(
+    "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAAA"
+    "CXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH4QQKEi8bDCqivAAABD1JREFUWMPlV2tsFFUY"
+    "PXd2Zmf2vUtt1z5o07KkAilBhRiLVSPRtIWQGjSNkRRJjT8UYqwYTUgwGoghBKIGXyRqKsQU"
+    "o9ECgm2gSoGU2LQrLdpSWq0sXWu7fdCd2Z3Zeflj29qasnY23f7QL/kyyb1nvu/MuefOnQH+"
+    "70HmC+z77F4sq2oDAFw7WW672drkHA3FGJsF4COQVmSCL9qjCQAQaC7H0gdPLywBAPC/m58t"
+    "8MPnhYnIsrnmrRb6ZsbqezZy9sLOvEdr9QUhcKGGRckhCS17LZcECcXzuctEM2O0Fsn5PchE"
+    "th6JJk/ghSIT3utUcWa35zpnpXxG5FIUXdm3f9Sd42OFox1S8gp8/aKn3ZvvvFufIShnJugJ"
+    "qugaYoGJYazMsyI3m4Wu/Q0iBBgaVr6r2DdQllCtRJPfbMNbuWt9T1IMC5M5nizHofpgMHC4"
+    "fvzEzz2j/taromt8iPdk2xV48zNhYsxxLMPC4bL4HKp2vKU3ErpdDyoRga7Ina+ZnR4wdvdk"
+    "uvDJyeAx/3U+F7pSFQpr20MxFKzJxdODNwSMDIozsG5wTjceeiCrKlGPOQm8+QiwIQ01hasz"
+    "QVucYO0usDYXzFaXVlm2YvtT6+nZ+EZ8zlDkfam/H6zNBdbmBGtzgrG6kJ69ZHkiAvRcg3ua"
+    "gLc3o4Kz0+jpj8HGASYKEERE33j9otY6Mht/sIzCOp+2X1TU58125wxr6WB1zmSYAAC0j0De"
+    "VdMa4hgCi1kHHyVqVNV9ALR/Yl8+o+GACIjeAjxjdwGTjqUIQXg8HDBMQD8GkK3YAAB8TAcf"
+    "iz9NokhblV9a/lzF7OI0wYcfHP9qwd6Et4tbHdVrZDbbP7sywbmGtsuVO0/db9iERiJw9tnH"
+    "NWeB32TmMDPPN/eicuepTa9syUTKFJhor65Sl/hqCUVBnypGgBP1ftS8WrcqJOCXf6tBJ9u8"
+    "oSajUvPk12Ky+ZTsZ5u69KoddcsB9M2njuEl+GgzwUrA6S4ur9N1ALIcT0VG8w8/3Xpi26e2"
+    "+TZPegm+qETHw7t3FRGGmx4bCYXFu0resRitZUiBwxsnb6JQoBMCRYpAkSLQ5CjO1V844mCN"
+    "e9qQB3Z8G79+3+ewrZd4KLI6ffJdbmz/OCyl8JNsKjZ5SfoNkRqChwUhQFQC3HYi/dgjcMks"
+    "p+FdQOvUWK+glljkCASJwMKCBMf0X3U9rkTKFWg5lAlNlLyd/dYMVYF+XyFw9TeQLIcSeuzA"
+    "4B8pV8CkijlcVl5gbboCgvi5U5RG0H0t3ACgNOUE0ouKKzTagcErFwFCTZuQD4tSMh4wvG8y"
+    "1pVqjDAAORqBEhWgRAXIUQE2OopFMSHTeRQxMQpFioBMuo4AYKAuDgHxjmxcag2gsS0d4sQ4"
+    "/gzyiEiA16V3LwqBK938ly/t7ZiQFV2PSTIUFWBMGGsfwGmkOraULf3v/R3/BYS6mO4TPEzi"
+    "AAAAAElFTkSuQmCC")
+
+
+
+
 #----------------------------------------------------------------------
 
 Undo = PyEmbeddedImage(
