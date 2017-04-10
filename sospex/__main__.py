@@ -25,7 +25,7 @@ from matplotlib.font_manager import FontProperties
 from astropy.io import fits
 from astropy.nddata import Cutout2D
 
-import wx, fnmatch, time
+import wx, fnmatch, time, webbrowser
 import numpy as np
 #import wx.lib.platebtn as pbtn
 #from wx.lib.buttons import GenBitmapButton
@@ -98,10 +98,10 @@ class MyFrame(wx.Frame):
         self.panel1.figure.suptitle('SOFIA Spectrum Explorer', fontsize=20, fontweight='bold')
         self.panel1.axes.text(0.03,0.8, u'To start:', fontweight='bold',style='italic',fontsize=15)
         self.panel1.axes.text(0.03,0.7, u'  Select a file with the double arrow',style='italic',fontsize=15)
-        self.panel1.axes.text(0.03,0.6, u'Icons:', fontweight='bold',style='italic',fontsize=15)
-        self.panel1.axes.text(0.03,0.5, u'  Hover mouse to know what they do',style='italic',fontsize=15)
-        self.panel1.axes.text(0.03,0.4, u'Mouse:', fontweight='bold',style='italic',fontsize=15)
-        self.panel1.axes.text(0.03,0.3, u'  Right click to select images and plots',style='italic',fontsize=15)
+        self.panel1.axes.text(0.03,0.6, u'  Hover mouse over icons for tips',style='italic',fontsize=15)
+        self.panel1.axes.text(0.03,0.5, u'  Right click to select images and plots',style='italic',fontsize=15)
+        self.panel1.axes.text(0.03,0.4, u'Tutorial:', fontweight='bold',style='italic',fontsize=15)
+        self.panel1.axes.text(0.03,0.3, u'  github.com/darioflute/sospex',style='italic',fontsize=15)
         self.panel1.axes.text(0.03,0.2, u'Issues/Ideas:', fontweight='bold',style='italic',fontsize=15)
         self.panel1.axes.text(0.03,0.1, u'  Ask Dario Fadda (darioflute@gmail.com)',style='italic',fontsize=15)
         #self.panel1.axes.axis('off')
@@ -126,6 +126,10 @@ class MyFrame(wx.Frame):
         
     def onQuit(self, event):
         self.Close()
+
+    def onHelp(self, event):
+        webbrowser.open('http://github.com/darioflute/sospex')
+
         
     def sizeFrame(self):
         self.sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -929,6 +933,12 @@ class Panel1 (wx.Panel):
         self.vbox.Layout()
 
     def cropCube(self, event):
+        # We can redefine the limits drawing a rectangle as
+        # explained at :http://stackoverflow.com/questions/12052379/matplotlib-draw-a-selection-area-in-the-shape-of-a-rectangle-with-the-mouse
+        # or https://matplotlib.org/examples/widgets/rectangle_selector.html
+        # or https://github.com/ashokfernandez/wxPython-Rectangle-Selector-Panel/blob/master/RectangleSelectorPanel.py
+
+        
         print "Cropping the cube using the span tool"
         # Check the current limits
         xlimits = self.axes.get_xlim()
@@ -1135,6 +1145,7 @@ class Toolbar2(wx.Panel):
         self.nextBtn  = self.addButton(icons.next.GetBitmap(),'Load another cube',self.top.nextCube,'AliceBlue',(0,0))
         self.reloadBtn  = self.addButton(icons.reload.GetBitmap(),'Reload original cube',self.top.reloadCube,'AliceBlue',(40,0))
         self.quitBtn    = self.addButton(icons.quit.GetBitmap(),'Quit',self.top.onQuit,'AliceBlue',(80,0))
+        self.helpBtn    = self.addButton(icons.Carrot.GetBitmap(),'Help',self.top.onHelp,'AliceBlue',(120,0))
 
         self.undoBtn = self.addButton(icons.Undo.GetBitmap(),'Back to original limits',self.Undo,'AliceBlue',(200,0))
         self.panBtn  = self.addButton(icons.pan2.GetBitmap(),'Pan',self.Pan,'AliceBlue',(240,0))
