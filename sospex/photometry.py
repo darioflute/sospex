@@ -1,6 +1,5 @@
 import numpy as np
 
-
 class DragResizeRotateEllipse:
     lock = None
     def __init__(self, ellipse, border_tol=0.6, allow_resize=True,
@@ -13,6 +12,8 @@ class DragResizeRotateEllipse:
         self.lock = None
         self.press = None
         self.background = None
+        self.connect()
+        
     def connect(self):
         'connect to events'
         self.cidpress = self.ellipse.figure.canvas.mpl_connect(
@@ -165,3 +166,101 @@ class DragResizeRotateEllipse:
                     self.ellipse.height = h0-dy_*2
                 else:
                     self.lock = "released"
+
+from matplotlib.patches import Rectangle
+class RectangleSelectCropCube:
+    ''' Add rectangle to the figure to crop the spectral cube'''
+    def __init__(self, parent):
+        self.frame = parent
+        self.rect = Rectangle((0,0), 0.1, 0.1, facecolor='None', edgecolor='None')
+        self.x0 = None
+        self.y0 = None
+        self.x1 = None
+        self.y1 = None
+        self.rectpatch = self.frame.axes.add_patch(self.rect)
+        self.pressed = False
+        self.connect()
+        
+    def connect(self):
+        ''' connect to events '''
+        self.cidpress = self.rect.figure.canvas.mpl_connect('button_press_event', self.on_press)
+        self.cidrelease = self.rect.figure.canvas.mpl_connect('button_release_event', self.on_release)
+        self.cidmotion = self.rect.figure.canvas.mpl_connect('motion_notify_event', self.on_motion)
+
+    def disconnect(self):
+        '''disconnect all the stored connection ids'''
+        self.rect.figure.canvas.mpl_disconnect(self.cidpress)
+        self.rect.figure.canvas.mpl_disconnect(self.cidrelease)
+        self.rect.figure.canvas.mpl_disconnect(self.cidmotion)
+        self.rectpatch.remove()
+        self.frame.canvas.draw()
+        
+    def on_press(self, event):
+        ''' Callback to handle the mouse being clicked and held over the canvas'''
+        # Check the mouse press was actually on the canvas 
+        if event.xdata is not None and event.ydata is not None:
+            # Upon initial press of the mouse record the origin and record the mouse as pressed
+            self.pressed = True
+            self.rect.set_linestyle('dashed')
+            self.rect.set_edgecolor('blue')
+            self.x0 = event.xdata
+            self.y0 = event.ydata
+            print "pressed ",self.x0,self.y0
+            
+    def on_motion(self, event):
+        '''Callback to handle the motion event created by the mouse moving over the canvas'''
+
+        # If the mouse has been pressed draw an updated rectangle when the mouse is moved so 
+        # the user can see what the current selection is
+        if self.pressed:
+            # Check the mouse was released on the canvas, and if it wasn't then just leave the width and 
+            # height as the last values set by the motion event
+            if event.xdata is not None and event.ydata is not None:
+                self.x1 = event.xdata
+                self.y1 = event.ydata
+                
+            # Set the width and height and draw the rectangle
+            self.rect.set_width(self.x1 - self.x0)
+            self.rect.set_height(self.y1 - self.y0)
+            self.rect.set_xy((self.x0, self.y0))
+            self.frame.canvas.draw()
+
+    def get_xlim(self):
+        if self.x1 > self.x0:
+            return (self.x0,self.x1)
+        else:
+            return (self.x1,self.x0)
+        
+    def get_ylim(self):
+        if self.y1 > self.y0:
+            return (self.y0,self.y1)
+        else:
+            return (self.y1,self.y0)
+ 
+    def on_release(self, event):
+        '''Callback to handle the mouse being released over the canvas'''
+        
+        # Check that the mouse was actually pressed on the canvas to begin with and this isn't a rouge mouse 
+        # release event that started somewhere else
+        if self.pressed:
+            # Upon release draw the rectangle as a solid rectangle
+            self.pressed = False
+            self.rect.set_linestyle('solid')
+
+            # Check the mouse was released on the canvas, and if it wasn't then just leave the width and 
+            # height as the last values set by the motion event
+            if event.xdata is not None and event.ydata is not None:
+                self.x1 = event.xdata
+                self.y1 = event.ydata
+
+            # Set the width and height and origin of the bounding rectangle
+            self.boundingRectWidth =  self.x1 - self.x0
+            self.boundingRectHeight =  self.y1 - self.y0
+            self.bouningRectOrigin = (self.x0, self.y0)
+
+            # Draw the bounding rectangle
+            self.rect.set_width(self.boundingRectWidth)
+            self.rect.set_height(self.boundingRectHeight)
+            self.rect.set_xy((self.x0, self.y0))
+            self.frame.canvas.draw()
+

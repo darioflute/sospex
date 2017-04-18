@@ -35,7 +35,7 @@ from wx.lib.agw import pybusyinfo as PBI
 
 
 # Local imports
-from photometry import DragResizeRotateEllipse
+from photometry import DragResizeRotateEllipse, RectangleSelectCropCube
 from ellipsefit import fit_ellipse
 from lines import define_lines
 import icons
@@ -87,7 +87,9 @@ class MyFrame(wx.Frame):
         self.fit  = None 
         self.ufit = None 
         self.shade = False
+        self.cropCubeState = False
         self.regionlimits = None
+#        self.panel1.figure.canvas.mpl_connect('button_press_event', self.onClick)
         self.panel1.figure.canvas.mpl_connect('button_release_event', self.onClick)
         self.panel2.figure.canvas.mpl_connect('button_release_event', self.onClick)
 
@@ -103,9 +105,9 @@ class MyFrame(wx.Frame):
         self.panel1.axes.text(0.03,0.6, u'  Hover mouse over icons for tips',style='italic',fontsize=15)
         self.panel1.axes.text(0.03,0.5, u'  Right click to select images and plots',style='italic',fontsize=15)
         self.panel1.axes.text(0.03,0.4, u'Tutorial:', fontweight='bold',style='italic',fontsize=15)
-        self.panel1.axes.text(0.03,0.3, u'  github.com/darioflute/sospex',style='italic',fontsize=15)
+        self.panel1.axes.text(0.03,0.3, u'  Click on "?" icon',style='italic',fontsize=15)
         self.panel1.axes.text(0.03,0.2, u'Issues/Ideas:', fontweight='bold',style='italic',fontsize=15)
-        self.panel1.axes.text(0.03,0.1, u'  Contact darioflute@gmail.com',style='italic',fontsize=15)
+        self.panel1.axes.text(0.03,0.1, u'  E-mail darioflute@gmail.com',style='italic',fontsize=15)
         #self.panel1.axes.axis('off')
         self.panel1.axes.xaxis.label.set_visible(False)
         self.panel1.axes.yaxis.label.set_visible(False)
@@ -227,7 +229,6 @@ class MyFrame(wx.Frame):
             pass
         self.marker = self.panel1.axes.add_patch(self.ellipse)
         self.drr = DragResizeRotateEllipse(self.ellipse)
-        self.drr.connect()
         # Plot spectrum
         self.panel2.draw(self.spectrum,self.ellipse)
         self.shadeSpectrum()
@@ -291,13 +292,16 @@ class MyFrame(wx.Frame):
         if event.inaxes == self.panel1.axes:
             print (event.xdata,event.ydata)
             if  event.button == 1:
-                self.panel2.draw(self.spectrum,self.ellipse)
-                if self.regionlimits is not None: self.shadeSpectrum()
-                self.panel2.Layout()
-                # if button is 3 --> popupMenu
+                if self.cropCubeState:
+                    self.panel1.cropDialog()
+                else:
+                    self.panel2.draw(self.spectrum,self.ellipse)
+                    if self.regionlimits is not None: self.shadeSpectrum()
+                    self.panel2.Layout()
+            # if button is 2 --> Recenter image
             elif event.button == 2:
-                # Recenter image
                 self.panel1.recenterImage(event)
+            # if button is 3 --> popupMenu
             elif event.button == 3:
                 self.panel1.OnRightDown(event)
             else:
@@ -941,16 +945,18 @@ class Panel1 (wx.Panel):
         # explained at :http://stackoverflow.com/questions/12052379/matplotlib-draw-a-selection-area-in-the-shape-of-a-rectangle-with-the-mouse
         # or https://matplotlib.org/examples/widgets/rectangle_selector.html
         # or https://github.com/ashokfernandez/wxPython-Rectangle-Selector-Panel/blob/master/RectangleSelectorPanel.py
+        self.top.cropCubeState = True
+        self.rcb = RectangleSelectCropCube(self)
 
-        
+
+    def cropDialog(self):
         print "Cropping the cube using the span tool"
         # Check the current limits
-        xlimits = self.axes.get_xlim()
-        ylimits = self.axes.get_ylim()
+        xlimits = self.rcb.get_xlim()
+        ylimits = self.rcb.get_ylim()
         print "xlimits ", xlimits
         print "ylimits ", ylimits
         center =  ((xlimits[0]+xlimits[1])*0.5,(ylimits[0]+ylimits[1])*0.5)
-        #origin = (ylimits[0],xlimits[0])
         size = ((ylimits[1]-ylimits[0]).astype(int),(xlimits[1]-xlimits[0]).astype(int))
         print "center, size: ",center,size
         shape = self.top.spectrum.flux.shape
@@ -966,11 +972,8 @@ class Panel1 (wx.Panel):
                 self.ntoolbar.ToggleTool(self.ntoolbar.wx_ids['Zoom'], False) # turn off zoom tool
                 self.ntoolbar.zoom('off')
                 ima = self.top.spectrum.flux[0,:,:]
-                #print ima.shape
                 co = Cutout2D(ima, center, size, wcs=self.top.spectrum.wcs)
                 bb = co.bbox_original
-                #print "bounding box ", bb
-                #print "co data shape ", co.data.shape
                 self.top.spectrum.flux = self.top.spectrum.flux[:,bb[0][0]:bb[0][1]+1,bb[1][0]:bb[1][1]+1]
                 self.top.spectrum.eflux = self.top.spectrum.eflux[:,bb[0][0]:bb[0][1]+1,bb[1][0]:bb[1][1]+1]
                 self.top.spectrum.uflux = self.top.spectrum.uflux[:,bb[0][0]:bb[0][1]+1,bb[1][0]:bb[1][1]+1]
@@ -1007,14 +1010,6 @@ class Panel1 (wx.Panel):
                 self.view(self.top.spectrum,self.top.limits,1)
                 self.axes.set_xlim([0., dx])
                 self.axes.set_ylim([0., dy])
-                #print "ellipse axes" ,self.top.ellipse.axes.get_xlim()
-                # update ellipse axes to new axes limits
-                #self.top.ellipse.axes.set_xlim([0.,dx])
-                #self.top.ellipse.axes.set_ylim([0.,dy])
-                #self.top.ellipse.axes.set_title('')  # Remove previous title
-                #self.top.ellipse.axes.xaxis.set_ticklabels([])
-                #self.top.ellipse.axes.yaxis.set_ticklabels([])
-                #print "AXES ",self.axes
                 self.top.drawEllipse()
                 if self.displayContours != 'None': self.top.drawContours()
                 self.Layout()
@@ -1023,7 +1018,11 @@ class Panel1 (wx.Panel):
                 self.ntoolbar._positions.clear()
                 self.ntoolbar._update_view() 
                 self.ntoolbar.Refresh()
-            dlg.Destroy()        
+            else:
+                print "Press again icon to crop"    
+            self.top.cropCubeState = False
+            self.rcb.disconnect()
+            dlg.Destroy()
             
     def onWheel(self,event):
         eb = event.button
