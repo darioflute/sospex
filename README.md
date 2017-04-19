@@ -16,7 +16,7 @@ The code runs with Python 2.x since its uses wxpython (not
 yet officially ported to Python 3).
 The code has been developed on Ubuntu Linux. It runs also on Mac OS-X.
 
-### INSTALLATION NOTES
+### How to install the program
 
 To install the code in your computer, you need first to install the anaconda
 python (https://www.continuum.io/downloads).
@@ -30,14 +30,36 @@ At this point you can install sospex:
 
 conda install -c darioflute sospex
 
-### Start the program
+### How to start the program
 
 To start simply type:
 
 sospex
 
 This will open a window with a few instructions and a series of buttons.
-Each button has a tooltip help, i.e. hovering over the button will give
+Each button has a tooltip help, i.e. hovering over the button will make appear
 a succinct explanation of what the button is supposed to do.
+
+To open a FITS file containing a spectral cube from FIFI-LS, you have to
+press the double arrow icon. This will pop-up a open window to navigate the directory
+tree and select a file.
+
+### How to interact with the cube
+
+The main window is divided in two panels.
+On the left, an image is displayed. Clicking on the right button of the mouse it is
+possible to select which image to display (flux, uncorrected flux, or exposure).
+The name of the selected cube is then printed as title.
+An ellipse will also appear centered on the point with the highest flux in the image.
+It is possible to move and modify the ellipse with the mouse.
+
+On the right, the spectrum of the sum of the pixels contained in the ellipse is shown.
+Also here, clicking on the right button of the mouse, you can choose to display several
+curves (flux, uncorr. flux, exposure, etc.)
+By default, the left panel shows the average of the entire spectrum for each spatial module
+or spaxel.
+You can choose to average only part of the spectrum by clicking and dragging the mouse
+over the wavelength range of interest.
+
 
 
