@@ -1,4 +1,6 @@
-# sospex
+sospex
+------
+
  (SOFIA SPectrum EXplorer)
 
 This code displays FIFI-LS spectral cubes and allows interactions with them.
