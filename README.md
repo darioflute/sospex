@@ -16,7 +16,7 @@ The code runs with Python 2.x since its uses wxpython (not
 yet officially ported to Python 3).
 The code has been developed on Ubuntu Linux. It runs also on Mac OS-X.
 
-INSTALLATION NOTES
+### INSTALLATION NOTES
 
 To install the code in your computer, you need first to install the anaconda
 python (https://www.continuum.io/downloads).
@@ -26,19 +26,18 @@ uses wxpython which is still not ported to Python 3.
 You have also to install the conda package lmfit:
 conda install -c astropy lmfit
 
-Then clone the repository:
-git clone https://github.com/darioflute/sospex.git
+At this point you can install sospex:
 
-Build the conda package:
-conda build sospex
+conda install -c darioflute sospex
 
-And install it locally:
+### Start the program
 
-conda install --use-local sospex
-
-At this point you can start the code everywhere by
-typing:
+To start simply type:
 
 sospex
 
-since the executable is in the ~/anaconda/bin directory.
+This will open a window with a few instructions and a series of buttons.
+Each button has a tooltip help, i.e. hovering over the button will give
+a succinct explanation of what the button is supposed to do.
+
+
