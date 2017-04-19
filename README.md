@@ -54,21 +54,42 @@ has been cut or cropped.
 ### How to interact with the cube
 
 The main window is divided in two panels.
+
+**Left panel**
 On the left, an image is displayed. Clicking on the right button of the mouse it is
 possible to select which image to display (flux, uncorrected flux, or exposure).
 The name of the selected cube is then printed as title.
+
 An ellipse will also appear centered on the point with the highest flux in the image.
 It is possible to move and modify the ellipse with the mouse.
+
 Two sliders on the bottom of the image allows one to change the limits of dynamical
 intensity range displayed.
 
-On the right, the spectrum of the sum of the pixels contained in the ellipse is shown.
+Using the mouse wheel, it is possible to zoom on the image. The central button allows one
+to center the image on the position of the mouse.
+Finally, to go back to the original limits, click on the yellow arrow icon.
+
+Clicking on the contour icon, it is possible to display contours of one of the cubes (flux,
+unc. flux, or exposure) over the displayed image.
+
+The camera icon allows one to take a snapshot of the image and save it as a file in several formats.
+
+The header icon simply displays the header of the selected cube.
+
+**Right panel**
 Also here, clicking on the right button of the mouse, you can choose to display several
 curves (flux, uncorr. flux, exposure, etc.)
 By default, the left panel shows the average of the entire spectrum for each spatial module
 or spaxel.
 You can choose to average only part of the spectrum by clicking and dragging the mouse
 over the wavelength range of interest.
+
+To pan or zoom over the plot, use the four arrows and the lens icons.
+The yellow arrow send back to the original limits.
+Do not forget to click again on the pan and zoom icons to exit from the panning/zooming mode.
+
+Also here, a snapshot of the plot can be taken using the camera icon.
 
 ### Modifying the cube
 
