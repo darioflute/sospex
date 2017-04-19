@@ -1,5 +1,5 @@
 sospex
-------
+======
 
  (SOFIA SPectrum EXplorer)
 
