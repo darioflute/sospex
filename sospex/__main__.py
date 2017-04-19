@@ -12,35 +12,15 @@ if (len(sys.argv) == 1) or (sys.argv[1] != "MAC"):
         os.execvp('pythonw',['pythonw',__file__,"MAC"] + sys.argv[1:])
 
     
-# Library imports
+# Imports
+import wx
+import numpy as np
 from matplotlib.backends.backend_wxagg import \
     FigureCanvasWxAgg as FigureCanvas, \
     NavigationToolbar2WxAgg as NavigationToolbar
-from matplotlib.widgets import Slider
 from matplotlib.figure import Figure
-from matplotlib.widgets import SpanSelector
-from matplotlib.patches import Ellipse
 from matplotlib.font_manager import FontProperties
-
-from astropy.io import fits
-from astropy.nddata import Cutout2D
-
-import wx, fnmatch, time, webbrowser
-import numpy as np
-#import wx.lib.platebtn as pbtn
-#from wx.lib.buttons import GenBitmapButton
-from scipy.spatial import ConvexHull
-from wx.lib.dialogs import ScrolledMessageDialog as ScrolledMessage
-from wx.lib.agw import pybusyinfo as PBI
-
-
-# Local imports
-from photometry import DragResizeRotateEllipse, RectangleSelectCropCube
-from ellipsefit import fit_ellipse
-from lines import define_lines
 import icons
-from fitline import fitContinuum, fitLines, fittedLine
-from specobj import specCube, spectrum
 
         
 class MyFrame(wx.Frame):
@@ -118,11 +98,15 @@ class MyFrame(wx.Frame):
         
         
     def showmsg(self, message, title):
+        import time
+        from wx.lib.agw import pybusyinfo as PBI
+
         d = PBI.PyBusyInfo(message, title=title)
         time.sleep(2)
         d = None
         
     def getName(self,path):
+        import fnmatch
         """ list of files matching WXY """    
         wxyfile = fnmatch.filter(os.listdir(path), "*WXY*.fits")
         return path+wxyfile[0]
@@ -132,6 +116,7 @@ class MyFrame(wx.Frame):
         self.Close()
 
     def onHelp(self, event):
+        import webbrowser
         webbrowser.open('http://github.com/darioflute/sospex')
 
         
@@ -187,6 +172,7 @@ class MyFrame(wx.Frame):
                 pixel = np.array([[x0, y0]], np.float_)
                 world = self.spectrum.wcs.wcs_pix2world(pixel, 1)
                 print "center of ellipse is: ", world
+                from fitline import fitContinuum, fittedLine
                 if self.panel2.displayFlux:
                     self.fit = fittedLine(self.icont1,self.icont2,self.spectrum.wave, \
                                           self.panel2.flux,self.panel2.eflux,\
@@ -222,6 +208,7 @@ class MyFrame(wx.Frame):
                 self.momentsState = 0
                 
     def drawEllipse(self):
+        from photometry import DragResizeRotateEllipse
         # Add marker to image
         try:
             self.marker.remove()
@@ -330,6 +317,9 @@ class MyFrame(wx.Frame):
 
 
     def nextCube(self, event):
+        from matplotlib.patches import Ellipse
+        from specobj import specCube
+        from matplotlib.widgets import SpanSelector
 
         # Choose file
         if wx.Platform != '__WXMAC__':
@@ -337,7 +327,7 @@ class MyFrame(wx.Frame):
             wildcard = "Spectrum cube (*WXY*.fits)|*WXY*.fits"
         else:
             defaultFile = "*.fits"
-            wildcard = "Spectrum cube (*WXY*.fits)|*.fits"
+            wildcard = "Spectrum cube (*.fits)|*.fits"
             
         dlg = wx.FileDialog(
             self, message="Choose a spectrum",
@@ -386,10 +376,10 @@ class MyFrame(wx.Frame):
         dlg.Destroy()
 
         # Forget previous toolbar values
-        self.panel1.ntoolbar._views.clear()
-        self.panel1.ntoolbar._positions.clear()
-        self.panel1.ntoolbar._update_view() 
-        self.panel1.ntoolbar.Refresh()
+#        self.panel1.ntoolbar._views.clear()
+#        self.panel1.ntoolbar._positions.clear()
+#        self.panel1.ntoolbar._update_view() 
+#        self.panel1.ntoolbar.Refresh()
         self.panel2.ntoolbar._views.clear()
         self.panel2.ntoolbar._positions.clear()
         self.panel2.ntoolbar._update_view() 
@@ -397,6 +387,9 @@ class MyFrame(wx.Frame):
 
             
     def reloadCube(self, event):
+        from specobj import specCube
+        from matplotlib.patches import Ellipse
+
         # Get data        
         filename = self.spectrum.filename
         oldwcs = self.spectrum.wcs
@@ -422,10 +415,11 @@ class MyFrame(wx.Frame):
         self.panel1.Layout()
         self.drawEllipse()
         # Forget previous toolbar values
-        self.panel1.ntoolbar._views.clear()
-        self.panel1.ntoolbar._positions.clear()
-        self.panel1.ntoolbar._update_view() 
-        self.panel1.ntoolbar.Refresh()
+        #self.panel1.ntoolbar._views.clear()
+        #self.panel1.ntoolbar._positions.clear()
+        #self.panel1.ntoolbar._update_view() 
+        #self.panel1.ntoolbar.zoom('off')
+        #self.panel1.ntoolbar.Refresh()
 
     def cutCube(self, event):
         # Dialog window to start cropping
@@ -454,6 +448,8 @@ class MyFrame(wx.Frame):
             self.shadeSpectrum()
 
     def fitGauss(self, event):
+        from fitline import fitLines
+
         print ("Fitting a line with a Gaussian")
         if self.fitState:
             print ("Do the fit")
@@ -626,6 +622,7 @@ class MyFrame(wx.Frame):
         """
         Upload existing spectrum
         """
+        from specobj import spectrum
         self.currentDirectory = os.getcwd()
         dlg = wx.FileDialog(
             self, message="Choose a spectrum",
@@ -739,6 +736,8 @@ class Toolbar1(wx.Panel):
 
 
     def showHeader(self,event):
+        from wx.lib.dialogs import ScrolledMessageDialog as ScrolledMessage
+
         #hdrvalues = self.top.spectrum.header.tostring(sep='\n')
         header = self.top.spectrum.header
         hv=header.values()
@@ -824,33 +823,33 @@ class Panel1 (wx.Panel):
     def menuContours(self, event):
         self.PopupMenu(PopupMenuC(self), (self.canvas.Size[0]/2., self.canvas.Size[1]/2.))
 
-    def showHeader(self,event):
-        #hdrvalues = self.top.spectrum.header.tostring(sep='\n')
-        header = self.top.spectrum.header
-        hv=header.values()
-        hk= header.keys()
-        hc=header.comments
-        h = []
-        cc = False
-        for k,v,c in zip(hk,hv,hc):
-            if k == 'HISTORY':
-                pass
-            elif k == 'COMMENT':
-                if cc:
-                    h.append('        {0:20}'.format(v)+''+c)
-                else:
-                    h.append('\n        {0:20}'.format(v)+''+c)
-                    cc = True
-            else:
-                if cc:
-                    h.append('\n')
-                    cc = False
-                h.append('{:15s}'.format(k)+ '\t\t=\t {0:15}'.format(v)+' \t\t\t'+c)
+    # def showHeader(self,event):
+    #     #hdrvalues = self.top.spectrum.header.tostring(sep='\n')
+    #     header = self.top.spectrum.header
+    #     hv=header.values()
+    #     hk= header.keys()
+    #     hc=header.comments
+    #     h = []
+    #     cc = False
+    #     for k,v,c in zip(hk,hv,hc):
+    #         if k == 'HISTORY':
+    #             pass
+    #         elif k == 'COMMENT':
+    #             if cc:
+    #                 h.append('        {0:20}'.format(v)+''+c)
+    #             else:
+    #                 h.append('\n        {0:20}'.format(v)+''+c)
+    #                 cc = True
+    #         else:
+    #             if cc:
+    #                 h.append('\n')
+    #                 cc = False
+    #             h.append('{:15s}'.format(k)+ '\t\t=\t {0:15}'.format(v)+' \t\t\t'+c)
     
-        s = '\n'.join(h)
-        dlg = ScrolledMessage(self,s,'Header',size=(800,400),style=wx.TE_READONLY)
-        dlg.ShowModal()
-        dlg.Destroy()
+    #     s = '\n'.join(h)
+    #     dlg = ScrolledMessage(self,s,'Header',size=(800,400),style=wx.TE_READONLY)
+    #     dlg.ShowModal()
+    #     dlg.Destroy()
 
         
     def addButton(self, icon, label, function, color):
@@ -898,6 +897,9 @@ class Panel1 (wx.Panel):
         self.Layout()
 
     def fitEllipse(self, event):
+        from scipy.spatial import ConvexHull
+        from ellipsefit import fit_ellipse
+
         print ("Fitting the ellipse ....")
         # Find the points inside the existing  ellipse
         ellipse = self.top.ellipse
@@ -941,6 +943,7 @@ class Panel1 (wx.Panel):
         self.vbox.Layout()
 
     def cropCube(self, event):
+        from photometry import RectangleSelectCropCube
         # We can redefine the limits drawing a rectangle as
         # explained at :http://stackoverflow.com/questions/12052379/matplotlib-draw-a-selection-area-in-the-shape-of-a-rectangle-with-the-mouse
         # or https://matplotlib.org/examples/widgets/rectangle_selector.html
@@ -950,17 +953,20 @@ class Panel1 (wx.Panel):
 
 
     def cropDialog(self):
+        from matplotlib.patches import Ellipse
+        from astropy.nddata import Cutout2D
+        
         print "Cropping the cube using the span tool"
         # Check the current limits
         xlimits = self.rcb.get_xlim()
         ylimits = self.rcb.get_ylim()
-        print "xlimits ", xlimits
-        print "ylimits ", ylimits
+        #print "xlimits ", xlimits
+        #print "ylimits ", ylimits
         center =  ((xlimits[0]+xlimits[1])*0.5,(ylimits[0]+ylimits[1])*0.5)
         size = ((ylimits[1]-ylimits[0]).astype(int),(xlimits[1]-xlimits[0]).astype(int))
         print "center, size: ",center,size
         shape = self.top.spectrum.flux.shape
-        print "shape is: ",shape
+        #print "shape is: ",shape
         if size[1] == shape[1] and size[0] == shape[2]:
             print "No cropping needed"
             return
@@ -969,8 +975,8 @@ class Panel1 (wx.Panel):
             dlg = wx.MessageDialog(self,"Do you really want to crop it ?", "Question",
                                     wx.YES_NO|wx.ICON_QUESTION)
             if dlg.ShowModal() == wx.ID_YES:
-                self.ntoolbar.ToggleTool(self.ntoolbar.wx_ids['Zoom'], False) # turn off zoom tool
-                self.ntoolbar.zoom('off')
+                #self.ntoolbar.ToggleTool(self.ntoolbar.wx_ids['Zoom'], False) # turn off zoom tool
+                #self.ntoolbar.zoom('off')
                 ima = self.top.spectrum.flux[0,:,:]
                 co = Cutout2D(ima, center, size, wcs=self.top.spectrum.wcs)
                 bb = co.bbox_original
@@ -1014,14 +1020,15 @@ class Panel1 (wx.Panel):
                 if self.displayContours != 'None': self.top.drawContours()
                 self.Layout()
                 # Forget previous values
-                self.ntoolbar._views.clear()
-                self.ntoolbar._positions.clear()
-                self.ntoolbar._update_view() 
+                #self.ntoolbar._views.clear()
+                #self.ntoolbar._positions.clear()
+                #self.ntoolbar._update_view() 
                 self.ntoolbar.Refresh()
             else:
                 print "Press again icon to crop"    
             self.top.cropCubeState = False
             self.rcb.disconnect()
+            self.rcb = None
             dlg.Destroy()
             
     def onWheel(self,event):
@@ -1051,6 +1058,7 @@ class Panel1 (wx.Panel):
         
         
     def view(self, spectrum, limits, status):
+        from matplotlib.widgets import Slider, SpanSelector
 
         self.figure.set_canvas(self.canvas)
         if status == 1:
@@ -1185,6 +1193,7 @@ class Toolbar2(wx.Panel):
         
 class Panel2 (wx.Panel):
     def __init__(self, parent, xysize):
+        from lines import define_lines
         wx.Panel.__init__(self, parent, pos=(xysize[1],0), size=wx.Size(xysize[0]-xysize[1]*1.2,xysize[1]*0.9))
 
         self.frame = parent
