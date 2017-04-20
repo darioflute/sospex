@@ -950,7 +950,7 @@ class Panel1 (wx.Panel):
         # or https://github.com/ashokfernandez/wxPython-Rectangle-Selector-Panel/blob/master/RectangleSelectorPanel.py
         self.top.cropCubeState = True
         self.rcb = RectangleSelectCropCube(self)
-
+        self.top.showmsg('Click and drag the mouse to select a rectangle on the image','Crop')
 
     def cropDialog(self):
         from matplotlib.patches import Ellipse
