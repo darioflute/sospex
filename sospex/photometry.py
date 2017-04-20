@@ -168,7 +168,7 @@ class DragResizeRotateEllipse:
                     self.lock = "released"
 
 from matplotlib.patches import Rectangle
-class RectangleSelectCropCube:
+class RectangleSelect:
     ''' Add rectangle to the figure to crop the spectral cube'''
     def __init__(self, parent):
         self.frame = parent
@@ -236,6 +236,9 @@ class RectangleSelectCropCube:
             return (self.y0,self.y1)
         else:
             return (self.y1,self.y0)
+
+    def get_rect(self):
+        return self.rect
  
     def on_release(self, event):
         '''Callback to handle the mouse being released over the canvas'''

@@ -68,7 +68,11 @@ class MyFrame(wx.Frame):
         self.ufit = None 
         self.shade = False
         self.cropCubeState = False
+        self.zoomImage = False
+        self.zoomSpectrum = False
+        self.defineEllipse = False
         self.regionlimits = None
+        self.welcomeState = True
 #        self.panel1.figure.canvas.mpl_connect('button_press_event', self.onClick)
         self.panel1.figure.canvas.mpl_connect('button_release_event', self.onClick)
         self.panel2.figure.canvas.mpl_connect('button_release_event', self.onClick)
@@ -276,11 +280,17 @@ class MyFrame(wx.Frame):
                 
             
     def onClick(self, event):
+        if self.welcomeState == True:
+            return
         if event.inaxes == self.panel1.axes:
             print (event.xdata,event.ydata)
             if  event.button == 1:
                 if self.cropCubeState:
                     self.panel1.cropDialog()
+                elif self.zoomImage:
+                    self.panel1.zoomImage()
+                elif self.defineEllipse:
+                    self.panel1.fitEllipse()
                 else:
                     self.panel2.draw(self.spectrum,self.ellipse)
                     if self.regionlimits is not None: self.shadeSpectrum()
@@ -321,6 +331,7 @@ class MyFrame(wx.Frame):
         from specobj import specCube
         from matplotlib.widgets import SpanSelector
 
+        self.welcomeState = False
         # Choose file
         if wx.Platform != '__WXMAC__':
             defaultFile = "*WXY*.fits"
@@ -481,6 +492,7 @@ class MyFrame(wx.Frame):
 
     def computeMoments(self,event):
         if self.momentsState:
+            # Compute moments here
             pass
         else:
             self.momentsState=1
@@ -695,16 +707,16 @@ class Toolbar1(wx.Panel):
 
         self.undoBtn = self.addButton(icons.Undo.GetBitmap(),'Back to original limits',self.Undo,'AliceBlue',(20,0))
         #self.panBtn  = self.addButton(icons.pan2.GetBitmap(),'Pan',self.Pan,'AliceBlue',(60,0))
-        #self.zoomBtn  = self.addButton(icons.zoom.GetBitmap(),'Zoom',self.Zoom,'AliceBlue',(100,0))
-        self.snapshotBtn  = self.addButton(icons.snapshot.GetBitmap(),'Snapshot',self.Snapshot,'AliceBlue',(60,0))
-        self.dispBtn  = self.addButton(icons.lambda2.GetBitmap(),'Display wav plane or range average',self.toggleImage,'AliceBlue',(100,0))
-        self.fitEllBtn  = self.addButton(icons.ellipse.GetBitmap(),'Fit ellipse inside selected region',self.top.panel1.fitEllipse,'AliceBlue',(140,0))
-        self.cropBtn  = self.addButton(icons.crop.GetBitmap(),'Crop cube on selected image',self.top.panel1.cropCube,'AliceBlue',(180,0))
+        self.zoomBtn  = self.addButton(icons.zoom.GetBitmap(),'Zoom',self.top.panel1.zoom,'AliceBlue',(60,0))
+        self.snapshotBtn  = self.addButton(icons.snapshot.GetBitmap(),'Snapshot',self.Snapshot,'AliceBlue',(100,0))
+        self.dispBtn  = self.addButton(icons.lambda2.GetBitmap(),'Display wav plane or range average',self.toggleImage,'AliceBlue',(140,0))
+        self.fitEllBtn  = self.addButton(icons.ellipse.GetBitmap(),'Fit ellipse inside selected region',self.top.panel1.defineEllipse,'AliceBlue',(180,0))
+        self.cropBtn  = self.addButton(icons.crop.GetBitmap(),'Crop cube on selected image',self.top.panel1.cropCube,'AliceBlue',(220,0))
         #        self.reloadBtn  = self.addButton(icons.reload.GetBitmap(),'Reload original cube',self.top.reloadCube,'AliceBlue')
-        self.contoursBtn  = self.addButton(icons.contours.GetBitmap(),'Overplot flux contours',self.top.panel1.menuContours,'AliceBlue',(220,0))
-        self.saveBtn  = self.addButton(icons.save.GetBitmap(),'Save current cube',self.top.saveCube,'AliceBlue',(260,0))
-        self.uploadBtn  = self.addButton(icons.upload.GetBitmap(),'Upload image',self.top.uploadImage,'AliceBlue',(300,0))
-        self.showHdr = self.addButton(icons.header.GetBitmap(),'Show header',self.showHeader,'AliceBlue',(340,0))
+        self.contoursBtn  = self.addButton(icons.contours.GetBitmap(),'Overplot flux contours',self.top.panel1.menuContours,'AliceBlue',(260,0))
+        self.saveBtn  = self.addButton(icons.save.GetBitmap(),'Save current cube',self.top.saveCube,'AliceBlue',(300,0))
+        self.uploadBtn  = self.addButton(icons.upload.GetBitmap(),'Upload image',self.top.uploadImage,'AliceBlue',(340,0))
+        self.showHdr = self.addButton(icons.header.GetBitmap(),'Show header',self.showHeader,'AliceBlue',(380,0))
         wx.ToolTip.SetDelay(1000)
 
     def addButton(self, icon, label, function, color, position):
@@ -896,7 +908,15 @@ class Panel1 (wx.Panel):
         if self.displayContours != 'None': self.top.drawContours()
         self.Layout()
 
-    def fitEllipse(self, event):
+
+    def defineEllipse(self, event):
+        from photometry import RectangleSelect
+        self.top.defineEllipse = True
+        self.rcb = RectangleSelect(self)
+        self.top.showmsg('Click and drag the mouse to select the region to fit an ellipse','Ellipse')
+    
+        
+    def fitEllipse(self):
         from scipy.spatial import ConvexHull
         from ellipsefit import fit_ellipse
 
@@ -904,24 +924,32 @@ class Panel1 (wx.Panel):
         # Find the points inside the existing  ellipse
         ellipse = self.top.ellipse
         spectrum = self.top.spectrum
-        x0,y0 = ellipse.center
-        path = ellipse.get_path()
-        transform = ellipse.get_patch_transform()
+        #x0,y0 = ellipse.center
+        rect = self.rcb.get_rect()
+        path = rect.get_path()
+        transform = rect.get_patch_transform()
         npath = transform.transform_path(path)
+        print "max intensity ", self.s_cmax.val
         try:
             inpoints = spectrum.points[npath.contains_points(spectrum.points)]
             xx,yy = inpoints.T
             # Select points with flux > 10% current range
+            if self.displayImage == 'Unc. Flux':
+                intensity=spectrum.uflux
+            else:
+                intensity=spectrum.flux
             if self.displayMethod == 'Average':
                 limits = self.top.limits
-                medianflux = np.nanmean(spectrum.flux[limits[0]:limits[1],:,:],axis=0)
+                medianflux = np.nanmean(intensity[limits[0]:limits[1],:,:],axis=0)
             else:
-                medianflux = spectrum.flux[self.top.panel2.plane ,:,:]
+                medianflux = intensity[self.top.panel2.plane ,:,:]
             flux = medianflux[yy,xx]
-            fluxRange = np.nanmax(flux)-np.nanmin(flux)
-            threshold = np.nanmin(flux)+0.1*fluxRange
-            #print "threshold ",threshold
+            #fluxRange = np.nanmax(flux)-np.nanmin(flux)
+            #threshold = np.nanmin(flux)+0.1*fluxRange
+            threshold = self.s_cmax.val
+            print "threshold ",threshold
             index, = np.where(flux >= threshold)
+            print "Number of pixels: ",len(index)
             inpoints = inpoints[index,:]
             # Find the convex hull
             ch = ConvexHull(inpoints)
@@ -941,17 +969,40 @@ class Panel1 (wx.Panel):
         # Update plots
         self.top.drawEllipse()
         self.vbox.Layout()
+        self.top.defineEllipse = False
+        self.rcb.disconnect()
+        self.rcb = None
 
+        
     def cropCube(self, event):
-        from photometry import RectangleSelectCropCube
+        from photometry import RectangleSelect
         # We can redefine the limits drawing a rectangle as
         # explained at :http://stackoverflow.com/questions/12052379/matplotlib-draw-a-selection-area-in-the-shape-of-a-rectangle-with-the-mouse
         # or https://matplotlib.org/examples/widgets/rectangle_selector.html
         # or https://github.com/ashokfernandez/wxPython-Rectangle-Selector-Panel/blob/master/RectangleSelectorPanel.py
         self.top.cropCubeState = True
-        self.rcb = RectangleSelectCropCube(self)
+        self.rcb = RectangleSelect(self)
         self.top.showmsg('Click and drag the mouse to select a rectangle on the image','Crop')
 
+    def zoom(self, event):
+        from photometry import RectangleSelect
+        self.top.zoomImage = True
+        self.rcb = RectangleSelect(self)
+        self.top.showmsg('Click and drag the mouse to select the part of the image to blow up','Zoom')
+
+        
+    def zoomImage(self):
+        xlimits = self.rcb.get_xlim()
+        ylimits = self.rcb.get_ylim()
+        self.axes.set_xlim(xlimits)
+        self.axes.set_ylim(ylimits)
+        self.Layout()
+        self.top.zoomImage = False
+        self.rcb.disconnect()
+        self.rcb = None
+
+        
+        
     def cropDialog(self):
         from matplotlib.patches import Ellipse
         from astropy.nddata import Cutout2D
@@ -1016,6 +1067,9 @@ class Panel1 (wx.Panel):
                 self.view(self.top.spectrum,self.top.limits,1)
                 self.axes.set_xlim([0., dx])
                 self.axes.set_ylim([0., dy])
+                # Update original limits
+                self.org_xlim = self.axes.get_xlim()
+                self.org_ylim = self.axes.get_ylim()
                 self.top.drawEllipse()
                 if self.displayContours != 'None': self.top.drawContours()
                 self.Layout()
@@ -1023,7 +1077,7 @@ class Panel1 (wx.Panel):
                 #self.ntoolbar._views.clear()
                 #self.ntoolbar._positions.clear()
                 #self.ntoolbar._update_view() 
-                self.ntoolbar.Refresh()
+                #self.ntoolbar.Refresh()
             else:
                 print "Press again icon to crop"    
             self.top.cropCubeState = False
@@ -1159,7 +1213,7 @@ class Toolbar2(wx.Panel):
         self.helpBtn    = self.addButton(icons.help.GetBitmap(),'Help',self.top.onHelp,'AliceBlue',(120,0))
 
         self.undoBtn = self.addButton(icons.Undo.GetBitmap(),'Back to original limits',self.Undo,'AliceBlue',(200,0))
-        self.panBtn  = self.addButton(icons.pan2.GetBitmap(),'Pan',self.Pan,'AliceBlue',(240,0))
+        #        self.panBtn  = self.addButton(icons.pan2.GetBitmap(),'Pan',self.Pan,'AliceBlue',(240,0))
         self.zoomBtn  = self.addButton(icons.zoom.GetBitmap(),'Zoom',self.Zoom,'AliceBlue',(280,0))
         self.snapshotBtn  = self.addButton(icons.snapshot.GetBitmap(),'Snapshot',self.Snapshot,'AliceBlue',(320,0))
         self.cutBtn    = self.addButton(icons.cut.GetBitmap(),'Cut cube as selected spectrum range',self.top.cutCube,'AliceBlue',(360,0))
