@@ -63,6 +63,7 @@ class MyFrame(wx.Frame):
         self.extSpectrum = None
         self.fitState = 0
         self.momentsState = 0
+        self.cutState = False
         self.panel1.displayContours = 'None'
         self.fit  = None 
         self.ufit = None 
@@ -143,21 +144,12 @@ class MyFrame(wx.Frame):
         indmin, indmax = np.searchsorted(self.spectrum.wave, (xmin, xmax))
         indmax = min(len(self.spectrum.wave) - 1, indmax)
         if (xmin < xmax) and (self.zoomSpectrum == False):
-            if self.fitState == False and self.momentsState == False:
-                print("Data between ", xmin, " and ",xmax)
+            if self.cutState:
                 print("indmin - indmax ",indmin, indmax)
+#                self.shade = True
+#                self.shadeSpectrum()
                 self.limits = (indmin, indmax)
-                self.shade = True
-                try:
-                    self.panel2.removeSlider()
-                except:
-                    pass
-                self.panel1.displayMethod = 'Average'
-                self.toolbar1.dispBtn.SetBitmap(icons.lambda2.GetBitmap())
-                self.panel1.view(self.spectrum,self.limits,0)            
-                self.regionlimits = np.array([xmin,xmax])
-                self.drawEllipse()
-                self.panel1.vbox.Layout()
+                self.cutCube()
             elif self.fitState == 1:                
                 self.icont1 = (indmin, indmax)
                 self.cont1 = np.array([xmin,xmax])
@@ -210,6 +202,22 @@ class MyFrame(wx.Frame):
                 self.shadeSpectrum()
                 self.showmsg("Running the fit over the cube","Help")
                 self.momentsState = 0
+            else:
+                print("Data between ", xmin, " and ",xmax)
+                print("indmin - indmax ",indmin, indmax)
+                self.limits = (indmin, indmax)
+                self.shade = True
+                try:
+                    self.panel2.removeSlider()
+                except:
+                    pass
+                self.panel1.displayMethod = 'Average'
+                self.toolbar1.dispBtn.SetBitmap(icons.lambda2.GetBitmap())
+                self.panel1.view(self.spectrum,self.limits,0)            
+                self.regionlimits = np.array([xmin,xmax])
+                self.drawEllipse()
+                self.panel1.vbox.Layout()
+
                 
     def drawEllipse(self):
         from photometry import DragResizeRotateEllipse
@@ -234,6 +242,7 @@ class MyFrame(wx.Frame):
             ylim=self.panel2.ax1.get_ylim()
             lowlim = np.zeros(2)+ylim[0]
             upplim = np.zeros(2)+ylim[1]
+            print type(t),type(lowlim),type(upplim)
             self.panel2.region = self.panel2.ax1.fill_between(t,lowlim,upplim,facecolor='Lavender',alpha=0.5,linewidth=0)
         if self.fitState == 1:
             t1 = self.cont1
@@ -435,7 +444,13 @@ class MyFrame(wx.Frame):
         #self.panel1.ntoolbar.zoom('off')
         #self.panel1.ntoolbar.Refresh()
 
-    def cutCube(self, event):
+    def defineCut(self, event):
+        from photometry import RectangleSelect
+        self.cutState = True
+        self.showmsg('Click and drag the mouse to select the wavelength range for the new cube','Cut cube')
+
+        
+    def cutCube(self):
         # Dialog window to start cropping
         dlg = wx.MessageDialog(self,"Do you really want to cut it ?", "Question",
                                wx.YES_NO|wx.ICON_QUESTION)
@@ -460,6 +475,7 @@ class MyFrame(wx.Frame):
             # replot panel 2
             self.panel2.draw(self.spectrum,self.ellipse)
             self.shadeSpectrum()
+        self.cutState = False
 
     def fitGauss(self, event):
         from fitline import fitLines
@@ -704,23 +720,18 @@ class Toolbar1(wx.Panel):
         self.top = self.GetTopLevelParent()
         self.SetBackgroundColour((240,248,255))
 
-        #self.plotbut = wx.Button(self,-1,"plot", size=(40,30),pos=(10,0))
-        #self.plotbut.Bind(wx.EVT_BUTTON,self.plot)
-        #self.plotbut.SetToolTipString("Plot")
-
-        self.undoBtn = self.addButton(icons.Undo.GetBitmap(),'Back to original limits',self.Undo,'AliceBlue',(20,0))
-        #self.panBtn  = self.addButton(icons.pan2.GetBitmap(),'Pan',self.Pan,'AliceBlue',(60,0))
-        self.zoomBtn  = self.addButton(icons.zoom.GetBitmap(),'Zoom',self.top.panel1.zoom,'AliceBlue',(60,0))
-        self.snapshotBtn  = self.addButton(icons.snapshot.GetBitmap(),'Snapshot',self.Snapshot,'AliceBlue',(100,0))
-        self.dispBtn  = self.addButton(icons.lambda2.GetBitmap(),'Display wav plane or range average',self.toggleImage,'AliceBlue',(140,0))
-        self.fitEllBtn  = self.addButton(icons.ellipse.GetBitmap(),'Fit ellipse inside selected region',self.top.panel1.defineEllipse,'AliceBlue',(180,0))
-        self.cropBtn  = self.addButton(icons.crop.GetBitmap(),'Crop cube on selected image',self.top.panel1.cropCube,'AliceBlue',(220,0))
-        #        self.reloadBtn  = self.addButton(icons.reload.GetBitmap(),'Reload original cube',self.top.reloadCube,'AliceBlue')
-        self.contoursBtn  = self.addButton(icons.contours.GetBitmap(),'Overplot flux contours',self.top.panel1.menuContours,'AliceBlue',(260,0))
-        self.saveBtn  = self.addButton(icons.save.GetBitmap(),'Save current cube',self.top.saveCube,'AliceBlue',(300,0))
-        self.uploadBtn  = self.addButton(icons.upload.GetBitmap(),'Upload image',self.top.uploadImage,'AliceBlue',(340,0))
-        self.showHdr = self.addButton(icons.header.GetBitmap(),'Show header',self.showHeader,'AliceBlue',(380,0))
-        wx.ToolTip.SetDelay(1000)
+        xcoord = 20; step =40
+        self.undoBtn = self.addButton(icons.Undo.GetBitmap(),'Back to original limits',self.Undo,'AliceBlue',(xcoord,0))
+        xcoord += step; self.zoomBtn  = self.addButton(icons.zoom.GetBitmap(),'Zoom',self.top.panel1.zoom,'AliceBlue',(xcoord,0))
+        xcoord += step; self.snapshotBtn  = self.addButton(icons.snapshot.GetBitmap(),'Snapshot',self.Snapshot,'AliceBlue',(xcoord,0))
+        xcoord += step; self.dispBtn  = self.addButton(icons.lambda2.GetBitmap(),'Display wav plane or range average',self.toggleImage,'AliceBlue',(xcoord,0))
+        xcoord += step; self.fitEllBtn  = self.addButton(icons.ellipse.GetBitmap(),'Fit ellipse inside selected region',self.top.panel1.defineEllipse,'AliceBlue',(xcoord,0))
+        xcoord += step; self.cropBtn  = self.addButton(icons.crop.GetBitmap(),'Crop cube on selected image',self.top.panel1.cropCube,'AliceBlue',(xcoord,0))
+        xcoord += step; self.contoursBtn  = self.addButton(icons.contours.GetBitmap(),'Overplot flux contours',self.top.panel1.menuContours,'AliceBlue',(xcoord,0))
+        xcoord += step; self.saveBtn  = self.addButton(icons.save.GetBitmap(),'Save current cube',self.top.saveCube,'AliceBlue',(xcoord,0))
+        xcoord += step; self.uploadBtn  = self.addButton(icons.upload.GetBitmap(),'Upload image',self.top.uploadImage,'AliceBlue',(xcoord,0))
+        xcoord += step; self.showHdr = self.addButton(icons.header.GetBitmap(),'Show header',self.showHeader,'AliceBlue',(xcoord,0))
+        wx.ToolTip.SetDelay(400)
 
     def addButton(self, icon, label, function, color, position):
         button = wx.BitmapButton(self,wx.ID_NEW,bitmap=icon,size=(45,45),pos=position,style=wx.NO_BORDER | wx.BU_EXACTFIT)
@@ -1210,22 +1221,24 @@ class Toolbar2(wx.Panel):
         self.top = self.GetTopLevelParent()
         self.SetBackgroundColour((240,248,255)) # AliceBlue
 
-        self.nextBtn  = self.addButton(icons.next.GetBitmap(),'Load another cube',self.top.nextCube,'AliceBlue',(0,0))
-        self.reloadBtn  = self.addButton(icons.reload.GetBitmap(),'Reload original cube',self.top.reloadCube,'AliceBlue',(40,0))
-        self.quitBtn    = self.addButton(icons.quit.GetBitmap(),'Quit',self.top.onQuit,'AliceBlue',(80,0))
-        self.helpBtn    = self.addButton(icons.help.GetBitmap(),'Help',self.top.onHelp,'AliceBlue',(120,0))
+        xcoord = 0
+        step   = 40
+        self.nextBtn  = self.addButton(icons.next.GetBitmap(),'Load another cube',self.top.nextCube,'AliceBlue',(xcoord,0))
+        xcoord += step; self.reloadBtn  = self.addButton(icons.reload.GetBitmap(),'Reload original cube',self.top.reloadCube,'AliceBlue',(xcoord,0))
+        xcoord += step; self.quitBtn    = self.addButton(icons.quit.GetBitmap(),'Quit',self.top.onQuit,'AliceBlue',(xcoord,0))
+        xcoord += step; self.helpBtn    = self.addButton(icons.help.GetBitmap(),'Help',self.top.onHelp,'AliceBlue',(xcoord,0))
 
-        self.undoBtn = self.addButton(icons.Undo.GetBitmap(),'Back to original limits',self.top.panel2.Undo,'AliceBlue',(200,0))
-        #        self.panBtn  = self.addButton(icons.pan2.GetBitmap(),'Pan',self.Pan,'AliceBlue',(240,0))
-        self.zoomBtn  = self.addButton(icons.zoom.GetBitmap(),'Zoom',self.top.panel2.startZoom,'AliceBlue',(280,0))
-        self.snapshotBtn  = self.addButton(icons.snapshot.GetBitmap(),'Snapshot',self.Snapshot,'AliceBlue',(320,0))
-        self.cutBtn    = self.addButton(icons.cut.GetBitmap(),'Cut cube as selected spectrum range',self.top.cutCube,'AliceBlue',(360,0))
-        self.fitBtn    = self.addButton(icons.gauss.GetBitmap(),'Fit lines and continuum',self.top.fitGauss,'AliceBlue',(400,0))
-        self.momentsBtn    = self.addButton(icons.maps.GetBitmap(),'Compute moment maps',self.top.computeMoments,'AliceBlue',(440,0))
-        self.saveBtn    = self.addButton(icons.save.GetBitmap(),'Save spectrum/fit',self.top.saveSpectrum,'AliceBlue',(480,0))
-        self.uploadBtn    = self.addButton(icons.upload.GetBitmap(),'Upload spectrum',self.top.uploadSpectrum,'AliceBlue',(520,0))
+        xcoord = 200
+        self.undoBtn = self.addButton(icons.Undo.GetBitmap(),'Back to original limits',self.top.panel2.Undo,'AliceBlue',(xcoord,0))
+        xcoord += step; self.zoomBtn  = self.addButton(icons.zoom.GetBitmap(),'Zoom',self.top.panel2.startZoom,'AliceBlue',(xcoord,0))
+        xcoord += step; self.snapshotBtn  = self.addButton(icons.snapshot.GetBitmap(),'Snapshot',self.Snapshot,'AliceBlue',(xcoord,0))
+        xcoord += step; self.cutBtn    = self.addButton(icons.cut.GetBitmap(),'Cut cube as selected spectrum range',self.top.defineCut,'AliceBlue',(xcoord,0))
+        xcoord += step; self.fitBtn    = self.addButton(icons.gauss.GetBitmap(),'Fit lines and continuum',self.top.fitGauss,'AliceBlue',(xcoord,0))
+        xcoord += step; self.momentsBtn    = self.addButton(icons.maps.GetBitmap(),'Compute moment maps',self.top.computeMoments,'AliceBlue',(xcoord,0))
+        xcoord += step; self.saveBtn    = self.addButton(icons.save.GetBitmap(),'Save spectrum/fit',self.top.saveSpectrum,'AliceBlue',(xcoord,0))
+        xcoord += step; self.uploadBtn    = self.addButton(icons.upload.GetBitmap(),'Upload spectrum',self.top.uploadSpectrum,'AliceBlue',(xcoord,0))
 
-        wx.ToolTip.SetDelay(1000)
+        wx.ToolTip.SetDelay(400)
 
     def addButton(self, icon, label, function, color, position):
         button = wx.BitmapButton(self,wx.ID_NEW,bitmap=icon,size=(45,45),pos=position,style=wx.NO_BORDER | wx.BU_EXACTFIT)
