@@ -142,7 +142,7 @@ class MyFrame(wx.Frame):
     def onSelect(self, xmin, xmax):
         indmin, indmax = np.searchsorted(self.spectrum.wave, (xmin, xmax))
         indmax = min(len(self.spectrum.wave) - 1, indmax)
-        if xmin < xmax:
+        if (xmin < xmax) and (self.zoomSpectrum == False):
             if self.fitState == False and self.momentsState == False:
                 print("Data between ", xmin, " and ",xmax)
                 print("indmin - indmax ",indmin, indmax)
@@ -316,8 +316,11 @@ class MyFrame(wx.Frame):
                     else:
                         color='green'
                     self.panel2.ax1.plot([event.xdata],[event.ydata],'o',color=color)
+                elif self.zoomSpectrum == True:
+                    self.panel2.zoomSpectrum()
                 else:
-                    print "wavelength: ","{:.3f}".format(event.xdata),u"\u03BCm (no baryshift:  ".encode('utf8'), "{:.3f}".format(event.xdata/(1.+self.spectrum.baryshift)),u"\u03BCm )".encode('utf8')
+                    print "wavelength: ","{:.3f}".format(event.xdata), u"\u03BCm (no baryshift:  ".encode('utf8'), \
+                        "{:.3f}".format(event.xdata/(1.+self.spectrum.baryshift)),u"\u03BCm )".encode('utf8')
             if event.button == 3:
                 self.panel2.OnRightDown(event)
             else:
@@ -1112,7 +1115,7 @@ class Panel1 (wx.Panel):
         
         
     def view(self, spectrum, limits, status):
-        from matplotlib.widgets import Slider, SpanSelector
+        from matplotlib.widgets import Slider
 
         self.figure.set_canvas(self.canvas)
         if status == 1:
@@ -1212,9 +1215,9 @@ class Toolbar2(wx.Panel):
         self.quitBtn    = self.addButton(icons.quit.GetBitmap(),'Quit',self.top.onQuit,'AliceBlue',(80,0))
         self.helpBtn    = self.addButton(icons.help.GetBitmap(),'Help',self.top.onHelp,'AliceBlue',(120,0))
 
-        self.undoBtn = self.addButton(icons.Undo.GetBitmap(),'Back to original limits',self.Undo,'AliceBlue',(200,0))
+        self.undoBtn = self.addButton(icons.Undo.GetBitmap(),'Back to original limits',self.top.panel2.Undo,'AliceBlue',(200,0))
         #        self.panBtn  = self.addButton(icons.pan2.GetBitmap(),'Pan',self.Pan,'AliceBlue',(240,0))
-        self.zoomBtn  = self.addButton(icons.zoom.GetBitmap(),'Zoom',self.Zoom,'AliceBlue',(280,0))
+        self.zoomBtn  = self.addButton(icons.zoom.GetBitmap(),'Zoom',self.top.panel2.startZoom,'AliceBlue',(280,0))
         self.snapshotBtn  = self.addButton(icons.snapshot.GetBitmap(),'Snapshot',self.Snapshot,'AliceBlue',(320,0))
         self.cutBtn    = self.addButton(icons.cut.GetBitmap(),'Cut cube as selected spectrum range',self.top.cutCube,'AliceBlue',(360,0))
         self.fitBtn    = self.addButton(icons.gauss.GetBitmap(),'Fit lines and continuum',self.top.fitGauss,'AliceBlue',(400,0))
@@ -1261,6 +1264,7 @@ class Panel2 (wx.Panel):
         self.figure.set_tight_layout(True)
         self.canvas=FigureCanvas(self,-1,self.figure)
         self.ax1 = self.figure.add_subplot(111)
+        self.axes = self.ax1  # Reference to use RectangleSelect
         self.ax2 = self.ax1.twinx()
         self.ax3 = self.ax1.twinx()
         self.ax4 = self.ax1.twinx()
@@ -1313,14 +1317,39 @@ class Panel2 (wx.Panel):
         self.ntoolbar.pan()    
 
     def Undo(self, event):
-        self.ntoolbar.home()
-
+        #self.ntoolbar.home()
+        self.draw(self.top.spectrum, self.top.ellipse)
+        
     def Zoom(self, event):
         self.ntoolbar.zoom()
 
     def Snapshot(self, event):
         self.ntoolbar.save_figure()
         
+    def startZoom(self, event):
+        from photometry import RectangleSelect
+        self.top.zoomSpectrum = True
+        self.top.span.set_visible(False)
+        self.rcb = RectangleSelect(self)
+        self.top.showmsg('Click and drag the mouse to select the region to blow up','Zoom')
+
+
+    def zoomSpectrum(self):
+        self.top.zoomSpectrum = False
+        # Conserve original limits, maybe unnecessary since we can simply redraw the plot ...
+        self.orig_xlim = self.ax1.get_xlim()
+        self.orig_ylim = self.ax1.get_ylim()
+        # Change limits and redraw
+        xlimits = self.rcb.get_xlim()
+        ylimits = self.rcb.get_ylim()
+        self.ax1.set_xlim(xlimits)
+        self.ax1.set_ylim(ylimits)
+        self.ax4.set_ylim(self.ax1.get_ylim())
+        self.refreshSpectrum()
+        # Remove rectangle
+        self.rcb.disconnect()
+        self.rcb = None
+        self.top.span.set_visible(True)
         
     def draw(self,spectrum,ellipse):
         x0,y0 = ellipse.center
