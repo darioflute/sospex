@@ -16,8 +16,8 @@ if (len(sys.argv) == 1) or (sys.argv[1] != "MAC"):
 import wx
 import numpy as np
 from matplotlib.backends.backend_wxagg import \
-    FigureCanvasWxAgg as FigureCanvas, \
-    NavigationToolbar2WxAgg as NavigationToolbar
+    FigureCanvasWxAgg as FigureCanvas
+#    NavigationToolbar2WxAgg as NavigationToolbar
 from matplotlib.figure import Figure
 from matplotlib.font_manager import FontProperties
 import icons
@@ -403,10 +403,10 @@ class MyFrame(wx.Frame):
 #        self.panel1.ntoolbar._positions.clear()
 #        self.panel1.ntoolbar._update_view() 
 #        self.panel1.ntoolbar.Refresh()
-        self.panel2.ntoolbar._views.clear()
-        self.panel2.ntoolbar._positions.clear()
-        self.panel2.ntoolbar._update_view() 
-        self.panel2.ntoolbar.Refresh()
+        # self.panel2.ntoolbar._views.clear()
+        # self.panel2.ntoolbar._positions.clear()
+        # self.panel2.ntoolbar._update_view() 
+        # self.panel2.ntoolbar.Refresh()
 
             
     def reloadCube(self, event):
@@ -745,20 +745,28 @@ class Toolbar1(wx.Panel):
         button.SetBackgroundColour((240,248,255))
         return button
 
-    def Pan(self,event):
-        self.top.panel1.ntoolbar.pan()    
+    # def Pan(self,event):
+    #     self.top.panel1.ntoolbar.pan()    
 
     def Undo(self, event):
-        # self.top.panel1.ntoolbar.home()
-        self.top.panel1.axes.set_xlim(self.top.panel1.org_xlim)
-        self.top.panel1.axes.set_ylim(self.top.panel1.org_ylim)
-        self.top.panel1.Layout()
+    #     # self.top.panel1.ntoolbar.home()
+         self.top.panel1.axes.set_xlim(self.top.panel1.org_xlim)
+         self.top.panel1.axes.set_ylim(self.top.panel1.org_ylim)
+         self.top.panel1.Layout()
         
-    def Zoom(self, event):
-        self.top.panel1.ntoolbar.zoom()
+    # def Zoom(self, event):
+    #     self.top.panel1.ntoolbar.zoom()
 
     def Snapshot(self, event):
-        self.top.panel1.ntoolbar.save_figure()
+        #self.top.panel1.ntoolbar.save_figure()
+        saveFileDialog = wx.FileDialog(self, "Save As", "", "image.png", 
+                                       "PNG files (*.png)|*.png", 
+                                       wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+        saveFileDialog.ShowModal()
+        outfile = saveFileDialog.GetPath()
+        saveFileDialog.Destroy()
+        self.top.panel1.figure.savefig(outfile)
+        print "File saved as: ",outfile
 
 
     def showHeader(self,event):
@@ -833,49 +841,19 @@ class Panel1 (wx.Panel):
         self.displayContours = 'None'
         self.displayMethod = 'Average'
         ## Toolbar
-        self.ntoolbar = NavigationToolbar(self.canvas)
-        self.ntoolbar.Hide()
-        # Mouse wheel zooming (just to prove the concept)
+        # self.ntoolbar = NavigationToolbar(self.canvas)
+        # self.ntoolbar.Hide()
+        # Mouse wheel zooming
         self.cidPress = self.figure.canvas.mpl_connect('scroll_event', self.onWheel)
         # Sizing
-        #self.hbox = wx.BoxSizer(wx.HORIZONTAL)
         self.vbox=wx.BoxSizer(wx.VERTICAL)
         self.vbox.Add(self.canvas,2,wx.EXPAND,0)
-        #self.vbox.Add(self.hbox,0,wx.EXPAND,0)
         self.SetSizer(self.vbox)
         self.frame.Fit()
 
 
     def menuContours(self, event):
         self.PopupMenu(PopupMenuC(self), (self.canvas.Size[0]/2., self.canvas.Size[1]/2.))
-
-    # def showHeader(self,event):
-    #     #hdrvalues = self.top.spectrum.header.tostring(sep='\n')
-    #     header = self.top.spectrum.header
-    #     hv=header.values()
-    #     hk= header.keys()
-    #     hc=header.comments
-    #     h = []
-    #     cc = False
-    #     for k,v,c in zip(hk,hv,hc):
-    #         if k == 'HISTORY':
-    #             pass
-    #         elif k == 'COMMENT':
-    #             if cc:
-    #                 h.append('        {0:20}'.format(v)+''+c)
-    #             else:
-    #                 h.append('\n        {0:20}'.format(v)+''+c)
-    #                 cc = True
-    #         else:
-    #             if cc:
-    #                 h.append('\n')
-    #                 cc = False
-    #             h.append('{:15s}'.format(k)+ '\t\t=\t {0:15}'.format(v)+' \t\t\t'+c)
-    
-    #     s = '\n'.join(h)
-    #     dlg = ScrolledMessage(self,s,'Header',size=(800,400),style=wx.TE_READONLY)
-    #     dlg.ShowModal()
-    #     dlg.Destroy()
 
         
     def addButton(self, icon, label, function, color):
@@ -891,28 +869,23 @@ class Panel1 (wx.Panel):
         #self.Bind(wx.EVT_TOOL,function,button)
         return button
 
-    def Pan(self,event):
-        self.ntoolbar.pan()    
+    # def Pan(self,event):
+    #     self.ntoolbar.pan()    
 
-    def Undo(self, event):
-        self.ntoolbar.home()
+    # def Undo(self, event):
+    #     self.ntoolbar.home()
 
-    def Zoom(self, event):
-        self.ntoolbar.zoom()
+    # def Zoom(self, event):
+    #     self.ntoolbar.zoom()
 
-    def Snapshot(self, event):
-        self.ntoolbar.save_figure()
+    # def Snapshot(self, event):
+    #     self.ntoolbar.save_figure()
         
     def OnRightDown(self, event):
         self.PopupMenu(PopupMenu1(self), (event.x, self.canvas.Size[1]-event.y))
         
     def __del__(self):
         pass
-        
-#    def onRadioBox(self,e): 
-#        print self.rbox.GetStringSelection(),' is clicked from Radio Box'
-#        self.displayImage = self.rbox.GetStringSelection()
-#        self.refreshImage()
 
 
     def refreshImage(self):    
@@ -1025,13 +998,10 @@ class Panel1 (wx.Panel):
         # Check the current limits
         xlimits = self.rcb.get_xlim()
         ylimits = self.rcb.get_ylim()
-        #print "xlimits ", xlimits
-        #print "ylimits ", ylimits
         center =  ((xlimits[0]+xlimits[1])*0.5,(ylimits[0]+ylimits[1])*0.5)
         size = ((ylimits[1]-ylimits[0]).astype(int),(xlimits[1]-xlimits[0]).astype(int))
         print "center, size: ",center,size
         shape = self.top.spectrum.flux.shape
-        #print "shape is: ",shape
         if size[1] == shape[1] and size[0] == shape[2]:
             print "No cropping needed"
             return
@@ -1247,18 +1217,25 @@ class Toolbar2(wx.Panel):
         button.SetBackgroundColour((240,248,255))
         return button
 
-    def Pan(self,event):
-        self.top.panel2.ntoolbar.pan()    
+    # def Pan(self,event):
+    #     self.top.panel2.ntoolbar.pan()    
 
-    def Undo(self, event):
-        self.top.panel2.ntoolbar.home()
+    # def Undo(self, event):
+    #     self.top.panel2.ntoolbar.home()
 
-    def Zoom(self, event):
-        self.top.panel2.ntoolbar.zoom()
+    # def Zoom(self, event):
+    #     self.top.panel2.ntoolbar.zoom()
 
     def Snapshot(self, event):
-        self.top.panel2.ntoolbar.save_figure()
-
+        #self.top.panel2.ntoolbar.save_figure()
+        saveFileDialog = wx.FileDialog(self, "Save As", "", "spectrum.png", 
+                                       "PNG files (*.png)|*.png", 
+                                       wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+        saveFileDialog.ShowModal()
+        outfile = saveFileDialog.GetPath()
+        saveFileDialog.Destroy()
+        self.top.panel2.figure.savefig(outfile)
+        print "File saved as: ",outfile
 
         
 class Panel2 (wx.Panel):
@@ -1287,8 +1264,8 @@ class Panel2 (wx.Panel):
 
 
         # Toolbar
-        self.ntoolbar = NavigationToolbar(self.canvas)
-        self.ntoolbar.Hide()
+#        self.ntoolbar = NavigationToolbar(self.canvas)
+#        self.ntoolbar.Hide()
         
         # Size
         self.hbox = wx.BoxSizer(wx.HORIZONTAL)
@@ -1326,18 +1303,18 @@ class Panel2 (wx.Panel):
         return button
 
 
-    def Pan(self,event):
-        self.ntoolbar.pan()    
+    # def Pan(self,event):
+    #     self.ntoolbar.pan()    
 
     def Undo(self, event):
-        #self.ntoolbar.home()
-        self.draw(self.top.spectrum, self.top.ellipse)
+         #self.ntoolbar.home()
+         self.draw(self.top.spectrum, self.top.ellipse)
         
-    def Zoom(self, event):
-        self.ntoolbar.zoom()
+    # def Zoom(self, event):
+    #     self.ntoolbar.zoom()
 
-    def Snapshot(self, event):
-        self.ntoolbar.save_figure()
+    # def Snapshot(self, event):
+    #     self.ntoolbar.save_figure()
         
     def startZoom(self, event):
         from photometry import RectangleSelect
@@ -1648,10 +1625,5 @@ class MyApp(wx.App):
         frame.welcomeMessage()
         return True
 
-
-# In the case of MacOS-X, re-executes with pythonw
-#if len(sys.argv) == 1:
-#    reexec_with_pythonw()
-# Starting the code
 app = MyApp(0)
 app.MainLoop()
