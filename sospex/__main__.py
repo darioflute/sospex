@@ -12,7 +12,7 @@ if (len(sys.argv) == 1) or (sys.argv[1] != "MAC"):
         os.execvp('pythonw',['pythonw',__file__,"MAC"] + sys.argv[1:])
 
     
-# Imports
+# Global imports
 import wx
 import numpy as np
 from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
@@ -20,7 +20,8 @@ from matplotlib.figure import Figure
 from matplotlib.font_manager import FontProperties
 import icons
 
-        
+
+# Panel classes
 class MyFrame(wx.Frame):
     def __init__(self, parent, id, title):
         displaySize= wx.DisplaySize()
@@ -190,7 +191,7 @@ class MyFrame(wx.Frame):
                 print "Fit the continuum ..."
                 self.fitState = 3
                 # Help for fit
-                self.showmsg("Click on top of line, then click on icon to fit","Help")
+                self.showmsg("Click on the top of the line, then click icon to fit","Help")
             elif self.momentsState == 2:
                 self.icont2 = (indmin, indmax)
                 self.cont2 = np.array([xmin,xmax])
@@ -556,8 +557,6 @@ class MyFrame(wx.Frame):
         hdul.info()    
         hdul.writeto(outfile,clobber=True) # clobber true  allows rewriting
         hdul.close()
-        
-        return
 
 
     def saveCube(self, event):
@@ -1394,12 +1393,8 @@ class Panel2 (wx.Panel):
 
 
 
-"""
-Other classes
-"""
-
-# Choice of images on panel 1        
 class PopupMenu1(wx.Menu):
+    """ Choice of images on panel 1 """
 
     def __init__(self, parent):
         super(PopupMenu1, self).__init__()
@@ -1428,8 +1423,9 @@ class PopupMenu1(wx.Menu):
         self.parent.refreshImage()
 
 
-# Choice of curves on panel 2
 class PopupMenu2(wx.Menu):
+    """ Choice of curves on panel 2 """
+
     def __init__(self, parent):
         super(PopupMenu2, self).__init__()
         self.parent = parent
@@ -1482,9 +1478,8 @@ class PopupMenu2(wx.Menu):
         self.parent.displayExtSpec ^= True
         self.parent.refreshSpectrum()
 
-# Choice of contours
 class PopupMenuC(wx.Menu):
-
+    """Choice of contours """
     def __init__(self, parent):
         super(PopupMenuC, self).__init__()
 
