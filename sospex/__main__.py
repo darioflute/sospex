@@ -697,8 +697,8 @@ class Toolbar1(wx.Panel):
         wx.Panel.__init__(self, parent, pos=(0,0), size=wx.Size(xysize[1]*1.2,xysize[1]*0.1))
         self.frame = parent
         self.top = self.GetTopLevelParent()
-        self.SetBackgroundColour((240,248,255))
-
+        self.SetBackgroundColour((240,248,255))        
+        
         xcoord = 20+np.arange(10)*40
         self.undoBtn = self.addButton(icons.Undo.GetBitmap(),'Back to original limits',self.Undo,'AliceBlue',(xcoord[0],0))
         self.zoomBtn  = self.addButton(icons.zoom.GetBitmap(),'Zoom',self.top.panel1.zoom,'AliceBlue',(xcoord[1],0))
@@ -768,6 +768,7 @@ class Toolbar1(wx.Panel):
         dlg.Destroy()
 
     def toggleImage(self, event):
+        if self.top.welcomeState: return
         if self.top.panel1.displayMethod == 'Average':
             self.top.shade = 'False'
             self.top.panel1.displayMethod = 'Plane'
