@@ -238,7 +238,7 @@ class MyFrame(wx.Frame):
             ylim=self.panel2.ax1.get_ylim()
             lowlim = np.zeros(2)+ylim[0]
             upplim = np.zeros(2)+ylim[1]
-            print type(t),type(lowlim),type(upplim)
+            #print type(t),type(lowlim),type(upplim)
             self.panel2.region = self.panel2.ax1.fill_between(t,lowlim,upplim,facecolor='Lavender',alpha=0.5,linewidth=0)
         if self.fitState == 1:
             t1 = self.cont1
@@ -288,7 +288,8 @@ class MyFrame(wx.Frame):
         if self.welcomeState == True:
             return
         if event.inaxes == self.panel1.axes:
-            print (event.xdata,event.ydata)
+            x,y = event.xdata,event.ydata
+            print (x,y,self.panel1.medianflux[int(y),int(x)])
             if  event.button == 1:
                 if self.cropCubeState:
                     self.panel1.cropDialog()
@@ -1054,13 +1055,13 @@ class Panel1 (wx.Panel):
             intensity = spectrum.exposure
 
         if self.displayMethod == 'Average':
-            medianflux = np.nanmedian(intensity[limits[0]:limits[1],:,:],axis=0)
+            self.medianflux = np.nanmedian(intensity[limits[0]:limits[1],:,:],axis=0)
         else:
-            medianflux = intensity[self.top.panel2.plane ,:,:]
+            self.medianflux = intensity[self.top.panel2.plane ,:,:]
         if status == 0:
             xlimits = self.axes.get_xlim()
             ylimits = self.axes.get_ylim()
-        self.image = self.axes.imshow(medianflux, cmap='gist_heat', origin='lower', interpolation='none')
+        self.image = self.axes.imshow(self.medianflux, cmap='gist_heat', origin='lower', interpolation='none')
         if self.displayContours == 'None':
             self.figure.suptitle(self.displayImage)
         else:
@@ -1078,7 +1079,7 @@ class Panel1 (wx.Panel):
         #self.ax_cmax = self.figure.add_axes([0.88, 0.1, 0.02, 0.8])
         self.ax_cmin.clear()
         self.ax_cmax.clear()
-        vmin0=np.nanmin(medianflux); vmax0=np.nanmax(medianflux)
+        vmin0=np.nanmin(self.medianflux); vmax0=np.nanmax(self.medianflux)
         d0 = (vmax0-vmin0)/20.
         self.s_cmin = Slider(self.ax_cmin, 'low', vmin0-d0, vmax0+d0, valinit=vmin0, facecolor='goldenrod')
         self.s_cmax = Slider(self.ax_cmax, 'high', vmin0-d0, vmax0+d0, valinit=vmax0, facecolor='goldenrod')
@@ -1089,7 +1090,7 @@ class Panel1 (wx.Panel):
 
         # find maximum of medianflux
         try:
-            ijmax = np.unravel_index(np.nanargmax(medianflux), medianflux.shape)
+            ijmax = np.unravel_index(np.nanargmax(self.medianflux), self.medianflux.shape)
         except:
             print ("image is all NaNs")
             ijmax = [0,0]

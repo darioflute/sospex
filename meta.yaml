@@ -1,9 +1,9 @@
 package:
   name: sospex
-  version: 0.9.alpha
+  version: 0.10.alpha
 
 source:
-  git_rev: v0.9-alpha
+  git_rev: v0.10-alpha
   git_url: https://github.com/darioflute/sospex.git
 
 build:
