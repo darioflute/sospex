@@ -25,8 +25,16 @@ python (https://www.continuum.io/downloads).
 You will have to use the Python 2.x distribution since the code
 uses wxpython which is still not ported to Python 3.
 
-You have also to install the conda package lmfit:
+Then, install wxpython:
+
+conda install wxpython
+
+You have also to install the conda packages lmfit and wcsaxes:
+
 conda install -c astropy lmfit
+
+conda install -c astropy wcsaxes
+
 
 At this point you can install sospex:
 
