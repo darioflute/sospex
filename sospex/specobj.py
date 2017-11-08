@@ -34,7 +34,6 @@ class specCube(object):
             
         self.obsdate = header['DATE-OBS']
         self.wcs = WCS(header).celestial
-        self.n = header['NAXIS3']
         self.crpix3 = header['CRPIX3']
         self.crval3 = header['CRVAL3']
         self.cdelt3 = header['CDELT3']
@@ -45,12 +44,14 @@ class specCube(object):
             self.uflux = hdl['UNCORRECTED_FLUX'].data
             self.euflux = hdl['UNCORRECTED_ERROR'].data
             self.wave = hdl['WAVELENGTH'].data
+            self.n = len(self.wave)
             self.x = hdl['X'].data
             self.y = hdl['Y'].data
             self.atran = hdl['TRANSMISSION'].data
             self.response = hdl['RESPONSE'].data
             self.exposure = hdl['EXPOSURE_MAP'].data
         elif self.instrument == 'GREAT':
+            self.n = header['NAXIS3']
             self.flux = hdl['PRIMARY'].data
             eta_fss=0.97
             eta_mb =0.67
@@ -61,7 +62,8 @@ class specCube(object):
             l0 = c/nu0*1.e6
             vel = -self.cdelt3*self.crpix3+self.cdelt3*np.arange(self.n)+self.crval3
             self.wave = l0 + l0*vel/c
-            
+
+        hdl.close()
         # Create a grid of points
         nz,ny,nx = np.shape(self.flux)
         xi = np.arange(nx); yi = np.arange(ny)
