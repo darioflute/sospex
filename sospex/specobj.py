@@ -1,6 +1,7 @@
 import numpy as np
 from astropy.io import fits
 from astropy.wcs import WCS
+from astropy.wcs.utils import proj_plane_pixel_scales
 
 class specCube(object):
     """ spectral cube """
@@ -13,6 +14,13 @@ class specCube(object):
         self.header = header
         self.filename = infile
         self.instrument = header['INSTRUME']        
+
+        self.obsdate = header['DATE-OBS']
+        self.wcs = WCS(header).celestial
+        self.crpix3 = header['CRPIX3']
+        self.crval3 = header['CRVAL3']
+        self.cdelt3 = header['CDELT3']
+
         if self.instrument == 'FIFI-LS':        
             self.objname = header['OBJ_NAME']
             self.filegpid = header['FILEGPID']
@@ -29,14 +37,10 @@ class specCube(object):
             self.objname = header['OBJECT']
             self.redshift = header['VELO-LSR'] # in m/s
             self.redshift /= c
+            self.pixscale,ypixscale = proj_plane_pixel_scales(self.wcs)*3600. # Pixel scale in arcsec
         else:
             print('This is not a standard spectral cube')
             
-        self.obsdate = header['DATE-OBS']
-        self.wcs = WCS(header).celestial
-        self.crpix3 = header['CRPIX3']
-        self.crval3 = header['CRVAL3']
-        self.cdelt3 = header['CDELT3']
 
         if self.instrument == 'FIFI-LS':
             self.flux = hdl['FLUX'].data

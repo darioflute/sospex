@@ -63,6 +63,7 @@ class ImageCanvas(MplCanvas):
         else:
             self.wcs = wcs
             self.axes = self.fig.add_axes([0.1,0.1,.8,.8], projection = self.wcs)
+            self.oimage = image
             self.image = self.axes.imshow(image, cmap='gist_heat_r',interpolation='none')
             self.axes.coords[0].set_major_formatter('hh:mm:ss')
             self.axes.grid(color='black', ls='dashed')
@@ -80,7 +81,7 @@ class ImageCanvas(MplCanvas):
 
             # Add title
             if title != None:
-                self.fig.suptitle('Source: '+title)
+                self.fig.suptitle(title)
 
             # Colorbar
             cbaxes = self.fig.add_axes([0.9,0.1,0.02,0.85])
@@ -191,3 +192,59 @@ class ImageHistoCanvas(MplCanvas):
         self.shade = self.axes.axvspan(self.limits[0],self.limits[1],facecolor='Lavender',alpha=0.5,linewidth=0)
         self.fig.canvas.draw_idle()
 
+
+class SpectrumCanvas(MplCanvas):
+    """ Canvas to plot spectra """
+    def __init__(self, *args, **kwargs):
+        MplCanvas.__init__(self, *args, **kwargs)
+
+        #mySignal = pyqtSignal(str)
+        
+    def compute_initial_figure(self, image=None,xmin=None,xmax=None):
+        if image is None:
+            ''' initial definition when images are not yet read '''
+            pass
+        else:
+            self.fig.set_tight_layout(True)
+            self.fig.set_edgecolor('none')
+            
+            self.axes = self.fig.add_axes([0.0,0.4,1.,1.])
+            self.ax2 = self.axes.twinx()
+            self.ax3 = self.axes.twinx()
+            self.ax4 = self.axes.twinx()
+
+            # Checks
+            self.displayFlux = True
+            self.displayUFlux = False
+            self.displayAtran = False
+            self.displayExposure = False
+            self.displayLines = False
+            
+
+            
+            self.axes.yaxis.set_major_formatter(plt.NullFormatter())
+            self.axes.spines['top'].set_visible(False)
+            self.axes.spines['right'].set_visible(False)
+            self.axes.spines['left'].set_visible(False)
+            # Print the histogram of finite values
+            ima = image.ravel()
+            mask = np.isfinite(ima)
+            ima = ima[mask]
+            ima = np.sort(ima)
+            s = np.size(ima)
+            smax = min(int(s*0.9995),s-1)
+            nbins=256
+            n, self.bins, patches = self.axes.hist(ima, bins=nbins, range=(np.nanmin(ima), ima[smax]), fc='k', ec='k')
+            # Define the interval containing 99% of the values
+
+            self.x = np.arange(s)
+            if xmin == None:
+                xmin = ima[int(s*0.01)]
+            if xmax == None:
+                xmax = ima[int(s*0.99)-1]
+            self.onSelect(xmin,xmax)
+            # Start a span selector
+            self.span = SpanSelector(self.axes, self.onSelect, 'horizontal', useblit=True,
+                                     rectprops=dict(alpha=0.5, facecolor='LightSalmon'),button=1)
+            # Define the way to draw/read a shaded interval (check from sospex)
+    
