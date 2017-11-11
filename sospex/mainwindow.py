@@ -93,6 +93,25 @@ class GUI (QMainWindow):
         layout.addWidget(self.itabs)
         
 
+    def addSpectrum(self,b):
+        from graphics import SpectrumCanvas
+        ''' Add a tab with an image '''
+        t = QWidget()
+        t.layout = QVBoxLayout(t)
+        t.setSizePolicy(QSizePolicy.Ignored,QSizePolicy.Ignored) # Avoid expansion
+        self.stabs.addTab(t, b)
+        sc = SpectrumCanvas(t, width=11, height=10.5, dpi=100)
+        #ih.setVisible(False)
+        sc.toolbar = NavigationToolbar(sc, self)
+        #ic.toolbar.pan('on')
+        t.layout.addWidget(sc)
+        t.layout.addWidget(sc.toolbar)
+        self.stabs.resize(self.stabs.minimumSizeHint())  # Avoid expansion
+        # connect image and histogram to  events
+        sid1=sc.mpl_connect('button_release_event', self.onDraw)
+        sid2=sc.mpl_connect('scroll_event',self.onWheel)
+        return t,sc,sid1,sid2
+
     def addImage(self,b):
         from graphics import ImageCanvas, ImageHistoCanvas
         ''' Add a tab with an image '''
@@ -168,6 +187,7 @@ class GUI (QMainWindow):
         ic.fig.canvas.draw_idle()
 
     def onDraw(self,event):
+
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
         print('Index is ', ic)
@@ -175,9 +195,10 @@ class GUI (QMainWindow):
     def onWheel(self,event):
         ''' enable zoom with mouse wheel and propagate changes to other tabs '''
         eb = event.button
+
+
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
-
         curr_xlim = ic.axes.get_xlim()
         curr_ylim = ic.axes.get_ylim()
         curr_x0 = (curr_xlim[0]+curr_xlim[1])*0.5
@@ -220,7 +241,8 @@ class GUI (QMainWindow):
         self.stabs.currentChanged.connect(self.onSTabChange)  # things to do when changing tab
         self.stabi = []
         self.sci  = []
-        self.scid = []
+        self.scid1 = []
+        self.scid2 = []
         
         # Status bar
         self.sb = QStatusBar()
@@ -717,10 +739,11 @@ class GUI (QMainWindow):
                 self.icid1.append(c1)
                 self.icid2.append(c2)
             for s in self.spectra:
-                t,sc,scid = self.addSpectrum(s)
+                t,sc,scid1,scid2 = self.addSpectrum(s)
                 self.stabi.append(t)
                 self.sci.append(sc)
-                self.scid.append(scid)
+                self.scid1.append(scid1)
+                self.scid2.append(scid2)
             # Compute initial images
             for ima in self.bands:
                 ic = self.ici[self.bands.index(ima)]
@@ -743,7 +766,7 @@ class GUI (QMainWindow):
             # Compute initial spectra
             for spectrum in self.spectra:
                 sc = self.sci[self.spectra.index(spectrum)]
-                spectrumAll = np.nansum(self.specCube, axis=(1,2))
+                spectrumAll = np.nansum(self.specCube.flux, axis=(1,2))
                 sc.compute_initial_spectrum(spectrum=spectrumAll,title=spectrum)
                 
             # Re-initiate variables
