@@ -2,7 +2,8 @@ import numpy as np
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-#from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT 
+from matplotlib.ticker import ScalarFormatter
 
 # Matplotlib parameters
 import matplotlib.pyplot as plt
@@ -22,6 +23,22 @@ from PyQt5.QtWidgets import (QApplication, QWidget, QMainWindow, QTabWidget, QHB
                              QToolButton)
 from PyQt5.QtGui import QIcon, QStandardItem, QStandardItemModel
 from PyQt5.QtCore import Qt, QSize, pyqtSignal
+
+
+class NavigationToolbar(NavigationToolbar2QT):
+    # Select only a few buttons
+    toolitems = [t for t in NavigationToolbar2QT.toolitems if
+                 t[0] in ('Home', 'Pan', 'Zoom', 'Save')]
+
+
+class imageNavigationToolbar(NavigationToolbar2QT):
+    # Select only a few buttons
+    toolitems = [t for t in NavigationToolbar2QT.toolitems if
+                 t[0] in ('Home', 'Pan', 'Zoom', 'Save')]
+    #toolitems.append(('Levels','Set levels of the image',self.path0+'/icons/levels.png,))
+
+
+    #levelsAction = self.createAction(self.path0+'/icons/levels.png','Adjust image levels','Ctrl+L',self.changeVisibility)
 
 
 class MplCanvas(FigureCanvas):
@@ -197,54 +214,169 @@ class SpectrumCanvas(MplCanvas):
     """ Canvas to plot spectra """
     def __init__(self, *args, **kwargs):
         MplCanvas.__init__(self, *args, **kwargs)
+        #self.fig.set_tight_layout(True)
+        self.fig.set_edgecolor('none')
+        
+        self.axes = self.fig.add_axes([0.1,0.1,.85,.85])
+        self.axes.grid(True, which='both')
+        self.axes.set_xlabel('Wavelength [$\\mu$m]')
+        self.axes.set_ylabel('Flux [Jy]')
+        
+        # Checks
+        self.displayFlux = True
+        self.displayUFlux = True
+        self.displayAtran = True
+        self.displayExposure = True
+        self.displayLines = False
 
+        self.axes.xaxis.set_major_formatter(ScalarFormatter(useOffset=False))
+        self.axes.yaxis.set_major_formatter(ScalarFormatter(useOffset=False))
+        #self.axes.xaxis.set_major_formatter(plt.NullFormatter())
+        #self.axes.yaxis.set_major_formatter(plt.NullFormatter())
+        self.axes.spines['top'].set_visible(False)
+        self.axes.spines['right'].set_visible(False)
+        #self.axes.spines['left'].set_visible(False)
+
+        # Use legend to hide/show lines
+        self.fig.canvas.mpl_connect('pick_event', self.onpick)
         #mySignal = pyqtSignal(str)
         
-    def compute_initial_spectrum(self, image=None,xmin=None,xmax=None):
-        if image is None:
-            ''' initial definition when images are not yet read '''
-            pass
+    def compute_initial_spectrum(self, spectrum=None,xmin=None,xmax=None):
+        if spectrum is None:
+            ''' initial definition when spectrum not yet available '''
         else:
-            self.fig.set_tight_layout(True)
-            self.fig.set_edgecolor('none')
-            
-            self.axes = self.fig.add_axes([0.0,0.4,1.,1.])
-            self.ax2 = self.axes.twinx()
-            self.ax3 = self.axes.twinx()
-            self.ax4 = self.axes.twinx()
+            s = spectrum
+            self.instrument = s.instrument
+            self.fluxLine = self.axes.step(s.wave,s.flux,color='blue',label='Flux')
+            self.fluxLayer, = self.fluxLine
+            if s.instrument == 'FIFI-LS':
+                try:
+                    self.ax2.remove()
+                    self.ax3.remove()
+                    self.ax4.remove()
+                except:
+                    pass
+                self.ax2 = self.axes.twinx()
+                self.ax3 = self.axes.twinx()
+                self.ax4 = self.axes.twinx()
+                self.ax2.set_ylim([0,1.1])
+                self.ax4.tick_params(labelright='off',right='off')
+                self.atranLine = self.ax2.step(s.wave*(1.+s.baryshift), s.atran,color='red',label='Atm Trans')
+                self.exposureLine = self.ax3.step(s.wave, s.exposure, color='orange',label='Exposure')
+                ymax = np.nanmax(s.flux); ymin = np.nanmin(s.flux)
+                yumax = np.nanmax(s.uflux); yumin = np.nanmin(s.uflux)
+                if yumax > ymax: ymax=yumax
+                if yumin < ymin: ymin=yumin
+                self.ax3.set_ylim([0.5,np.nanmax(s.exposure)*1.04])
+                self.ufluxLine = self.ax4.step(s.wave*(1.+s.baryshift),s.uflux,color='green',label='Unc Flux')
+                self.ax4.set_ylim(self.axes.get_ylim())
+                self.axes.set_xlim([np.min(s.wave),np.max(s.wave)])
+                #self.ax1.set_title(spectrum.objname+" ["+spectrum.filegpid+"] @ "+spectrum.obsdate)
+                self.ufluxLayer, = self.ufluxLine
+                self.atranLayer, = self.atranLine
+                self.exposureLayer, = self.exposureLine
 
-            # Checks
-            self.displayFlux = True
-            self.displayUFlux = False
-            self.displayAtran = False
-            self.displayExposure = False
-            self.displayLines = False
-            
+                
+                lns = self.fluxLine \
+                      +self.ufluxLine \
+                      +self.atranLine \
+                      +self.exposureLine
+                lines = [self.fluxLayer, self.ufluxLayer, self.atranLayer, self.exposureLayer]
+                visibility = [self.displayFlux, self.displayUFlux, self.displayAtran, self.displayExposure]
+
+                
+            elif s.instrument == 'GREAT':
+                self.displayUFlux = False
+                self.displayAtran = False
+                self.displayExposure = False
+                lns = self.fluxLine
+                lines = [self.fluxLayer]
+                visibility = [self.displayFlux]
+
+            # Add axes
+            if self.displayExposure:
+                self.ax3.tick_params(labelright='on',right='on',direction='in',pad=-30,colors='orange')
+            if self.displayAtran:
+                self.ax2.get_yaxis().set_tick_params(labelright='on',right='on')            
+                self.ax2.get_yaxis().set_tick_params(which='both', direction='out',colors='red')
+
+            # Prepare legend                
+            self.labs = [l.get_label() for l in lns]
+            leg = self.axes.legend(lns, self.labs, loc='upper left',frameon=False,framealpha=0.0)
+            self.lined = dict()
+            self.labed = dict()
+            for legline, origline, txt in zip(leg.get_lines(), lines, leg.texts):
+                legline.set_picker(5) # 5pts tolerance
+                self.lined[legline] = origline
+                self.labed[legline] = txt
+
+            # Hide lines
+            for line, legline, vis in zip(lines, leg.get_lines(), visibility):
+                line.set_visible(vis)
+                if vis:
+                    alpha=1.0
+                else:
+                    alpha=0.2
+                legline.set_alpha(alpha)
+                txt = self.labed[legline]
+                txt.set_alpha(alpha)
+
+
+                
+    def onpick(self, event):
+        legline = event.artist
+        label = legline.get_label()
+        origline = self.lined[legline]
+        txt = self.labed[legline]
+        vis = not origline.get_visible()
+        origline.set_visible(vis)
+        # Change the alpha on the line in the legend so we can see what lines
+        # have been toggled
+        if vis:
+            legline.set_alpha(1.0)
+            txt.set_alpha(1.0)
+            if label == 'Exposure':
+                self.displayExposure = True
+                self.ax3.tick_params(labelright='on',right='on',direction='in',pad=-30,colors='orange')
+            elif label == 'Atm Trans':
+                self.displayAtran = True
+                self.ax2.get_yaxis().set_tick_params(labelright='on',right='on')            
+                self.ax2.get_yaxis().set_tick_params(which='both', direction='out',colors='red')
+            elif label == 'Unc Flux':
+                self.displayUFlux = True
+            elif label == 'Flux':
+                self.displayFlux = True
+        else:
+            legline.set_alpha(0.2)
+            txt.set_alpha(0.2)
+            if label == 'Exposure':
+                self.displayExposure = False
+                self.ax3.get_yaxis().set_tick_params(labelright='off',right='off')
+            elif label == 'Atm Trans':
+                self.displayAtran = False
+                self.ax2.get_yaxis().set_tick_params(labelright='off',right='off')            
+            elif label == 'Unc Flux':
+                self.displayUFlux = False
+            elif label == 'Flux':
+                self.displayFlux = False
+        self.fig.canvas.draw_idle()
 
             
-            self.axes.yaxis.set_major_formatter(plt.NullFormatter())
-            self.axes.spines['top'].set_visible(False)
-            self.axes.spines['right'].set_visible(False)
-            self.axes.spines['left'].set_visible(False)
-            # Print the histogram of finite values
-            ima = image.ravel()
-            mask = np.isfinite(ima)
-            ima = ima[mask]
-            ima = np.sort(ima)
-            s = np.size(ima)
-            smax = min(int(s*0.9995),s-1)
-            nbins=256
-            n, self.bins, patches = self.axes.hist(ima, bins=nbins, range=(np.nanmin(ima), ima[smax]), fc='k', ec='k')
-            # Define the interval containing 99% of the values
+    # def update_spectrum(self):
+        
+        #self.fluxLayer.set_visible(self.displayFlux)
+        #self.ufluxLayer.set_visible(self.displayUFlux)
+        #self.atranLayer.set_visible(self.displayAtran)
+        #self.exposureLayer.set_visible(self.displayExposure)
+        #if self.instrument == 'FIFI-LS':
+        #    if self.displayExposure:
+        #        self.ax3.tick_params(labelright='on',right='on',direction='in',pad=-30,colors='orange')
+        #    else:
+        #        self.ax3.get_yaxis().set_tick_params(labelright='off',right='off')
+        #    if self.displayAtran:
+        #        self.ax2.get_yaxis().set_tick_params(labelright='on',right='on')            
+        #        self.ax2.get_yaxis().set_tick_params(which='both', direction='out',colors='red')
+        #    else:
+        #        self.ax2.get_yaxis().set_tick_params(labelright='off',right='off')            
 
-            self.x = np.arange(s)
-            if xmin == None:
-                xmin = ima[int(s*0.01)]
-            if xmax == None:
-                xmax = ima[int(s*0.99)-1]
-            self.onSelect(xmin,xmax)
-            # Start a span selector
-            self.span = SpanSelector(self.axes, self.onSelect, 'horizontal', useblit=True,
-                                     rectprops=dict(alpha=0.5, facecolor='LightSalmon'),button=1)
-            # Define the way to draw/read a shaded interval (check from sospex)
-    
+

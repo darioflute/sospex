@@ -41,7 +41,7 @@ width: 18px;
 }
 QToolBar {
 background-color: transparent;
-border: 1px transparent;
+border: 0px transparent;
 }
 QToolBar::separator{
 background-color: transparent;

@@ -62,8 +62,8 @@ class specCube(object):
             calib = 971.
             factor = calib*eta_fss*eta_mb
             self.flux *= factor   # Transformed from temperature to S_nu [Jy]            
-            nu0 = header['RESTFREQ']  # Hz
-            l0 = c/nu0*1.e6
+            nu0 = header['RESTFREQ']  # MHz
+            l0 = c/nu0  # in micron
             vel = -self.cdelt3*self.crpix3+self.cdelt3*np.arange(self.n)+self.crval3
             self.wave = l0 + l0*vel/c
 
@@ -75,16 +75,35 @@ class specCube(object):
         self.points = np.array([np.ravel(xi),np.ravel(yi)]).transpose()
 
 
-class spectrum(object):
-    """ class for external spectrum """
-    def __init__(self, infile):
-        hdl = fits.open(infile)
-        header = hdl[0].header
-        self.flux = hdl[0].data
-        crval = header['CRVAL']
-        crpix = header['CRPIX']
-        cdelt = header['CDELT']
-        naxis = header['NAXIS1']
-        # I should consider the unit here,
-        # now I assume everything in um ...
-        self.wave = crval+(np.arange(naxis)-crpix+1)*cdelt
+#class spectrum(object):
+#    """ class for external spectrum """
+#    def __init__(self, infile):
+#        hdl = fits.open(infile)
+#        header = hdl[0].header
+#        self.flux = hdl[0].data
+#        crval = header['CRVAL']
+#        crpix = header['CRPIX']
+#        cdelt = header['CDELT']
+#        naxis = header['NAXIS1']
+#        # I should consider the unit here,
+#        # now I assume everything in um ...
+#        self.wave = crval+(np.arange(naxis)-crpix+1)*cdelt
+
+class Spectrum(object):
+    """ class to define a spectrum """
+    def __init__(self, wave, flux, uflux=None, exposure=None, atran=None, instrument=None, baryshift=None, redshift=None):
+        self.wave = wave
+        self.flux = flux
+        if exposure is not None:
+            self.exposure = exposure
+        if atran is not None:
+            self.atran = atran
+        if uflux is not None:
+            self.uflux = uflux
+        if instrument is not None:
+            self.instrument = instrument
+        if baryshift is not None:
+            self.baryshift=baryshift
+        if redshift is not None:
+            self.redshift = redshift
+            

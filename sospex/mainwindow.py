@@ -10,7 +10,8 @@ from PyQt5.QtCore import Qt, QSize, QTimer, pyqtSignal
 
 import matplotlib
 matplotlib.use('Qt5Agg')
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+from graphics import  NavigationToolbar
+from matplotlib.widgets import SpanSelector
 
  
 class GUI (QMainWindow):
@@ -109,7 +110,7 @@ class GUI (QMainWindow):
         self.stabs.resize(self.stabs.minimumSizeHint())  # Avoid expansion
         # connect image and histogram to  events
         sid1=sc.mpl_connect('button_release_event', self.onDraw)
-        sid2=sc.mpl_connect('scroll_event',self.onWheel)
+        sid2=sc.mpl_connect('scroll_event',self.onWheel2)
         return t,sc,sid1,sid2
 
     def addImage(self,b):
@@ -157,6 +158,23 @@ class GUI (QMainWindow):
         ima = None
         his = None
 
+    def removeSpecTab(self, stab):
+        print('removing tab no ',stab)
+        widget = self.stabs.widget(stab)
+        if widget is not None:
+            widget.deleteLater()
+        self.stabs.removeTab(stab)
+        # Disconnect and remove canvases
+        spec = self.sci[stab]
+        c1 = self.scid1[stab]
+        c2 = self.scid2[stab]
+        spec.mpl_disconnect(c1)
+        spec.mpl_disconnect(c2)
+        self.sci.remove(spec)
+        self.scid1.remove(c1)
+        self.scid2.remove(c2)
+        ima = None
+
         
     def onITabChange(self, itab):
         ''' When tab changes check if latest update of ellipse are implemented '''
@@ -190,13 +208,11 @@ class GUI (QMainWindow):
 
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
-        print('Index is ', ic)
+        #print('Index is ', ic)
 
     def onWheel(self,event):
         ''' enable zoom with mouse wheel and propagate changes to other tabs '''
         eb = event.button
-
-
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
         curr_xlim = ic.axes.get_xlim()
@@ -224,6 +240,9 @@ class GUI (QMainWindow):
             ima.changed = True
 
 
+    def onWheel2(self,event):
+        pass
+
     def createSpectralPanel(self):
         """ Panel to plot spectra """
 
@@ -237,6 +256,8 @@ class GUI (QMainWindow):
 
         # Tabs with plots        
         self.stabs = QTabWidget()
+        self.stabs.setTabsClosable(True)
+        self.stabs.tabCloseRequested.connect(self.removeSpecTab)
         self.stabs.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
         self.stabs.currentChanged.connect(self.onSTabChange)  # things to do when changing tab
         self.stabi = []
@@ -611,6 +632,15 @@ class GUI (QMainWindow):
         """ Cut part of the cube """
         self.sb.showMessage("Define slice of the cube ", 1000)
 
+        #try:
+        #    sc = stab[0]
+        #    sc.region.remove()
+        #except:
+        #    pass
+
+
+        
+
     def maskCube(self):
         """ Mask a slice of the cube """
         self.sb.showMessage("Drag your mouse over the spectrum to mask part of the cube or click over to unmask", 2000)
@@ -697,7 +727,7 @@ class GUI (QMainWindow):
     def newFile(self):
         """ Display a new image """
 
-        from specobj import specCube 
+        from specobj import specCube, Spectrum
 
         fd = QFileDialog()
         fd.setNameFilters(["Fits Files (*.fits)","All Files (*)"])
@@ -711,14 +741,20 @@ class GUI (QMainWindow):
             # Ask to save analysis (cubes, spectra) TODO
             # Read the spectral cube
             self.specCube = specCube(fileName[0])
-            # Delete pre-existing tabs
+            # Delete pre-existing image tabs
             try:
                 # Remove tabs, image and histo canvases and disconnect them
                 # The removal is done in reversed order to get all the tabs
                 for itab in reversed(range(len(self.ici))):
                     self.removeTab(itab)
             except:
-                pass    
+                pass
+            # Delete spectral tabs
+            try:
+                for stab in reversed(range(len(self.sci))):
+                    self.removeSpecTab(stab)
+            except:
+                pass
             # Open new tabs and display it
             if self.specCube.instrument == 'FIFI-LS':
                 self.bands = ['Flux','uFlux','Exp']
@@ -764,15 +800,45 @@ class GUI (QMainWindow):
                 ih.compute_initial_figure(image=image,xmin=clim[0],xmax=clim[1])
             #self.imagePanel.update()
             # Compute initial spectra
-            for spectrum in self.spectra:
-                sc = self.sci[self.spectra.index(spectrum)]
-                spectrumAll = np.nansum(self.specCube.flux, axis=(1,2))
-                sc.compute_initial_spectrum(spectrum=spectrumAll,title=spectrum)
+            spectrum = self.spectra[0]
+            #            for spectrum in self.spectra:
+            sc = self.sci[self.spectra.index(spectrum)]
+            fluxAll = np.nansum(self.specCube.flux, axis=(1,2))
+            if self.specCube.instrument == 'GREAT':
+                spec = Spectrum(self.specCube.wave, fluxAll, instrument=self.specCube.instrument, redshift=self.specCube.redshift )
+            elif self.specCube.instrument == 'FIFI-LS':
+                ufluxAll = np.nansum(self.specCube.uflux, axis=(1,2))
+                expAll = np.nansum(self.specCube.exposure, axis=(1,2))
+                spec = Spectrum(self.specCube.wave, fluxAll, uflux= ufluxAll,
+                                exposure=expAll, atran = self.specCube.atran, instrument=self.specCube.instrument,
+                                redshift=self.specCube.redshift, baryshift = self.specCube.baryshift)
+            print("Compute initial spectrum")
+            sc.compute_initial_spectrum(spectrum=spec)
+            # Start the span selector to show only part of the cube
+            self.regionlimits = None
+            self.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
+                                     rectprops=dict(alpha=0.5, facecolor='LightSalmon'), button=1)
                 
             # Re-initiate variables
             self.contours = 'off'
             self.blink = 'off'
 
+    def onSelect(self, xmin, xmax):
+        """ Consider only a slice of the cube when computing the image """
+
+        # Find indices of the shaded region
+        indmin, indmax = np.searchsorted(self.specCube.wave, (xmin, xmax))
+        indmax = min(len(self.specCube.wave) - 1, indmax)
+        self.regionlimits = np.array([xmin,xmax])
+
+        print('New limits are: ', self.regionlimits)
+
+        # Draw region on spectrum (All)
+        
+        # Update images (flux, uflux, coverage)
+
+        
+            
     def doZoomAll(self, event):
         ''' propagate limit changes to all images '''
         itab = self.itabs.currentIndex()
@@ -781,6 +847,8 @@ class GUI (QMainWindow):
             self.zoomAll(itab)
 
     def zoomAll(self, itab):
+
+        from specobj import Spectrum
         ic = self.ici[itab]
         if ic.toolbar._active == 'ZOOM':
             ic.toolbar.zoom()  # turn off zoom
@@ -794,6 +862,36 @@ class GUI (QMainWindow):
             ima.axes.set_xlim(x)
             ima.axes.set_ylim(y)
             ima.changed = True
+
+        # Update total spectra
+        spectrum = self.spectra[0]
+        #            for spectrum in self.spectra:
+        ic = self.ici[0]
+        x,y = ic.wcs.all_world2pix(ra,dec,1)
+        x0 = int(np.min(x))
+        x1 = int(np.max(x))
+        y0 = int(np.min(y))
+        y1 = int(np.max(y))
+        print ('limits are ', x0,x1,' and ',y0,y1)
+        fluxAll = np.nansum(self.specCube.flux[:,y0:y1,x0:x1], axis=(1,2))
+        if self.specCube.instrument == 'GREAT':
+            spec = Spectrum(self.specCube.wave, fluxAll, instrument=self.specCube.instrument, redshift=self.specCube.redshift )
+        elif self.specCube.instrument == 'FIFI-LS':
+            ufluxAll = np.nansum(self.specCube.uflux[:,y0:y1,x0:x1], axis=(1,2))
+            expAll = np.nansum(self.specCube.exposure[:,y0:y1,x0:x1], axis=(1,2))
+            spec = Spectrum(self.specCube.wave, fluxAll, uflux= ufluxAll,
+                            exposure=expAll, atran = self.specCube.atran, instrument=self.specCube.instrument,
+                            redshift=self.specCube.redshift, baryshift = self.specCube.baryshift)
+
+        # Clear previous spectrum and plot new curves
+        sc = self.sci[self.spectra.index(spectrum)]
+        sc.axes.clear()
+        if self.specCube.instrument == 'FIFI-LS':
+            sc.ax2.clear()
+            sc.ax3.clear()
+            sc.ax4.clear()
+        sc.compute_initial_spectrum(spectrum=spec)
+        sc.fig.canvas.draw_idle()
             
 
                 
