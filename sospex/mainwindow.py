@@ -957,6 +957,6 @@ if __name__ == '__main__':
     # Adjust geometry to size of the screen
     screen_resolution = app.desktop().screenGeometry()
     width = screen_resolution.width()
-    gui.setGeometry(100, 100, width*0.9, width*0.4)
-    gui.hsplitter.setSizes ([width*0.35,width*0.55])
+    gui.setGeometry(width*0.025, 0, width*0.95, width*0.5)
+    gui.hsplitter.setSizes ([width*0.38,width*0.5])
     sys.exit(app.exec_())

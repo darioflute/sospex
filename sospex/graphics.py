@@ -210,7 +210,7 @@ class SpectrumCanvas(MplCanvas):
         MplCanvas.__init__(self, *args, **kwargs)
 
         self.fig.set_edgecolor('none')
-        self.axes = self.fig.add_axes([0.1,0.1,.85,.85])
+        self.axes = self.fig.add_axes([0.12,0.12,.82,.82])
         
         # Checks
         self.displayFlux = True
@@ -280,7 +280,7 @@ class SpectrumCanvas(MplCanvas):
             self.ax2 = self.axes.twinx()
             self.ax3 = self.axes.twinx()
             self.ax4 = self.axes.twinx()
-            self.ax2.set_ylim([0,1.1])
+            self.ax2.set_ylim([0.01,1.1])
             self.ax4.tick_params(labelright='off',right='off')
             self.atranLine = self.ax2.step(xr, s.atran,color='red',label='Atm Trans')
             self.exposureLine = self.ax3.step(x, s.exposure, color='orange',label='Exposure')
@@ -288,7 +288,7 @@ class SpectrumCanvas(MplCanvas):
             yumax = np.nanmax(s.uflux); yumin = np.nanmin(s.uflux)
             if yumax > ymax: ymax=yumax
             if yumin < ymin: ymin=yumin
-            self.ax3.set_ylim([0.5,np.nanmax(s.exposure)*1.04])
+            self.ax3.set_ylim([0.5,np.nanmax(s.exposure)*1.54])
             self.ufluxLine = self.ax4.step(xr,s.uflux,color='green',label='Unc Flux')
             self.ax4.set_ylim(self.axes.get_ylim())
             #self.ax1.set_title(spectrum.objname+" ["+spectrum.filegpid+"] @ "+spectrum.obsdate)
@@ -315,14 +315,14 @@ class SpectrumCanvas(MplCanvas):
 
         # Add axes
         if self.displayExposure:
-            self.ax3.tick_params(labelright='on',right='on',direction='in',pad=-30,colors='orange')
+            self.ax3.tick_params(labelright='on',right='on',direction='out',pad=0,colors='orange')
         if self.displayAtran:
             self.ax2.get_yaxis().set_tick_params(labelright='on',right='on')            
-            self.ax2.get_yaxis().set_tick_params(which='both', direction='out',colors='red')
+            self.ax2.get_yaxis().set_tick_params(which='both', direction='in', pad = -20, colors='red')
             
         # Prepare legend                
         self.labs = [l.get_label() for l in lns]
-        leg = self.axes.legend(lns, self.labs, loc='upper left',frameon=False,framealpha=0.0)
+        leg = self.axes.legend(lns, self.labs, loc='best',frameon=False,framealpha=0.0)
         self.lined = dict()
         self.labed = dict()
         for legline, origline, txt in zip(leg.get_lines(), lines, leg.texts):
