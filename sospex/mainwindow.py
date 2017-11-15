@@ -271,8 +271,8 @@ class GUI (QMainWindow):
         
         # Add widgets to panel
         layout.addWidget(self.tb)
-        layout.addWidget(self.stabs)
         layout.addWidget(self.sb)
+        layout.addWidget(self.stabs)
 
         
     def createToolbar(self):
@@ -631,7 +631,9 @@ class GUI (QMainWindow):
     def sliceCube(self):
         """ Cut part of the cube """
         self.sb.showMessage("Define slice of the cube ", 1000)
-
+        self.slice = 'on'
+        sc = self.sci[self.spectra.index('All')]
+        sc.span.set_visible(True)
         #try:
         #    sc = stab[0]
         #    sc.region.remove()
@@ -798,6 +800,9 @@ class GUI (QMainWindow):
                 ih = self.ihi[self.bands.index(ima)]
                 clim = ic.image.get_clim()
                 ih.compute_initial_figure(image=image,xmin=clim[0],xmax=clim[1])
+                x = ic.axes.get_xlim()
+                y = ic.axes.get_ylim()
+                self.zoomlimits = [x,y]
             #self.imagePanel.update()
             # Compute initial spectra
             spectrum = self.spectra[0]
@@ -815,29 +820,69 @@ class GUI (QMainWindow):
             print("Compute initial spectrum")
             sc.compute_initial_spectrum(spectrum=spec)
             # Start the span selector to show only part of the cube
-            self.regionlimits = None
-            self.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
-                                     rectprops=dict(alpha=0.5, facecolor='LightSalmon'), button=1)
+            sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
+                                   rectprops=dict(alpha=0.5, facecolor='LightSalmon'), button=1)
+            sc.span.set_visible(False)
                 
             # Re-initiate variables
             self.contours = 'off'
             self.blink = 'off'
+            self.slice = 'off'
 
     def onSelect(self, xmin, xmax):
         """ Consider only a slice of the cube when computing the image """
 
-        # Find indices of the shaded region
-        indmin, indmax = np.searchsorted(self.specCube.wave, (xmin, xmax))
-        indmax = min(len(self.specCube.wave) - 1, indmax)
-        self.regionlimits = np.array([xmin,xmax])
+        if self.slice == 'on':
+            # Find indices of the shaded region
+            print('xmin, xmax ',xmin,xmax)
+            sc = self.sci[self.spectra.index('All')]
+            if sc.xunit == 'THz':
+                c = 299792458.0  # speed of light in m/s
+                xmin, xmax = c/xmax*1.e-6, c/xmin*1.e-6
 
-        print('New limits are: ', self.regionlimits)
+            print('xmin, xmax ',xmin,xmax)
+            indmin, indmax = np.searchsorted(self.specCube.wave, (xmin, xmax))
+            indmax = min(len(self.specCube.wave) - 1, indmax)
+            print('indmin, indmax', indmin,indmax)
+            sc.regionlimits = [xmin,xmax]
 
-        # Draw region on spectrum (All)
-        
-        # Update images (flux, uflux, coverage)
 
-        
+            # Draw region on spectrum (All) and hide span selector
+            sc.shadeSpectrum()
+            sc.span.set_visible(False)
+
+            # Update images (flux, uflux, coverage)
+            if self.specCube.instrument == 'GREAT':
+                imas = ['Flux']
+            elif self.specCube.instrument == 'FIFI-LS':
+                imas = ['Flux','uFlux','Exp']
+            
+            for ima in imas:
+                ic = self.ici[self.bands.index(ima)]
+                ih = self.ihi[self.bands.index(ima)]
+                if ima == 'Flux':
+                    image = np.nanmedian(self.specCube.flux[indmin:indmax,:,:], axis=0)
+                elif ima == 'uFlux':
+                    image = np.nanmedian(self.specCube.uflux[indmin:indmax,:,:], axis=0)
+                elif ima == 'Exp':
+                    image = np.nansum(self.specCube.exposure[indmin:indmax,:,:], axis=0)
+                else:
+                    pass
+                ic.axes.clear()
+                ic.compute_initial_figure(image=image,wcs=self.specCube.wcs,title=ima)
+                clim = ic.image.get_clim()
+                ih.axes.clear()
+                ih.compute_initial_figure(image=image,xmin=clim[0],xmax=clim[1])
+                ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
+                x,y = self.zoomlimits
+                ic.axes.set_xlim(x)
+                ic.axes.set_ylim(y)
+                ic.changed = True
+                # We should do this only on the current tab (on tab change the ic.changed true will do it)
+                ic.fig.canvas.draw_idle()
+                ih.fig.canvas.draw_idle()
+                self.slice = 'off'
+                        
             
     def doZoomAll(self, event):
         ''' propagate limit changes to all images '''
@@ -854,6 +899,9 @@ class GUI (QMainWindow):
             ic.toolbar.zoom()  # turn off zoom
         x = ic.axes.get_xlim()
         y = ic.axes.get_ylim()
+        self.zoomlimits = [x,y]
+        x0 = int(np.min(x)); x1 = int(np.max(x))+1
+        y0 = int(np.min(y)); y1 = int(np.max(y))+1
         ra,dec = ic.wcs.all_pix2world(x,y,1)
         ici = self.ici.copy()
         ici.remove(ic)
@@ -864,15 +912,6 @@ class GUI (QMainWindow):
             ima.changed = True
 
         # Update total spectra
-        spectrum = self.spectra[0]
-        #            for spectrum in self.spectra:
-        ic = self.ici[0]
-        x,y = ic.wcs.all_world2pix(ra,dec,1)
-        x0 = int(np.min(x))
-        x1 = int(np.max(x))
-        y0 = int(np.min(y))
-        y1 = int(np.max(y))
-        print ('limits are ', x0,x1,' and ',y0,y1)
         fluxAll = np.nansum(self.specCube.flux[:,y0:y1,x0:x1], axis=(1,2))
         if self.specCube.instrument == 'GREAT':
             spec = Spectrum(self.specCube.wave, fluxAll, instrument=self.specCube.instrument, redshift=self.specCube.redshift )
@@ -884,7 +923,8 @@ class GUI (QMainWindow):
                             redshift=self.specCube.redshift, baryshift = self.specCube.baryshift)
 
         # Clear previous spectrum and plot new curves
-        sc = self.sci[self.spectra.index(spectrum)]
+        spectrum = self.spectra.index('All')
+        sc = self.sci[spectrum]
         sc.axes.clear()
         if self.specCube.instrument == 'FIFI-LS':
             sc.ax2.clear()
@@ -903,11 +943,6 @@ class GUI (QMainWindow):
             state = ih.isVisible()
             for ih in self.ihi:
                 ih.setVisible(not state)
-            #ic = self.ici[itab]
-            #ici = self.ici.copy()
-            #ici.remove(ic)
-            #for ima in ici:
-            #    ima.changed = True
         except:
             self.sb.showMessage("First choose a cube (press arrow) ", 1000)
             
