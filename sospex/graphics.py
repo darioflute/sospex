@@ -73,13 +73,26 @@ class ImageCanvas(MplCanvas):
             pass
         else:
             self.wcs = wcs
+            try:
+                self.fig.delaxes(self.axes)
+                self.axes = None
+                print("Deleting axes")
+            except:
+                pass
             self.axes = self.fig.add_axes([0.1,0.1,.8,.8], projection = self.wcs)
-            self.oimage = image
-            self.image = self.axes.imshow(image, cmap='gist_heat_r',interpolation='none')
             self.axes.coords[0].set_major_formatter('hh:mm:ss')
             self.axes.grid(color='black', ls='dashed')
             self.axes.set_xlabel('R.A.')
             self.axes.set_ylabel('Dec')
+            # Colorbar
+            self.cbaxes = self.fig.add_axes([0.9,0.1,0.02,0.85])
+            # Add title
+            if title != None:
+                self.fig.suptitle(title)
+
+            # Show image
+            self.showImage(image)
+            
 
             # Plot with North up (corners are clockwise from left-bottom)
             # corners = self.wcsn.calc_footprint()
@@ -90,28 +103,7 @@ class ImageCanvas(MplCanvas):
             #         self.axes.set_ylim([ylim[1],ylim[0]])
             #         self.flip = True
 
-            # Add title
-            if title != None:
-                self.fig.suptitle(title)
 
-            # Colorbar
-            cbaxes = self.fig.add_axes([0.9,0.1,0.02,0.85])
-            self.fig.colorbar(self.image, cax=cbaxes)
-
-            # Sliders to adjust intensity
-            #self.ax_cmin = self.figure.add_axes([0.1, 0.01, 0.8, 0.01])
-            #self.ax_cmax = self.figure.add_axes([0.1, 0.04, 0.8, 0.01])
-            #self.ax_cmin.clear()
-            #self.ax_cmax.clear()
-            vmed0=np.nanmedian(image)
-            d0 = np.nanstd(image)
-            #self.s_cmin = Slider(self.ax_cmin, 'low', vmed0-2*d0, vmed0+5*d0, valinit=vmed0-d0, facecolor='goldenrod')
-            #self.s_cmax = Slider(self.ax_cmax, 'high', vmed0-2*d0, vmed0+5*d0, valinit=vmed0+4*d0, facecolor='goldenrod')
-            self.image.set_clim([vmed0-d0,vmed0+4*d0])
-            #self.s_cmin.valtext.set_visible(False)
-            #self.s_cmax.valtext.set_visible(False)
-            #self.slider1=self.s_cmin.on_changed(self.updateScale)
-            #self.slider2=self.s_cmax.on_changed(self.updateScale)
 
 
             # Add ellipse centered on source
@@ -130,9 +122,19 @@ class ImageCanvas(MplCanvas):
             #     self.axes.add_patch(a)
             #     self.drrEllipse = DragResizeRotateEllipse(self.arcell)
 
+
+
+    def showImage(self, image):
+        
+            self.oimage = image
+            self.image = self.axes.imshow(image, cmap='gist_heat_r',interpolation='none')
+            self.fig.colorbar(self.image, cax=self.cbaxes)
+            # Intensity limits
+            vmed0=np.nanmedian(image)
+            d0 = np.nanstd(image)
+            self.image.set_clim([vmed0-d0,vmed0+4*d0])
+
             self.changed = False
-
-
 
     def updateScale(self,val):
         _cmin = self.s_cmin.val
@@ -154,6 +156,14 @@ class ImageHistoCanvas(MplCanvas):
     """ Canvas to plot the histogram of image intensity """
     def __init__(self, *args, **kwargs):
         MplCanvas.__init__(self, *args, **kwargs)
+        self.axes = self.fig.add_axes([0.0,0.4,1.,1.])
+        self.axes.yaxis.set_major_formatter(plt.NullFormatter())
+        self.axes.spines['top'].set_visible(False)
+        self.axes.spines['right'].set_visible(False)
+        self.axes.spines['left'].set_visible(False)
+        # Start a span selector
+        self.span = SpanSelector(self.axes, self.onSelect, 'horizontal', useblit=True,
+                                 rectprops=dict(alpha=0.5, facecolor='LightSalmon'),button=1)
 
     mySignal = pyqtSignal(str)
         
@@ -162,11 +172,6 @@ class ImageHistoCanvas(MplCanvas):
             ''' initial definition when images are not yet read '''
             pass
         else:
-            self.axes = self.fig.add_axes([0.0,0.4,1.,1.])
-            self.axes.yaxis.set_major_formatter(plt.NullFormatter())
-            self.axes.spines['top'].set_visible(False)
-            self.axes.spines['right'].set_visible(False)
-            self.axes.spines['left'].set_visible(False)
             # Print the histogram of finite values
             ima = image.ravel()
             mask = np.isfinite(ima)
@@ -176,19 +181,13 @@ class ImageHistoCanvas(MplCanvas):
             smax = min(int(s*0.9995),s-1)
             nbins=256
             n, self.bins, patches = self.axes.hist(ima, bins=nbins, range=(np.nanmin(ima), ima[smax]), fc='k', ec='k')
-            # Define the interval containing 99% of the values
 
-            self.x = np.arange(s)
+            # Define the interval containing 99% of the values
             if xmin == None:
                 xmin = ima[int(s*0.01)]
             if xmax == None:
                 xmax = ima[int(s*0.99)-1]
             self.onSelect(xmin,xmax)
-            # Start a span selector
-            self.span = SpanSelector(self.axes, self.onSelect, 'horizontal', useblit=True,
-                                     rectprops=dict(alpha=0.5, facecolor='LightSalmon'),button=1)
-            # Define the way to draw/read a shaded interval (check from sospex)
-            # Communicate values to the image (from the tab we know the canvas, but I have to communicate changes to the main window)
 
 
     def onSelect(self,xmin, xmax):
@@ -224,12 +223,9 @@ class SpectrumCanvas(MplCanvas):
         
         self.axes.spines['top'].set_visible(False)
         self.axes.spines['right'].set_visible(False)
-        #self.axes.spines['left'].set_visible(False)
-        #self.axes.spines['bottom'].set_visible(False)  # Ghost axes will contain different unit
 
         # Use legend to hide/show lines
         self.fig.canvas.mpl_connect('pick_event', self.onpick)
-        #mySignal = pyqtSignal(str)
         
     def compute_initial_spectrum(self, spectrum=None,xmin=None,xmax=None):
         if spectrum is None:
@@ -238,7 +234,6 @@ class SpectrumCanvas(MplCanvas):
             # Spectrum
             self.spectrum = spectrum
             self.instrument = spectrum.instrument
-            
             self.drawSpectrum()
         
     def drawSpectrum(self):
@@ -258,8 +253,8 @@ class SpectrumCanvas(MplCanvas):
             if s.instrument == 'FIFI-LS':
                 xr = x * (1+s.baryshift)
         elif self.xunit == 'THz':
-            self.axes.set_xlabel('Frequency [THz]', picker=True)
             c = 299792458.0  # speed of light in m/s
+            self.axes.set_xlabel('Frequency [THz]', picker=True)
             x = c/s.wave * 1.e-6
             if s.instrument == 'FIFI-LS':
                 xr = x / (1+s.baryshift)
@@ -272,9 +267,12 @@ class SpectrumCanvas(MplCanvas):
                 
         if s.instrument == 'FIFI-LS':
             try:
-                self.ax2.remove()
-                self.ax3.remove()
-                self.ax4.remove()
+                self.fig.delaxes(self.ax2)
+                self.fig.delaxes(self.ax3)
+                self.fig.delaxes(self.ax4)
+                #self.ax2.remove()
+                #self.ax3.remove()
+                #self.ax4.remove()
             except:
                 pass
             self.ax2 = self.axes.twinx()
@@ -313,6 +311,39 @@ class SpectrumCanvas(MplCanvas):
             lines = [self.fluxLayer]
             visibility = [self.displayFlux]
 
+
+        # Check if vel is defined and draw velocity axis
+        #if s.l0 is not None:
+        try:
+            #tl = self.axes.get_xticks()
+            #tl = tl[1:-1]
+            #print('ticks positions ', tl)
+            x1,x2 = self.axes.get_xlim()
+            c = 299792.458  # speed of light in km/s
+            if self.xunit == 'um':
+                #v = (tl/s.l0-1.)*c
+                #vtl = ["%.1f" % z for z in v]
+                vx1 = (x1/s.l0-1.)*c
+                vx2 = (x2/s.l0-1.)*c
+            elif self.xunit == 'THz':
+                #v = (c/s.l0/tl*1.e-3-1.)*c
+                #vtl = ["%.1f" % z for z in v]
+                vx1 = (c/s.l0/x1*1.e-3-1.)*c
+                vx2 = (c/s.l0/x2*1.e-3-1.)*c
+            #print('ticks labels ',vtl)
+            try:
+                self.fig.delaxes(self.vaxes)
+                #self.vaxes.remove()
+            except:
+                pass
+            self.vaxes = self.axes.twiny()
+            self.vaxes.xaxis.set_major_formatter(ScalarFormatter(useOffset=False))
+            self.vaxes.set_xlim((vx1,vx2))
+            #self.vaxes.set_xticks(v)
+            #self.vaxes.set_xticklabels(vtl)
+            self.vaxes.set_xlabel("Velocity [km/s]")
+        except:
+            print('l0 is not defined')
         # Add axes
         if self.displayExposure:
             self.ax3.tick_params(labelright='on',right='on',direction='out',pad=0,colors='orange')

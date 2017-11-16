@@ -241,7 +241,32 @@ class GUI (QMainWindow):
 
 
     def onWheel2(self,event):
-        pass
+        """ Wheel moves right/left the slice defined on spectrum """
+
+        sc = self.sci[self.spectra.index('All')]
+        print(event.button)
+        if sc.regionlimits is not None:
+            eb = event.button
+            xmin,xmax = sc.regionlimits
+            w = self.specCube.wave
+            dw = np.mean(w[1:]-w[:-1])        
+
+            # Increment region limits
+            if eb == 'up':
+                xmin += dw
+                xmax += dw
+            elif eb == 'down':
+                xmin -= dw
+                xmax -= dw
+            else:
+                pass        
+            # redraw images
+            self.slice = 'on'
+            if sc.xunit == 'THz':
+                c = 299792458.0  # speed of light in m/s
+                xmin, xmax = c/xmax*1.e-6, c/xmin*1.e-6  # Transform in THz as expected by onSelect
+            self.onSelect(xmin,xmax)
+
 
     def createSpectralPanel(self):
         """ Panel to plot spectra """
@@ -809,14 +834,15 @@ class GUI (QMainWindow):
             #            for spectrum in self.spectra:
             sc = self.sci[self.spectra.index(spectrum)]
             fluxAll = np.nansum(self.specCube.flux, axis=(1,2))
-            if self.specCube.instrument == 'GREAT':
-                spec = Spectrum(self.specCube.wave, fluxAll, instrument=self.specCube.instrument, redshift=self.specCube.redshift )
+            s = self.specCube
+            if s.instrument == 'GREAT':
+                spec = Spectrum(s.wave, fluxAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0 )
             elif self.specCube.instrument == 'FIFI-LS':
-                ufluxAll = np.nansum(self.specCube.uflux, axis=(1,2))
-                expAll = np.nansum(self.specCube.exposure, axis=(1,2))
-                spec = Spectrum(self.specCube.wave, fluxAll, uflux= ufluxAll,
-                                exposure=expAll, atran = self.specCube.atran, instrument=self.specCube.instrument,
-                                redshift=self.specCube.redshift, baryshift = self.specCube.baryshift)
+                ufluxAll = np.nansum(s.uflux, axis=(1,2))
+                expAll = np.nansum(s.exposure, axis=(1,2))
+                spec = Spectrum(s.wave, fluxAll, uflux= ufluxAll,
+                                exposure=expAll, atran = s.atran, instrument=s.instrument,
+                                redshift=s.redshift, baryshift = s.baryshift, l0=s.l0)
             print("Compute initial spectrum")
             sc.compute_initial_spectrum(spectrum=spec)
             # Start the span selector to show only part of the cube
@@ -849,7 +875,9 @@ class GUI (QMainWindow):
 
             # Draw region on spectrum (All) and hide span selector
             sc.shadeSpectrum()
+            sc.fig.canvas.draw_idle()
             sc.span.set_visible(False)
+            print('new shade')
 
             # Update images (flux, uflux, coverage)
             if self.specCube.instrument == 'GREAT':
@@ -857,6 +885,8 @@ class GUI (QMainWindow):
             elif self.specCube.instrument == 'FIFI-LS':
                 imas = ['Flux','uFlux','Exp']
             
+            itab0 = self.itabs.currentIndex()
+            ic0 = self.ici[itab0]
             for ima in imas:
                 ic = self.ici[self.bands.index(ima)]
                 ih = self.ihi[self.bands.index(ima)]
@@ -868,18 +898,15 @@ class GUI (QMainWindow):
                     image = np.nansum(self.specCube.exposure[indmin:indmax,:,:], axis=0)
                 else:
                     pass
-                ic.axes.clear()
-                ic.compute_initial_figure(image=image,wcs=self.specCube.wcs,title=ima)
-                clim = ic.image.get_clim()
-                ih.axes.clear()
-                ih.compute_initial_figure(image=image,xmin=clim[0],xmax=clim[1])
-                ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
+                ic.showImage(image)
+                # Set image limits to pre-existing values
                 x,y = self.zoomlimits
                 ic.axes.set_xlim(x)
                 ic.axes.set_ylim(y)
-                ic.changed = True
-                # We should do this only on the current tab (on tab change the ic.changed true will do it)
-                ic.fig.canvas.draw_idle()
+                # Update histogram
+                clim = ic.image.get_clim()
+                ih.axes.clear()
+                ih.compute_initial_figure(image=image,xmin=clim[0],xmax=clim[1])
                 ih.fig.canvas.draw_idle()
                 self.slice = 'off'
                         
@@ -913,23 +940,24 @@ class GUI (QMainWindow):
 
         # Update total spectra
         fluxAll = np.nansum(self.specCube.flux[:,y0:y1,x0:x1], axis=(1,2))
-        if self.specCube.instrument == 'GREAT':
-            spec = Spectrum(self.specCube.wave, fluxAll, instrument=self.specCube.instrument, redshift=self.specCube.redshift )
+        s = self.specCube
+        if s.instrument == 'GREAT':
+            spec = Spectrum(s.wave, fluxAll, instrument=s.instrument, redshift=s.redshift,l0=s.l0 )
         elif self.specCube.instrument == 'FIFI-LS':
-            ufluxAll = np.nansum(self.specCube.uflux[:,y0:y1,x0:x1], axis=(1,2))
-            expAll = np.nansum(self.specCube.exposure[:,y0:y1,x0:x1], axis=(1,2))
-            spec = Spectrum(self.specCube.wave, fluxAll, uflux= ufluxAll,
-                            exposure=expAll, atran = self.specCube.atran, instrument=self.specCube.instrument,
-                            redshift=self.specCube.redshift, baryshift = self.specCube.baryshift)
+            ufluxAll = np.nansum(s.uflux[:,y0:y1,x0:x1], axis=(1,2))
+            expAll = np.nansum(s.exposure[:,y0:y1,x0:x1], axis=(1,2))
+            spec = Spectrum(s.wave, fluxAll, uflux= ufluxAll,
+                            exposure=expAll, atran = s.atran, instrument=s.instrument,
+                            redshift=s.redshift, baryshift = s.baryshift, l0=s.l0)
 
         # Clear previous spectrum and plot new curves
         spectrum = self.spectra.index('All')
         sc = self.sci[spectrum]
         sc.axes.clear()
-        if self.specCube.instrument == 'FIFI-LS':
-            sc.ax2.clear()
-            sc.ax3.clear()
-            sc.ax4.clear()
+        #if self.specCube.instrument == 'FIFI-LS':
+        #    sc.ax2.clear()
+        #    sc.ax3.clear()
+        #    sc.ax4.clear()
         sc.compute_initial_spectrum(spectrum=spec)
         sc.fig.canvas.draw_idle()
             

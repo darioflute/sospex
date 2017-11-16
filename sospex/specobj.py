@@ -49,6 +49,8 @@ class specCube(object):
             self.euflux = hdl['UNCORRECTED_ERROR'].data
             self.wave = hdl['WAVELENGTH'].data
             self.n = len(self.wave)
+            self.l0 = None
+            #self.vel = np.zeros(self.n)  # prepare array of velocities
             self.x = hdl['X'].data
             self.y = hdl['Y'].data
             self.atran = hdl['TRANSMISSION'].data
@@ -65,6 +67,8 @@ class specCube(object):
             nu0 = header['RESTFREQ']  # MHz
             l0 = c/nu0  # in micron
             vel = -self.cdelt3*self.crpix3+self.cdelt3*np.arange(self.n)+self.crval3
+            self.l0 = l0
+            #self.vel = vel
             self.wave = l0 + l0*vel/c
 
         hdl.close()
@@ -91,7 +95,7 @@ class specCube(object):
 
 class Spectrum(object):
     """ class to define a spectrum """
-    def __init__(self, wave, flux, uflux=None, exposure=None, atran=None, instrument=None, baryshift=None, redshift=None):
+    def __init__(self, wave, flux, uflux=None, exposure=None, atran=None, instrument=None, baryshift=None, redshift=None, l0=None):
         self.wave = wave
         self.flux = flux
         if exposure is not None:
@@ -106,4 +110,6 @@ class Spectrum(object):
             self.baryshift=baryshift
         if redshift is not None:
             self.redshift = redshift
+        if l0 is not None:
+            self.l0 = l0
             
