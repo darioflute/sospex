@@ -4,6 +4,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT 
 from matplotlib.ticker import ScalarFormatter
+from matplotlib.font_manager import FontProperties
 
 # Matplotlib parameters
 import matplotlib.pyplot as plt
@@ -207,9 +208,11 @@ class SpectrumCanvas(MplCanvas):
     """ Canvas to plot spectra """
     def __init__(self, *args, **kwargs):
         MplCanvas.__init__(self, *args, **kwargs)
+        from lines import define_lines
 
+        self.Lines = define_lines()
         self.fig.set_edgecolor('none')
-        self.axes = self.fig.add_axes([0.12,0.12,.82,.82])
+        self.axes = self.fig.add_axes([0.12,0.12,.82,.8])
         
         # Checks
         self.displayFlux = True
@@ -350,7 +353,32 @@ class SpectrumCanvas(MplCanvas):
         if self.displayAtran:
             self.ax2.get_yaxis().set_tick_params(labelright='on',right='on')            
             self.ax2.get_yaxis().set_tick_params(which='both', direction='in', pad = -20, colors='red')
-            
+
+        # Add spectral lines
+        self.annotations = []
+        font = FontProperties(family='DejaVu Sans', size=12)
+        xlim0,xlim1 = self.axes.get_xlim()
+        ylim0,ylim1 = self.axes.get_ylim()
+        dy = ylim1-ylim0
+        for line in self.Lines.keys():
+            nline = self.Lines[line][0]
+            wline = self.Lines[line][1]*(1.+s.redshift)
+            if (wline > xlim0 and wline < xlim1):
+                wdiff = abs(s.wave - wline)
+                y = s.flux[(wdiff == wdiff.min())]
+                y1 = y
+                if (ylim1-(y+0.2*dy)) > ((y-0.2*dy)-ylim0):
+                    y2 = y+0.2*dy
+                else:
+                    y2 = y-0.2*dy
+                annotation = self.axes.annotate(nline, xy=(wline,y1),  xytext=(wline, y2), color='blue', alpha=0.4,
+                                                arrowprops=dict(color='blue',facecolor='y', arrowstyle='-',alpha=0.4),
+                                                rotation = 90, fontstyle = 'italic', fontproperties=font, visible=self.displayLines,)
+                self.annotations.append(annotation)     
+
+        for annotation in self.annotations:
+            annotation.set_visible(True)
+                
         # Prepare legend                
         self.labs = [l.get_label() for l in lns]
         leg = self.axes.legend(lns, self.labs, loc='best',frameon=False,framealpha=0.0)
