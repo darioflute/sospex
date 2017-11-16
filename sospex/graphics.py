@@ -376,8 +376,6 @@ class SpectrumCanvas(MplCanvas):
                                                 rotation = 90, fontstyle = 'italic', fontproperties=font, visible=self.displayLines,)
                 self.annotations.append(annotation)     
 
-        for annotation in self.annotations:
-            annotation.set_visible(True)
                 
         # Prepare legend                
         self.labs = [l.get_label() for l in lns]
@@ -457,6 +455,7 @@ class SpectrumCanvas(MplCanvas):
                     self.displayUFlux = True
                 elif label == 'Flux':
                     self.displayFlux = True
+                    self.displayLines = True
             else:
                 legline.set_alpha(0.2)
                 txt.set_alpha(0.2)
@@ -470,8 +469,11 @@ class SpectrumCanvas(MplCanvas):
                     self.displayUFlux = False
                 elif label == 'Flux':
                     self.displayFlux = False
+                    self.displayLines = False
             if self.shade == True:
                 self.shadeRegion()
+            for annotation in self.annotations:
+                annotation.set_visible(self.displayLines)
             self.fig.canvas.draw_idle()
         elif isinstance(event.artist, Text):            
             if self.xunit == 'um':
