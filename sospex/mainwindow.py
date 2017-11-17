@@ -109,7 +109,7 @@ class GUI (QMainWindow):
         t.layout.addWidget(sc.toolbar)
         self.stabs.resize(self.stabs.minimumSizeHint())  # Avoid expansion
         # connect image and histogram to  events
-        sid1=sc.mpl_connect('button_release_event', self.onDraw)
+        sid1=sc.mpl_connect('button_release_event', self.onDraw2)
         sid2=sc.mpl_connect('scroll_event',self.onWheel2)
         return t,sc,sid1,sid2
 
@@ -208,6 +208,7 @@ class GUI (QMainWindow):
 
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
+        
         #print('Index is ', ic)
 
     def onWheel(self,event):
@@ -239,6 +240,12 @@ class GUI (QMainWindow):
             ima.axes.set_ylim(y)
             ima.changed = True
 
+    def onDraw2(self,event):
+        stab = self.stabs.currentIndex()        
+        sc = self.sci[stab]
+        if sc.spectrum.redshift != self.specCube.redshift:
+            print("updating redshift ")
+            self.specCube.redshift = sc.spectrum.redshift
 
     def onWheel2(self,event):
         """ Wheel moves right/left the slice defined on spectrum """
