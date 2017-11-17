@@ -49,7 +49,7 @@ class specCube(object):
             self.euflux = hdl['UNCORRECTED_ERROR'].data
             self.wave = hdl['WAVELENGTH'].data
             self.n = len(self.wave)
-            self.l0 = None
+            self.l0 = np.nanmedian(self.wave)
             #self.vel = np.zeros(self.n)  # prepare array of velocities
             self.x = hdl['X'].data
             self.y = hdl['Y'].data

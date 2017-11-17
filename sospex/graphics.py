@@ -212,14 +212,14 @@ class SpectrumCanvas(MplCanvas):
 
         self.Lines = define_lines()
         self.fig.set_edgecolor('none')
-        self.axes = self.fig.add_axes([0.12,0.12,.82,.8])
+        self.axes = self.fig.add_axes([0.12,0.15,.82,.8])
         
         # Checks
         self.displayFlux = True
         self.displayUFlux = True
         self.displayAtran = True
         self.displayExposure = True
-        self.displayLines = False
+        self.displayLines = True
         self.shade = False
         self.regionlimits = None
         self.xunit = 'um'  # Alternatives are THz or km/s
@@ -229,6 +229,9 @@ class SpectrumCanvas(MplCanvas):
 
         # Use legend to hide/show lines
         self.fig.canvas.mpl_connect('pick_event', self.onpick)
+        self.fig.canvas.mpl_connect('button_release_event', self.onrelease)
+        self.dragged = None
+
         
     def compute_initial_spectrum(self, spectrum=None,xmin=None,xmax=None):
         if spectrum is None:
@@ -267,15 +270,53 @@ class SpectrumCanvas(MplCanvas):
                 
         self.fluxLine = self.axes.step(x,s.flux,color='blue',label='Flux')
         self.fluxLayer, = self.fluxLine
-                
+
+        # Fake line to have the lines in the legend
+        self.linesLine = self.axes.plot([0,0.1],[0,0],color='purple',alpha=0.4,label='Spec Lines')
+        self.linesLayer, = self.linesLine
+
+        # Add spectral lines
+        self.annotations = []
+        font = FontProperties(family='DejaVu Sans', size=12)
+        xlim0,xlim1 = self.axes.get_xlim()
+        if self.xunit == 'THz':
+            c = 299792458.0  # speed of light in m/s
+            xlim1,xlim0 = c/xlim0*1.e-6,c/xlim1*1.e-6
+        ylim0,ylim1 = self.axes.get_ylim()
+        dy = ylim1-ylim0
+        for line in self.Lines.keys():
+            nline = self.Lines[line][0]
+            wline = self.Lines[line][1]*(1.+s.redshift)
+            if (wline > xlim0 and wline < xlim1):
+                wdiff = abs(s.wave - wline)
+                y = s.flux[(wdiff == wdiff.min())]
+                y1 = y
+                if (ylim1-(y+0.2*dy)) > ((y-0.2*dy)-ylim0):
+                    y2 = y+0.2*dy
+                else:
+                    y2 = y-0.2*dy
+
+                if self.xunit == 'um':
+                    xline = wline
+                elif self.xunit == 'THz':
+                    c = 299792458.0  # speed of light in m/s
+                    xline = c/wline * 1.e-6
+                print('xline is ',xline)
+                annotation = self.axes.annotate(nline, xy=(xline,y1),  xytext=(xline, y2), color='purple', alpha=0.4,
+                                                arrowprops=dict(color='purple',facecolor='y', arrowstyle='-',alpha=0.4,
+                                                connectionstyle="angle,angleA=0,angleB=90,rad=10"),
+                                                rotation = 90, fontstyle = 'italic', fontproperties=font,
+                                                visible=self.displayLines,)
+                annotation.draggable()
+                self.annotations.append(annotation)     
+
+
+        
         if s.instrument == 'FIFI-LS':
             try:
                 self.fig.delaxes(self.ax2)
                 self.fig.delaxes(self.ax3)
                 self.fig.delaxes(self.ax4)
-                #self.ax2.remove()
-                #self.ax3.remove()
-                #self.ax4.remove()
             except:
                 pass
             self.ax2 = self.axes.twinx()
@@ -301,18 +342,20 @@ class SpectrumCanvas(MplCanvas):
             lns = self.fluxLine \
                   +self.ufluxLine \
                   +self.atranLine \
-                  +self.exposureLine
-            lines = [self.fluxLayer, self.ufluxLayer, self.atranLayer, self.exposureLayer]
-            visibility = [self.displayFlux, self.displayUFlux, self.displayAtran, self.displayExposure]
+                  +self.exposureLine \
+                  +self.linesLine
+            lines = [self.fluxLayer, self.ufluxLayer, self.atranLayer, self.exposureLayer, self.linesLayer]
+            visibility = [self.displayFlux, self.displayUFlux, self.displayAtran, self.displayExposure, self.displayLines]
             
                 
         elif s.instrument == 'GREAT':
             self.displayUFlux = False
             self.displayAtran = False
             self.displayExposure = False
-            lns = self.fluxLine
-            lines = [self.fluxLayer]
-            visibility = [self.displayFlux]
+            lns = self.fluxLine \
+                  +self.linesLine
+            lines = [self.fluxLayer,self.linesLayer]
+            visibility = [self.displayFlux,self.displayLines]
 
 
         # Check if vel is defined and draw velocity axis
@@ -349,37 +392,19 @@ class SpectrumCanvas(MplCanvas):
             print('l0 is not defined')
         # Add axes
         if self.displayExposure:
-            self.ax3.tick_params(labelright='on',right='on',direction='out',pad=0,colors='orange')
+            self.ax3.tick_params(labelright='on',right='on',direction='out',pad=5,colors='orange')
         if self.displayAtran:
-            self.ax2.get_yaxis().set_tick_params(labelright='on',right='on')            
-            self.ax2.get_yaxis().set_tick_params(which='both', direction='in', pad = -20, colors='red')
-
-        # Add spectral lines
-        self.annotations = []
-        font = FontProperties(family='DejaVu Sans', size=12)
-        xlim0,xlim1 = self.axes.get_xlim()
-        ylim0,ylim1 = self.axes.get_ylim()
-        dy = ylim1-ylim0
-        for line in self.Lines.keys():
-            nline = self.Lines[line][0]
-            wline = self.Lines[line][1]*(1.+s.redshift)
-            if (wline > xlim0 and wline < xlim1):
-                wdiff = abs(s.wave - wline)
-                y = s.flux[(wdiff == wdiff.min())]
-                y1 = y
-                if (ylim1-(y+0.2*dy)) > ((y-0.2*dy)-ylim0):
-                    y2 = y+0.2*dy
-                else:
-                    y2 = y-0.2*dy
-                annotation = self.axes.annotate(nline, xy=(wline,y1),  xytext=(wline, y2), color='blue', alpha=0.4,
-                                                arrowprops=dict(color='blue',facecolor='y', arrowstyle='-',alpha=0.4),
-                                                rotation = 90, fontstyle = 'italic', fontproperties=font, visible=self.displayLines,)
-                self.annotations.append(annotation)     
+            #self.ax2.get_yaxis().set_tick_params(labelright='on',right='on', which='both', direction='in', pad = -25, colors='red')
+            self.ax2.get_yaxis().set_tick_params(labelright='on',right='on', direction='in', pad = -25, colors='red')
 
                 
         # Prepare legend                
         self.labs = [l.get_label() for l in lns]
-        leg = self.axes.legend(lns, self.labs, loc='best',frameon=False,framealpha=0.0)
+        #leg = self.axes.legend(lns, self.labs, loc='best',frameon=False,framealpha=0.0)
+        leg = self.axes.legend(lns, self.labs, loc='upper center', bbox_to_anchor=(0.5, -0.07),
+                               fancybox=True, shadow=True, ncol=5)
+        leg.draggable()
+        
         self.lined = dict()
         self.labed = dict()
         for legline, origline, txt in zip(leg.get_lines(), lines, leg.texts):
@@ -455,6 +480,7 @@ class SpectrumCanvas(MplCanvas):
                     self.displayUFlux = True
                 elif label == 'Flux':
                     self.displayFlux = True
+                elif label == 'Spec Lines':
                     self.displayLines = True
             else:
                 legline.set_alpha(0.2)
@@ -469,26 +495,53 @@ class SpectrumCanvas(MplCanvas):
                     self.displayUFlux = False
                 elif label == 'Flux':
                     self.displayFlux = False
+                elif label == 'Spec Lines':
                     self.displayLines = False
             if self.shade == True:
                 self.shadeRegion()
             for annotation in self.annotations:
                 annotation.set_visible(self.displayLines)
             self.fig.canvas.draw_idle()
-        elif isinstance(event.artist, Text):            
-            if self.xunit == 'um':
-                self.xunit = 'THz'
-            else:
-                self.xunit = 'um'
+        elif isinstance(event.artist, Text):
+            text = event.artist.get_text()
+            if text == 'Wavelength [$\mu$m]' or text == 'Frequency [THz]':
+                if self.xunit == 'um':
+                    self.xunit = 'THz'
+                else:
+                    self.xunit = 'um'
 
-            self.axes.clear()
-            try:
-                self.ax2.clear()
-                self.ax3.clear()
-                self.ax4.clear()
-            except:
-                pass
-            self.drawSpectrum()
-            self.fig.canvas.draw_idle()
+                self.axes.clear()
+                try:
+                    self.ax2.clear()
+                    self.ax3.clear()
+                    self.ax4.clear()
+                except:
+                    pass
+                self.drawSpectrum()
+                self.fig.canvas.draw_idle()
+            else:
+                print(text, event.mouseevent.xdata)
+                self.dragged = event.artist
+                self.pick_pos = event.mouseevent.xdata
+                
         else:
             pass
+        return True
+
+    def onrelease(self, event):
+        if self.dragged is not None :
+            print ('old ', self.dragged.get_position(), ' new ', event.xdata)
+            x1 = event.xdata
+            x0 = self.pick_pos
+            if self.xunit == 'um':
+                z = (x1-x0)/x0
+            elif self.xunit == 'THz':
+                z = (x0-x1)/x1
+            print('z is ',z)
+            self.spectrum.redshift = (1.+self.spectrum.redshift)*(1+z)-1.
+            for annotation in self.annotations:
+                annotation.remove()
+            self.drawSpectrum()
+            self.fig.canvas.draw_idle()
+            self.dragged = None
+        return True
