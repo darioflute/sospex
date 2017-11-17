@@ -212,7 +212,7 @@ class SpectrumCanvas(MplCanvas):
 
         self.Lines = define_lines()
         self.fig.set_edgecolor('none')
-        self.axes = self.fig.add_axes([0.12,0.15,.82,.8])
+        self.axes = self.fig.add_axes([0.12,0.15,.8,.78])
         
         # Checks
         self.displayFlux = True
@@ -401,7 +401,7 @@ class SpectrumCanvas(MplCanvas):
         # Prepare legend                
         self.labs = [l.get_label() for l in lns]
         #leg = self.axes.legend(lns, self.labs, loc='best',frameon=False,framealpha=0.0)
-        leg = self.axes.legend(lns, self.labs, loc='upper center', bbox_to_anchor=(0.5, -0.07),
+        leg = self.axes.legend(lns, self.labs, loc='upper center', bbox_to_anchor=(0.5, -0.1),
                                fancybox=True, shadow=True, ncol=5)
         leg.draggable()
         
