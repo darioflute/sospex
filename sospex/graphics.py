@@ -1,5 +1,5 @@
 import numpy as np
-
+import os
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT 
@@ -30,10 +30,25 @@ from PyQt5.QtCore import Qt, QSize, pyqtSignal
 
 
 class NavigationToolbar(NavigationToolbar2QT):
-    # Select only a few buttons
-    toolitems = [t for t in NavigationToolbar2QT.toolitems if
-                 t[0] in ('Home', 'Pan', 'Zoom', 'Save')]
+    def __init__(self,canvas,parent):
+        # Select only a few buttons
+        #self.toolitems = [t for t in NavigationToolbar2QT.toolitems if
+        #                  t[0] in ('Home', 'Pan', 'Zoom', 'Save')]
+        self.iconDir = os.path.join(os.path.dirname(os.path.abspath(__file__)),"icons")
 
+        icon = QIcon(self.iconDir+'exit.png')
+        print('path of icons is ', icon)
+        self.toolitems = [
+            ('Home','Go back to original limits','home','home'),
+            ('Pan','Pan figure','move','pan'),
+            ('Zoom','Zoom on the figure','zoom_to_rect','zoom'),
+        ]
+        self.parent = parent
+        super().__init__(canvas,parent)
+
+    def fileQuit(self):
+        """ Quitting the program """
+        self.parent.close()
 
 
 class MplCanvas(FigureCanvas):
@@ -223,6 +238,8 @@ class SpectrumCanvas(MplCanvas):
         self.shade = False
         self.regionlimits = None
         self.xunit = 'um'  # Alternatives are THz or km/s
+        self.xlimits = None
+        self.ylimits = None
         
         self.axes.spines['top'].set_visible(False)
         self.axes.spines['right'].set_visible(False)
@@ -265,11 +282,29 @@ class SpectrumCanvas(MplCanvas):
             if s.instrument == 'FIFI-LS':
                 xr = x / (1+s.baryshift)
 
-        x0 = np.min(x); x1 = np.max(x)
-        self.axes.set_xlim([x0,x1])
-                
+        #x0 = np.min(x); x1 = np.max(x)
+        #self.axes.set_xlim([x0,x1])
+
+            
         self.fluxLine = self.axes.step(x,s.flux,color='blue',label='Flux')
         self.fluxLayer, = self.fluxLine
+
+        # Define limits or adjust to previous limits
+        if self.xlimits is not None:
+            xlim0,xlim1 = self.xlimits
+            if self.xunit == 'THz':
+                c = 299792458.0  # speed of light in m/s
+                xlim1,xlim0 = c/xlim0*1.e-6,c/xlim1*1.e-6
+            self.axes.set_xlim(xlim0,xlim1)
+            self.axes.set_ylim(self.ylimits)
+        else:
+            xlim0 = np.min(s.wave)
+            xlim1 = np.max(s.wave)
+            self.xlimits=(xlim0,xlim1)
+            self.ylimits=self.axes.get_ylim()
+            self.axes.set_xlim(xlim0,xlim1)
+            
+
 
         # Fake line to have the lines in the legend
         self.linesLine = self.axes.plot([0,0.1],[0,0],color='purple',alpha=0.4,label='Spec Lines')
@@ -279,10 +314,10 @@ class SpectrumCanvas(MplCanvas):
         self.annotations = []
         font = FontProperties(family='DejaVu Sans', size=12)
         xlim0,xlim1 = self.axes.get_xlim()
+        ylim0,ylim1 = self.axes.get_ylim()
         if self.xunit == 'THz':
             c = 299792458.0  # speed of light in m/s
             xlim1,xlim0 = c/xlim0*1.e-6,c/xlim1*1.e-6
-        ylim0,ylim1 = self.axes.get_ylim()
         dy = ylim1-ylim0
         for line in self.Lines.keys():
             nline = self.Lines[line][0]
@@ -301,7 +336,7 @@ class SpectrumCanvas(MplCanvas):
                 elif self.xunit == 'THz':
                     c = 299792458.0  # speed of light in m/s
                     xline = c/wline * 1.e-6
-                print('xline is ',xline)
+                #print('xline is ',xline)
                 annotation = self.axes.annotate(nline, xy=(xline,y1),  xytext=(xline, y2), color='purple', alpha=0.4,
                                                 arrowprops=dict(color='purple',facecolor='y', arrowstyle='-',alpha=0.4,
                                                 connectionstyle="angle,angleA=0,angleB=90,rad=10"),
@@ -518,6 +553,8 @@ class SpectrumCanvas(MplCanvas):
                 except:
                     pass
                 self.drawSpectrum()
+                #self.axes.set_xlim(self.xlimits)
+                #self.axes.set_ylim(self.ylimits)
                 self.fig.canvas.draw_idle()
             else:
                 print(text, event.mouseevent.xdata)
@@ -542,6 +579,8 @@ class SpectrumCanvas(MplCanvas):
             for annotation in self.annotations:
                 annotation.remove()
             self.drawSpectrum()
+            #self.axes.set_xlim(self.xlimits)
+            #self.axes.set_ylim(self.ylimits)
             self.fig.canvas.draw_idle()
             self.dragged = None
         return True

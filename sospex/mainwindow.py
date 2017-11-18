@@ -4,7 +4,7 @@ import numpy as np
 from PyQt5.QtWidgets import (QApplication, QWidget, QMainWindow, QTabWidget, QHBoxLayout,
                              QGroupBox, QVBoxLayout, QSizePolicy, QStatusBar, QSplitter,
                              QToolBar, QAction, QFileDialog, QTableView, QComboBox, QAbstractItemView,
-                             QToolButton, QMessageBox)
+                             QToolButton, QMessageBox, QPushButton)
 from PyQt5.QtGui import QIcon, QStandardItem, QStandardItemModel
 from PyQt5.QtCore import Qt, QSize, QTimer, pyqtSignal
 
@@ -104,6 +104,9 @@ class GUI (QMainWindow):
         sc = SpectrumCanvas(t, width=11, height=10.5, dpi=100)
         #ih.setVisible(False)
         sc.toolbar = NavigationToolbar(sc, self)
+        quitAction = self.createAction(self.path0+'/icons/exit.png','Quit program','Ctrl+q',self.fileQuit)
+        sc.toolbar.addAction(self.startAction)
+        sc.toolbar.addAction(quitAction)
         #ic.toolbar.pan('on')
         t.layout.addWidget(sc)
         t.layout.addWidget(sc.toolbar)
@@ -208,8 +211,11 @@ class GUI (QMainWindow):
 
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
-        
-        #print('Index is ', ic)
+
+        # Deselect pan option on release of mouse
+        if ic.toolbar._active == "PAN":
+            ic.toolbar.pan()
+
 
     def onWheel(self,event):
         ''' enable zoom with mouse wheel and propagate changes to other tabs '''
@@ -247,6 +253,11 @@ class GUI (QMainWindow):
             print("updating redshift ")
             self.specCube.redshift = sc.spectrum.redshift
 
+        # Deselect pan option on release of mouse
+        if sc.toolbar._active == "PAN":
+            sc.toolbar.pan()
+
+            
     def onWheel2(self,event):
         """ Wheel moves right/left the slice defined on spectrum """
 
@@ -316,7 +327,7 @@ class GUI (QMainWindow):
         self.tb.setObjectName('toolbar')
 
         # Actions
-        startAction = self.createAction(self.path0+'/icons/new.png','Load new observation','Ctrl+s',self.newFile)
+        self.startAction = self.createAction(self.path0+'/icons/new.png','Load new observation','Ctrl+s',self.newFile)
         levelsAction = self.createAction(self.path0+'/icons/levels.png','Adjust image levels','Ctrl+L',self.changeVisibility)
         self.blink = 'off'
         blinkAction = self.createAction(self.path0+'/icons/blink.png','Blink between 2 images','Ctrl+B',self.blinkImages)
@@ -338,7 +349,7 @@ class GUI (QMainWindow):
 
         
         self.tb.addWidget(self.spacer)
-        self.tb.addAction(startAction)
+        self.tb.addAction(self.startAction)
         self.tb.addAction(levelsAction)
         self.tb.addAction(blinkAction)
         self.tb.addAction(contoursAction)
@@ -508,6 +519,7 @@ class GUI (QMainWindow):
         """ Quitting the program """
         self.close()
 
+        
 
     def cutCube(self):
         """ Cut part of the cube """
@@ -852,6 +864,10 @@ class GUI (QMainWindow):
                                 redshift=s.redshift, baryshift = s.baryshift, l0=s.l0)
             print("Compute initial spectrum")
             sc.compute_initial_spectrum(spectrum=spec)
+            #sc.xlimits = sc.axes.get_xlim()
+            #sc.ylimits = sc.axes.get_ylim()
+            self.specZoomlimits = [sc.xlimits,sc.ylimits]
+            sc.cid = sc.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomSpec)
             # Start the span selector to show only part of the cube
             sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
                                    rectprops=dict(alpha=0.5, facecolor='LightSalmon'), button=1)
@@ -965,11 +981,28 @@ class GUI (QMainWindow):
         #    sc.ax2.clear()
         #    sc.ax3.clear()
         #    sc.ax4.clear()
+        ymax = np.max(fluxAll)
+        ymin = np.min(fluxAll)
+        sc.ylimits = (ymin,ymax*1.2)
         sc.compute_initial_spectrum(spectrum=spec)
         sc.fig.canvas.draw_idle()
+        sc.cid = sc.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomSpec)
             
-
-                
+    def doZoomSpec(self,event):
+        """ In the future impose the same limits to all the spectral tabs """
+        stab = self.itabs.currentIndex()
+        sc = self.sci[stab]
+        if sc.toolbar._active == 'ZOOM':
+            sc.toolbar.zoom()  # turn off zoom
+        xmin,xmax = sc.axes.get_xlim()
+        if sc.xunit == 'THz':
+            c = 299792458.0  # speed of light in m/s
+            xmin, xmax = c/xmax*1.e-6, c/xmin*1.e-6  # Transform in THz as expected by onSelect            
+        sc.xlimits = (xmin,xmax)
+        sc.ylimits = sc.axes.get_ylim()
+        self.specZoomlimits = [sc.xlimits,sc.ylimits]
+        print ('new limits are ', sc.xlimits, sc.ylimits)
+        
     def changeVisibility(self):
         """ Hide/show the histogram of image intensities """
         try:
