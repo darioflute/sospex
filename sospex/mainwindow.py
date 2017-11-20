@@ -103,10 +103,13 @@ class GUI (QMainWindow):
         self.stabs.addTab(t, b)
         sc = SpectrumCanvas(t, width=11, height=10.5, dpi=100)
         #ih.setVisible(False)
+        # Toolbar
         sc.toolbar = NavigationToolbar(sc, self)
-        quitAction = self.createAction(self.path0+'/icons/exit.png','Quit program','Ctrl+q',self.fileQuit)
-        sc.toolbar.addAction(self.startAction)
-        sc.toolbar.addAction(quitAction)
+        # Add actions to toolbar
+        sc.toolbar.addAction(self.sliceAction)
+        sc.toolbar.addAction(self.cutAction)
+        sc.toolbar.addAction(self.maskAction)
+
         #ic.toolbar.pan('on')
         t.layout.addWidget(sc)
         t.layout.addWidget(sc.toolbar)
@@ -125,8 +128,17 @@ class GUI (QMainWindow):
         self.itabs.addTab(t, b)
         ic = ImageCanvas(t, width=11, height=10.5, dpi=100)
         ih = ImageHistoCanvas(t, width=11, height=0.5, dpi=100)
-        #ih.setVisible(False)
+        ih.setVisible(False)
         ic.toolbar = NavigationToolbar(ic, self)
+
+        ic.toolbar.addAction(self.levelsAction)
+        ic.toolbar.addAction(self.blinkAction)
+        ic.toolbar.addAction(self.contoursAction)
+        ic.toolbar.addAction(self.momentAction)
+        #ic.toolbar.addWidget(self.apertureAction)        
+        ic.toolbar.addAction(self.cropAction)
+        ic.toolbar.addAction(self.cloudAction)
+
         #ic.toolbar.pan('on')
         t.layout.addWidget(ic)
         t.layout.addWidget(ih)
@@ -313,9 +325,13 @@ class GUI (QMainWindow):
         self.sb.showMessage("Welcome to SOSPEX !", 10000)
         
         # Add widgets to panel
-        layout.addWidget(self.tb)
-        layout.addWidget(self.sb)
+        banner = QWidget()
+        banner.layout = QHBoxLayout(banner)
+        banner.layout.addWidget(self.tb)
+        banner.layout.addWidget(self.sb)
+
         layout.addWidget(self.stabs)
+        layout.addWidget(banner)
 
         
     def createToolbar(self):
@@ -327,20 +343,21 @@ class GUI (QMainWindow):
         self.tb.setObjectName('toolbar')
 
         # Actions
+        self.quitAction = self.createAction(self.path0+'/icons/exit.png','Quit program','Ctrl+q',self.fileQuit)
         self.startAction = self.createAction(self.path0+'/icons/new.png','Load new observation','Ctrl+s',self.newFile)
-        levelsAction = self.createAction(self.path0+'/icons/levels.png','Adjust image levels','Ctrl+L',self.changeVisibility)
+        self.levelsAction = self.createAction(self.path0+'/icons/levels.png','Adjust image levels','Ctrl+L',self.changeVisibility)
         self.blink = 'off'
-        blinkAction = self.createAction(self.path0+'/icons/blink.png','Blink between 2 images','Ctrl+B',self.blinkImages)
-        momentAction = self.createAction(self.path0+'/icons/map.png','Compute moment 0','Ctrl+m',self.zeroMoment)
+        self.blinkAction = self.createAction(self.path0+'/icons/blink.png','Blink between 2 images','Ctrl+B',self.blinkImages)
+        self.momentAction = self.createAction(self.path0+'/icons/map.png','Compute moment 0','Ctrl+m',self.zeroMoment)
         self.contours = 'off'
-        contoursAction = self.createAction(self.path0+'/icons/contours.png','Overlap contours','Ctrl+c',self.overlapContours)
+        self.contoursAction = self.createAction(self.path0+'/icons/contours.png','Overlap contours','Ctrl+c',self.overlapContours)
         self.apertureAction = self.createApertureAction()
-        cutAction = self.createAction(self.path0+'/icons/cut.png','Cut part of the cube','Ctrl+k',self.cutCube)
-        cropAction = self.createAction(self.path0+'/icons/crop.png','Crop the cube','Ctrl+K',self.cropCube)
-        sliceAction = self.createAction(self.path0+'/icons/slice.png','Select a slice of the cube','Ctrl+K',self.sliceCube)
-        maskAction =  self.createAction(self.path0+'/icons/mask.png','Mask a slice of the cube','Ctrl+m',self.maskCube)
-        cloudAction = self.createAction(self.path0+'/icons/cloud.png','Download image from cloud','Ctrl+D',self.downloadImage)
-        quitAction = self.createAction(self.path0+'/icons/exit.png','Quit program','Ctrl+q',self.fileQuit)
+        self.cutAction = self.createAction(self.path0+'/icons/cut.png','Cut part of the cube','Ctrl+k',self.cutCube)
+        self.cropAction = self.createAction(self.path0+'/icons/crop.png','Crop the cube','Ctrl+K',self.cropCube)
+        self.sliceAction = self.createAction(self.path0+'/icons/slice.png','Select a slice of the cube','Ctrl+K',self.sliceCube)
+        self.maskAction =  self.createAction(self.path0+'/icons/mask.png','Mask a slice of the cube','Ctrl+m',self.maskCube)
+        self.cloudAction = self.createAction(self.path0+'/icons/cloud.png','Download image from cloud','Ctrl+D',self.downloadImage)
+
 
         # Add buttons to the toolbar
 
@@ -348,20 +365,21 @@ class GUI (QMainWindow):
         self.spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         
-        self.tb.addWidget(self.spacer)
+        ##self.tb.addWidget(self.spacer)
         self.tb.addAction(self.startAction)
-        self.tb.addAction(levelsAction)
-        self.tb.addAction(blinkAction)
-        self.tb.addAction(contoursAction)
-        self.tb.addAction(momentAction)
-        #self.tb.addSeparator()
+        self.tb.addAction(self.quitAction)
         self.tb.addWidget(self.apertureAction)        
-        self.tb.addAction(sliceAction)
-        self.tb.addAction(cutAction)
-        self.tb.addAction(cropAction)
-        self.tb.addAction(maskAction)
-        self.tb.addAction(cloudAction)
-        self.tb.addAction(quitAction)
+
+        #self.tb.addAction(self.levelsAction)
+        #self.tb.addAction(self.blinkAction)
+        #self.tb.addAction(self.contoursAction)
+        #self.tb.addAction(self.momentAction)
+        #self.tb.addAction(self.cropAction)
+        #self.tb.addAction(self.cloudAction)
+        ##self.tb.addSeparator()
+        #self.tb.addAction(self.sliceAction)
+        #self.tb.addAction(self.cutAction)
+        #self.tb.addAction(self.maskAction)
 
 
 
@@ -882,6 +900,7 @@ class GUI (QMainWindow):
         """ Consider only a slice of the cube when computing the image """
 
         if self.slice == 'on':
+            self.slice = 'off'
             # Find indices of the shaded region
             print('xmin, xmax ',xmin,xmax)
             sc = self.sci[self.spectra.index('All')]
@@ -900,7 +919,7 @@ class GUI (QMainWindow):
             sc.shadeSpectrum()
             sc.fig.canvas.draw_idle()
             sc.span.set_visible(False)
-            print('new shade')
+            #print('new shade')
 
             # Update images (flux, uflux, coverage)
             if self.specCube.instrument == 'GREAT':
@@ -908,8 +927,9 @@ class GUI (QMainWindow):
             elif self.specCube.instrument == 'FIFI-LS':
                 imas = ['Flux','uFlux','Exp']
             
-            itab0 = self.itabs.currentIndex()
-            ic0 = self.ici[itab0]
+            #itab0 = self.itabs.currentIndex()
+            #ic0 = self.ici[itab0]
+            x,y = self.zoomlimits
             for ima in imas:
                 ic = self.ici[self.bands.index(ima)]
                 ih = self.ihi[self.bands.index(ima)]
@@ -923,15 +943,14 @@ class GUI (QMainWindow):
                     pass
                 ic.showImage(image)
                 # Set image limits to pre-existing values
-                x,y = self.zoomlimits
                 ic.axes.set_xlim(x)
                 ic.axes.set_ylim(y)
+                ic.changed = True
                 # Update histogram
                 clim = ic.image.get_clim()
                 ih.axes.clear()
                 ih.compute_initial_figure(image=image,xmin=clim[0],xmax=clim[1])
                 ih.fig.canvas.draw_idle()
-                self.slice = 'off'
                         
             
     def doZoomAll(self, event):
@@ -949,10 +968,17 @@ class GUI (QMainWindow):
             ic.toolbar.zoom()  # turn off zoom
         x = ic.axes.get_xlim()
         y = ic.axes.get_ylim()
-        self.zoomlimits = [x,y]
-        x0 = int(np.min(x)); x1 = int(np.max(x))+1
-        y0 = int(np.min(y)); y1 = int(np.max(y))+1
         ra,dec = ic.wcs.all_pix2world(x,y,1)
+        
+        band = self.bands.index('Flux')
+        if itab != band:
+            ic = self.ici[band]
+            x,y = ima.wcs.all_world2pix(ra,dec,1)            
+        self.zoomlimits = [x,y]
+        print('itab',itab,'band',band,'limits ',x,y)
+        x0 = int(np.min(x)); x1 = int(np.max(x))
+        y0 = int(np.min(y)); y1 = int(np.max(y))
+
         ici = self.ici.copy()
         ici.remove(ic)
         for ima in ici:
@@ -960,6 +986,7 @@ class GUI (QMainWindow):
             ima.axes.set_xlim(x)
             ima.axes.set_ylim(y)
             ima.changed = True
+
 
         # Update total spectra
         fluxAll = np.nansum(self.specCube.flux[:,y0:y1,x0:x1], axis=(1,2))
