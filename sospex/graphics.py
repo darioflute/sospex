@@ -41,14 +41,14 @@ class NavigationToolbar(NavigationToolbar2QT):
         self.toolitems = [
             ('Home','Go back to original limits','home','home'),
             ('Pan','Pan figure','move','pan'),
-            ('Zoom','Zoom on the figure','zoom_to_rect','zoom'),
+            ('Zoom','Zoom in','zoom_to_rect','zoom'),
         ]
         self.parent = parent
         super().__init__(canvas,parent)
 
-    def fileQuit(self):
-        """ Quitting the program """
-        self.parent.close()
+#    def fileQuit(self):
+#        """ Quitting the program """
+#        self.parent.close()
 
 
 class MplCanvas(FigureCanvas):
@@ -382,7 +382,17 @@ class SpectrumCanvas(MplCanvas):
             lines = [self.fluxLayer, self.ufluxLayer, self.atranLayer, self.exposureLayer, self.linesLayer]
             visibility = [self.displayFlux, self.displayUFlux, self.displayAtran, self.displayExposure, self.displayLines]
             
-                
+            # Add axes
+            if self.displayExposure:
+                self.ax3.get_yaxis().set_tick_params(labelright='on',right='on',direction='out',pad=5,colors='orange')
+            else:
+                self.ax3.get_yaxis().set_tick_params(labelright='off',right='off')
+            if self.displayAtran:
+                #self.ax2.get_yaxis().set_tick_params(labelright='on',right='on', which='both', direction='in', pad = -25, colors='red')
+                self.ax2.get_yaxis().set_tick_params(labelright='on',right='on', direction='in', pad = -25, colors='red')
+            else:
+                self.ax2.get_yaxis().set_tick_params(labelright='off',right='off')            
+
         elif s.instrument == 'GREAT':
             self.displayUFlux = False
             self.displayAtran = False
@@ -425,13 +435,6 @@ class SpectrumCanvas(MplCanvas):
             self.vaxes.set_xlabel("Velocity [km/s]")
         except:
             print('l0 is not defined')
-        # Add axes
-        if self.displayExposure:
-            self.ax3.tick_params(labelright='on',right='on',direction='out',pad=5,colors='orange')
-        if self.displayAtran:
-            #self.ax2.get_yaxis().set_tick_params(labelright='on',right='on', which='both', direction='in', pad = -25, colors='red')
-            self.ax2.get_yaxis().set_tick_params(labelright='on',right='on', direction='in', pad = -25, colors='red')
-
                 
         # Prepare legend                
         self.labs = [l.get_label() for l in lns]

@@ -104,15 +104,24 @@ class GUI (QMainWindow):
         sc = SpectrumCanvas(t, width=11, height=10.5, dpi=100)
         #ih.setVisible(False)
         # Toolbar
-        sc.toolbar = NavigationToolbar(sc, self)
+        toolbar = QToolBar()
         # Add actions to toolbar
-        sc.toolbar.addAction(self.sliceAction)
-        sc.toolbar.addAction(self.cutAction)
-        sc.toolbar.addAction(self.maskAction)
+        toolbar.addAction(self.sliceAction)
+        toolbar.addAction(self.cutAction)
+        toolbar.addAction(self.maskAction)
+        toolbar.addSeparator()
 
-        #ic.toolbar.pan('on')
+        
+        # Navigation toolbar
+        sc.toolbar = NavigationToolbar(sc, self)
+
+        foot = QWidget()
+        foot.layout = QHBoxLayout(foot)
+        foot.layout.addWidget(toolbar)
+        foot.layout.addWidget(sc.toolbar)
+
         t.layout.addWidget(sc)
-        t.layout.addWidget(sc.toolbar)
+        t.layout.addWidget(foot)
         self.stabs.resize(self.stabs.minimumSizeHint())  # Avoid expansion
         # connect image and histogram to  events
         sid1=sc.mpl_connect('button_release_event', self.onDraw2)
@@ -131,18 +140,27 @@ class GUI (QMainWindow):
         ih.setVisible(False)
         ic.toolbar = NavigationToolbar(ic, self)
 
-        ic.toolbar.addAction(self.levelsAction)
-        ic.toolbar.addAction(self.blinkAction)
-        ic.toolbar.addAction(self.contoursAction)
-        ic.toolbar.addAction(self.momentAction)
-        #ic.toolbar.addWidget(self.apertureAction)        
-        ic.toolbar.addAction(self.cropAction)
-        ic.toolbar.addAction(self.cloudAction)
+        # Toolbar
+        toolbar = QToolBar()
+        toolbar.addAction(self.levelsAction)
+        toolbar.addAction(self.blinkAction)
+        toolbar.addAction(self.contoursAction)
+        toolbar.addAction(self.momentAction)
+        toolbar.addAction(self.cropAction)
+        toolbar.addAction(self.cloudAction)
+        toolbar.addSeparator()
+        #toolbar.addWidget(self.apertureAction)        
 
+        # Foot
+        foot = QWidget()
+        foot.layout = QHBoxLayout(foot)
+        foot.layout.addWidget(toolbar)
+        foot.layout.addWidget(ic.toolbar)
+        
         #ic.toolbar.pan('on')
         t.layout.addWidget(ic)
         t.layout.addWidget(ih)
-        t.layout.addWidget(ic.toolbar)
+        t.layout.addWidget(foot)
         self.itabs.resize(self.itabs.minimumSizeHint())  # Avoid expansion
         # connect image and histogram to  events
         cidh=ih.mySignal.connect(self.onChangeIntensity)
@@ -262,13 +280,27 @@ class GUI (QMainWindow):
         stab = self.stabs.currentIndex()        
         sc = self.sci[stab]
         if sc.spectrum.redshift != self.specCube.redshift:
-            print("updating redshift ")
-            self.specCube.redshift = sc.spectrum.redshift
+            flags = QMessageBox.Yes 
+            flags |= QMessageBox.No
+            question = "Do you want to update the redshift ?"
+            response = QMessageBox.question(self, "Question",
+                                                  question,
+                                                  flags)            
+            if response == QMessageBox.Yes:
+                self.sb.showMessage("Updating the redshift ", 2000)
+                self.specCube.redshift = sc.spectrum.redshift
+            elif QMessageBox.No:
+                self.sb.showMessage("Redshift value unchanged ", 2000)
+                sc.spectrum.redshift = self.specCube.redshift
+            else:
+                pass           
 
-        # Deselect pan option on release of mouse
+        # Deselect pan & zoom options on mouse release
         if sc.toolbar._active == "PAN":
             sc.toolbar.pan()
-
+        if sc.toolbar._active == "ZOOM":
+            sc.toolbar.zoom()
+            
             
     def onWheel2(self,event):
         """ Wheel moves right/left the slice defined on spectrum """
@@ -900,7 +932,6 @@ class GUI (QMainWindow):
         """ Consider only a slice of the cube when computing the image """
 
         if self.slice == 'on':
-            self.slice = 'off'
             # Find indices of the shaded region
             print('xmin, xmax ',xmin,xmax)
             sc = self.sci[self.spectra.index('All')]
@@ -951,6 +982,7 @@ class GUI (QMainWindow):
                 ih.axes.clear()
                 ih.compute_initial_figure(image=image,xmin=clim[0],xmax=clim[1])
                 ih.fig.canvas.draw_idle()
+            self.slice = 'off'
                         
             
     def doZoomAll(self, event):
