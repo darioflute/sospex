@@ -3,7 +3,7 @@ import sys,os
 import numpy as np
 from PyQt5.QtWidgets import (QApplication, QWidget, QMainWindow, QTabWidget, QHBoxLayout,
                              QGroupBox, QVBoxLayout, QSizePolicy, QStatusBar, QSplitter,
-                             QToolBar, QAction, QFileDialog, QTableView, QComboBox, QAbstractItemView,
+                             QToolBar, QAction, QFileDialog,  QTableView, QComboBox, QAbstractItemView,
                              QToolButton, QMessageBox, QPushButton)
 from PyQt5.QtGui import QIcon, QStandardItem, QStandardItemModel
 from PyQt5.QtCore import Qt, QSize, QTimer, pyqtSignal
@@ -292,6 +292,11 @@ class GUI (QMainWindow):
             elif QMessageBox.No:
                 self.sb.showMessage("Redshift value unchanged ", 2000)
                 sc.spectrum.redshift = self.specCube.redshift
+                for annotation in sc.annotations:
+                    annotation.remove()
+                sc.zannotation.remove()
+                sc.drawSpectrum()
+                sc.fig.canvas.draw_idle()
             else:
                 pass           
 

@@ -23,11 +23,11 @@ from astropy.wcs.utils import proj_plane_pixel_scales as pixscales
 
 from PyQt5.QtWidgets import (QApplication, QWidget, QMainWindow, QTabWidget, QHBoxLayout,
                              QGroupBox, QVBoxLayout, QSizePolicy, QStatusBar, QSplitter,
-                             QToolBar, QAction, QFileDialog, QTableView, QComboBox, QAbstractItemView,
+                             QToolBar, QAction, QFileDialog, QInputDialog, QTableView, QComboBox, QAbstractItemView,
                              QToolButton)
 from PyQt5.QtGui import QIcon, QStandardItem, QStandardItemModel
 from PyQt5.QtCore import Qt, QSize, pyqtSignal
-
+from PyQt5.QtTest import QTest
 
 class NavigationToolbar(NavigationToolbar2QT):
     def __init__(self,canvas,parent):
@@ -346,6 +346,11 @@ class SpectrumCanvas(MplCanvas):
                 self.annotations.append(annotation)     
 
 
+        # Add redshift value on the plot
+        c = 299792.458  #km/s
+        self.zannotation = self.axes.annotate(" cz = {:.1f} km/s".format(c*s.redshift), xy=(-0.05,-0.1), picker=5, xycoords='axes fraction')
+        #self.zannotation.draggable()
+                
         
         if s.instrument == 'FIFI-LS':
             try:
@@ -414,13 +419,13 @@ class SpectrumCanvas(MplCanvas):
             if self.xunit == 'um':
                 #v = (tl/s.l0-1.)*c
                 #vtl = ["%.1f" % z for z in v]
-                vx1 = (x1/s.l0-1.)*c
-                vx2 = (x2/s.l0-1.)*c
+                vx1 = (x1/(1+s.redshift)/s.l0-1.)*c
+                vx2 = (x2/(1+s.redshift)/s.l0-1.)*c
             elif self.xunit == 'THz':
                 #v = (c/s.l0/tl*1.e-3-1.)*c
                 #vtl = ["%.1f" % z for z in v]
-                vx1 = (c/s.l0/x1*1.e-3-1.)*c
-                vx2 = (c/s.l0/x2*1.e-3-1.)*c
+                vx1 = (c/x1/(1+s.redshift)/s.l0*1.e-3-1.)*c
+                vx2 = (c/x2/(1+s.redshift)/s.l0*1.e-3-1.)*c
             #print('ticks labels ',vtl)
             try:
                 self.fig.delaxes(self.vaxes)
@@ -542,48 +547,74 @@ class SpectrumCanvas(MplCanvas):
             self.fig.canvas.draw_idle()
         elif isinstance(event.artist, Text):
             text = event.artist.get_text()
-            if text == 'Wavelength [$\mu$m]' or text == 'Frequency [THz]':
-                if self.xunit == 'um':
-                    self.xunit = 'THz'
-                else:
-                    self.xunit = 'um'
 
-                self.axes.clear()
-                try:
-                    self.ax2.clear()
-                    self.ax3.clear()
-                    self.ax4.clear()
-                except:
-                    pass
-                self.drawSpectrum()
-                #self.axes.set_xlim(self.xlimits)
-                #self.axes.set_ylim(self.ylimits)
-                self.fig.canvas.draw_idle()
+            if event.artist == self.zannotation:
+                c = 299792.458 #km/s
+                znew = self.getDouble(self.spectrum.redshift*c)
+                znew /= c
+                if znew != self.spectrum.redshift:
+                    self.spectrum.redshift = znew
+                    #self.parent.specCube.redshift = znew # Update original redshift
+                    for annotation in self.annotations:
+                        annotation.remove()
+                    self.zannotation.remove()
+                    self.drawSpectrum()
+                    self.fig.canvas.draw_idle()
+                    # Simulate a release to activate the update or redshift in main program
+                    QTest.mouseRelease(self, Qt.LeftButton)
             else:
-                print(text, event.mouseevent.xdata)
-                self.dragged = event.artist
-                self.pick_pos = event.mouseevent.xdata
+                if text == 'Wavelength [$\mu$m]' or text == 'Frequency [THz]':
+                    if self.xunit == 'um':
+                        self.xunit = 'THz'
+                    else:
+                        self.xunit = 'um'
+
+                    self.axes.clear()
+                    try:
+                        self.ax2.clear()
+                        self.ax3.clear()
+                        self.ax4.clear()
+                    except:
+                        pass
+                    self.drawSpectrum()
+                    self.fig.canvas.draw_idle()
+                else:
+                    print(text, event.mouseevent.xdata)
+                    self.dragged = event.artist
+                    self.pick_pos = event.mouseevent.xdata
                 
         else:
             pass
         return True
+
+    def getDouble(self,z):
+        znew, okPressed = QInputDialog.getDouble(self, "Redshift","cz:", z, -1000, 10000, 2)
+        if okPressed:
+            return znew
 
     def onrelease(self, event):
         if self.dragged is not None :
             print ('old ', self.dragged.get_position(), ' new ', event.xdata)
             x1 = event.xdata
             x0 = self.pick_pos
+            print('pick up position is ',x0)
+            w0 = np.array([self.Lines[line][1]  for  line in self.Lines.keys()])
+            wz = w0*(1.+self.spectrum.redshift)
             if self.xunit == 'um':
                 z = (x1-x0)/x0
+                l0 = x0
             elif self.xunit == 'THz':
                 z = (x0-x1)/x1
-            print('z is ',z)
+                c = 299792458.0  # speed of light in m/s
+                l0 = c/x0 * 1.e-6
+            wdiff = abs(l0 - wz)
+            self.spectrum.l0 = w0[(wdiff == wdiff.min())]
+            print('Reference wavelength is ',self.spectrum.l0)
             self.spectrum.redshift = (1.+self.spectrum.redshift)*(1+z)-1.
             for annotation in self.annotations:
                 annotation.remove()
+            self.zannotation.remove()
             self.drawSpectrum()
-            #self.axes.set_xlim(self.xlimits)
-            #self.axes.set_ylim(self.ylimits)
             self.fig.canvas.draw_idle()
             self.dragged = None
         return True
