@@ -18,6 +18,7 @@ from matplotlib.lines import Line2D
 from matplotlib.text import Text
 
 from matplotlib.widgets import SpanSelector
+
 from astropy.wcs.utils import proj_plane_pixel_scales as pixscales
 
 

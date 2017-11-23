@@ -11,8 +11,8 @@ from PyQt5.QtCore import Qt, QSize, QTimer, pyqtSignal
 import matplotlib
 matplotlib.use('Qt5Agg')
 from graphics import  NavigationToolbar
-from matplotlib.widgets import SpanSelector
-
+from matplotlib.widgets import SpanSelector, PolygonSelector, RectangleSelector, EllipseSelector
+from matplotlib.patches import Ellipse, Rectangle, Circle, Ellipse, Polygon
  
 class GUI (QMainWindow):
  
@@ -89,6 +89,9 @@ class GUI (QMainWindow):
         self.ihcid = []
         self.icid1 = []
         self.icid2 = []
+
+        # Apertures
+        self.photApertures = []
         
         # Add widgets to panel
         layout.addWidget(self.itabs)
@@ -481,18 +484,84 @@ class GUI (QMainWindow):
         return apertureAction
 
 
+    def onPolySelect(self, verts):
+        from apertures import PolygonInteractor
+        
+        print("Verteces are: ", verts)
+        self.PS.set_active(False)
+        poly = Polygon(list(verts), animated=True, fill=False)
+        self.photApertures.append(poly)
+        for ic in self.ici:
+            ic.axes.add_patch(poly)
+            p = PolygonInteractor(ic.axes, poly)
+            ic.fig.canvas.draw_idle()
+        self.PS = None
+
+    def onRectSelect(self, eclick, erelease):
+        'eclick and erelease are the press and release events'
+        x1, y1 = eclick.xdata, eclick.ydata
+        x2, y2 = erelease.xdata, erelease.ydata
+        print("(%3.2f, %3.2f) --> (%3.2f, %3.2f)" % (x1, y1, x2, y2))
+        print(" The button you used were: %s %s" % (eclick.button, erelease.button))
+        if self.selAp == 'square':
+            self.RS.set_active(False)
+            self.RS = None
+            pass
+        elif self.selAp == 'rectangle':
+            self.RS.set_active(False)
+            self.RS = None
+            pass
+        elif self.selAp == 'circle':
+            self.ES.set_active(False)
+            self.ES = None
+            pass
+        elif self.selAp == 'ellipse':
+            self.ES.set_active(False)
+            self.ES = None
+            pass
+
+    
     def chooseAperture(self, i):
         """ Choosing an aperture """
         index  = self.apView.selectionModel().currentIndex()
         i = index.row()
         j = index.column()
         #print ('new selection: ', i,j, self.apertures[i][j])
-        if self.apertures[i][j] == 'ellipse':
-            self.sb.showMessage("You chose an "+self.apertures[i][j], 1000)
-        elif self.apertures[i][j] == 'apertures':
+        self.selAp = self.apertures[i][j]
+        if self.selAp == 'ellipse':
+            self.sb.showMessage("You chose an "+self.selAp, 1000)
+        elif self.selAp == 'apertures':
             self.sb.showMessage("Choose an aperture shape ", 1000)
         else:
-            self.sb.showMessage("You chose a "+self.apertures[i][j], 1000)
+            self.sb.showMessage("You chose a "+self.selAp, 1000)
+
+
+        itab = self.itabs.currentIndex()
+        ic = self.ici[itab]
+        if self.selAp == 'polygon':
+            self.PS = PolygonSelector(ic.axes, self.onPolySelect, lineprops=dict(linestyle='-',color='g'),
+                                      useblit=True,markerprops=dict(marker='o',mec='g'),vertex_select_radius=15)
+        elif self.selAp == 'rectangle' or self.selAp == 'square':
+            self.RS = RectangleSelector(ic.axes, self.onRectSelect,
+                                        drawtype='box', useblit=True,
+                                        button=[1, 3],  # don't use middle button
+                                        minspanx=5, minspany=5,
+                                        spancoords='pixels',
+                                        rectprops = dict(facecolor='g', edgecolor = 'g',alpha=0.8, fill=False),
+                                        lineprops = dict(color='g', linestyle='-',linewidth = 2, alpha=0.8),
+                                        interactive=False)
+        elif self.selAp == 'ellipse' or self.selAp == 'circle':
+            self.ES = EllipseSelector(ic.axes, self.onRectSelect,
+                                      drawtype='line', useblit=True,
+                                      button=[1, 3],  # don't use middle button
+                                      minspanx=5, minspany=5,
+                                      spancoords='pixels',
+                                      rectprops = dict(facecolor='g', edgecolor = 'g',alpha=0.8, fill=False),
+                                      lineprops = dict(color='g', linestyle='-',linewidth = 2, alpha=0.8),
+                                      interactive=False)
+        
+        if self.selAp != 'apertures':
+            ic.fig.canvas.draw_idle()
         #put back to the 0-th item
         self.apertureAction.setCurrentIndex(0)
 
