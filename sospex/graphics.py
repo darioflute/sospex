@@ -124,7 +124,7 @@ class ImageCanvas(MplCanvas):
 
 
             # Add ellipse centered on source
-            pixscale = pixscales(self.wcs)*3600. # Scale in arcsec
+            self.pixscale = pixscales(self.wcs)[0]*3600. # Scale in arcsec
             #if self.flip:
             #    theta2= 0
             #    theta1 = 100
@@ -139,7 +139,9 @@ class ImageCanvas(MplCanvas):
             #     self.axes.add_patch(a)
             #     self.drrEllipse = DragResizeRotateEllipse(self.arcell)
 
-
+            # Apertures
+            self.photApertures = []
+            
 
     def showImage(self, image):
         

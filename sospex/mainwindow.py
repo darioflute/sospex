@@ -13,7 +13,34 @@ matplotlib.use('Qt5Agg')
 from graphics import  NavigationToolbar
 from matplotlib.widgets import SpanSelector, PolygonSelector, RectangleSelector, EllipseSelector
 from matplotlib.patches import Ellipse, Rectangle, Circle, Ellipse, Polygon
- 
+from matplotlib.path import Path
+
+# To find points inside a:
+#     Polygon
+# #path = Path(polygon)
+# path = polygon.get_path()   # path in patch coords
+# transform = polygon.get_patch_transform()
+# npath = transform.transform_path(path)
+# inpoints = spectrum.points[npath.contains_points(spectrum.points)]
+# xx,yy = inpoints.T
+#
+#    Ellipse/Circle, Rectangle/Square
+# path = ellipse.get_path()   # path in patch coords
+# transform = ellipse.get_patch_transform()   # transform from patch coords to data coords
+# npath = transform.transform_path(path)
+# inpoints = spectrum.points[npath.contains_points(spectrum.points)]
+# xx,yy = inpoints.T
+#
+# Circle
+# path = circle.get_path()
+# transform = circle.get_transform()   # Apply radius
+# npath = transform.transform_path(path)
+# inpoints = spectrum.points[npath.contains_points(spectrum.points)]
+# xx,yy = inpoints.T
+
+
+
+
 class GUI (QMainWindow):
  
     def __init__(self):
@@ -90,8 +117,6 @@ class GUI (QMainWindow):
         self.icid1 = []
         self.icid2 = []
 
-        # Apertures
-        self.photApertures = []
         
         # Add widgets to panel
         layout.addWidget(self.itabs)
@@ -250,6 +275,10 @@ class GUI (QMainWindow):
             ic.toolbar.pan()
 
 
+        # Update changed patch in all the images
+        
+        # Update flux curves in current aperture tab
+
     def onWheel(self,event):
         ''' enable zoom with mouse wheel and propagate changes to other tabs '''
         eb = event.button
@@ -308,6 +337,7 @@ class GUI (QMainWindow):
             sc.toolbar.pan()
         if sc.toolbar._active == "ZOOM":
             sc.toolbar.zoom()
+
             
             
     def onWheel2(self,event):
@@ -487,11 +517,20 @@ class GUI (QMainWindow):
     def onPolySelect(self, verts):
         from apertures import PolygonInteractor
         
-        print("Verteces are: ", verts)
         self.PS.set_active(False)
-        poly = Polygon(list(verts), animated=True, fill=False)
-        self.photApertures.append(poly)
+        # 1 vertices in RA,Dec coords
+        itab = self.itabs.currentIndex()
+        ic0 = self.ici[itab]
+
+        adverts = np.array([(ic0.wcs.all_pix2world(x,y,1)) for (x,y) in verts])
+        print('Vertices are: ', adverts)
+        
         for ic in self.ici:
+            # First adjust vertices to astrometry (they are in xy coords)
+            print("verts are: ", verts)
+            verts = [(ic.wcs.all_world2pix(ra,dec,1)) for (ra,dec) in adverts]
+            poly = Polygon(list(verts), animated=True, fill=False, closed=True)
+            ic.photApertures.append(poly)
             ic.axes.add_patch(poly)
             p = PolygonInteractor(ic.axes, poly)
             ic.fig.canvas.draw_idle()
@@ -499,10 +538,27 @@ class GUI (QMainWindow):
 
     def onRectSelect(self, eclick, erelease):
         'eclick and erelease are the press and release events'
+
+        from apertures import EllipseInteractor
+
+        
         x1, y1 = eclick.xdata, eclick.ydata
         x2, y2 = erelease.xdata, erelease.ydata
         print("(%3.2f, %3.2f) --> (%3.2f, %3.2f)" % (x1, y1, x2, y2))
         print(" The button you used were: %s %s" % (eclick.button, erelease.button))
+        
+        x0 = (x1+x2)*0.5
+        y0 = (y1+y2)*0.5
+        w  = np.abs(x2-x1)
+        h  = np.abs(y2-y1)
+
+        
+        itab = self.itabs.currentIndex()
+        ic0 = self.ici[itab]
+        r0,d0 = ic0.wcs.all_pix2world(x0,y0,1)
+        ws = w*ic0.pixscale; hs = h*ic0.pixscale
+
+        
         if self.selAp == 'square':
             self.RS.set_active(False)
             self.RS = None
@@ -518,7 +574,17 @@ class GUI (QMainWindow):
         elif self.selAp == 'ellipse':
             self.ES.set_active(False)
             self.ES = None
-            pass
+            # Define ellipse
+            for ic in self.ici:
+                # First adjust vertices to astrometry (they are in xy coords)
+                x0,y0 = ic.wcs.all_world2pix(r0,d0,1)
+                w = ws/ic.pixscale; h = hs/ic.pixscale
+                ellipse = Ellipse((x0,y0),w,h,edgecolor='Lime',facecolor='none',angle=0,fill=False,animated=True)
+                ic.photApertures.append(ellipse)
+                ic.axes.add_patch(ellipse)
+                p = EllipseInteractor(ic.axes, ellipse)
+                ic.fig.canvas.draw_idle()
+
 
     
     def chooseAperture(self, i):
