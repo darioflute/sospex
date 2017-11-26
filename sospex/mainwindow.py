@@ -348,16 +348,18 @@ class GUI (QMainWindow):
         if sc.regionlimits is not None:
             eb = event.button
             xmin,xmax = sc.regionlimits
-            w = self.specCube.wave
-            dw = np.mean(w[1:]-w[:-1])        
+            dx = (xmax-xmin) * 0.5
+            
+            #w = self.specCube.wave
+            #dw = np.mean(w[1:]-w[:-1])        
 
             # Increment region limits
             if eb == 'up':
-                xmin += dw
-                xmax += dw
+                xmin += dx
+                xmax += dx
             elif eb == 'down':
-                xmin -= dw
-                xmax -= dw
+                xmin -= dx
+                xmax -= dx
             else:
                 pass        
             # redraw images
