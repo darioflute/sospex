@@ -38,8 +38,7 @@ from matplotlib.path import Path
 # inpoints = spectrum.points[npath.contains_points(spectrum.points)]
 # xx,yy = inpoints.T
 
-
-
+from apertures import photoAperture
 
 class GUI (QMainWindow):
  
@@ -274,10 +273,43 @@ class GUI (QMainWindow):
         if ic.toolbar._active == "PAN":
             ic.toolbar.pan()
 
+        # Update patch in all the images
+        # a status should be added to the apertures to avoid unnecessary redrawings
+        istab = self.stabs.currentIndex()
+        print('istab is ',istab)
+        ici = self.ici.copy()
+        ici.remove(ic)
+        if istab != 0 and len(ici) > 0:
+            aper = ic.photApertures[istab-1]
+            apertype = aper.__class__.__name__
+            if apertype == 'Ellipse':
+                x0,y0 = aper.center
+                w0    = aper.width
+                h0    = aper.height
+                angle = aper.angle
+                ra0,dec0 = ic.wcs.all_pix2world(x0,y0,1)
+                ws = w0 * ic.pixscale; hs = h0 * ic.pixscale
+                for ima in ici:
+                    x0,y0 = ima.wcs.all_world2pix(ra0,dec0,1)
+                    w0 = ws/ima.pixscale; h0 = hs/ima.pixscale
+                    ellipse = ima.photApertures[istab-1]
+                    ellipse.center = x0,y0
+                    ellipse.width = w0
+                    ellipse.height = h0
+                    ellipse.angle = angle
+                    ima.changed = True
+            elif apertype == 'Polygon':
+                verts = aper.get_xy()
+                adverts = np.array([(ic0.wcs.all_pix2world(x,y,1)) for (x,y) in verts])                
+                for ima in ici:
+                    verts = [(ima.wcs.all_world2pix(ra,dec,1)) for (ra,dec) in adverts]
+                    ima.photApertures[istab].set_xy(verts)
+                    ima.changed = True
 
-        # Update changed patch in all the images
-        
-        # Update flux curves in current aperture tab
+            # Update flux curves in current aperture tab # istab
+            # Grab aperture in the flux image to compute the new fluxes
+            aper = self.ici[0].photApertures[istab-1]
+            
 
     def onWheel(self,event):
         ''' enable zoom with mouse wheel and propagate changes to other tabs '''
@@ -525,29 +557,79 @@ class GUI (QMainWindow):
         ic0 = self.ici[itab]
 
         adverts = np.array([(ic0.wcs.all_pix2world(x,y,1)) for (x,y) in verts])
-        print('Vertices are: ', adverts)
-        
+        # Save aperture with vertices in ra,dec coordinates
+        n = len(self.photoApertures)
+        self.photoApertures.append(photoAperture(n,'polygon',adverts))
+
         for ic in self.ici:
             # First adjust vertices to astrometry (they are in xy coords)
-            print("verts are: ", verts)
             verts = [(ic.wcs.all_world2pix(ra,dec,1)) for (ra,dec) in adverts]
-            poly = Polygon(list(verts), animated=True, fill=False, closed=True)
+            poly = Polygon(list(verts), animated=True, fill=False, closed=True, color='g')
             ic.photApertures.append(poly)
             ic.axes.add_patch(poly)
+            # I have to conserve the interactors (maybe add also the aperture to the interactor)
             p = PolygonInteractor(ic.axes, poly)
             ic.fig.canvas.draw_idle()
         self.PS = None
 
+        self.drawNewSpectrum(n)
+
+    def drawNewSpectrum(self, n):        
+        """ Add tab with the flux inside the aperture """
+
+        from specobj import Spectrum
+
+        apname = "Ap{:d}".format(n)
+        self.spectra.append(apname)
+        t,sc,scid1,scid2 = self.addSpectrum(apname)
+        self.stabi.append(t)
+        self.sci.append(sc)
+        self.scid1.append(scid1)
+        self.scid2.append(scid2)
+
+        # Draw spectrum from polygon
+        aperture = self.ici[0].photApertures[n]
+        path = aperture.get_path()
+        transform = aperture.get_patch_transform()
+        npath = transform.transform_path(path)
+        s = self.specCube
+        inpoints = s.points[npath.contains_points(s.points)]
+        xx,yy = inpoints.T
+
+        print("cube shapes: ",np.shape(s.flux),np.shape(s.flux[:,yy,xx]))
+        
+        fluxAll = np.nansum(s.flux[:,yy,xx], axis=1)
+        if s.instrument == 'GREAT':
+            spec = Spectrum(s.wave, fluxAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0 )
+        elif s.instrument == 'FIFI-LS':
+            ufluxAll = np.nansum(s.uflux[:,yy,xx], axis=1)
+            expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
+            spec = Spectrum(s.wave, fluxAll, uflux= ufluxAll,
+                            exposure=expAll, atran = s.atran, instrument=s.instrument,
+                            redshift=s.redshift, baryshift = s.baryshift, l0=s.l0)
+        print("Compute initial spectrum from polygon")
+        sc.compute_initial_spectrum(spectrum=spec)
+        self.specZoomlimits = [sc.xlimits,sc.ylimits]
+        sc.cid = sc.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomSpec)
+        # Start the span selector to show only part of the cube
+        sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
+                               rectprops=dict(alpha=0.5, facecolor='LightSalmon'), button=1)
+        sc.span.set_visible(False)
+
+        # Deselect all other apertures
+        for i in range(n):
+            pass
+            
+        
     def onRectSelect(self, eclick, erelease):
         'eclick and erelease are the press and release events'
 
         from apertures import EllipseInteractor
-
         
         x1, y1 = eclick.xdata, eclick.ydata
         x2, y2 = erelease.xdata, erelease.ydata
-        print("(%3.2f, %3.2f) --> (%3.2f, %3.2f)" % (x1, y1, x2, y2))
-        print(" The button you used were: %s %s" % (eclick.button, erelease.button))
+        #print("(%3.2f, %3.2f) --> (%3.2f, %3.2f)" % (x1, y1, x2, y2))
+        #print(" The button you used were: %s %s" % (eclick.button, erelease.button))
         
         x0 = (x1+x2)*0.5
         y0 = (y1+y2)*0.5
@@ -577,6 +659,9 @@ class GUI (QMainWindow):
             self.ES.set_active(False)
             self.ES = None
             # Define ellipse
+            n = len(self.photoApertures)
+            data = [r0,d0,ws,hs]
+            self.photoApertures.append(photoAperture(n,'ellipse',data))
             for ic in self.ici:
                 # First adjust vertices to astrometry (they are in xy coords)
                 x0,y0 = ic.wcs.all_world2pix(r0,d0,1)
@@ -587,6 +672,7 @@ class GUI (QMainWindow):
                 p = EllipseInteractor(ic.axes, ellipse)
                 ic.fig.canvas.draw_idle()
 
+            self.drawNewSpectrum(n)
 
     
     def chooseAperture(self, i):
@@ -679,12 +765,48 @@ class GUI (QMainWindow):
         ih = self.ihi[self.bands.index(band)]
         clim = ic.image.get_clim()
         ih.compute_initial_figure(image=self.wiseImage.data,xmin=clim[0],xmax=clim[1])
-        
+
+        # Add existing apertures
+        self.addApertures(ic)
+
         # Align with spectral cube
         self.zoomAll(0)
         #except:
         #    self.sb.showMessage('First load a spectral cube !', 1000)
 
+    def addApertures(self, ic):
+        """ Add apertures already defined on new image """
+        from apertures import PolygonInteractor, EllipseInteractor
+
+        ic0 = self.ici[0]
+        for aper in ic0.photApertures:
+            apertype = aper.__class__.__name__
+            if apertype == 'Ellipse':
+                x0,y0 = aper.center
+                w0    = aper.width
+                h0    = aper.height
+                angle = aper.angle
+                ra0,dec0 = ic0.wcs.all_pix2world(x0,y0,1)
+                ws = w0 * ic0.pixscale; hs = h0 * ic0.pixscale
+                # Add ellipse
+                x0,y0 = ic.wcs.all_world2pix(ra0,dec0,1)
+                w0 = ws/ic.pixscale; h0 = hs/ic.pixscale
+                ellipse = Ellipse((x0,y0),w0,h0,edgecolor='Lime',facecolor='none',angle=angle,fill=False,animated=True)
+                ic.photApertures.append(ellipse)
+                ic.axes.add_patch(ellipse)
+                p = EllipseInteractor(ic.axes, ellipse)                
+            elif apertype == 'Polygon':
+                verts = aper.get_xy()
+                adverts = np.array([(ic0.wcs.all_pix2world(x,y,1)) for (x,y) in verts])                
+                verts = [(ic.wcs.all_world2pix(ra,dec,1)) for (ra,dec) in adverts]
+                # Add polygon
+                poly = Polygon(verts, animated=True, fill=False, closed=True, color='g')
+                ic.photApertures.append(poly)
+                ic.axes.add_patch(poly)
+                p = PolygonInteractor(ic.axes, poly)
+        ic.fig.canvas.draw_idle()
+        
+        
 
     def blinkTab(self):
         ''' keep switching between two tabs until blink changes state '''
@@ -919,6 +1041,9 @@ class GUI (QMainWindow):
         ih = self.ihi[self.bands.index(band)]
         clim = ic.image.get_clim()
         ih.compute_initial_figure(image=self.M0,xmin=clim[0],xmax=clim[1])
+
+        # Add apertures
+        self.addApertures(ic)
         
         # Align with spectral cube
         self.zoomAll(0)
@@ -1004,6 +1129,7 @@ class GUI (QMainWindow):
                 self.spectra = []
                 self.bands = []
             print ("bands are ", self.bands)
+            self.photoApertures = []
             for b in self.bands:
                 t,ic,ih,h,c1,c2 = self.addImage(b)
                 self.tabi.append(t)
@@ -1039,7 +1165,6 @@ class GUI (QMainWindow):
                 x = ic.axes.get_xlim()
                 y = ic.axes.get_ylim()
                 self.zoomlimits = [x,y]
-            #self.imagePanel.update()
             # Compute initial spectra
             spectrum = self.spectra[0]
             #            for spectrum in self.spectra:
@@ -1216,9 +1341,12 @@ class GUI (QMainWindow):
             self.sb.showMessage("First choose a cube (press arrow) ", 1000)
             
 
-    def onSTabChange(self):
-        print('Spectral tab changed')
+    def onSTabChange(self, stab):
+        print('Spectral tab changed to ', stab)
+
+        # This should activate an aperture (put dots on it and/or change color)
         
+
         
 if __name__ == '__main__':
     app = QApplication(sys.argv)

@@ -317,15 +317,14 @@ class EllipseInteractor(object):
         x0, y0 = self.center
         w0 = self.width*0.5
         h0 = self.height*0.5
-        x = [x0, x0+w0*ca, x0+h0*sa]
-        y = [y0, y0+w0*sa, y0-h0*ca]
-        print('x0,y0',x0,y0,'width, height', w0,h0)
+
+        x = [x0, x0+w0*ca, x0-h0*sa]
+        y = [y0, y0+w0*sa, y0+h0*ca]
         self.xy = [(i,j) for (i,j) in zip(x,y)]
         self.line = Line2D(x, y, marker='o', linestyle=None, linewidth=0., markerfacecolor='g', animated=True)
         self.ax.add_line(self.line)
 
-        
-        # I don't get this
+
         self.cid = self.ellipse.add_callback(self.ellipse_changed)
         self._ind = None  # the active point
 
@@ -340,13 +339,19 @@ class EllipseInteractor(object):
         self.cid_press = self.canvas.mpl_connect('button_press_event', self.button_press_callback)
         self.cid_release = self.canvas.mpl_connect('button_release_event', self.button_release_callback)
         self.cid_motion = self.canvas.mpl_connect('motion_notify_event', self.motion_notify_callback)
+        self.cid_key = self.canvas.mpl_connect('key_press_event', self.key_press_callback)
+
         
     def disconnect(self):
         self.canvas.mpl_disconnect(self.cid_draw)
         self.canvas.mpl_disconnect(self.cid_press)
         self.canvas.mpl_disconnect(self.cid_release)
         self.canvas.mpl_disconnect(self.cid_motion)
-        
+        self.canvas.mpl_disconnect(self.cid_key)
+        self.ellipse.remove()
+        self.line.remove()
+        self.canvas.draw_idle()
+
         
     def draw_callback(self, event):
         self.background = self.canvas.copy_from_bbox(self.ax.bbox)
@@ -357,17 +362,9 @@ class EllipseInteractor(object):
     def ellipse_changed(self, ellipse):
         'this method is called whenever the polygon object is called'
         # only copy the artist props to the line (except visibility)
-        #vis = self.line.get_visible()
-        #Artist.update_from(self.line, ellipse)
-        #self.line.set_visible(vis)  
-
-        if self.lock == 'released' or self.lock == None:
-            self.canvas.restore_region(self.background)
-            self.axes.draw_artist(self.ellipse)
-            self.axes.draw_artist(self.line)
-            self.canvas.update()
-            self.canvas.flush_events()
-
+        vis = self.line.get_visible()
+        Artist.update_from(self.line, ellipse)
+        self.line.set_visible(vis)  
 
         
     def get_ind_under_point(self, event):
@@ -396,8 +393,28 @@ class EllipseInteractor(object):
         w0, h0 = self.ellipse.width, self.ellipse.height
         theta0 = self.ellipse.angle/180*np.pi
         self.press = x0, y0, w0, h0, theta0, event.xdata, event.ydata
+        self.xy0 = self.xy
+
         self.lock = "pressed"
-        
+
+
+    def key_press_callback(self, event):
+        'whenever a key is pressed'
+        if not event.inaxes:
+            return
+
+        if event.key == 't':
+            self.showverts = not self.showverts
+            self.line.set_visible(self.showverts)
+            if not self.showverts:
+                self._ind = None
+        elif event.key == 'd':
+            self.disconnect()
+            self.ellipse = None
+            self.line = None
+
+        self.canvas.draw_idle()
+
     def button_release_callback(self, event):
         'whenever a mouse button is released'
         if not self.showverts:
@@ -407,15 +424,9 @@ class EllipseInteractor(object):
         self._ind = None
         self.press = None
         self.lock = "released"
-        
-    def button_release_callback(self, event):
-        'whenever a mouse button is released'
-        if not self.showverts:
-            return
-        if event.button != 1:
-            return
-        self._ind = None
-        self.press = None
+        self.background = None
+        # To get other aperture redrawn
+        self.canvas.draw_idle()
         
 
     def motion_notify_callback(self, event):
@@ -431,10 +442,8 @@ class EllipseInteractor(object):
             return
 
         x0, y0, w0, h0, theta0, xpress, ypress = self.press
-        x, y = self.xy[self._ind]
-        self.dx = event.xdata - x
-        self.dy = event.ydata - y
-        self.press = x0, y0, w0, h0, theta0, x, y
+        self.dx = event.xdata - xpress
+        self.dy = event.ydata - ypress
         self.update_ellipse()
 
         # Redraw ellipse and points
@@ -448,23 +457,26 @@ class EllipseInteractor(object):
 
         x0, y0, w0, h0, theta0, xpress, ypress = self.press
         dx, dy = self.dx, self.dy
-
+        
         if self.lock == "pressed":
             if self._ind == 0:
                 self.lock = "move"
             else:
                 self.lock = "resizerotate"
         elif self.lock == "move":
-            xn = x0+dx; yn =y0+dy
-            if xn < 0:
+            if x0+dx < 0:
                 xn = x0
                 dx = 0
-            if yn < 0:
+            else:
+                xn = x0+dx
+            if y0+dy < 0:
                 yn = y0
                 dy = 0
-            self.ellipse.center = (xn,yn)
+            else:
+                yn = y0+dy
+            self.ellipse.center = xn,yn
             # update line
-            self.xy = [(i+dx,j+dy) for (i,j) in self.xy]            
+            self.xy = [(i+dx,j+dy) for (i,j) in self.xy0]
         # otherwise rotate and resize
         elif self.lock == 'resizerotate':
             dtheta = np.arctan2(ypress+dy-y0,xpress+dx-x0)-np.arctan2(ypress-y0,xpress-x0)
@@ -473,8 +485,10 @@ class EllipseInteractor(object):
             R = np.matrix('{} {}; {} {}'.format(c, s, -s, c))
             (dx_,dy_), = np.array(np.dot(R,np.array([dx,dy])))
 
+
+            # Avoid to pass through the center            
             if self._ind == 1:
-                w_ = w0+2*dx_  if (w0+2*dx_) > 0 else w0 # Avoid flipping
+                w_ = w0+2*dx_  if (w0+2*dx_) > 0 else w0 
                 h_ = h0
             elif self._ind == 2:
                 h_ = h0+2*dy_  if (h0+2*dy_) > 0 else h0
@@ -486,14 +500,10 @@ class EllipseInteractor(object):
             self.ellipse.angle = theta_
 
             # update points
-            ca = np.cos(self.ellipse.angle); sa = np.sin(self.ellipse.angle)
-            x0,y0 = self.ellipse.center
-            w0 = self.ellipse.width*0.5
-            h0 = self.ellipse.height*0.5
-            x = [x0, x0+w0*ca, x0+h0*sa]
-            y = [y0, y0+w0*sa, y0-h0*ca]
+            ca = np.cos(theta_*np.pi/180.); sa = np.sin(theta_*np.pi/180.)
+            x = [x0, x0+w_*0.5*ca, x0-h_*0.5*sa]
+            y = [y0, y0+w_*0.5*sa, y0+h_*0.5*ca]
             self.xy = [(i,j) for (i,j) in zip(x,y)]
-
                 
         # Redefine line
         self.line.set_data(zip(*self.xy))
@@ -529,19 +539,33 @@ class PolygonInteractor(object):
         self.poly = poly
 
         x, y = zip(*self.poly.xy)
-        self.line = Line2D(x, y, marker='o', markerfacecolor='g', animated=True)
+        self.line = Line2D(x, y, marker='o', markerfacecolor='g', color='g', animated=True)
         self.ax.add_line(self.line)
 
         self.cid = self.poly.add_callback(self.poly_changed)
         self._ind = None  # the active vert
-
-        canvas.mpl_connect('draw_event', self.draw_callback)
-        canvas.mpl_connect('button_press_event', self.button_press_callback)
-        canvas.mpl_connect('key_press_event', self.key_press_callback)
-        canvas.mpl_connect('button_release_event', self.button_release_callback)
-        canvas.mpl_connect('motion_notify_event', self.motion_notify_callback)
         self.canvas = canvas
+        self.connect()
 
+
+    def connect(self):
+        self.cid_draw = self.canvas.mpl_connect('draw_event', self.draw_callback)
+        self.cid_press = self.canvas.mpl_connect('button_press_event', self.button_press_callback)
+        self.cid_key = self.canvas.mpl_connect('key_press_event', self.key_press_callback)
+        self.cid_release = self.canvas.mpl_connect('button_release_event', self.button_release_callback)
+        self.cid_motion = self.canvas.mpl_connect('motion_notify_event', self.motion_notify_callback)
+
+    def disconnect(self):
+        self.canvas.mpl_disconnect(self.cid_draw)
+        self.canvas.mpl_disconnect(self.cid_press)
+        self.canvas.mpl_disconnect(self.cid_key)
+        self.canvas.mpl_disconnect(self.cid_release)
+        self.canvas.mpl_disconnect(self.cid_motion)
+        self.poly.remove()
+        self.line.remove()
+        self.canvas.draw_idle()
+
+        
     def draw_callback(self, event):
         self.background = self.canvas.copy_from_bbox(self.ax.bbox)
         self.ax.draw_artist(self.poly)
@@ -595,6 +619,7 @@ class PolygonInteractor(object):
         'whenever a key is pressed'
         if not event.inaxes:
             return
+
         if event.key == 't':
             self.showverts = not self.showverts
             self.line.set_visible(self.showverts)
@@ -603,10 +628,18 @@ class PolygonInteractor(object):
         elif event.key == 'd':
             ind = self.get_ind_under_point(event)
             if ind is not None:
-                self.poly.xy = [tup
-                                for i, tup in enumerate(self.poly.xy)
-                                if i != ind]
-                self.line.set_data(zip(*self.poly.xy))
+                if len(self.poly.xy) < 5:  # the minimum polygon has 4 points since the 1st is repeated as final
+                    # Delete polygon
+                    self.disconnect()
+                    self.poly = None
+                    self.line = None
+                else:
+                    self.poly.xy = [tup
+                                    for i, tup in enumerate(self.poly.xy)
+                                    if i != ind]
+                    self.line.set_data(zip(*self.poly.xy))
+
+                
         elif event.key == 'i':
             xys = self.poly.get_transform().transform(self.poly.xy)
             p = event.x, event.y  # display coords
@@ -646,6 +679,5 @@ class PolygonInteractor(object):
         self.canvas.restore_region(self.background)
         self.ax.draw_artist(self.poly)
         self.ax.draw_artist(self.line)
-        #self.canvas.blit(self.ax.bbox)
         self.canvas.update()
         self.canvas.flush_events()

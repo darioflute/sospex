@@ -141,6 +141,10 @@ class ImageCanvas(MplCanvas):
 
             # Apertures
             self.photApertures = []
+
+            # Activate focus
+            self.setFocusPolicy(Qt.ClickFocus)
+            self.setFocus()
             
 
     def showImage(self, image):
