@@ -279,21 +279,21 @@ class SpectrumCanvas(MplCanvas):
         
         if self.xunit == 'um':
             self.axes.set_xlabel('Wavelength [$\\mu$m]', picker=True)
-            x = s.wave
+            self.x = s.wave
             if s.instrument == 'FIFI-LS':
-                xr = x * (1+s.baryshift)
+                self.xr = self.x * (1+s.baryshift)
         elif self.xunit == 'THz':
             c = 299792458.0  # speed of light in m/s
             self.axes.set_xlabel('Frequency [THz]', picker=True)
-            x = c/s.wave * 1.e-6
+            self.x = c/s.wave * 1.e-6
             if s.instrument == 'FIFI-LS':
-                xr = x / (1+s.baryshift)
+                self.xr = self.x / (1+s.baryshift)
 
         #x0 = np.min(x); x1 = np.max(x)
         #self.axes.set_xlim([x0,x1])
 
             
-        self.fluxLine = self.axes.step(x,s.flux,color='blue',label='Flux')
+        self.fluxLine = self.axes.step(self.x,s.flux,color='blue',label='Flux')
         self.fluxLayer, = self.fluxLine
 
         # Define limits or adjust to previous limits
@@ -371,14 +371,14 @@ class SpectrumCanvas(MplCanvas):
             self.ax4 = self.axes.twinx()
             self.ax2.set_ylim([0.01,1.1])
             self.ax4.tick_params(labelright='off',right='off')
-            self.atranLine = self.ax2.step(xr, s.atran,color='red',label='Atm Trans')
-            self.exposureLine = self.ax3.step(x, s.exposure, color='orange',label='Exposure')
+            self.atranLine = self.ax2.step(self.xr, s.atran,color='red',label='Atm Trans')
+            self.exposureLine = self.ax3.step(self.x, s.exposure, color='orange',label='Exposure')
             ymax = np.nanmax(s.flux); ymin = np.nanmin(s.flux)
             yumax = np.nanmax(s.uflux); yumin = np.nanmin(s.uflux)
             if yumax > ymax: ymax=yumax
             if yumin < ymin: ymin=yumin
             self.ax3.set_ylim([0.5,np.nanmax(s.exposure)*1.54])
-            self.ufluxLine = self.ax4.step(xr,s.uflux,color='green',label='Unc Flux')
+            self.ufluxLine = self.ax4.step(self.xr,s.uflux,color='green',label='Unc Flux')
             self.ax4.set_ylim(self.axes.get_ylim())
             #self.ax1.set_title(spectrum.objname+" ["+spectrum.filegpid+"] @ "+spectrum.obsdate)
             self.ufluxLayer, = self.ufluxLine
@@ -477,6 +477,29 @@ class SpectrumCanvas(MplCanvas):
         if self.shade == True:
             self.shadeRegion()
 
+
+    def updateSpectrum(self,f,uf=None,exp=None):
+
+        try:
+            self.fluxLine[0].set_ydata(f)
+            self.axes.draw_artist(self.fluxLine[0])
+            if uf is not None:
+                self.ufluxLine[0].set_ydata(uf)
+                self.ax4.draw_artist(self.ufluxLine[0])
+            if exp is not None:
+                self.exposureLine[0].set_ydata(exp)
+                self.ax3.draw_artist(self.exposureLine[0])
+            ylim0,ylim1 = self.axes.get_ylim()
+            if np.nanmax(f) > ylim1:
+                self.axes.set_ylim(ylim0, np.nanmax(f)*1.1)
+                self.axes.draw_artist(self.axes.yaxis)
+            self.fig.canvas.draw_idle()
+            #self.fig.canvas.update()
+            #self.fig.canvas.flush_events()
+        except:
+            pass
+
+            
     def shadeRegion(self):
 
         wmin,wmax = self.regionlimits

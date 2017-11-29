@@ -290,22 +290,23 @@ class RectangleSelect:
             self.frame.canvas.draw()
 
 
-from matplotlib.lines import Line2D
-from matplotlib.artist import Artist
-from matplotlib.mlab import dist_point_to_segment
 
 class EllipseInteractor(object):
 
     epsilon = 5
     showverts = True
     
-    def __init__(self,ax,ellipse):
-        if ellipse.figure is None:
-            raise RuntimeError('You must first add the polygon to a figure '
-                               'or canvas before defining the interactor')
+    def __init__(self,ax,center,width,height,angle):
+
+        from matplotlib.patches import Ellipse
+        from matplotlib.lines import Line2D
+        from matplotlib.artist import Artist
+
+        self.type = 'Ellipse'
         self.ax = ax
-        canvas = ellipse.figure.canvas
-        self.ellipse = ellipse
+        self.ellipse = Ellipse(center,width,height,edgecolor='Lime',facecolor='none',angle=angle,fill=False,animated=True)
+        self.ax.add_patch(self.ellipse)
+        self.canvas = self.ellipse.figure.canvas
 
         # Create a line with center, width, and height points
         self.center = self.ellipse.center
@@ -328,9 +329,9 @@ class EllipseInteractor(object):
         self.cid = self.ellipse.add_callback(self.ellipse_changed)
         self._ind = None  # the active point
 
-        self.canvas = canvas
         self.connect()
 
+        self.aperture = self.ellipse
         self.press = None
         self.lock = None
 
@@ -340,6 +341,7 @@ class EllipseInteractor(object):
         self.cid_release = self.canvas.mpl_connect('button_release_event', self.button_release_callback)
         self.cid_motion = self.canvas.mpl_connect('motion_notify_event', self.motion_notify_callback)
         self.cid_key = self.canvas.mpl_connect('key_press_event', self.key_press_callback)
+        self.canvas.draw_idle()
 
         
     def disconnect(self):
@@ -509,6 +511,7 @@ class EllipseInteractor(object):
         self.line.set_data(zip(*self.xy))
 
 
+from matplotlib.mlab import dist_point_to_segment
         
 
 class PolygonInteractor(object):
@@ -530,13 +533,19 @@ class PolygonInteractor(object):
     showverts = True
     epsilon = 5  # max pixel distance to count as a vertex hit
 
-    def __init__(self, ax, poly):
-        if poly.figure is None:
-            raise RuntimeError('You must first add the polygon to a figure '
-                               'or canvas before defining the interactor')
+    def __init__(self, ax, verts):
+
+        from matplotlib.patches import Polygon
+        from matplotlib.lines import Line2D
+        from matplotlib.artist import Artist
+
+
         self.ax = ax
-        canvas = poly.figure.canvas
-        self.poly = poly
+        self.type = 'Polygon'
+        self.poly = Polygon(list(verts), animated=True, fill=False, closed=True, color='g')
+        self.ax.add_patch(self.poly)
+        self.canvas = self.poly.figure.canvas
+        #self.poly = poly
 
         x, y = zip(*self.poly.xy)
         self.line = Line2D(x, y, marker='o', markerfacecolor='g', color='g', animated=True)
@@ -544,8 +553,9 @@ class PolygonInteractor(object):
 
         self.cid = self.poly.add_callback(self.poly_changed)
         self._ind = None  # the active vert
-        self.canvas = canvas
+        #self.canvas = canvas
         self.connect()
+        self.aperture = self.poly
 
 
     def connect(self):
@@ -554,6 +564,7 @@ class PolygonInteractor(object):
         self.cid_key = self.canvas.mpl_connect('key_press_event', self.key_press_callback)
         self.cid_release = self.canvas.mpl_connect('button_release_event', self.button_release_callback)
         self.cid_motion = self.canvas.mpl_connect('motion_notify_event', self.motion_notify_callback)
+        self.canvas.draw_idle()
 
     def disconnect(self):
         self.canvas.mpl_disconnect(self.cid_draw)
