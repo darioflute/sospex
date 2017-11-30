@@ -273,24 +273,31 @@ class GUI (QMainWindow):
     def onMotion(self, event):
         """ Update spectrum when moving an aperture on the image """
 
+
+        itab = self.itabs.currentIndex()
+        ic = self.ici[itab]
+        if ic.toolbar._active == 'PAN':
+            return
+
         # Grab aperture in the flux image to compute the new fluxes
         istab = self.stabs.currentIndex()
         sc = self.sci[istab]
-        aperture = self.ici[0].photApertures[istab-1].aperture
-        path = aperture.get_path()
-        transform = aperture.get_patch_transform()
-        npath = transform.transform_path(path)
-        s = self.specCube
-        inpoints = s.points[npath.contains_points(s.points)]
-        xx,yy = inpoints.T
+        if istab > 0:
+            aperture = self.ici[0].photApertures[istab-1].aperture
+            path = aperture.get_path()
+            transform = aperture.get_patch_transform()
+            npath = transform.transform_path(path)
+            s = self.specCube
+            inpoints = s.points[npath.contains_points(s.points)]
+            xx,yy = inpoints.T
         
-        fluxAll = np.nansum(s.flux[:,yy,xx], axis=1)
-        if s.instrument == 'GREAT':
-            sc.updateSpectrum(fluxAll)
-        elif s.instrument == 'FIFI-LS':
-            ufluxAll = np.nansum(s.uflux[:,yy,xx], axis=1)
-            expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
-            sc.updateSpectrum(fluxAll,uf=ufluxAll,exp=expAll)
+            fluxAll = np.nansum(s.flux[:,yy,xx], axis=1)
+            if s.instrument == 'GREAT':
+                sc.updateSpectrum(fluxAll)
+            elif s.instrument == 'FIFI-LS':
+                ufluxAll = np.nansum(s.uflux[:,yy,xx], axis=1)
+                expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
+                sc.updateSpectrum(fluxAll,uf=ufluxAll,exp=expAll)
 
 
             
@@ -306,13 +313,12 @@ class GUI (QMainWindow):
         # Update patch in all the images
         # a status should be added to the apertures to avoid unnecessary redrawings
         istab = self.stabs.currentIndex()
-        print('istab is ',istab)
         ici = self.ici.copy()
         ici.remove(ic)
         if istab != 0 and len(ici) > 0:
             aper = ic.photApertures[istab-1]
             #apertype = aper.__class__.__name__
-            if aper.type == 'Ellipse':
+            if aper.type == 'Ellipse' or aper.type == 'Circle':
                 x0,y0 = aper.ellipse.center
                 w0    = aper.ellipse.width
                 h0    = aper.ellipse.height
@@ -322,21 +328,40 @@ class GUI (QMainWindow):
                 for ima in ici:
                     x0,y0 = ima.wcs.all_world2pix(ra0,dec0,1)
                     w0 = ws/ima.pixscale; h0 = hs/ima.pixscale
-                    ellipse = ima.photApertures[istab-1].ellipse
-                    ellipse.center = x0,y0
-                    ellipse.width = w0
-                    ellipse.height = h0
-                    ellipse.angle = angle
+                    ap = ima.photApertures[istab-1]
+                    ap.ellipse.center = x0,y0
+                    ap.ellipse.width = w0
+                    ap.ellipse.height = h0
+                    ap.ellipse.angle = angle
+                    ap.updateMarkers()
+                    ima.changed = True
+            if aper.type == 'Rectangle' or aper.type == 'Square':
+                x0,y0 = aper.rect.get_xy()
+                w0    = aper.rect.get_width()
+                h0    = aper.rect.get_height()
+                angle = aper.rect.angle
+                ra0,dec0 = ic.wcs.all_pix2world(x0,y0,1)
+                ws = w0 * ic.pixscale; hs = h0 * ic.pixscale
+                for ima in ici:
+                    x0,y0 = ima.wcs.all_world2pix(ra0,dec0,1)
+                    w0 = ws/ima.pixscale; h0 = hs/ima.pixscale
+                    ap = ima.photApertures[istab-1]
+                    ap.rect.set_xy((x0,y0))
+                    ap.rect.set_width(w0)
+                    ap.rect.set_height(h0)
+                    ap.rect.angle = angle
+                    ap.updateMarkers()
                     ima.changed = True
             elif aper.type == 'Polygon':
                 verts = aper.poly.get_xy()
-                adverts = np.array([(ic0.wcs.all_pix2world(x,y,1)) for (x,y) in verts])                
+                adverts = np.array([(ic.wcs.all_pix2world(x,y,1)) for (x,y) in verts])                
                 for ima in ici:
                     verts = [(ima.wcs.all_world2pix(ra,dec,1)) for (ra,dec) in adverts]
-                    ima.photApertures[istab].poly.set_xy(verts)
+                    ap = ima.photApertures[istab-1]
+                    ap.poly.set_xy(verts)
+                    ap.update_markers()
                     ima.changed = True
 
-            # Update flux curves in current aperture tab # istab
             
 
     def onWheel(self,event):
@@ -653,17 +678,24 @@ class GUI (QMainWindow):
     def onRectSelect(self, eclick, erelease):
         'eclick and erelease are the press and release events'
 
-        from apertures import EllipseInteractor
+        from apertures import EllipseInteractor, RectangleInteractor
         
         x1, y1 = eclick.xdata, eclick.ydata
         x2, y2 = erelease.xdata, erelease.ydata
         #print("(%3.2f, %3.2f) --> (%3.2f, %3.2f)" % (x1, y1, x2, y2))
         #print(" The button you used were: %s %s" % (eclick.button, erelease.button))
-        
-        x0 = (x1+x2)*0.5
-        y0 = (y1+y2)*0.5
-        w  = np.abs(x2-x1)
-        h  = np.abs(y2-y1)
+
+        if self.selAp == 'square' or self.selAp == 'rectangle':
+            #x0 = (x1+x2)*0.5
+            #y0 = (y1+y2)*0.5
+            x0=x1;y0=y1
+            w  = np.abs(x2-x1)
+            h  = np.abs(y2-y1)
+        else:
+            x0 = (x1+x2)*0.5
+            y0 = (y1+y2)*0.5
+            w  = np.abs(x2-x1)
+            h  = np.abs(y2-y1)
 
         
         itab = self.itabs.currentIndex()
@@ -672,37 +704,54 @@ class GUI (QMainWindow):
         ws = w*ic0.pixscale; hs = h*ic0.pixscale
 
         
+        n = len(self.photoApertures)
         if self.selAp == 'square':
             self.RS.set_active(False)
             self.RS = None
-            pass
+            # Define square
+            data = [r0,d0,ws]
+            self.photoApertures.append(photoAperture(n,'square',data))
+            for ic in self.ici:
+                x0,y0 = ic.wcs.all_world2pix(r0,d0,1)
+                w = ws/ic.pixscale; h = hs/ic.pixscale
+                square = RectangleInteractor(ic.axes, (x0,y0), w)
+                ic.photApertures.append(square)
         elif self.selAp == 'rectangle':
             self.RS.set_active(False)
             self.RS = None
-            pass
+            # Define rectangle
+            data = [r0,d0,ws,hs]
+            self.photoApertures.append(photoAperture(n,'rectangle',data))
+            for ic in self.ici:
+                x0,y0 = ic.wcs.all_world2pix(r0,d0,1)
+                w = ws/ic.pixscale; h = hs/ic.pixscale
+                rectangle = RectangleInteractor(ic.axes, (x0,y0), w, h)
+                ic.photApertures.append(rectangle)
         elif self.selAp == 'circle':
             self.ES.set_active(False)
             self.ES = None
             pass
+            # Define circle
+            data = [r0,d0,ws]
+            self.photoApertures.append(photoAperture(n,'circle',data))
+            for ic in self.ici:
+                x0,y0 = ic.wcs.all_world2pix(r0,d0,1)
+                w = ws/ic.pixscale; h = hs/ic.pixscale
+                circle = EllipseInteractor(ic.axes, (x0,y0), w)
+                ic.photApertures.append(circle)
         elif self.selAp == 'ellipse':
             self.ES.set_active(False)
             self.ES = None
             # Define ellipse
-            n = len(self.photoApertures)
             data = [r0,d0,ws,hs]
             self.photoApertures.append(photoAperture(n,'ellipse',data))
             for ic in self.ici:
-                # First adjust vertices to astrometry (they are in xy coords)
                 x0,y0 = ic.wcs.all_world2pix(r0,d0,1)
                 w = ws/ic.pixscale; h = hs/ic.pixscale
-                #ellipse = Ellipse((x0,y0),w,h,edgecolor='Lime',facecolor='none',angle=0,fill=False,animated=True)
-                ellipse = EllipseInteractor(ic.axes, (x0,y0), w, h, 0.)
+                ellipse = EllipseInteractor(ic.axes, (x0,y0), w, h)
                 ic.photApertures.append(ellipse)
-                #ic.axes.add_patch(ellipse)
-                #p = EllipseInteractor(ic.axes, ellipse)
-                #ic.fig.canvas.draw_idle()
 
-            self.drawNewSpectrum(n)
+        self.drawNewSpectrum(n)
 
     
     def chooseAperture(self, i):
@@ -725,7 +774,7 @@ class GUI (QMainWindow):
         if self.selAp == 'polygon':
             self.PS = PolygonSelector(ic.axes, self.onPolySelect, lineprops=dict(linestyle='-',color='g'),
                                       useblit=True,markerprops=dict(marker='o',mec='g'),vertex_select_radius=15)
-        elif self.selAp == 'rectangle' or self.selAp == 'square':
+        elif self.selAp == 'rectangle':
             self.RS = RectangleSelector(ic.axes, self.onRectSelect,
                                         drawtype='box', useblit=True,
                                         button=[1, 3],  # don't use middle button
@@ -734,7 +783,19 @@ class GUI (QMainWindow):
                                         rectprops = dict(facecolor='g', edgecolor = 'g',alpha=0.8, fill=False),
                                         lineprops = dict(color='g', linestyle='-',linewidth = 2, alpha=0.8),
                                         interactive=False)
-        elif self.selAp == 'ellipse' or self.selAp == 'circle':
+            self.RS.state.add('center')
+        elif self.selAp == 'square':
+            self.RS = RectangleSelector(ic.axes, self.onRectSelect,
+                                        drawtype='box', useblit=True,
+                                        button=[1, 3],  # don't use middle button
+                                        minspanx=5, minspany=5,
+                                        spancoords='pixels',
+                                        rectprops = dict(facecolor='g', edgecolor = 'g',alpha=0.8, fill=False),
+                                        lineprops = dict(color='g', linestyle='-',linewidth = 2, alpha=0.8),
+                                        interactive=False)
+            self.RS.state.add('square')
+            self.RS.state.add('center')
+        elif self.selAp == 'ellipse':
             self.ES = EllipseSelector(ic.axes, self.onRectSelect,
                                       drawtype='line', useblit=True,
                                       button=[1, 3],  # don't use middle button
@@ -743,6 +804,18 @@ class GUI (QMainWindow):
                                       rectprops = dict(facecolor='g', edgecolor = 'g',alpha=0.8, fill=False),
                                       lineprops = dict(color='g', linestyle='-',linewidth = 2, alpha=0.8),
                                       interactive=False)
+            self.ES.state.add('center')
+        elif self.selAp == 'circle':
+            self.ES = EllipseSelector(ic.axes, self.onRectSelect,
+                                      drawtype='line', useblit=True,
+                                      button=[1, 3],  # don't use middle button
+                                      minspanx=5, minspany=5,
+                                      spancoords='pixels',
+                                      rectprops = dict(facecolor='g', edgecolor = 'g',alpha=0.8, fill=False),
+                                      lineprops = dict(color='g', linestyle='-',linewidth = 2, alpha=0.8),
+                                      interactive=False)
+            self.ES.state.add('square')
+            self.ES.state.add('center')
         
         if self.selAp != 'apertures':
             ic.fig.canvas.draw_idle()
@@ -807,37 +880,47 @@ class GUI (QMainWindow):
 
     def addApertures(self, ic):
         """ Add apertures already defined on new image """
-        from apertures import PolygonInteractor, EllipseInteractor
+        from apertures import PolygonInteractor, EllipseInteractor, RectangleInteractor
 
         ic0 = self.ici[0]
         for aper in ic0.photApertures:
             #apertype = aper.__class__.__name__
-            if aper.type == 'Ellipse':
-                x0,y0 = aper.center
-                w0    = aper.width
-                h0    = aper.height
-                angle = aper.angle
+            if aper.type == 'Ellipse' or aper.type == 'Circle':
+                x0,y0 = aper.ellipse.center
+                w0    = aper.ellipse.width
+                h0    = aper.ellipse.height
+                angle = aper.ellipse.angle
                 ra0,dec0 = ic0.wcs.all_pix2world(x0,y0,1)
                 ws = w0 * ic0.pixscale; hs = h0 * ic0.pixscale
                 # Add ellipse
                 x0,y0 = ic.wcs.all_world2pix(ra0,dec0,1)
                 w0 = ws/ic.pixscale; h0 = hs/ic.pixscale
                 ellipse = EllipseInteractor(ic.axes, (x0,y0),w0,h0,angle)
-                #ellipse = Ellipse((x0,y0),w0,h0,edgecolor='Lime',facecolor='none',angle=angle,fill=False,animated=True)
+                ellipse.type = aper.type
                 ic.photApertures.append(ellipse)
-                #ic.axes.add_patch(ellipse)
-                #p = EllipseInteractor(ic.axes, ellipse)                
+            elif aper.type == 'Rectangle' or aper.type == 'Square':
+                x0,y0 = aper.rect.get_xy()
+                w0    = aper.rect.get_width()
+                h0    = aper.rect.get_height()
+                print(type(h0))
+                angle = aper.rect.angle
+                ra0,dec0 = ic0.wcs.all_pix2world(x0,y0,1)
+                ws = w0 * ic0.pixscale; hs = h0 * ic0.pixscale
+                # Add rectangle
+                x0,y0 = ic.wcs.all_world2pix(ra0,dec0,1)
+                w0 = ws/ic.pixscale; h0 = hs/ic.pixscale
+                rectangle = RectangleInteractor(ic.axes, (x0,y0),w0,h0,angle)
+                rectangle.type = aper.type
+                rectangle.rect.set_xy((x0,y0))
+                rectangle.updateMarkers()
+                ic.photApertures.append(rectangle)                
             elif aper.type == 'Polygon':
                 verts = aper.poly.get_xy()
                 adverts = np.array([(ic0.wcs.all_pix2world(x,y,1)) for (x,y) in verts])
                 verts = [(ic.wcs.all_world2pix(ra,dec,1)) for (ra,dec) in adverts]
                 # Add polygon
                 poly = PolygonInteractor(ic.axes,verts)                
-                #poly = Polygon(verts, animated=True, fill=False, closed=True, color='g')
                 ic.photApertures.append(poly)
-                #ic.axes.add_patch(poly)
-                #p = PolygonInteractor(ic.axes, poly)
-        #ic.fig.canvas.draw_idle()
         
         
 
@@ -1355,7 +1438,7 @@ class GUI (QMainWindow):
         sc.xlimits = (xmin,xmax)
         sc.ylimits = sc.axes.get_ylim()
         self.specZoomlimits = [sc.xlimits,sc.ylimits]
-        print ('new limits are ', sc.xlimits, sc.ylimits)
+        #print ('new limits are ', sc.xlimits, sc.ylimits)
         
     def changeVisibility(self):
         """ Hide/show the histogram of image intensities """

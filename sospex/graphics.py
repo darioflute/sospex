@@ -38,7 +38,7 @@ class NavigationToolbar(NavigationToolbar2QT):
         self.iconDir = os.path.join(os.path.dirname(os.path.abspath(__file__)),"icons")
 
         icon = QIcon(self.iconDir+'exit.png')
-        print('path of icons is ', icon)
+        #print('path of icons is ', icon)
         self.toolitems = [
             ('Home','Go back to original limits','home','home'),
             ('Pan','Pan figure','move','pan'),
