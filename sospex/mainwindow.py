@@ -618,12 +618,7 @@ class GUI (QMainWindow):
             # First adjust vertices to astrometry (they are in xy coords)
             verts = [(ic.wcs.all_world2pix(ra,dec,1)) for (ra,dec) in adverts]
             poly  = PolygonInteractor(ic.axes, verts)
-            #poly = Polygon(list(verts), animated=True, fill=False, closed=True, color='g')
             ic.photApertures.append(poly)
-            #ic.axes.add_patch(poly)
-            # I have to conserve the interactors (maybe add also the aperture to the interactor)
-            #p = PolygonInteractor(ic.axes, poly)
-            #ic.fig.canvas.draw_idle()
         self.PS = None
 
         self.drawNewSpectrum(n)
@@ -1156,7 +1151,20 @@ class GUI (QMainWindow):
         self.addApertures(ic)
         
         # Align with spectral cube
-        self.zoomAll(0)
+        #self.zoomAll(0)
+        ic0 = self.ici[0]
+        x = ic0.axes.get_xlim()
+        y = ic0.axes.get_ylim()
+        ra,dec = ic0.wcs.all_pix2world(x,y,1)
+        x,y = ic.wcs.all_world2pix(ra,dec,1)            
+        #self.zoomlimits = [x,y]
+        #x0 = int(np.min(x)); x1 = int(np.max(x))
+        #y0 = int(np.min(y)); y1 = int(np.max(y))
+        #x,y = ic.wcs.all_world2pix(ra,dec,1)
+        ic.axes.set_xlim(x)
+        ic.axes.set_ylim(y)
+        ic.changed = True
+
         
     def overlapContours(self):
         """ Compute contours and overlap them on images """
