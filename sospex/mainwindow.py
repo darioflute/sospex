@@ -258,6 +258,7 @@ class GUI (QMainWindow):
                         ap.showverts = True
                     else:
                         ap.showverts = False
+                    ap.updateMarkers()
                     ap.line.set_visible(ap.showverts)
                 ima.changed = True
             if ima.changed:
