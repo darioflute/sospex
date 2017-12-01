@@ -73,8 +73,8 @@ class specCube(object):
 
         hdl.close()
         # Create a grid of points
-        nz,ny,nx = np.shape(self.flux)
-        xi = np.arange(nx); yi = np.arange(ny)
+        self.nz,self.ny,self.nx = np.shape(self.flux)
+        xi = np.arange(self.nx); yi = np.arange(self.ny)
         xi,yi = np.meshgrid(xi,yi)
         self.points = np.array([np.ravel(xi),np.ravel(yi)]).transpose()
 

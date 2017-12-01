@@ -269,6 +269,7 @@ class SpectrumCanvas(MplCanvas):
     def drawSpectrum(self):
         
         # Initialize
+        self.axes.clear()
         self.axes.grid(True, which='both')
         self.axes.xaxis.set_major_formatter(ScalarFormatter(useOffset=False))
         self.axes.yaxis.set_major_formatter(ScalarFormatter(useOffset=False))
@@ -289,10 +290,7 @@ class SpectrumCanvas(MplCanvas):
             if s.instrument == 'FIFI-LS':
                 self.xr = self.x / (1+s.baryshift)
 
-        #x0 = np.min(x); x1 = np.max(x)
-        #self.axes.set_xlim([x0,x1])
-
-            
+             
         self.fluxLine = self.axes.step(self.x,s.flux,color='blue',label='Flux')
         self.fluxLayer, = self.fluxLine
 
@@ -343,9 +341,8 @@ class SpectrumCanvas(MplCanvas):
                 elif self.xunit == 'THz':
                     c = 299792458.0  # speed of light in m/s
                     xline = c/wline * 1.e-6
-                #print('xline is ',xline)
                 annotation = self.axes.annotate(nline, xy=(xline,y1),  xytext=(xline, y2), color='purple', alpha=0.4,
-                                                arrowprops=dict(color='purple',facecolor='y', arrowstyle='-',alpha=0.4,
+                                                arrowprops=dict(edgecolor='purple',facecolor='y', arrowstyle='-',alpha=0.4,
                                                 connectionstyle="angle,angleA=0,angleB=90,rad=10"),
                                                 rotation = 90, fontstyle = 'italic', fontproperties=font,
                                                 visible=self.displayLines,)
@@ -400,7 +397,6 @@ class SpectrumCanvas(MplCanvas):
             else:
                 self.ax3.get_yaxis().set_tick_params(labelright='off',right='off')
             if self.displayAtran:
-                #self.ax2.get_yaxis().set_tick_params(labelright='on',right='on', which='both', direction='in', pad = -25, colors='red')
                 self.ax2.get_yaxis().set_tick_params(labelright='on',right='on', direction='in', pad = -25, colors='red')
             else:
                 self.ax2.get_yaxis().set_tick_params(labelright='off',right='off')            
@@ -424,33 +420,24 @@ class SpectrumCanvas(MplCanvas):
             x1,x2 = self.axes.get_xlim()
             c = 299792.458  # speed of light in km/s
             if self.xunit == 'um':
-                #v = (tl/s.l0-1.)*c
-                #vtl = ["%.1f" % z for z in v]
                 vx1 = (x1/(1+s.redshift)/s.l0-1.)*c
                 vx2 = (x2/(1+s.redshift)/s.l0-1.)*c
             elif self.xunit == 'THz':
-                #v = (c/s.l0/tl*1.e-3-1.)*c
-                #vtl = ["%.1f" % z for z in v]
                 vx1 = (c/x1/(1+s.redshift)/s.l0*1.e-3-1.)*c
                 vx2 = (c/x2/(1+s.redshift)/s.l0*1.e-3-1.)*c
-            #print('ticks labels ',vtl)
             try:
                 self.fig.delaxes(self.vaxes)
-                #self.vaxes.remove()
             except:
                 pass
             self.vaxes = self.axes.twiny()
             self.vaxes.xaxis.set_major_formatter(ScalarFormatter(useOffset=False))
             self.vaxes.set_xlim((vx1,vx2))
-            #self.vaxes.set_xticks(v)
-            #self.vaxes.set_xticklabels(vtl)
             self.vaxes.set_xlabel("Velocity [km/s]")
         except:
             print('l0 is not defined')
                 
         # Prepare legend                
         self.labs = [l.get_label() for l in lns]
-        #leg = self.axes.legend(lns, self.labs, loc='best',frameon=False,framealpha=0.0)
         leg = self.axes.legend(lns, self.labs, loc='upper center', bbox_to_anchor=(0.5, -0.1),
                                fancybox=True, shadow=True, ncol=5)
         leg.draggable()

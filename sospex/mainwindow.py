@@ -238,7 +238,7 @@ class GUI (QMainWindow):
         self.sci.remove(spec)
         self.scid1.remove(c1)
         self.scid2.remove(c2)
-        ima = None
+        spec = None
 
         
     def onITabChange(self, itab):
@@ -246,9 +246,21 @@ class GUI (QMainWindow):
         #print("current index is ", itab)
         if itab < len(self.ici):
             ima = self.ici[itab]
+            if len(self.stabs) > 1:
+                # Check if vertices are activated correctly
+                istab = self.stabs.currentIndex()
+                nap = len(self.stabs)-1
+                n = istab-1  # aperture number
+                # Activate interactor (toogle on) and disactivate
+                for iap in range(nap):
+                    ap = ima.photApertures[iap]
+                    if iap == n:
+                        ap.showverts = True
+                    else:
+                        ap.showverts = False
+                    ap.line.set_visible(ap.showverts)
+                ima.changed = True
             if ima.changed:
-                #canvas = ima.arcell[0].figure.canvas
-                #canvas.draw_idle()
                 ima.fig.canvas.draw_idle()
                 ima.changed = False
             if self.blink == 'select':
@@ -281,13 +293,17 @@ class GUI (QMainWindow):
 
         # Grab aperture in the flux image to compute the new fluxes
         istab = self.stabs.currentIndex()
-        sc = self.sci[istab]
+        #print('motion ',itab,istab)
         if istab > 0:
+            sc = self.sci[istab]
+            s = self.specCube
+            # I should find a way to know if the aperture has changed
+            if itab != 0:
+                self.updateAperture()
             aperture = self.ici[0].photApertures[istab-1].aperture
             path = aperture.get_path()
             transform = aperture.get_patch_transform()
             npath = transform.transform_path(path)
-            s = self.specCube
             inpoints = s.points[npath.contains_points(s.points)]
             xx,yy = inpoints.T
         
@@ -299,7 +315,48 @@ class GUI (QMainWindow):
                 expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
                 sc.updateSpectrum(fluxAll,uf=ufluxAll,exp=expAll)
 
+    def updateAperture(self):
 
+        itab = self.itabs.currentIndex()
+        ic = self.ici[itab]
+        ic0 = self.ici[0]
+        nap = self.stabs.currentIndex()-1
+
+        aper = ic.photApertures[nap]
+        aper0 = ic0.photApertures[nap]
+
+        if aper.type == 'Polygon':
+            verts = aper.poly.get_xy()
+            adverts = np.array([(ic.wcs.all_pix2world(x,y,1)) for (x,y) in verts])                
+            verts = [(ic0.wcs.all_world2pix(ra,dec,1)) for (ra,dec) in adverts]
+            aper0.poly.set_xy(verts)
+        elif aper.type == 'Ellipse' or aper.type == 'Circle':
+            x0,y0 = aper.ellipse.center
+            w0    = aper.ellipse.width
+            h0    = aper.ellipse.height
+            angle = aper.ellipse.angle
+            ra0,dec0 = ic.wcs.all_pix2world(x0,y0,1)
+            ws = w0 * ic.pixscale; hs = h0 * ic.pixscale
+            x0,y0 = ic0.wcs.all_world2pix(ra0,dec0,1)
+            w0 = ws/ic0.pixscale; h0 = hs/ic0.pixscale
+            aper0.ellipse.center = x0,y0
+            aper0.ellipse.width = w0
+            aper0.ellipse.height = h0
+            aper0.ellipse.angle = angle
+        if aper.type == 'Rectangle' or aper.type == 'Square':
+            x0,y0 = aper.rect.get_xy()
+            w0    = aper.rect.get_width()
+            h0    = aper.rect.get_height()
+            angle = aper.rect.angle
+            ra0,dec0 = ic.wcs.all_pix2world(x0,y0,1)
+            ws = w0 * ic.pixscale; hs = h0 * ic.pixscale
+            x0,y0 = ic0.wcs.all_world2pix(ra0,dec0,1)
+            w0 = ws/ic0.pixscale; h0 = hs/ic0.pixscale
+            aper0.rect.set_xy((x0,y0))
+            aper0.rect.set_width(w0)
+            aper0.rect.set_height(h0)
+            aper0.rect.angle = angle
+        
             
     def onDraw(self,event):
 
@@ -377,6 +434,7 @@ class GUI (QMainWindow):
             factor=0.9
         elif eb == 'down':
             factor=1.1
+        print('zooming by a factor ',factor)
         new_width = (curr_xlim[1]-curr_xlim[0])*factor*0.5
         new_height= (curr_ylim[1]-curr_ylim[0])*factor*0.5
         x = [curr_x0-new_width,curr_x0+new_width]
@@ -429,7 +487,7 @@ class GUI (QMainWindow):
         """ Wheel moves right/left the slice defined on spectrum """
 
         sc = self.sci[self.spectra.index('All')]
-        print(event.button)
+        #print(event.button)
         if sc.regionlimits is not None:
             eb = event.button
             xmin,xmax = sc.regionlimits
@@ -869,9 +927,14 @@ class GUI (QMainWindow):
         self.addApertures(ic)
 
         # Align with spectral cube
-        self.zoomAll(0)
-        #except:
-        #    self.sb.showMessage('First load a spectral cube !', 1000)
+        ic0 = self.ici[0]
+        x = ic0.axes.get_xlim()
+        y = ic0.axes.get_ylim()
+        ra,dec = ic0.wcs.all_pix2world(x,y,1)
+        x,y = ic.wcs.all_world2pix(ra,dec,1)            
+        ic.axes.set_xlim(x)
+        ic.axes.set_ylim(y)
+        ic.changed = True
 
     def addApertures(self, ic):
         """ Add apertures already defined on new image """
@@ -892,6 +955,7 @@ class GUI (QMainWindow):
                 w0 = ws/ic.pixscale; h0 = hs/ic.pixscale
                 ellipse = EllipseInteractor(ic.axes, (x0,y0),w0,h0,angle)
                 ellipse.type = aper.type
+                ellipse.showverts = aper.showverts
                 ic.photApertures.append(ellipse)
             elif aper.type == 'Rectangle' or aper.type == 'Square':
                 x0,y0 = aper.rect.get_xy()
@@ -906,6 +970,7 @@ class GUI (QMainWindow):
                 w0 = ws/ic.pixscale; h0 = hs/ic.pixscale
                 rectangle = RectangleInteractor(ic.axes, (x0,y0),w0,h0,angle)
                 rectangle.type = aper.type
+                rectangle.showverts = aper.showverts
                 rectangle.rect.set_xy((x0,y0))
                 rectangle.updateMarkers()
                 ic.photApertures.append(rectangle)                
@@ -915,6 +980,7 @@ class GUI (QMainWindow):
                 verts = [(ic.wcs.all_world2pix(ra,dec,1)) for (ra,dec) in adverts]
                 # Add polygon
                 poly = PolygonInteractor(ic.axes,verts)                
+                poly.showverts = aper.showverts
                 ic.photApertures.append(poly)
         
         
@@ -1151,16 +1217,11 @@ class GUI (QMainWindow):
         self.addApertures(ic)
         
         # Align with spectral cube
-        #self.zoomAll(0)
         ic0 = self.ici[0]
         x = ic0.axes.get_xlim()
         y = ic0.axes.get_ylim()
         ra,dec = ic0.wcs.all_pix2world(x,y,1)
         x,y = ic.wcs.all_world2pix(ra,dec,1)            
-        #self.zoomlimits = [x,y]
-        #x0 = int(np.min(x)); x1 = int(np.max(x))
-        #y0 = int(np.min(y)); y1 = int(np.max(y))
-        #x,y = ic.wcs.all_world2pix(ra,dec,1)
         ic.axes.set_xlim(x)
         ic.axes.set_ylim(y)
         ic.changed = True
@@ -1236,6 +1297,20 @@ class GUI (QMainWindow):
                     self.removeSpecTab(stab)
             except:
                 pass
+
+            # Initialize
+            self.tabi = []
+            self.ici  = []
+            self.ihi  = []
+            self.ihcid = []
+            self.icid1 = []
+            self.icid2 = []
+            self.icid3 = []
+            self.stabi = []
+            self.sci  = []
+            self.scid1 = []
+            self.scid2 = []
+
             # Open new tabs and display it
             if self.specCube.instrument == 'FIFI-LS':
                 self.bands = ['Flux','uFlux','Exp']
@@ -1380,58 +1455,65 @@ class GUI (QMainWindow):
 
     def zoomAll(self, itab):
 
-        from specobj import Spectrum
+        #from specobj import Spectrum
         ic = self.ici[itab]
         if ic.toolbar._active == 'ZOOM':
             ic.toolbar.zoom()  # turn off zoom
         x = ic.axes.get_xlim()
         y = ic.axes.get_ylim()
         ra,dec = ic.wcs.all_pix2world(x,y,1)
-        
+
+        # If not in the flux image, compute values for the flux image
         band = self.bands.index('Flux')
         if itab != band:
             ic = self.ici[band]
-            x,y = ima.wcs.all_world2pix(ra,dec,1)            
+            x,y = ic.wcs.all_world2pix(ra,dec,1)            
         self.zoomlimits = [x,y]
-        print('itab',itab,'band',band,'limits ',x,y)
+
+        # Compute limits for new total spectrum
         x0 = int(np.min(x)); x1 = int(np.max(x))
         y0 = int(np.min(y)); y1 = int(np.max(y))
+        if x0 < 0: x0=0
+        if y0 < 0: y0=0
+        if x1 >= s.nx: x1 = s.nx-1
+        if y1 >= s.ny: y1 = s.ny-1
 
+        # Set new values in other image tabs
         ici = self.ici.copy()
         ici.remove(ic)
         for ima in ici:
             x,y = ima.wcs.all_world2pix(ra,dec,1)
+            ima.axes.callbacks.disconnect(ima.cid)
             ima.axes.set_xlim(x)
             ima.axes.set_ylim(y)
             ima.changed = True
+            ima.cid = ima.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
 
+        print('itab',itab,'band',band,'limits ',x,y)
 
-        # Update total spectra
-        fluxAll = np.nansum(self.specCube.flux[:,y0:y1,x0:x1], axis=(1,2))
+        # Update total spectrum
         s = self.specCube
+        spectrum = self.spectra.index('All')
+        sc = self.sci[spectrum]
+        
+        fluxAll = np.nansum(self.specCube.flux[:,y0:y1,x0:x1], axis=(1,2))
         if s.instrument == 'GREAT':
-            spec = Spectrum(s.wave, fluxAll, instrument=s.instrument, redshift=s.redshift,l0=s.l0 )
+            sc.updateSpectrum(fluxAll)
         elif self.specCube.instrument == 'FIFI-LS':
             ufluxAll = np.nansum(s.uflux[:,y0:y1,x0:x1], axis=(1,2))
             expAll = np.nansum(s.exposure[:,y0:y1,x0:x1], axis=(1,2))
-            spec = Spectrum(s.wave, fluxAll, uflux= ufluxAll,
-                            exposure=expAll, atran = s.atran, instrument=s.instrument,
-                            redshift=s.redshift, baryshift = s.baryshift, l0=s.l0)
-
+            sc.updateSpectrum(fluxAll,uf=ufluxAll,exp=expAll)
+            
         # Clear previous spectrum and plot new curves
-        spectrum = self.spectra.index('All')
-        sc = self.sci[spectrum]
-        sc.axes.clear()
-        #if self.specCube.instrument == 'FIFI-LS':
-        #    sc.ax2.clear()
-        #    sc.ax3.clear()
-        #    sc.ax4.clear()
-        ymax = np.max(fluxAll)
-        ymin = np.min(fluxAll)
-        sc.ylimits = (ymin,ymax*1.2)
-        sc.compute_initial_spectrum(spectrum=spec)
-        sc.fig.canvas.draw_idle()
-        sc.cid = sc.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomSpec)
+        #spectrum = self.spectra.index('All')
+        #sc = self.sci[spectrum]
+        #sc.axes.clear()
+        #ymax = np.max(fluxAll)
+        #ymin = np.min(fluxAll)
+        #sc.ylimits = (ymin,ymax*1.2)
+        #sc.compute_initial_spectrum(spectrum=spec)
+        #sc.fig.canvas.draw_idle()
+        #sc.cid = sc.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomSpec)
             
     def doZoomSpec(self,event):
         """ In the future impose the same limits to all the spectral tabs """
@@ -1446,7 +1528,7 @@ class GUI (QMainWindow):
         sc.xlimits = (xmin,xmax)
         sc.ylimits = sc.axes.get_ylim()
         self.specZoomlimits = [sc.xlimits,sc.ylimits]
-        #print ('new limits are ', sc.xlimits, sc.ylimits)
+
         
     def changeVisibility(self):
         """ Hide/show the histogram of image intensities """
@@ -1465,11 +1547,11 @@ class GUI (QMainWindow):
 
         # This should activate an aperture (put dots on it and/or change color)
         if len(self.stabs) > 1:
-            istab = self.stabs.currentIndex()
             itab  = self.itabs.currentIndex()
-            nap = len(self.stabs)-1
-            n = istab-1  # aperture number
             ic = self.ici[itab]
+            nap = len(self.stabs)-1
+            istab = self.stabs.currentIndex()
+            n = istab-1  # aperture number
             # Activate interactor (toogle on) and disactivate
             for iap in range(nap):
                 ap = ic.photApertures[iap]
@@ -1479,6 +1561,7 @@ class GUI (QMainWindow):
                     ap.showverts = False
                 ap.line.set_visible(ap.showverts)
             ic.fig.canvas.draw_idle()
+            
         
 
         
