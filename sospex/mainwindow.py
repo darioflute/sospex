@@ -4,7 +4,7 @@ import numpy as np
 from PyQt5.QtWidgets import (QApplication, QWidget, QMainWindow, QTabWidget, QHBoxLayout,
                              QGroupBox, QVBoxLayout, QSizePolicy, QStatusBar, QSplitter,
                              QToolBar, QAction, QFileDialog,  QTableView, QComboBox, QAbstractItemView,
-                             QToolButton, QMessageBox, QPushButton)
+                             QToolButton, QMessageBox, QPushButton, QInputDialog, QDialog)
 from PyQt5.QtGui import QIcon, QStandardItem, QStandardItemModel
 from PyQt5.QtCore import Qt, QSize, QTimer, pyqtSignal
 
@@ -282,6 +282,24 @@ class GUI (QMainWindow):
         ic.image.set_clim(ih.limits)
         ic.fig.canvas.draw_idle()
 
+    def onHelp(self, event):
+        import webbrowser
+        #, markdown2,io
+        # create new html help files with
+        # jupyter nbconvert Help.ipynb --to html --template basic
+        # otherwise download as HTML from notebook
+        
+        #html = markdown2.markdown_path(self.path0+'/../README.md')
+        #path = os.path.abspath('temp.html')
+        #url = 'file://' + path
+        #with open(path, 'w') as f:
+        #    f.write(html)
+        #webbrowser.open(url)
+
+        #output = io.StringIO(html)
+        #webbrowser.open('https://github.com/darioflute/sospex/blob/python3/README.md')
+        print(self.path0+'/readme.html')
+        webbrowser.open('file://'+os.path.abspath(self.path0+'/help/Help.html'))
 
     def onMotion(self, event):
         """ Update spectrum when moving an aperture on the image """
@@ -559,6 +577,7 @@ class GUI (QMainWindow):
         self.tb.setObjectName('toolbar')
 
         # Actions
+        self.helpAction = self.createAction(self.path0+'/icons/help.png','Help','Ctrl+q',self.onHelp)
         self.quitAction = self.createAction(self.path0+'/icons/exit.png','Quit program','Ctrl+q',self.fileQuit)
         self.startAction = self.createAction(self.path0+'/icons/new.png','Load new observation','Ctrl+s',self.newFile)
         self.levelsAction = self.createAction(self.path0+'/icons/levels.png','Adjust image levels','Ctrl+L',self.changeVisibility)
@@ -572,7 +591,7 @@ class GUI (QMainWindow):
         self.cropAction = self.createAction(self.path0+'/icons/crop.png','Crop the cube','Ctrl+K',self.cropCube)
         self.sliceAction = self.createAction(self.path0+'/icons/slice.png','Select a slice of the cube','Ctrl+K',self.sliceCube)
         self.maskAction =  self.createAction(self.path0+'/icons/mask.png','Mask a slice of the cube','Ctrl+m',self.maskCube)
-        self.cloudAction = self.createAction(self.path0+'/icons/cloud.png','Download image from cloud','Ctrl+D',self.downloadImage)
+        self.cloudAction = self.createAction(self.path0+'/icons/cloud.png','Download image from cloud','Ctrl+D',self.selectDownloadImage)
 
 
         # Add buttons to the toolbar
@@ -584,6 +603,7 @@ class GUI (QMainWindow):
         ##self.tb.addWidget(self.spacer)
         self.tb.addAction(self.startAction)
         self.tb.addAction(self.quitAction)
+        self.tb.addAction(self.helpAction)
         self.tb.addWidget(self.apertureAction)        
 
         #self.tb.addAction(self.levelsAction)
@@ -822,7 +842,11 @@ class GUI (QMainWindow):
         else:
             self.sb.showMessage("You chose a "+self.selAp, 1000)
 
-
+        if len(self.ici) == 0:
+            self.sb.showMessage("Start by opening a new image ", 1000)
+            self.apertureAction.setCurrentIndex(0)
+            return
+            
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
         if self.selAp == 'polygon':
@@ -876,12 +900,24 @@ class GUI (QMainWindow):
         #put back to the 0-th item
         self.apertureAction.setCurrentIndex(0)
 
+    def selectDownloadImage(self):
+        """ Select the image to download """
 
-    def downloadImage(self):
+        selectDI = QInputDialog()
+        selectDI.setStyleSheet("* { font-size: 14pt; }")
+        selectDI.setOption(QInputDialog.UseListViewForComboBoxItems)
+        selectDI.setWindowTitle("Select image to download")
+        selectDI.setLabelText("Selection")
+        imagelist = ['wise1','wise2','wise3','wise4','first']
+        selectDI.setComboBoxItems(imagelist)
+        select = selectDI.exec_()
+        if select == QDialog.Accepted:
+            self.downloadImage(selectDI.textValue())
+
+    def downloadImage(self, band):
         """ Download an image covering the cube """
         from cloud import cloudImage
 
-        #try:
         # Compute center and size of image (in arcmin)
         nz,ny,nx = np.shape(self.specCube.flux)
         lon,lat = self.specCube.wcs.celestial.all_pix2world(ny//2,nx//2, 0)
@@ -901,41 +937,44 @@ class GUI (QMainWindow):
         ysize = np.abs(dec[0]-dec[1])*60.
         print('center: ',lon,lat,' and size: ',xsize,ysize)
         
-        # Download the image from WISE 1 (for the moment)
-        band = 'wise1'
-        self.wiseImage = cloudImage(lon,lat,xsize,ysize,band)
+        print('Band selected is: ',band)
+        self.downloadedImage = cloudImage(lon,lat,xsize,ysize,band)
         print('image downloaded')
         
         # Open tab and display the image
-        self.bands.append(band)
-        t,ic,ih,h,c1,c2,c3 = self.addImage(band)
-        self.tabi.append(t)
-        self.ici.append(ic)
-        self.ihi.append(ih)
-        self.ihcid.append(h)
-        self.icid1.append(c1)
-        self.icid2.append(c2)
-        self.icid3.append(c3)
-        
-        ic.compute_initial_figure(image=self.wiseImage.data,wcs=self.wiseImage.wcs,title=band)
-        # Callback to propagate axes limit changes among images
-        ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
-        ih = self.ihi[self.bands.index(band)]
-        clim = ic.image.get_clim()
-        ih.compute_initial_figure(image=self.wiseImage.data,xmin=clim[0],xmax=clim[1])
+        if self.downloadedImage.data is not None:
+            self.bands.append(band)
+            t,ic,ih,h,c1,c2,c3 = self.addImage(band)
+            self.tabi.append(t)
+            self.ici.append(ic)
+            self.ihi.append(ih)
+            self.ihcid.append(h)
+            self.icid1.append(c1)
+            self.icid2.append(c2)
+            self.icid3.append(c3)
+            
+            ic.compute_initial_figure(image=self.downloadedImage.data,wcs=self.downloadedImage.wcs,title=band)
+            # Callback to propagate axes limit changes among images
+            ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
+            ih = self.ihi[self.bands.index(band)]
+            clim = ic.image.get_clim()
+            ih.compute_initial_figure(image=self.downloadedImage.data,xmin=clim[0],xmax=clim[1])
+            
+            # Add existing apertures
+            self.addApertures(ic)
+            
+            # Align with spectral cube
+            ic0 = self.ici[0]
+            x = ic0.axes.get_xlim()
+            y = ic0.axes.get_ylim()
+            ra,dec = ic0.wcs.all_pix2world(x,y,1)
+            x,y = ic.wcs.all_world2pix(ra,dec,1)            
+            ic.axes.set_xlim(x)
+            ic.axes.set_ylim(y)
+            ic.changed = True
+        else:
+            self.sb.showMessage("The selected survey does not cover the displayed image", 2000)
 
-        # Add existing apertures
-        self.addApertures(ic)
-
-        # Align with spectral cube
-        ic0 = self.ici[0]
-        x = ic0.axes.get_xlim()
-        y = ic0.axes.get_ylim()
-        ra,dec = ic0.wcs.all_pix2world(x,y,1)
-        x,y = ic.wcs.all_world2pix(ra,dec,1)            
-        ic.axes.set_xlim(x)
-        ic.axes.set_ylim(y)
-        ic.changed = True
 
     def addApertures(self, ic):
         """ Add apertures already defined on new image """
@@ -1362,7 +1401,6 @@ class GUI (QMainWindow):
                 self.zoomlimits = [x,y]
             # Compute initial spectra
             spectrum = self.spectra[0]
-            #            for spectrum in self.spectra:
             sc = self.sci[self.spectra.index(spectrum)]
             fluxAll = np.nansum(self.specCube.flux, axis=(1,2))
             s = self.specCube
@@ -1376,8 +1414,6 @@ class GUI (QMainWindow):
                                 redshift=s.redshift, baryshift = s.baryshift, l0=s.l0)
             print("Compute initial spectrum")
             sc.compute_initial_spectrum(spectrum=spec)
-            #sc.xlimits = sc.axes.get_xlim()
-            #sc.ylimits = sc.axes.get_ylim()
             self.specZoomlimits = [sc.xlimits,sc.ylimits]
             sc.cid = sc.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomSpec)
             # Start the span selector to show only part of the cube
@@ -1412,7 +1448,6 @@ class GUI (QMainWindow):
             sc.shadeSpectrum()
             sc.fig.canvas.draw_idle()
             sc.span.set_visible(False)
-            #print('new shade')
 
             # Update images (flux, uflux, coverage)
             if self.specCube.instrument == 'GREAT':
@@ -1420,8 +1455,6 @@ class GUI (QMainWindow):
             elif self.specCube.instrument == 'FIFI-LS':
                 imas = ['Flux','uFlux','Exp']
             
-            #itab0 = self.itabs.currentIndex()
-            #ic0 = self.ici[itab0]
             x,y = self.zoomlimits
             for ima in imas:
                 ic = self.ici[self.bands.index(ima)]
@@ -1456,7 +1489,12 @@ class GUI (QMainWindow):
 
     def zoomAll(self, itab):
 
-        #from specobj import Spectrum
+
+        # Update total spectrum
+        s = self.specCube
+        spectrum = self.spectra.index('All')
+        sc = self.sci[spectrum]
+        
         ic = self.ici[itab]
         if ic.toolbar._active == 'ZOOM':
             ic.toolbar.zoom()  # turn off zoom
@@ -1492,10 +1530,6 @@ class GUI (QMainWindow):
 
         print('itab',itab,'band',band,'limits ',x,y)
 
-        # Update total spectrum
-        s = self.specCube
-        spectrum = self.spectra.index('All')
-        sc = self.sci[spectrum]
         
         fluxAll = np.nansum(self.specCube.flux[:,y0:y1,x0:x1], axis=(1,2))
         if s.instrument == 'GREAT':
@@ -1505,16 +1539,6 @@ class GUI (QMainWindow):
             expAll = np.nansum(s.exposure[:,y0:y1,x0:x1], axis=(1,2))
             sc.updateSpectrum(fluxAll,uf=ufluxAll,exp=expAll)
             
-        # Clear previous spectrum and plot new curves
-        #spectrum = self.spectra.index('All')
-        #sc = self.sci[spectrum]
-        #sc.axes.clear()
-        #ymax = np.max(fluxAll)
-        #ymin = np.min(fluxAll)
-        #sc.ylimits = (ymin,ymax*1.2)
-        #sc.compute_initial_spectrum(spectrum=spec)
-        #sc.fig.canvas.draw_idle()
-        #sc.cid = sc.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomSpec)
             
     def doZoomSpec(self,event):
         """ In the future impose the same limits to all the spectral tabs """

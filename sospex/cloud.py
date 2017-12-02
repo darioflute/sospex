@@ -1,7 +1,8 @@
 import urllib, urllib.request
 from io import StringIO,BytesIO
-from io import StringIO,BytesIO
 from astropy.io import ascii,fits
+from astropy import units as u
+from astropy.coordinates import SkyCoord
 from astropy.utils.data import download_file
 from astropy.wcs import WCS
 import numpy as np
@@ -24,6 +25,8 @@ class cloudImage(object):
             image_file = self.downloadWise(3)
         elif source == 'wise4':
             image_file = self.downloadWise(4)
+        elif source == 'first':
+            image_file = self.downloadFIRST()
         else:
             print('Source not supported')
 
@@ -48,8 +51,7 @@ class cloudImage(object):
         coadd = coadds[bands == band]
         print(coadd)
 
-        # Then, using the columns of the table, we can get an image
-        params = { 'coadd_id': coadd[0],'band': 1,}
+        params = { 'coadd_id': coadd[0],'band': band,}
         params['coaddgrp'] = params['coadd_id'][:2]
         params['coadd_ra'] = params['coadd_id'][:4]
         path = str.format(
@@ -73,3 +75,41 @@ class cloudImage(object):
         self.data = hdulist['PRIMARY'].data
         hdulist.close()
         self.wcs = WCS(header)
+        print('wcs is: ',self.wcs)
+
+
+    def downloadFIRST(self):
+        """ Download data from the VLA FIRST survey """
+
+        c = SkyCoord(ra=self.lon*u.degree, dec=self.lat*u.degree, frame='icrs')
+        coords = c.to_string('hmsdms',sep=' ')
+        print ('coords of the center are: ', coords)
+        Equinox = 'J2000'
+        isize = np.max([self.xsize,self.ysize]) # Size in arcmin
+        itype ='FITS Image'
+
+        url='https://third.ucllnl.org/cgi-bin/firstcutout'
+        post_params = { 
+            'RA'  : coords,
+            'Equinox': Equinox,
+            'ImageSize': isize,
+            'ImageType': itype,
+            '.submit': " Extract the Cutout "
+        }
+        post_args = urllib.parse.urlencode(post_params).encode("utf-8")        
+        request = urllib.request.Request(url, post_args)
+        response = urllib.request.urlopen(request)
+        output = response.read()
+        fitsfile= BytesIO(output)  # Read the downloaded FITS data
+
+        # If a FITS file was downloaded pass image and header, otherwise failes
+        try:
+            hdulist = fits.open(fitsfile)
+            header = hdulist['PRIMARY'].header
+            self.data = hdulist['PRIMARY'].data
+            hdulist.close()
+            self.wcs = WCS(header).celestial
+        except:
+            self.data = None
+            self.wcs = None
+            print('Coordinates out of FIRST VLA survey')

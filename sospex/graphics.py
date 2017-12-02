@@ -121,8 +121,6 @@ class ImageCanvas(MplCanvas):
             #         self.flip = True
 
 
-
-
             # Add ellipse centered on source
             self.pixscale = pixscales(self.wcs)[0]*3600. # Scale in arcsec
             #if self.flip:
