@@ -973,6 +973,6 @@ class PolygonInteractor(object):
         self.canvas.update()
         self.canvas.flush_events()
 
-    def update_markers(self):
+    def updateMarkers(self):
         self.line.set_data(zip(*self.poly.xy))
         
