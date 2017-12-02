@@ -965,7 +965,7 @@ class PolygonInteractor(object):
             self.poly.xy[-1] = x, y
         elif self._ind == len(self.poly.xy) - 1:
             self.poly.xy[0] = x, y
-        self.update_markers()
+        self.updateMarkers()
 
         self.canvas.restore_region(self.background)
         self.ax.draw_artist(self.poly)
