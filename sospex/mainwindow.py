@@ -435,7 +435,7 @@ class GUI (QMainWindow):
                     verts = [(ima.wcs.all_world2pix(ra,dec,1)) for (ra,dec) in adverts]
                     ap = ima.photApertures[istab-1]
                     ap.poly.set_xy(verts)
-                    ap.update_markers()
+                    ap.updateMarkers()
                     ima.changed = True
 
             
