@@ -639,7 +639,7 @@ class GUI (QMainWindow):
         for d in self.apertures:                
             row = []
             for text in d:
-                item = QStandardItem(QIcon('icons/'+text+'.png'),"")
+                item = QStandardItem(QIcon(self.path0+'/icons/'+text+'.png'),"")
                 item.setTextAlignment(Qt.AlignCenter)
                 if text != 'apertures':
                     item.setToolTip("Choose a "+text)
