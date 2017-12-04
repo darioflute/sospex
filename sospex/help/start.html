@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8" />
-<title>Help</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
+<title>start</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
 
 <style type="text/css">
@@ -11775,7 +11775,7 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h1 id="SOSPEX">SOSPEX<a class="anchor-link" href="#SOSPEX">&#182;</a></h1>
+<h2 id="Loading-a-spectral-cube">Loading a spectral cube<a class="anchor-link" href="#Loading-a-spectral-cube">&#182;</a></h2>
 </div>
 </div>
 </div>
@@ -11783,18 +11783,29 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p><em>SOSPEX</em> stands for <em>SOFIA Spectral Explorer</em>.</p>
-<p>The software has been developed by Dario Fadda (SOFIA Science Center) and it is publicly
-avaible under the GNU General Public License v3.0.</p>
-<p>The tool allows one to explore and analyze spectral cubes obtained with the <em>FIFI-LS</em> and <em>GREAT</em> instruments onboard <em>SOFIA</em>.</p>
-<p>The viewer is organized in two panels:</p>
+<table>
+<thead><tr>
+<th style="text-align:center">Button</th>
+<th style="text-align:left">Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center"><img src="images/new.png" alt="New" style="width: 30px;"/></td>
+<td style="text-align:left">Open a directory navigator to select a local FITS file containing a SOFIA spectral cube downloaded from the SOFIA Science Archive.</td>
+</tr>
+</tbody>
+</table>
+<p>After opening the file, the median of cube along the spectral dimension is shown on the image panel while the spectrum plotted on the left panel is obtained by summing all the spatial pixels for each wavelength.</p>
+<p>In the case of  FIFI-LS two further cubes are read and displayed:</p>
 <ul>
-<li>the image panel (left) displays 2D projections of the spectral cube</li>
-<li>the spectral panel (right) plots 1D spectra extracted from the spectral cube</li>
+<li>the uncorrected flux</li>
+<li>the exposure cube
+resulting in two further tabs in the image panel (median uncorrected flux and 
+total exposure map) and curves on the spectral panel.
+In addition, also the atmospheric transmission used for the correction is shown
+in the spectral panel.</li>
 </ul>
-<p>Several actions are possible using the buttons on the toolbars.
-A short help about the buttons can be obtained by hovering over the icons.
-Further information is sent through the status bar once buttons are clicked.</p>
 
 </div>
 </div>
@@ -11803,8 +11814,8 @@ Further information is sent through the status bar once buttons are clicked.</p>
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>For more information about the usage of SOSPEX, have a look at the
-<a href="tutorials.html">tutorials</a></p>
+<p><a href="Help.html">Back to main help</a></p>
+<p><a href="tutorials.html">Back to the tutorial list</a></p>
 
 </div>
 </div>
