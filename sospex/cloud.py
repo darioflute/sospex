@@ -6,7 +6,35 @@ from astropy.coordinates import SkyCoord
 from astropy.utils.data import download_file
 from astropy.wcs import WCS
 import numpy as np
+from html.parser import HTMLParser
 
+class MyHTMLParser(HTMLParser):
+
+    def __init__(self):
+        HTMLParser.__init__(self)
+        self.data = []
+        self.values = []
+        self.recording = 0
+
+    def handle_starttag(self, tag, attrs):
+        # Only parse the 'anchor' tag.
+        if tag == "a":
+           # Check the list of defined attributes.
+           for name, value in attrs:
+               # If href is defined, print it.
+               if name == "href":
+                    #print name, value
+                    self.recording = 1
+                    self.values.append(value)
+                    
+    def handle_endtag(self,tag):
+        if tag == 'a':
+            self.recording -=1 
+            #print "Encountered the end of a %s tag" % tag 
+
+    def handle_data(self, data):
+        if self.recording:
+            self.data.append(data)
 
 class cloudImage(object):
     def __init__(self, lon, lat, xsize, ysize, source):
@@ -16,6 +44,8 @@ class cloudImage(object):
         self.xsize = xsize
         self.ysize = ysize
         self.source = source
+        self.data = None
+        self.wcs = None
 
         if source == 'wise1':
             image_file = self.downloadWise(1)
@@ -25,8 +55,30 @@ class cloudImage(object):
             image_file = self.downloadWise(3)
         elif source == 'wise4':
             image_file = self.downloadWise(4)
+        elif source == 'panstarrs-g':
+            image_file = self.downloadPanSTARRS('g')
+        elif source == 'panstarrs-r':
+            image_file = self.downloadPanSTARRS('r')
+        elif source == 'panstarrs-i':
+            image_file = self.downloadPanSTARRS('i')
+        elif source == 'panstarrs-z':
+            image_file = self.downloadPanSTARRS('z')
+        elif source == 'panstarrs-y':
+            image_file = self.downloadPanSTARRS('y')
+        elif source == 'sdss-u':
+            image_file = self.downloadSDSS('u')
+        elif source == 'sdss-r':
+            image_file = self.downloadSDSS('g')
+        elif source == 'sdss-g':
+            image_file = self.downloadSDSS('r')
+        elif source == 'sdss-i':
+            image_file = self.downloadSDSS('i')
+        elif source == 'sdss-z':
+            image_file = self.downloadSDSS('z')
         elif source == 'first':
             image_file = self.downloadFIRST()
+        elif source == 'sumss':
+            image_file = self.downloadSUMSS()
         else:
             print('Source not supported')
 
@@ -112,4 +164,200 @@ class cloudImage(object):
         except:
             self.data = None
             self.wcs = None
-            print('Coordinates out of FIRST VLA survey')
+            print('Coordinates out of the FIRST VLA survey')
+
+    def downloadSUMSS(self):
+        """ Download data from the Sydney University Molonglo Sky Survey """
+
+        c = SkyCoord(ra=self.lon*u.degree, dec=self.lat*u.degree, frame='icrs')
+        cra = c.ra.hms
+        cdec = c.dec.dms
+        ra = "{:.0f} {:.0f} {:.1f}".format(cra[0],cra[1],cra[2])
+        if self.lat > 0:
+            dec = "+{:.0f} {:.0f} {:.1f}".format(cdec[0],cdec[1],cdec[2])
+        else:
+            dec = "-{:.0f} {:.0f} {:.1f}".format(-cdec[0],-cdec[1],-cdec[2])
+        Equinox = 'J2000'
+        xsize = self.xsize/60. # Size in degs
+        ysize = self.ysize/60.
+        fieldsize = "{:.1f} {:.1f}".format(xsize,ysize)
+        itype ='FITS'
+        
+        
+        url='http://www.astrop.physics.usyd.edu.au/cgi-bin/postage.pl'
+        post_params = { 
+            'RA'  : ra,
+            'DEC' : dec,
+            'fieldsize': fieldsize,
+            'scale':'11 11',
+            'equinox': Equinox,
+            'projection':'SIN',
+            'rotation': '0',
+            'imagetypes': itype,
+            'action': "submit"
+        }
+        post_args = urllib.parse.urlencode(post_params).encode("utf-8")        
+        request = urllib.request.Request(url, post_args)
+        response = urllib.request.urlopen(request)
+        html = response.read()
+
+        parser = MyHTMLParser()
+        parser.feed(html.decode('utf-8'))
+        data= parser.data
+        values= parser.values
+        parser.close()
+        # Retrieve file
+        file = values[0]
+        # Check if fits file:
+        if '.fits' in file:
+            print('file is: ',file)
+            response = urllib.request.urlopen(file)
+            output = response.read()
+            fitsfile= BytesIO(output)  # Read the downloaded FITS data
+            hdulist = fits.open(fitsfile)
+            header = hdulist['PRIMARY'].header
+            self.data = hdulist['PRIMARY'].data
+            hdulist.close()
+            self.wcs = WCS(header).celestial
+        else:
+            self.data = None
+            self.wcs = None
+            print('Coordinates out of the SUMSS survey')
+
+    def downloadPanSTARRS(self, band):
+        """ Download Pan STARRS images """
+        url='http://ps1images.stsci.edu/cgi-bin/ps1cutouts'
+        
+        # scale: 60 arcsec = 240 pix, 1" = 4 pixels
+        c = SkyCoord(ra=self.lon*u.degree, dec=self.lat*u.degree, frame='icrs')
+        pos = c.to_string('hmsdms',sep=' ')
+
+        fieldsize = int(np.max([self.xsize,self.ysize])*240.) # in pixels
+        if fieldsize > 6000: fieldsize = 6000  # current limit
+        
+        gchecked=''
+        rchecked=''
+        ichecked=''
+        zchecked=''
+        ychecked=''
+        
+        if band == 'y':
+            ychecked = 'checked'
+        elif band == 'g':
+            gchecked = 'checked'
+        elif band == 'r':
+            rchecked = 'checked'
+        elif band == 'i':
+            ichecked = 'checked'
+        elif band == 'z':
+            zchecked = 'checked'
+            
+        
+        post_params = { 
+            'pos'  : pos,
+            'color':'checked',
+            'g': gchecked,
+            'r': rchecked,
+            'i': ichecked,
+            'z': zchecked,
+            'y': ychecked,
+            'data':'checked',
+            'mask':'',
+            'wt':'',
+            'exp':'',
+            'expwt':'',
+            'num':'',
+            'size': fieldsize,
+            'submit': "Submit"
+        }
+
+        post_args = urllib.parse.urlencode(post_params).encode("utf-8")        
+        request = urllib.request.Request(url, post_args)
+        response = urllib.request.urlopen(request)
+        html = response.read()
+
+        parser = MyHTMLParser()
+        parser.feed(html.decode('utf-8'))
+        data= parser.data
+        values= parser.values
+        parser.close()
+
+        file = None
+        for v in values:
+            if '.'+band+'.unconv.fits' in v:
+                file = 'http:'+v
+                
+        if file is not None:
+            #idx = data.index('FITS-cutout')
+            #file = 'http:'+values[idx]
+            response = urllib.request.urlopen(file)
+            content= response.read()
+            fitsfile = BytesIO(content)
+            hdulist = fits.open(fitsfile)
+            header = hdulist['PRIMARY'].header
+            self.data = hdulist['PRIMARY'].data
+            hdulist.close()
+            self.wcs = WCS(header).celestial
+        else:
+            self.data = None
+            self.wcs = None
+            print('Coordinates out of the PanSTARRS survey')
+
+
+    def downloadSDSS(self,band):
+        """ Download a script to build an image using SWarp - also needs wget and bzip2 installed"""
+        #url='https://dr12.sdss.org/mosaics/'
+
+        import bz2
+
+        # Other way:
+        # Build a search with:
+        # https://dr12.sdss.org/fields/raDec?ra=00+41+37.8+&dec=-09+20+33
+        #
+        # Select a FITS image
+        # Perhaps cut it if too big
+        c = SkyCoord(ra=self.lon*u.degree, dec=self.lat*u.degree, frame='icrs')
+        cra = c.ra.hms
+        cdec = c.dec.dms
+        url0="https://dr12.sdss.org/fields/raDec?ra="
+        ras = "{:02.0f}+{:.0f}+{:.1f}".format(cra[0],cra[1],cra[2])
+        if self.lat > 0:
+            url = url0+ras+"+&dec=+{:02.0f}+{:.0f}+{:.0f}".format(cdec[0],cdec[1],cdec[2])
+        else:
+            url = url0+ras+"+&dec=-{:02.0f}+{:.0f}+{:.0f}".format(-cdec[0],-cdec[1],-cdec[2])
+
+        request = urllib.request.Request(url)
+        response = urllib.request.urlopen(request)
+        html = response.read()
+        
+        parser = MyHTMLParser()
+        parser.feed(html.decode('utf-8'))
+        data= parser.data
+        values= parser.values
+        parser.close()
+
+        file = None
+        for v in values:
+            if 'frame-'+band+'-' in v:
+                file = 'https://dr12.sdss.org/'+v
+                
+        if file is not None:
+            #idx = data.index(band+'-band FITS')
+            #print("Value is:", values[idx-1])
+            #file = 'https://dr12.sdss.org/'+values[idx-1]
+            response = urllib.request.urlopen(file)
+            content= response.read()        
+            fitsfile = BytesIO(bz2.decompress(content))
+            hdulist=fits.open(fitsfile)
+            header = hdulist['PRIMARY'].header
+            self.data = hdulist['PRIMARY'].data
+            hdulist.close()
+            self.wcs = WCS(header)
+        else:
+            self.data = None
+            self.wcs = None
+            print('Coordinates out of the SDSS survey')
+  
+    
+        
+            

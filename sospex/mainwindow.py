@@ -908,7 +908,10 @@ class GUI (QMainWindow):
         selectDI.setOption(QInputDialog.UseListViewForComboBoxItems)
         selectDI.setWindowTitle("Select image to download")
         selectDI.setLabelText("Selection")
-        imagelist = ['wise1','wise2','wise3','wise4','first']
+        imagelist = ['sdss-u','sdss-g','sdss-r','sdss-i','sdss-z',
+                     'panstarrs-g','panstarrs-r','panstarrs-i','panstarrs-z','panstarrs-y',
+                     'wise1','wise2','wise3','wise4',
+                     'first','sumss']
         selectDI.setComboBoxItems(imagelist)
         select = selectDI.exec_()
         if select == QDialog.Accepted:
