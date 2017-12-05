@@ -197,6 +197,7 @@ class ImageHistoCanvas(MplCanvas):
             ima = image.ravel()
             mask = np.isfinite(ima)
             ima = ima[mask]
+            print('image has size', len(ima))
             ima = np.sort(ima)
             s = np.size(ima)
             smax = min(int(s*0.9995),s-1)

@@ -18,7 +18,7 @@ class MyHTMLParser(HTMLParser):
 
     def handle_starttag(self, tag, attrs):
         # Only parse the 'anchor' tag.
-        if tag == "a":
+        if tag == "a" or tag == "base":
            # Check the list of defined attributes.
            for name, value in attrs:
                # If href is defined, print it.
@@ -55,6 +55,12 @@ class cloudImage(object):
             image_file = self.downloadWise(3)
         elif source == 'wise4':
             image_file = self.downloadWise(4)
+        elif source == '2mass-j':
+            image_file = self.download2MASS('J')
+        elif source == '2mass-h':
+            image_file = self.download2MASS('H')
+        elif source == '2mass-k':
+            image_file = self.download2MASS('K')
         elif source == 'panstarrs-g':
             image_file = self.downloadPanSTARRS('g')
         elif source == 'panstarrs-r':
@@ -86,7 +92,66 @@ class cloudImage(object):
 
         # possible contours
         self.contours = None
+
+    def download2MASS(self,band):
+
+        c = SkyCoord(ra=self.lon*u.degree, dec=self.lat*u.degree, frame='icrs')
+        coords = c.to_string('hmsdms',sep=' ')+' Equ J2000'
+        size = int(np.max([self.xsize,self.ysize])*60.) # Size in arcsec
+        if size > 1024: size = 1024
+
+        url = 'http://irsa.ipac.caltech.edu/cgi-bin/2MASS/IM/nph-im_pos'
         
+        
+        post_params = {
+            'POS': coords,
+            'subsz': size,
+            'band': band,
+            '':'Submit'
+        }
+        
+        post_args = urllib.parse.urlencode(post_params)#.encode("utf-8") 
+        full_url=url + '?' + post_args
+
+        print(full_url)
+        response = urllib.request.urlopen(full_url)
+        html = response.read()
+        parser = MyHTMLParser()
+        parser.feed(html.decode('utf-8'))
+        data= parser.data
+        values= parser.values
+        parser.close()
+
+        for d,v in zip(data,values):
+            print (d,' ',v)
+        
+        file = None
+        base = None
+        for v in values:
+            if '.fits' in v:
+                file = v
+            if 'irsa.ipac' in v:
+                base = v    
+
+        file = base+file
+        print('file is: ', file)
+        
+        if '.fits' in file:
+            print('file is: ',file)
+            response = urllib.request.urlopen(file)
+            output = response.read()
+            fitsfile= BytesIO(output)  # Read the downloaded FITS data
+            hdulist = fits.open(fitsfile)
+            header = hdulist['PRIMARY'].header
+            self.data = hdulist['PRIMARY'].data
+            hdulist.close()
+            self.wcs = WCS(header).celestial
+        else:
+            self.data = None
+            self.wcs = None
+            print('Coordinates out of the 2MASS survey')
+
+
     def downloadWise(self,band):
         """ Download a Wise image """
 

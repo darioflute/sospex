@@ -910,6 +910,7 @@ class GUI (QMainWindow):
         selectDI.setLabelText("Selection")
         imagelist = ['sdss-u','sdss-g','sdss-r','sdss-i','sdss-z',
                      'panstarrs-g','panstarrs-r','panstarrs-i','panstarrs-z','panstarrs-y',
+                     '2mass-j','2mass-h','2mass-k',
                      'wise1','wise2','wise3','wise4',
                      'first','nvss','sumss']
         selectDI.setComboBoxItems(imagelist)
@@ -942,39 +943,44 @@ class GUI (QMainWindow):
         
         print('Band selected is: ',band)
         self.downloadedImage = cloudImage(lon,lat,xsize,ysize,band)
-        
+            
         # Open tab and display the image
         if self.downloadedImage.data is not None:
             print('image downloaded')
-            self.bands.append(band)
-            t,ic,ih,h,c1,c2,c3 = self.addImage(band)
-            self.tabi.append(t)
-            self.ici.append(ic)
-            self.ihi.append(ih)
-            self.ihcid.append(h)
-            self.icid1.append(c1)
-            self.icid2.append(c2)
-            self.icid3.append(c3)
+            image = self.downloadedImage.data
+            mask = np.isfinite(image)
+            if np.sum(mask) == 0:
+                self.sb.showMessage("The selected survey does not cover the displayed image", 2000)
+            else:
+                self.bands.append(band)
+                t,ic,ih,h,c1,c2,c3 = self.addImage(band)
+                self.tabi.append(t)
+                self.ici.append(ic)
+                self.ihi.append(ih)
+                self.ihcid.append(h)
+                self.icid1.append(c1)
+                self.icid2.append(c2)
+                self.icid3.append(c3)
+                
+                ic.compute_initial_figure(image=self.downloadedImage.data,wcs=self.downloadedImage.wcs,title=band)
+                # Callback to propagate axes limit changes among images
+                ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
+                ih = self.ihi[self.bands.index(band)]
+                clim = ic.image.get_clim()
+                ih.compute_initial_figure(image=self.downloadedImage.data,xmin=clim[0],xmax=clim[1])
             
-            ic.compute_initial_figure(image=self.downloadedImage.data,wcs=self.downloadedImage.wcs,title=band)
-            # Callback to propagate axes limit changes among images
-            ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
-            ih = self.ihi[self.bands.index(band)]
-            clim = ic.image.get_clim()
-            ih.compute_initial_figure(image=self.downloadedImage.data,xmin=clim[0],xmax=clim[1])
+                # Add existing apertures
+                self.addApertures(ic)
             
-            # Add existing apertures
-            self.addApertures(ic)
-            
-            # Align with spectral cube
-            ic0 = self.ici[0]
-            x = ic0.axes.get_xlim()
-            y = ic0.axes.get_ylim()
-            ra,dec = ic0.wcs.all_pix2world(x,y,1)
-            x,y = ic.wcs.all_world2pix(ra,dec,1)            
-            ic.axes.set_xlim(x)
-            ic.axes.set_ylim(y)
-            ic.changed = True
+                # Align with spectral cube
+                ic0 = self.ici[0]
+                x = ic0.axes.get_xlim()
+                y = ic0.axes.get_ylim()
+                ra,dec = ic0.wcs.all_pix2world(x,y,1)
+                x,y = ic.wcs.all_world2pix(ra,dec,1)            
+                ic.axes.set_xlim(x)
+                ic.axes.set_ylim(y)
+                ic.changed = True
         else:
             self.sb.showMessage("The selected survey does not cover the displayed image", 2000)
 
