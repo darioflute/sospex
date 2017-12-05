@@ -77,6 +77,8 @@ class cloudImage(object):
             image_file = self.downloadSDSS('z')
         elif source == 'first':
             image_file = self.downloadFIRST()
+        elif source == 'nvss':
+            image_file = self.downloadNVSS()
         elif source == 'sumss':
             image_file = self.downloadSUMSS()
         else:
@@ -166,6 +168,61 @@ class cloudImage(object):
             self.wcs = None
             print('Coordinates out of the FIRST VLA survey')
 
+
+    def downloadNVSS(self):
+        """ Download data from the Sydney University Molonglo Sky Survey """
+
+        c = SkyCoord(ra=self.lon*u.degree, dec=self.lat*u.degree, frame='icrs')
+        cra = c.ra.hms
+        cdec = c.dec.dms
+        ra = "{:.0f} {:.0f} {:.1f}".format(cra[0],cra[1],cra[2])
+        if self.lat > 0:
+            dec = "+{:.0f} {:.0f} {:.1f}".format(cdec[0],cdec[1],cdec[2])
+        else:
+            dec = "-{:.0f} {:.0f} {:.1f}".format(-cdec[0],-cdec[1],-cdec[2])
+        Equinox = 'J2000'
+        xsize = self.xsize/60. # Size in degs
+        ysize = self.ysize/60.
+        fieldsize = "{:.1f} {:.1f}".format(xsize,ysize)
+        itype ='application/octet-stream'
+        
+        print('ra ',ra)
+        print('dec ',dec)
+        url='http://www.cv.nrao.edu/cgi-bin/postage.pl'
+        #url='http://www.cv.nrao.edu/nvss/postage.shtml'
+        post_params = {
+            'Equinox': Equinox,
+            'PolType': 'I',
+            'ObjName':'',
+            'RA'  : ra,
+            'Dec' : dec,
+            'Size': fieldsize,
+            'Cells':'15.0 15.0',
+            'MAPROJ':'SIN',
+            'rotate': '0',
+            'Type': itype,
+            '': "Submit!"
+        }
+
+        post_args = urllib.parse.urlencode(post_params)#.encode("utf-8") 
+        full_url=url + '?' + post_args
+
+        try:
+            response = urllib.request.urlopen(full_url)
+            output = response.read()
+            fitsfile= BytesIO(output)  # Read the downloaded FITS data
+            hdulist = fits.open(fitsfile)
+            hdulist.info()
+            header = hdulist['PRIMARY'].header
+            self.data = hdulist['PRIMARY'].data[0,0,:,:]
+            hdulist.close()
+            self.wcs = WCS(header).celestial
+        except:
+            self.data = None
+            self.wcs = None
+            print('Coordinates out of the NVSS survey')
+
+            
     def downloadSUMSS(self):
         """ Download data from the Sydney University Molonglo Sky Survey """
 

@@ -911,7 +911,7 @@ class GUI (QMainWindow):
         imagelist = ['sdss-u','sdss-g','sdss-r','sdss-i','sdss-z',
                      'panstarrs-g','panstarrs-r','panstarrs-i','panstarrs-z','panstarrs-y',
                      'wise1','wise2','wise3','wise4',
-                     'first','sumss']
+                     'first','nvss','sumss']
         selectDI.setComboBoxItems(imagelist)
         select = selectDI.exec_()
         if select == QDialog.Accepted:
@@ -942,10 +942,10 @@ class GUI (QMainWindow):
         
         print('Band selected is: ',band)
         self.downloadedImage = cloudImage(lon,lat,xsize,ysize,band)
-        print('image downloaded')
         
         # Open tab and display the image
         if self.downloadedImage.data is not None:
+            print('image downloaded')
             self.bands.append(band)
             t,ic,ih,h,c1,c2,c3 = self.addImage(band)
             self.tabi.append(t)
