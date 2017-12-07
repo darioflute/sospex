@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys,os
 import numpy as np
-from PyQt5.QtWidgets import (QApplication, QWidget, QMainWindow, QTabWidget, QHBoxLayout,
+from PyQt5.QtWidgets import (QApplication, QWidget, QMainWindow, QTabWidget, QTabBar,QHBoxLayout,
                              QGroupBox, QVBoxLayout, QSizePolicy, QStatusBar, QSplitter,
                              QToolBar, QAction, QFileDialog,  QTableView, QComboBox, QAbstractItemView,
                              QToolButton, QMessageBox, QPushButton, QInputDialog, QDialog)
@@ -15,28 +15,6 @@ from matplotlib.widgets import SpanSelector, PolygonSelector, RectangleSelector,
 from matplotlib.patches import Ellipse, Rectangle, Circle, Ellipse, Polygon
 from matplotlib.path import Path
 
-# To find points inside a:
-#     Polygon
-# #path = Path(polygon)
-# path = polygon.get_path()   # path in patch coords
-# transform = polygon.get_patch_transform()
-# npath = transform.transform_path(path)
-# inpoints = spectrum.points[npath.contains_points(spectrum.points)]
-# xx,yy = inpoints.T
-#
-#    Ellipse/Circle, Rectangle/Square
-# path = ellipse.get_path()   # path in patch coords
-# transform = ellipse.get_patch_transform()   # transform from patch coords to data coords
-# npath = transform.transform_path(path)
-# inpoints = spectrum.points[npath.contains_points(spectrum.points)]
-# xx,yy = inpoints.T
-#
-# Circle
-# path = circle.get_path()
-# transform = circle.get_transform()   # Apply radius
-# npath = transform.transform_path(path)
-# inpoints = spectrum.points[npath.contains_points(spectrum.points)]
-# xx,yy = inpoints.T
 
 from apertures import photoAperture
 
@@ -195,6 +173,7 @@ class GUI (QMainWindow):
         cid1=ic.mpl_connect('button_release_event', self.onDraw)
         cid2=ic.mpl_connect('scroll_event',self.onWheel)
         cid3=ic.mpl_connect('motion_notify_event', self.onMotion)
+
         return t,ic,ih,cidh,cid1,cid2,cid3
 
     def removeTab(self, itab):
@@ -204,6 +183,7 @@ class GUI (QMainWindow):
             widget.deleteLater()
         self.itabs.removeTab(itab)
         # Disconnect and remove canvases
+        tab = self.tabi[itab]
         ima = self.ici[itab]
         his = self.ihi[itab]
         hcid = self.ihcid[itab]
@@ -214,6 +194,7 @@ class GUI (QMainWindow):
         ima.mpl_disconnect(c1)
         ima.mpl_disconnect(c2)
         ima.mpl_disconnect(c3)
+        self.tabi.remove(tab)
         self.ici.remove(ima)
         self.ihi.remove(his)
         self.ihcid.remove(hcid)
@@ -224,23 +205,48 @@ class GUI (QMainWindow):
         his = None
 
     def removeSpecTab(self, stab):
-        print('removing tab no ',stab)
-        widget = self.stabs.widget(stab)
-        if widget is not None:
-            widget.deleteLater()
-        self.stabs.removeTab(stab)
-        # Disconnect and remove canvases
-        spec = self.sci[stab]
-        c1 = self.scid1[stab]
-        c2 = self.scid2[stab]
-        spec.mpl_disconnect(c1)
-        spec.mpl_disconnect(c2)
-        self.sci.remove(spec)
-        self.scid1.remove(c1)
-        self.scid2.remove(c2)
-        spec = None
+        print('Removing tab no ',stab)
+        if stab > 0:
+            # Once the tab is removed, also the relative aperture should be removed
+            itab = self.itabs.currentIndex()
+            ic0 = self.ici[itab]
+            n = stab-1
+            print('removing aperture ',n,' type: ',ic0.photApertures[n].type)
+            for ic in self.ici:
+                ap = ic.photApertures[n]
+                aps = ic.photApertureSignal[n]
+                print('removing the aperture: ',ap.type)
+                ap.mySignal.disconnect()
+                ap.disconnect()
+                del ic.photApertureSignal[n]
+                del ic.photApertures[n]
+            # Remove tab
+            widget = self.stabs.widget(stab)
+            if widget is not None:
+                widget.deleteLater()
+                self.stabs.removeTab(stab)
+            # Disconnect and remove canvases
+            tab = self.stabi[stab]
+            spec = self.sci[stab]
+            c1 = self.scid1[stab]
+            c2 = self.scid2[stab]
+            spec.mpl_disconnect(c1)
+            spec.mpl_disconnect(c2)
+            self.stabi.remove(tab)
+            self.sci.remove(spec)
+            self.scid1.remove(c1)
+            self.scid2.remove(c2)
+            spec = None
+            # Remove photoAperture
+            del self.photoApertures[n]
+            # Rename aperture tabs
+            if len(self.stabs)> 1:
+                for i in range(1,len(self.stabs)):
+                    apname = "Ap{:d}".format(i-1)
+                    self.stabs.setTabText(i,apname)
+        else:
+            print("We cannot remove the tab with the total spectrum")        
 
-        
     def onITabChange(self, itab):
         ''' When tab changes check if latest update of ellipse are implemented '''
         #print("current index is ", itab)
@@ -284,20 +290,7 @@ class GUI (QMainWindow):
 
     def onHelp(self, event):
         import webbrowser
-        #, markdown2,io
-        # create new html help files with
-        # jupyter nbconvert Help.ipynb --to html --template basic
-        # otherwise download as HTML from notebook
-        
-        #html = markdown2.markdown_path(self.path0+'/../README.md')
-        #path = os.path.abspath('temp.html')
-        #url = 'file://' + path
-        #with open(path, 'w') as f:
-        #    f.write(html)
-        #webbrowser.open(url)
 
-        #output = io.StringIO(html)
-        #webbrowser.open('https://github.com/darioflute/sospex/blob/python3/README.md')
         print(self.path0+'/readme.html')
         webbrowser.open('file://'+os.path.abspath(self.path0+'/help/Help.html'))
 
@@ -307,12 +300,12 @@ class GUI (QMainWindow):
 
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
+
         if ic.toolbar._active == 'PAN':
             return
 
         # Grab aperture in the flux image to compute the new fluxes
         istab = self.stabs.currentIndex()
-        #print('motion ',itab,istab)
         if istab > 0:
             sc = self.sci[istab]
             s = self.specCube
@@ -376,9 +369,29 @@ class GUI (QMainWindow):
             aper0.rect.set_height(h0)
             aper0.rect.angle = angle
         
+    def onRemoveAperture(self,event):
+        """ Interpret signal from apertures """
+        itab = self.itabs.currentIndex()
+        istab = self.stabs.currentIndex()
+        n = istab-1
+        ap = self.ici[itab].photApertures[n]
+        apertype = ap.__class__.__name__
+        print("event ",event, " aperture ",apertype)
+        if (event == 'rectangle deleted' and apertype == 'RectangleInteractor') or \
+           (event == 'ellipse deleted' and apertype == 'EllipseInteractor') \
+           or (event == 'polygon deleted' and apertype == 'PolygonInteractor'):
+            # Check if polygon
+            self.stabs.currentChanged.disconnect()
+            self.removeSpecTab(istab)
+            self.stabs.setCurrentIndex(0)
+            self.stabs.currentChanged.connect(self.onSTabChange)
+        else:
+            print(event)
+
+
             
     def onDraw(self,event):
-
+        
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
 
@@ -511,9 +524,6 @@ class GUI (QMainWindow):
             eb = event.button
             xmin,xmax = sc.regionlimits
             dx = (xmax-xmin) * 0.5
-            
-            #w = self.specCube.wave
-            #dw = np.mean(w[1:]-w[:-1])        
 
             # Increment region limits
             if eb == 'up':
@@ -687,17 +697,18 @@ class GUI (QMainWindow):
         # 1 vertices in RA,Dec coords
         itab = self.itabs.currentIndex()
         ic0 = self.ici[itab]
-
         adverts = np.array([(ic0.wcs.all_pix2world(x,y,1)) for (x,y) in verts])
         # Save aperture with vertices in ra,dec coordinates
         n = len(self.photoApertures)
         self.photoApertures.append(photoAperture(n,'polygon',adverts))
-
+        
         for ic in self.ici:
             # First adjust vertices to astrometry (they are in xy coords)
             verts = [(ic.wcs.all_world2pix(ra,dec,1)) for (ra,dec) in adverts]
             poly  = PolygonInteractor(ic.axes, verts)
             ic.photApertures.append(poly)
+            cidap=poly.mySignal.connect(self.onRemoveAperture)
+            ic.photApertureSignal.append(cidap)
         self.PS = None
 
         self.drawNewSpectrum(n)
@@ -715,6 +726,9 @@ class GUI (QMainWindow):
         self.scid1.append(scid1)
         self.scid2.append(scid2)
 
+        print('apertures are: ',len(self.ici[0].photApertures))
+        print('current aperture is: ',n)
+        
         # Draw spectrum from polygon
         aperture = self.ici[0].photApertures[n].aperture
         path = aperture.get_path()
@@ -743,10 +757,6 @@ class GUI (QMainWindow):
 
         # Select new tab
         self.stabs.setCurrentIndex(n+1)
-
-        # Deselect all other apertures (to do)
-        for i in range(n):
-            pass
             
         
     def onRectSelect(self, eclick, erelease):
@@ -760,8 +770,6 @@ class GUI (QMainWindow):
         #print(" The button you used were: %s %s" % (eclick.button, erelease.button))
 
         if self.selAp == 'square' or self.selAp == 'rectangle':
-            #x0 = (x1+x2)*0.5
-            #y0 = (y1+y2)*0.5
             x0=x1;y0=y1
             w  = np.abs(x2-x1)
             h  = np.abs(y2-y1)
@@ -790,6 +798,8 @@ class GUI (QMainWindow):
                 w = ws/ic.pixscale; h = hs/ic.pixscale
                 square = RectangleInteractor(ic.axes, (x0,y0), w)
                 ic.photApertures.append(square)
+                cidap=square.mySignal.connect(self.onRemoveAperture)
+                ic.photApertureSignal.append(cidap)
         elif self.selAp == 'rectangle':
             self.RS.set_active(False)
             self.RS = None
@@ -801,6 +811,8 @@ class GUI (QMainWindow):
                 w = ws/ic.pixscale; h = hs/ic.pixscale
                 rectangle = RectangleInteractor(ic.axes, (x0,y0), w, h)
                 ic.photApertures.append(rectangle)
+                cidap=rectangle.mySignal.connect(self.onRemoveAperture)
+                ic.photApertureSignal.append(cidap)
         elif self.selAp == 'circle':
             self.ES.set_active(False)
             self.ES = None
@@ -813,6 +825,8 @@ class GUI (QMainWindow):
                 w = ws/ic.pixscale; h = hs/ic.pixscale
                 circle = EllipseInteractor(ic.axes, (x0,y0), w)
                 ic.photApertures.append(circle)
+                cidap=circle.mySignal.connect(self.onRemoveAperture)
+                ic.photApertureSignal.append(cidap)
         elif self.selAp == 'ellipse':
             self.ES.set_active(False)
             self.ES = None
@@ -824,7 +838,8 @@ class GUI (QMainWindow):
                 w = ws/ic.pixscale; h = hs/ic.pixscale
                 ellipse = EllipseInteractor(ic.axes, (x0,y0), w, h)
                 ic.photApertures.append(ellipse)
-
+                cidap=ellipse.mySignal.connect(self.onRemoveAperture)
+                ic.photApertureSignal.append(cidap)
         self.drawNewSpectrum(n)
 
     
@@ -833,7 +848,7 @@ class GUI (QMainWindow):
         index  = self.apView.selectionModel().currentIndex()
         i = index.row()
         j = index.column()
-        #print ('new selection: ', i,j, self.apertures[i][j])
+
         self.selAp = self.apertures[i][j]
         if self.selAp == 'ellipse':
             self.sb.showMessage("You chose an "+self.selAp, 1000)
@@ -908,7 +923,8 @@ class GUI (QMainWindow):
         selectDI.setOption(QInputDialog.UseListViewForComboBoxItems)
         selectDI.setWindowTitle("Select image to download")
         selectDI.setLabelText("Selection")
-        imagelist = ['sdss-u','sdss-g','sdss-r','sdss-i','sdss-z',
+        imagelist = ['local',
+                     'sdss-u','sdss-g','sdss-r','sdss-i','sdss-z',
                      'panstarrs-g','panstarrs-r','panstarrs-i','panstarrs-z','panstarrs-y',
                      '2mass-j','2mass-h','2mass-k',
                      'wise1','wise2','wise3','wise4',
@@ -1006,6 +1022,8 @@ class GUI (QMainWindow):
                 ellipse.type = aper.type
                 ellipse.showverts = aper.showverts
                 ic.photApertures.append(ellipse)
+                cidap=ellipse.mySignal.connect(self.onRemoveAperture)
+                ic.photApertureSignal.append(cidap)
             elif aper.type == 'Rectangle' or aper.type == 'Square':
                 x0,y0 = aper.rect.get_xy()
                 w0    = aper.rect.get_width()
@@ -1022,7 +1040,9 @@ class GUI (QMainWindow):
                 rectangle.showverts = aper.showverts
                 rectangle.rect.set_xy((x0,y0))
                 rectangle.updateMarkers()
-                ic.photApertures.append(rectangle)                
+                ic.photApertures.append(rectangle)
+                cidap=rectangle.mySignal.connect(self.onRemoveAperture)
+                ic.photApertureSignal.append(cidap)
             elif aper.type == 'Polygon':
                 verts = aper.poly.get_xy()
                 adverts = np.array([(ic0.wcs.all_pix2world(x,y,1)) for (x,y) in verts])
@@ -1031,7 +1051,9 @@ class GUI (QMainWindow):
                 poly = PolygonInteractor(ic.axes,verts)                
                 poly.showverts = aper.showverts
                 ic.photApertures.append(poly)
-        
+                cidap=poly.mySignal.connect(self.onRemoveAperture)
+                ic.photApertureSignal.append(cidap)
+
         
 
     def blinkTab(self):
@@ -1060,8 +1082,8 @@ class GUI (QMainWindow):
         self.close()
 
         
-
-    def cutCube(self):
+    # TODO
+    def cutCube(self):  
         """ Cut part of the cube """
         self.sb.showMessage("Drag the mouse over the slice of the cube to save ", 2000)
 
@@ -1281,38 +1303,71 @@ class GUI (QMainWindow):
 
         if self.contours == 'off':
             self.ctab = [self.itabs.currentIndex(),0]
-            self.sb.showMessage("Select another tab to overlap the current image contours", 2000)
-            self.contours = 'select'
+            self.sb.showMessage("Click again to remove contours", 2000)
+            self.drawContours()
+            self.contours = 'on'
         else:
-            self.sb.showMessage('Contours deleted ', 1000)
             self.contours = 'off'
-            # Delete contours
-            try:
-                for coll in self.imageContours.collections:
-                    coll.remove()
-                ic = self.ici[self.ctab[1]]
-                ic.fig.canvas.draw_idle()
-            except:
-                print('No contours to delete')
+            #try:
+            # Remove level lines in histogram 
+            for ih in self.ihi:
+                if ih.lev is not None:
+                    for l in ih.lev:
+                        l.remove()
+                        ih.lev = None
+                    ih.fig.canvas.draw_idle()
+            # Remove contours
+            for ic in self.ici:
+                print('delete contours in ',ic)
+                if ic.contour is not None:
+                    for coll in ic.contour.collections:
+                        coll.remove()
+                    ic.contour = None
+                    ic.changed = True
+            # Update current tab
+            itab = self.itabs.currentIndex()
+            print('current tab is: ',itab)
+            ic0 = self.ici[itab]
+            ic0.fig.canvas.draw_idle()
+            ic0.changed = False
+            self.sb.showMessage('Contours deleted ', 1000)
+            #except:
+            #    self.sb.showMessage('No contours to delete ', 1000)
+            #    print('No contours to delete')
 
     def drawContours(self):
         """ Draw contours of image in ctab[0] over image in ctab[1] """
 
         ic0 = self.ici[self.ctab[0]]
-        ic1 = self.ici[self.ctab[1]]
-        image = ic0.oimage # is this needed (we have to save the original image in the canvas)
-        minimum = np.nanmin(image)
-        imedian = np.nanmedian(image)
-        maximum = np.nanmax(image)
+        ih0 = self.ihi[self.ctab[0]]
         if self.bands[self.ctab[0]] == 'Cov':
-            levels = np.arange(minimum,maximum,(maximum-minimum)/8)
+            #levels = np.arange(minimum,maximum,(maximum-minimum)/8)
+            levels = np.arange(ih0.min,ih0.max,(ih0.max-ih0.min)/8)
         else:
-            sdev = np.nanstd(image-imedian)
-            levels = imedian + np.array([1,2,3,5,10,15,20]) * sdev
-            #levels  = np.arange(imedian+sdev,maximum,sdev)
-        self.imageContours = ic1.axes.contour(image,levels, colors='cyan',transform=ic1.axes.get_transform(ic0.wcs))
-        ic1.fig.canvas.draw_idle() # this shouldn't be necessary
-        print('Overlap contours of ',self.bands[self.ctab[0]],' over image ',self.bands[self.ctab[1]])
+            #sdev = np.nanstd(image-imedian)
+            #levels = imedian + np.array([1,2,3,5,10,15,20]) * sdev
+            levels = ih0.median + np.array([1,2,3,5,10,15,20]) * ih0.sdev
+        ic0.contour = ic0.axes.contour(ic0.oimage,levels,colors='cyan')
+        ic0.fig.canvas.draw_idle()
+        # Add levels to histogram
+        ih0.lev = []
+        for l in levels:
+            lev = ih0.axes.axvline(x=l)
+            ih0.lev.append(lev)
+        ih0.fig.canvas.draw_idle()
+
+        ici = self.ici.copy()
+        ici.remove(ic0)
+        for ic in ici:
+        #ic1 = self.ici[self.ctab[1]]
+        #image = ic0.oimage # is this needed (we have to save the original image in the canvas)
+        #minimum = np.nanmin(image)
+        #imedian = np.nanmedian(image)
+        #maximum = np.nanmax(image)
+            ic.contour = ic.axes.contour(ic0.oimage,levels, colors='cyan',transform=ic.axes.get_transform(ic0.wcs))
+            ic.changed = True
+        #ic1.fig.canvas.draw_idle() # this shouldn't be necessary
+        #print('Overlap contours of ',self.bands[self.ctab[0]],' over image ',self.bands[self.ctab[1]])
         
         
     def newFile(self):
@@ -1381,12 +1436,17 @@ class GUI (QMainWindow):
                 self.icid1.append(c1)
                 self.icid2.append(c2)
                 self.icid3.append(c3)
+            # Make tab 'Flux' unclosable
+            self.itabs.tabBar().setTabButton(0,QTabBar.LeftSide,None)
             for s in self.spectra:
                 t,sc,scid1,scid2 = self.addSpectrum(s)
                 self.stabi.append(t)
                 self.sci.append(sc)
                 self.scid1.append(scid1)
                 self.scid2.append(scid2)
+            # Make tab 'All' unclosable
+            self.stabs.tabBar().setTabButton(0,QTabBar.LeftSide,None)
+                
             # Compute initial images
             for ima in self.bands:
                 ic = self.ici[self.bands.index(ima)]
@@ -1537,7 +1597,7 @@ class GUI (QMainWindow):
             ima.changed = True
             ima.cid = ima.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
 
-        print('itab',itab,'band',band,'limits ',x,y)
+        #print('itab',itab,'band',band,'limits ',x,y)
 
         
         fluxAll = np.nansum(self.specCube.flux[:,y0:y1,x0:x1], axis=(1,2))
@@ -1589,10 +1649,13 @@ class GUI (QMainWindow):
             # Activate interactor (toogle on) and disactivate
             for iap in range(nap):
                 ap = ic.photApertures[iap]
+                aps = ic.photApertureSignal[iap]
                 if iap == n:
                     ap.showverts = True
+                    #ic.photApertureSignal[iap]=ap.mySignal.connect(self.onRemovePolyAperture)
                 else:
                     ap.showverts = False
+                    #ap.mySignal.disconnect()
                 ap.line.set_visible(ap.showverts)
             ic.fig.canvas.draw_idle()
             

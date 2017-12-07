@@ -110,36 +110,16 @@ class ImageCanvas(MplCanvas):
             # Show image
             self.showImage(image)
             
-
-            # Plot with North up (corners are clockwise from left-bottom)
-            # corners = self.wcsn.calc_footprint()
-            # self.flip = False
-            # if corners[0,1] < 0:
-            #     if corners[0,1] > corners[1,1]:
-            #         ylim = self.axes.get_ylim()
-            #         self.axes.set_ylim([ylim[1],ylim[0]])
-            #         self.flip = True
-
-
             # Add ellipse centered on source
             self.pixscale = pixscales(self.wcs)[0]*3600. # Scale in arcsec
-            #if self.flip:
-            #    theta2= 0
-            #    theta1 = 100
-            #else:
-            #    theta1=0
-            #    theta2=100
-
-
-            # Ellipse
-            # self.arcell = self.ArcEll((xc,yc), 5/pixscale[0], 5/pixscale[1], 'Lime', 30)
-            # for a in self.arcell:
-            #     self.axes.add_patch(a)
-            #     self.drrEllipse = DragResizeRotateEllipse(self.arcell)
 
             # Apertures
             self.photApertures = []
+            self.photApertureSignal = []
 
+            # Contours
+            self.contour = None
+            
             # Activate focus
             self.setFocusPolicy(Qt.ClickFocus)
             self.setFocus()
@@ -204,6 +184,11 @@ class ImageHistoCanvas(MplCanvas):
             nbins=256
             n, self.bins, patches = self.axes.hist(ima, bins=nbins, range=(np.nanmin(ima), ima[smax]), fc='k', ec='k')
 
+            self.median = np.median(ima)
+            self.sdev   = np.std(ima-self.median)
+            self.min    = np.min(ima)
+            self.max    = np.max(ima)
+            
             # Define the interval containing 99% of the values
             if xmin == None:
                 xmin = ima[int(s*0.01)]
@@ -211,6 +196,8 @@ class ImageHistoCanvas(MplCanvas):
                 xmax = ima[int(s*0.99)-1]
             self.onSelect(xmin,xmax)
 
+            # Initialize contour level vertical lines
+            self.lev = None
 
     def onSelect(self,xmin, xmax):
         indmin, indmax = np.searchsorted(self.bins, (xmin, xmax))

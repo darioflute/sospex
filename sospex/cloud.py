@@ -47,7 +47,9 @@ class cloudImage(object):
         self.data = None
         self.wcs = None
 
-        if source == 'wise1':
+        if source == 'local':
+            image_file = self.openLocal()
+        elif source == 'wise1':
             image_file = self.downloadWise(1)
         elif source == 'wise2':
             image_file = self.downloadWise(2)
@@ -113,7 +115,7 @@ class cloudImage(object):
         post_args = urllib.parse.urlencode(post_params)#.encode("utf-8") 
         full_url=url + '?' + post_args
 
-        print(full_url)
+        #print(full_url)
         response = urllib.request.urlopen(full_url)
         html = response.read()
         parser = MyHTMLParser()
@@ -122,8 +124,8 @@ class cloudImage(object):
         values= parser.values
         parser.close()
 
-        for d,v in zip(data,values):
-            print (d,' ',v)
+        #for d,v in zip(data,values):
+        #    print (d,' ',v)
         
         file = None
         base = None
@@ -134,10 +136,10 @@ class cloudImage(object):
                 base = v    
 
         file = base+file
-        print('file is: ', file)
+        #print('file is: ', file)
         
         if '.fits' in file:
-            print('file is: ',file)
+            #print('file is: ',file)
             response = urllib.request.urlopen(file)
             output = response.read()
             fitsfile= BytesIO(output)  # Read the downloaded FITS data
@@ -151,6 +153,44 @@ class cloudImage(object):
             self.wcs = None
             print('Coordinates out of the 2MASS survey')
 
+
+    def openLocal(self):
+        """ Open a local FITS / check if coordinates fall into the FITS """
+
+        # Open a dialog
+        fd = QFileDialog()
+        fd.setNameFilters(["Fits Files (*.fits)","All Files (*)"])
+        fd.setOptions(QFileDialog.DontUseNativeDialog)
+        fd.setViewMode(QFileDialog.List)
+        fd.setFileMode(QFileDialog.ExistingFile)
+
+        if (fd.exec()):
+            image_file= fd.selectedFiles()
+            print("File selected is: ", fileName[0])
+
+            try:
+                hdulist = fits.open(image_file)
+                #hdulist.info()
+                header = hdulist['PRIMARY'].header
+                self.data = hdulist['PRIMARY'].data
+                hdulist.close()
+                self.wcs = WCS(header).celestial
+                # Check if coordinates are inside the image
+                x,y = self.wcs.all_world2pix(self.lon,self.lat,1)
+                ny,nx = np.size(self.data)
+                if x >= 0 and x< nx and y >= 0 and y  <= ny:
+                    print('Source inside the FITS image')
+                else:
+                    self.data = None
+                    self.wcs = None
+                    print('Coordinates out of the selected FITS image')
+            except:
+                self.data = None
+                self.wcs = None
+                print('The selected  FITS is not a valid file')
+
+
+        
 
     def downloadWise(self,band):
         """ Download a Wise image """
@@ -194,7 +234,6 @@ class cloudImage(object):
         self.data = hdulist['PRIMARY'].data
         hdulist.close()
         self.wcs = WCS(header)
-        print('wcs is: ',self.wcs)
 
 
     def downloadFIRST(self):
@@ -202,7 +241,7 @@ class cloudImage(object):
 
         c = SkyCoord(ra=self.lon*u.degree, dec=self.lat*u.degree, frame='icrs')
         coords = c.to_string('hmsdms',sep=' ')
-        print ('coords of the center are: ', coords)
+        #print ('coords of the center are: ', coords)
         Equinox = 'J2000'
         isize = np.max([self.xsize,self.ysize]) # Size in arcmin
         itype ='FITS Image'
@@ -251,8 +290,8 @@ class cloudImage(object):
         fieldsize = "{:.1f} {:.1f}".format(xsize,ysize)
         itype ='application/octet-stream'
         
-        print('ra ',ra)
-        print('dec ',dec)
+        #print('ra ',ra)
+        #print('dec ',dec)
         url='http://www.cv.nrao.edu/cgi-bin/postage.pl'
         #url='http://www.cv.nrao.edu/nvss/postage.shtml'
         post_params = {
@@ -332,7 +371,7 @@ class cloudImage(object):
         file = values[0]
         # Check if fits file:
         if '.fits' in file:
-            print('file is: ',file)
+            #print('file is: ',file)
             response = urllib.request.urlopen(file)
             output = response.read()
             fitsfile= BytesIO(output)  # Read the downloaded FITS data
