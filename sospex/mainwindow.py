@@ -203,7 +203,9 @@ class GUI (QMainWindow):
         self.icid3.remove(c3)
         ima = None
         his = None
-
+        # Remove band from band list
+        del self.bands[itab]
+        
     def removeSpecTab(self, stab):
         print('Removing tab no ',stab)
         if stab > 0:
