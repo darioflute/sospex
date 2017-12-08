@@ -7,6 +7,7 @@ from astropy.utils.data import download_file
 from astropy.wcs import WCS
 import numpy as np
 from html.parser import HTMLParser
+from PyQt5.QtWidgets import QFileDialog
 
 class MyHTMLParser(HTMLParser):
 
@@ -165,19 +166,25 @@ class cloudImage(object):
         fd.setFileMode(QFileDialog.ExistingFile)
 
         if (fd.exec()):
-            image_file= fd.selectedFiles()
-            print("File selected is: ", fileName[0])
+            filenames= fd.selectedFiles()
+            image_file = filenames[0]
+            print("File selected is: ", filenames[0])
 
-            try:
+            try:           
+                print('opening ',image_file)
                 hdulist = fits.open(image_file)
-                #hdulist.info()
+                hdulist.info()
                 header = hdulist['PRIMARY'].header
                 self.data = hdulist['PRIMARY'].data
                 hdulist.close()
-                self.wcs = WCS(header).celestial
+                print(header)
+                self.wcs = WCS(header)#.celestial
+                print('wcs is ',self.wcs)
                 # Check if coordinates are inside the image
+                print('data shape is',np.shape(self.data))
                 x,y = self.wcs.all_world2pix(self.lon,self.lat,1)
-                ny,nx = np.size(self.data)
+                print('x y ',x,y)
+                ny,nx = np.shape(self.data)
                 if x >= 0 and x< nx and y >= 0 and y  <= ny:
                     print('Source inside the FITS image')
                 else:
@@ -189,8 +196,6 @@ class cloudImage(object):
                 self.wcs = None
                 print('The selected  FITS is not a valid file')
 
-
-        
 
     def downloadWise(self,band):
         """ Download a Wise image """

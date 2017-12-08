@@ -473,16 +473,29 @@ class SpectrumCanvas(MplCanvas):
             pass
 
             
-    def shadeRegion(self):
+    def shadeRegion(self, limits = None, color=None):
 
-        wmin,wmax = self.regionlimits
+        if limits == None:
+            wmin,wmax = self.regionlimits
+        else:
+            wmin,wmax = limits
+
+        if color == None:
+            color = 'Lavender'
+
+            
         if self.xunit == 'um':
-            self.region = self.axes.axvspan(wmin,wmax,facecolor='Lavender',alpha=0.5,linewidth=0)
+            xmin = wmin
+            xmax = wmax
         elif self.xunit == 'THz':
             c = 299792458.0  # speed of light in m/s
-            fmax = c/wmin * 1.e-6
-            fmin = c/wmax * 1.e-6
-            self.region = self.axes.axvspan(fmin,fmax,facecolor='Lavender',alpha=0.5,linewidth=0)            
+            xmax = c/wmin * 1.e-6
+            xmin = c/wmax * 1.e-6
+
+        if color != 'Lavender':
+            self.tmpRegion = self.axes.axvspan(xmin,xmax,facecolor=color,alpha=0.5,linewidth=0)
+        else:
+            self.region = self.axes.axvspan(xmin,xmax,facecolor=color,alpha=0.5,linewidth=0)
         
                 
     def shadeSpectrum(self):

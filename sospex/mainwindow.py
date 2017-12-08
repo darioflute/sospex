@@ -154,6 +154,7 @@ class GUI (QMainWindow):
         toolbar.addAction(self.momentAction)
         toolbar.addAction(self.cropAction)
         toolbar.addAction(self.cloudAction)
+        toolbar.addAction(self.fitsAction)
         toolbar.addSeparator()
         #toolbar.addWidget(self.apertureAction)        
 
@@ -246,6 +247,8 @@ class GUI (QMainWindow):
                 for i in range(1,len(self.stabs)):
                     apname = "Ap{:d}".format(i-1)
                     self.stabs.setTabText(i,apname)
+            # Redraw apertures
+            ic0.fig.canvas.draw_idle()
         else:
             print("We cannot remove the tab with the total spectrum")        
 
@@ -604,6 +607,7 @@ class GUI (QMainWindow):
         self.sliceAction = self.createAction(self.path0+'/icons/slice.png','Select a slice of the cube','Ctrl+K',self.sliceCube)
         self.maskAction =  self.createAction(self.path0+'/icons/mask.png','Mask a slice of the cube','Ctrl+m',self.maskCube)
         self.cloudAction = self.createAction(self.path0+'/icons/cloud.png','Download image from cloud','Ctrl+D',self.selectDownloadImage)
+        self.fitsAction =  self.createAction(self.path0+'/icons/download.png','Save the image as a FITS/PNG/PDF file','Ctrl+S',self.saveFits)
 
 
         # Add buttons to the toolbar
@@ -1084,11 +1088,17 @@ class GUI (QMainWindow):
         self.close()
 
         
-    # TODO
+
     def cutCube(self):  
         """ Cut part of the cube """
         self.sb.showMessage("Drag the mouse over the slice of the cube to save ", 2000)
+        self.cutcube = 'on'
+        istab = self.spectra.index('All')
+        self.stabs.setCurrentIndex(istab)
+        sc = self.sci[istab]
+        sc.span.set_visible(True)
 
+        
     def cropCube(self):
         """ Crop part of the cube """
         self.sb.showMessage("Crop the cube using the zoomed image shown ", 2000)
@@ -1142,8 +1152,65 @@ class GUI (QMainWindow):
         xi,yi = np.meshgrid(xi,yi)
         self.points = np.array([np.ravel(xi),np.ravel(yi)]).transpose()
         
-        
 
+    def cutCube1D(self,xmin,xmax):
+        """ Generate cut cube """
+
+        self.specCube.flux = self.specCube.flux[xmin:xmax,:,:]
+        nz,ny,nx = np.shape(self.specCube.flux)
+        print('new cube z-size is ',nz)
+        self.specCube.n = nz
+        # Cut the cubes
+        if self.specCube.instrument == 'FIFI-LS':
+            self.specCube.eflux = self.specCube.eflux[xmin:xmax,:,:]
+            self.specCube.uflux = self.specCube.uflux[xmin:xmax,:,:]
+            self.specCube.euflux = self.specCube.euflux[xmin:xmax,:,:]
+            self.specCube.exposure = self.specCube.exposure[xmin:xmax,:,:]
+       
+    def saveFits(self):
+        """ Save the displayed image as a FITS file """
+
+        from astropy.io import fits
+        
+        # Dialog to save file
+        fd = QFileDialog()
+        fd.setNameFilters(["Fits Files (*.fits)","PNG Files (*.png)","PDF Files (*.pdf)","All Files (*)"])
+        fd.setOptions(QFileDialog.DontUseNativeDialog)
+        fd.setViewMode(QFileDialog.List)
+
+        if (fd.exec()):
+            fileName = fd.selectedFiles()
+            print(fileName[0])
+            outfile = fileName[0]
+
+            itab = self.itabs.currentIndex()
+            ic = self.ici[itab]
+            band = self.bands[itab]
+
+            if band == 'Flux' or band == 'Uflux' or band == 'Exp':
+                instrument = self.specCube.instrument
+            else:
+                instrument = band
+
+            # Check the 
+            filename, file_extension = os.path.splitext(outfile)
+
+            if file_extension == '.fits':
+                # Primary header
+                print(self.specCube.wcs)
+                header = self.specCube.wcs.to_header()
+                header.remove('WCSAXES')
+                header['INSTRUME'] = instrument
+                header['OBJECT'] = (self.specCube.objname, 'Object Name')
+                hdu = fits.PrimaryHDU(ic.oimage)
+                hdu.header.extend(header)
+                hdul = fits.HDUList([hdu])
+                hdul.writeto(outfile,overwrite=True) # clobber true  allows rewriting
+                hdul.close()
+            elif file_extension == '.png' or file_extension == '.pdf':
+                ic.fig.savefig(outfile)
+            else:
+                print('extension has to be *.fits, *.png, or *.pdf')
         
     def saveCube(self):
         """ Save a cut/cropped cube """ # TODO
@@ -1160,7 +1227,8 @@ class GUI (QMainWindow):
             fileName = fd.selectedFiles()
             print(fileName[0])
             outfile = fileName[0]
-        
+
+            print('Saving the cube with z size: ',self.specCube.n)
             # Reusable header
             header = self.specCube.wcs.to_header()
             header.remove('WCSAXES')
@@ -1240,7 +1308,9 @@ class GUI (QMainWindow):
         """ Cut part of the cube """
         self.sb.showMessage("Define slice of the cube ", 1000)
         self.slice = 'on'
-        sc = self.sci[self.spectra.index('All')]
+        istab = self.spectra.index('All')
+        self.stabs.setCurrentIndex(istab)
+        sc = self.sci[istab]
         sc.span.set_visible(True)
 
 
@@ -1401,6 +1471,8 @@ class GUI (QMainWindow):
             try:
                 for stab in reversed(range(len(self.sci))):
                     self.removeSpecTab(stab)
+                self.stabs.removeTab(0)
+                print('spectral tabs removed')
             except:
                 pass
 
@@ -1496,6 +1568,7 @@ class GUI (QMainWindow):
             self.contours = 'off'
             self.blink = 'off'
             self.slice = 'off'
+            self.cutcube = 'off'
 
     def onSelect(self, xmin, xmax):
         """ Consider only a slice of the cube when computing the image """
@@ -1549,7 +1622,41 @@ class GUI (QMainWindow):
                 ih.compute_initial_figure(image=image,xmin=clim[0],xmax=clim[1])
                 ih.fig.canvas.draw_idle()
             self.slice = 'off'
-                        
+        elif self.cutcube == 'on':
+            # Find indices of the shaded region
+            print('xmin, xmax ',xmin,xmax)
+            sc = self.sci[self.spectra.index('All')]
+            if sc.xunit == 'THz':
+                c = 299792458.0  # speed of light in m/s
+                xmin, xmax = c/xmax*1.e-6, c/xmin*1.e-6
+            sc.shadeRegion([xmin,xmax],'LightYellow')
+            sc.fig.canvas.draw_idle()
+            sc.span.set_visible(False)
+            indmin, indmax = np.searchsorted(self.specCube.wave, (xmin, xmax))
+            indmax = min(len(self.specCube.wave) - 1, indmax)
+            print('indmin, indmax', indmin,indmax)
+            size = indmax-indmin
+            nz,nx,ny = np.shape(self.specCube.flux)
+            if size == nx:
+                self.sb.showMessage("No cutting needed ", 2000)
+            else:
+                flags = QMessageBox.Yes 
+                flags |= QMessageBox.No
+                question = "Do you want to cut the part of the cube selected on the image ?"
+                response = QMessageBox.question(self, "Question",
+                                                question,
+                                                flags)            
+                if response == QMessageBox.Yes:
+                    self.sb.showMessage("Cutting the cube ", 2000)
+                    self.cutCube1D(indmin,indmax)
+                    self.saveCube()
+                elif QMessageBox.No:
+                    self.sb.showMessage("Cropping aborted ", 2000)
+                else:
+                    pass
+            self.cutcube = 'off'
+            sc.tmpRegion.remove()
+            sc.fig.canvas.draw_idle()
             
     def doZoomAll(self, event):
         ''' propagate limit changes to all images '''
