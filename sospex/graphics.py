@@ -492,10 +492,10 @@ class SpectrumCanvas(MplCanvas):
             xmax = c/wmin * 1.e-6
             xmin = c/wmax * 1.e-6
 
-        if color != 'Lavender':
-            self.tmpRegion = self.axes.axvspan(xmin,xmax,facecolor=color,alpha=0.5,linewidth=0)
-        else:
+        if color == 'Lavender':
             self.region = self.axes.axvspan(xmin,xmax,facecolor=color,alpha=0.5,linewidth=0)
+        else:
+            self.tmpRegion = self.axes.axvspan(xmin,xmax,facecolor=color,alpha=0.5,linewidth=0)
         
                 
     def shadeSpectrum(self):

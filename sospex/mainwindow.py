@@ -115,6 +115,8 @@ class GUI (QMainWindow):
         toolbar.addAction(self.sliceAction)
         toolbar.addAction(self.cutAction)
         toolbar.addAction(self.maskAction)
+        toolbar.addAction(self.specAction)
+
         toolbar.addSeparator()
 
         
@@ -608,7 +610,7 @@ class GUI (QMainWindow):
         self.maskAction =  self.createAction(self.path0+'/icons/mask.png','Mask a slice of the cube','Ctrl+m',self.maskCube)
         self.cloudAction = self.createAction(self.path0+'/icons/cloud.png','Download image from cloud','Ctrl+D',self.selectDownloadImage)
         self.fitsAction =  self.createAction(self.path0+'/icons/download.png','Save the image as a FITS/PNG/PDF file','Ctrl+S',self.saveFits)
-
+        self.specAction = self.createAction(self.path0+'/icons/download.png','Save the spectrum as a ASCII/FITS/PNG/PDF file','Ctrl+S',self.saveSpectrum)
 
         # Add buttons to the toolbar
 
@@ -1211,7 +1213,112 @@ class GUI (QMainWindow):
                 ic.fig.savefig(outfile)
             else:
                 print('extension has to be *.fits, *.png, or *.pdf')
+
+
+    def saveSpectrum(self):
+        """ Save the displayed spectrum as a FITS/ASCII file or as PNG/PDF image """
+
+        from astropy.io import fits
         
+        # Dialog to save file
+        fd = QFileDialog()
+        fd.setNameFilters(["Fits Files (*.fits)","PNG Files (*.png)","PDF Files (*.pdf)","ASCII Files (*.txt)","All Files (*)"])
+        fd.setOptions(QFileDialog.DontUseNativeDialog)
+        fd.setViewMode(QFileDialog.List)
+
+        if (fd.exec()):
+            fileName = fd.selectedFiles()
+            print(fileName[0])
+            outfile = fileName[0]
+
+            istab = self.stabs.currentIndex()
+            itab = self.itabs.currentIndex()
+            sc = self.sci[istab]
+            ic = self.ici[itab]
+            n = istab-1
+
+            # Check the 
+            filename, file_extension = os.path.splitext(outfile)
+
+            if file_extension == '.fits':
+                # Primary header
+                hdu = fits.PrimaryHDU()
+                hdu.header['OBJ_NAME'] = (self.specCube.objname, 'Object Name')
+                hdu.header['INSTRUME'] = (self.specCube.instrument, 'SOFIA instrument')
+                hdu.header['REDSHIFT'] = (self.specCube.redshift, 'Object Redshift')
+                if self.specCube.instrument == 'FIFI-LS':
+                    hdu.header['BARYSHFT'] = (self.specCube.baryshift, 'Barycentric shift')
+                aper = ic.photApertures[n]
+                if aper.type == 'Ellipse':
+                    x0,y0 = aper.ellipse.center
+                    pixel = np.array([[x0, y0]], np.float_)
+                    world = ic.wcs.wcs_pix2world(pixel, 1)
+                    hdu.header['APERTURE']=('Ellipse','Type of photometric aperture')
+                    hdu.header['RA'] = (world[0][0], 'RA of center of elliptical aperture')
+                    hdu.header['DEC'] = (world[0][1], 'Dec of center of elliptical aperture')
+                    hdu.header['ANGLE'] = (aper.ellipse.angle, 'Angle of elliptical aperture')
+                    hdu.header['MAJAX'] = (aper.ellipse.width*ic.pixscale, 'Major axis of elliptical aperture')
+                    hdu.header['MINAX'] = (aper.ellipse.height*ic.pixscale, 'Minor axis of elliptical aperture')
+                elif aper.type == 'Circle':
+                    x0,y0 = aper.ellipse.center
+                    pixel = np.array([[x0, y0]], np.float_)
+                    world = ic.wcs.wcs_pix2world(pixel, 1)
+                    hdu.header['APERTURE']=('Circle','Type of photometric aperture')
+                    hdu.header['RA'] = (world[0][0], 'RA of center of circular aperture')
+                    hdu.header['DEC'] = (world[0][1], 'Dec of center of circular aperture')
+                    hdu.header['RADIUS'] = (aper.ellipse.height*ic.pixscale, 'Radius of circular aperture')
+                elif aper.type == 'Square':
+                    hdu.header['APERTURE']=('Square','Type of photometric aperture')
+                elif aper.type == 'Rectangle':
+                    hdu.header['APERTURE']=('Rectangle','Type of photometric aperture')
+                elif aper.type == 'Polygon':
+                    hdu.header['APERTURE']=('Polygon','Type of photometric aperture')
+                # Add extensions
+                hdu1 = self.addExtension(sc.spectrum.wave,'WAVELENGTH','um',None)
+                hdu2 = self.addExtension(sc.spectrum.flux,'FLUX','Jy',None)
+                hdlist = [hdu,hdu1,hdu2]
+                if self.specCube.instrument == 'FIFI-LS':
+                    hdu3 = self.addExtension(sc.uflux,'UNCORR_FLUX','Jy',None)
+                    hdu4 = self.addExtension(sc.exposure,'EXPOSURE','s',None)
+                    hdu5 = self.addExtension(self.specCube.atran,'ATM_TRANS','Norm',None)
+                    hdlist.append(hdu3)
+                    hdlist.append(hdu4)
+                    hdlist.append(hdu5)
+                    
+                hdul = fits.HDUList(hdlist)
+                
+                # Save file
+                hdul.info()    
+                hdul.writeto(outfile,overwrite=True) # clobber true  allows rewriting
+                hdul.close()
+            elif file_extension == '.txt':
+                w = sc.spectrum.wave
+                f = sc.spectrum.flux
+                sred = "# z = {:.5f}\n".format(self.specCube.redshift)
+                if self.specCube.instrument == 'FIFI-LS':
+                    uf = sc.spectrum.flux
+                    e  = sc.spectrum.exposure
+                    a  = self.specCube.atran
+                    # Normal ASCII file
+                    fmt = " ".join(["%10.6e"]*5)
+                    
+                    with open(outfile, 'wb') as file:
+                        file.write(sred.encode())
+                        file.write(b'# wavelenght,flux,uflux,exposure,atran\n')
+                        np.savetxt(file, np.column_stack((w,f,uf,e,a)), fmt=fmt, delimiter=" ")
+                else:
+                    fmt = " ".join(["%10.6e"]*2)
+                    with open(outfile, 'wb') as file:
+                        file.write(sred.encode())
+                        file.write(b'# wavelenght,flux\n')
+                        np.savetxt(file, np.column_stack((w,f)), fmt=fmt, delimiter=" ")                
+            #elif file_extension == '.csv':               
+                # Perhaps add CSV file                
+            elif file_extension == '.png' or file_extension == '.pdf':
+                sc.fig.savefig(outfile)
+            else:
+                print('extension has to be *.fits, *.txt, *.png, or *.pdf')
+
     def saveCube(self):
         """ Save a cut/cropped cube """ # TODO
         from astropy.io import fits
