@@ -609,8 +609,8 @@ class GUI (QMainWindow):
         self.sliceAction = self.createAction(self.path0+'/icons/slice.png','Select a slice of the cube','Ctrl+K',self.sliceCube)
         self.maskAction =  self.createAction(self.path0+'/icons/mask.png','Mask a slice of the cube','Ctrl+m',self.maskCube)
         self.cloudAction = self.createAction(self.path0+'/icons/cloud.png','Download image from cloud','Ctrl+D',self.selectDownloadImage)
-        self.fitsAction =  self.createAction(self.path0+'/icons/download.png','Save the image as a FITS/PNG/PDF file','Ctrl+S',self.saveFits)
-        self.specAction = self.createAction(self.path0+'/icons/download.png','Save the spectrum as a ASCII/FITS/PNG/PDF file','Ctrl+S',self.saveSpectrum)
+        self.fitsAction =  self.createAction(self.path0+'/icons/download.png','Save the image as a FITS/PNG/JPG/PDF file','Ctrl+S',self.saveFits)
+        self.specAction = self.createAction(self.path0+'/icons/download.png','Save the spectrum as a ASCII/FITS/PNG/JPG/PDF file','Ctrl+S',self.saveSpectrum)
 
         # Add buttons to the toolbar
 
@@ -1176,7 +1176,8 @@ class GUI (QMainWindow):
         
         # Dialog to save file
         fd = QFileDialog()
-        fd.setNameFilters(["Fits Files (*.fits)","PNG Files (*.png)","PDF Files (*.pdf)","All Files (*)"])
+        fd.setNameFilters(["Fits Files (*.fits)","PNG Files (*.png)",
+                           "JPG Files (*.jpg)","PDF Files (*.pdf)","All Files (*)"])
         fd.setOptions(QFileDialog.DontUseNativeDialog)
         fd.setViewMode(QFileDialog.List)
 
@@ -1212,7 +1213,7 @@ class GUI (QMainWindow):
             elif file_extension == '.png' or file_extension == '.pdf':
                 ic.fig.savefig(outfile)
             else:
-                print('extension has to be *.fits, *.png, or *.pdf')
+                print('extension has to be *.fits, *.png, *.jpg or *.pdf')
 
 
     def saveSpectrum(self):
@@ -1222,7 +1223,8 @@ class GUI (QMainWindow):
         
         # Dialog to save file
         fd = QFileDialog()
-        fd.setNameFilters(["Fits Files (*.fits)","PNG Files (*.png)","PDF Files (*.pdf)","ASCII Files (*.txt)","All Files (*)"])
+        fd.setNameFilters(["Fits Files (*.fits)","PNG Files (*.png)","JPG Files (*.jpg)",
+                           "PDF Files (*.pdf)","ASCII Files (*.txt)","All Files (*)"])
         fd.setOptions(QFileDialog.DontUseNativeDialog)
         fd.setViewMode(QFileDialog.List)
 
@@ -1264,8 +1266,8 @@ class GUI (QMainWindow):
                     pixel = np.array([[x0, y0]], np.float_)
                     world = ic.wcs.wcs_pix2world(pixel, 1)
                     hdu.header['APERTURE']=('Circle','Type of photometric aperture')
-                    hdu.header['RA'] = (world[0][0], 'RA of center of circular aperture')
-                    hdu.header['DEC'] = (world[0][1], 'Dec of center of circular aperture')
+                    hdu.header['RA'] = (world[0][0]/15., 'RA of center of circular aperture [hours]')
+                    hdu.header['DEC'] = (world[0][1], 'Dec of center of circular aperture [degs]')
                     hdu.header['RADIUS'] = (aper.ellipse.height*ic.pixscale, 'Radius of circular aperture')
                 elif aper.type == 'Square':
                     hdu.header['APERTURE']=('Square','Type of photometric aperture')
@@ -1278,8 +1280,8 @@ class GUI (QMainWindow):
                 hdu2 = self.addExtension(sc.spectrum.flux,'FLUX','Jy',None)
                 hdlist = [hdu,hdu1,hdu2]
                 if self.specCube.instrument == 'FIFI-LS':
-                    hdu3 = self.addExtension(sc.uflux,'UNCORR_FLUX','Jy',None)
-                    hdu4 = self.addExtension(sc.exposure,'EXPOSURE','s',None)
+                    hdu3 = self.addExtension(sc.spectrum.uflux,'UNCORR_FLUX','Jy',None)
+                    hdu4 = self.addExtension(sc.spectrum.exposure,'EXPOSURE','s',None)
                     hdu5 = self.addExtension(self.specCube.atran,'ATM_TRANS','Norm',None)
                     hdlist.append(hdu3)
                     hdlist.append(hdu4)
@@ -1314,10 +1316,10 @@ class GUI (QMainWindow):
                         np.savetxt(file, np.column_stack((w,f)), fmt=fmt, delimiter=" ")                
             #elif file_extension == '.csv':               
                 # Perhaps add CSV file                
-            elif file_extension == '.png' or file_extension == '.pdf':
+            elif file_extension == '.png' or file_extension == '.pdf' or file_extension == '.jpg':
                 sc.fig.savefig(outfile)
             else:
-                print('extension has to be *.fits, *.txt, *.png, or *.pdf')
+                print('extension has to be *.fits, *.txt, *.png, *.jpg, or *.pdf')
 
     def saveCube(self):
         """ Save a cut/cropped cube """ # TODO
