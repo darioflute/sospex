@@ -114,8 +114,10 @@ class GUI (QMainWindow):
         # Add actions to toolbar
         toolbar.addAction(self.sliceAction)
         toolbar.addAction(self.cutAction)
-        toolbar.addAction(self.maskAction)
+        #toolbar.addAction(self.maskAction)
         toolbar.addAction(self.specAction)
+        toolbar.addAction(self.hresizeAction)
+        toolbar.addAction(self.vresizeAction)
 
         toolbar.addSeparator()
 
@@ -573,7 +575,7 @@ class GUI (QMainWindow):
         
         # Status bar
         self.sb = QStatusBar()
-        self.sb.showMessage("Welcome to SOSPEX !", 10000)
+        self.sb.showMessage("Click the double arrow to load a cube !", 10000)
         
         # Add widgets to panel
         banner = QWidget()
@@ -596,7 +598,8 @@ class GUI (QMainWindow):
         # Actions
         self.helpAction = self.createAction(self.path0+'/icons/help.png','Help','Ctrl+q',self.onHelp)
         self.quitAction = self.createAction(self.path0+'/icons/exit.png','Quit program','Ctrl+q',self.fileQuit)
-        self.startAction = self.createAction(self.path0+'/icons/new.png','Load new observation','Ctrl+s',self.newFile)
+        #self.startAction = self.createAction(self.path0+'/icons/new.png','Load new observation','Ctrl+s',self.newFile)
+        self.startAction = self.createAction(self.path0+'/icons/next.png','Load new observation','Ctrl+s',self.newFile)
         self.levelsAction = self.createAction(self.path0+'/icons/levels.png','Adjust image levels','Ctrl+L',self.changeVisibility)
         self.blink = 'off'
         self.blinkAction = self.createAction(self.path0+'/icons/blink.png','Blink between 2 images','Ctrl+B',self.blinkImages)
@@ -612,6 +615,10 @@ class GUI (QMainWindow):
         self.fitsAction =  self.createAction(self.path0+'/icons/download.png','Save the image as a FITS/PNG/JPG/PDF file','Ctrl+S',self.saveFits)
         self.specAction = self.createAction(self.path0+'/icons/download.png','Save the spectrum as a ASCII/FITS/PNG/JPG/PDF file','Ctrl+S',self.saveSpectrum)
 
+        self.vresizeAction = self.createAction(self.path0+'/icons/vresize.png','Resize image vertically','Ctrl+V',self.vresizeSpectrum)
+        self.hresizeAction = self.createAction(self.path0+'/icons/hresize.png','Resize image horizontally','Ctrl+H',self.hresizeSpectrum)
+        
+        
         # Add buttons to the toolbar
 
         self.spacer = QWidget()
@@ -1008,6 +1015,29 @@ class GUI (QMainWindow):
         else:
             self.sb.showMessage("The selected survey does not cover the displayed image", 2000)
 
+    def uploadSpectrum(self, event):
+        """
+        Upload existing spectrum
+        """
+        from specobj import Spectrum
+        
+        fd = QFileDialog()
+        fd.setNameFilters(["Fits Files (*.fits)","All Files (*)"])
+        fd.setOptions(QFileDialog.DontUseNativeDialog)
+        fd.setViewMode(QFileDialog.List)
+        fd.setFileMode(QFileDialog.ExistingFile)
+
+        if (fd.exec()):
+            fileName= fd.selectedFiles()
+            print(fileName[0])
+            # Read external spectrum
+            self.extSpectrum = ExtSpectrum(filename[0])            
+            # Plot over selected tab
+            istab = self.stabs.currentIndex()
+            sc = self.sci[istab]
+            sc.extspecLayer, = sc.axes.plot(self.extSpectrum.wave,self.extSpectrum.flux, color='orange')
+            sc.displayExtSpec = True
+            #self.panel2.refreshSpectrum()
 
     def addApertures(self, ic):
         """ Add apertures already defined on new image """
@@ -1224,7 +1254,7 @@ class GUI (QMainWindow):
         # Dialog to save file
         fd = QFileDialog()
         fd.setNameFilters(["Fits Files (*.fits)","PNG Files (*.png)","JPG Files (*.jpg)",
-                           "PDF Files (*.pdf)","ASCII Files (*.txt)","All Files (*)"])
+                           "PDF Files (*.pdf)","ASCII Files (*.txt)", "CSV Files (*.csv)","All Files (*)"])
         fd.setOptions(QFileDialog.DontUseNativeDialog)
         fd.setViewMode(QFileDialog.List)
 
@@ -1256,25 +1286,47 @@ class GUI (QMainWindow):
                     pixel = np.array([[x0, y0]], np.float_)
                     world = ic.wcs.wcs_pix2world(pixel, 1)
                     hdu.header['APERTURE']=('Ellipse','Type of photometric aperture')
-                    hdu.header['RA'] = (world[0][0], 'RA of center of elliptical aperture')
-                    hdu.header['DEC'] = (world[0][1], 'Dec of center of elliptical aperture')
-                    hdu.header['ANGLE'] = (aper.ellipse.angle, 'Angle of elliptical aperture')
-                    hdu.header['MAJAX'] = (aper.ellipse.width*ic.pixscale, 'Major axis of elliptical aperture')
-                    hdu.header['MINAX'] = (aper.ellipse.height*ic.pixscale, 'Minor axis of elliptical aperture')
+                    hdu.header['RA'] = (world[0][0], 'RA of aperture center')
+                    hdu.header['DEC'] = (world[0][1], 'Dec of aperture center')
+                    hdu.header['ANGLE'] = (aper.ellipse.angle, 'Angle of elliptical aperture [degs]')
+                    hdu.header['MAJAX'] = (aper.ellipse.width*ic.pixscale, 'Major axis of elliptical aperture [arcsec]')
+                    hdu.header['MINAX'] = (aper.ellipse.height*ic.pixscale, 'Minor axis of elliptical aperture [arcsec]')
                 elif aper.type == 'Circle':
                     x0,y0 = aper.ellipse.center
                     pixel = np.array([[x0, y0]], np.float_)
                     world = ic.wcs.wcs_pix2world(pixel, 1)
                     hdu.header['APERTURE']=('Circle','Type of photometric aperture')
-                    hdu.header['RA'] = (world[0][0]/15., 'RA of center of circular aperture [hours]')
-                    hdu.header['DEC'] = (world[0][1], 'Dec of center of circular aperture [degs]')
-                    hdu.header['RADIUS'] = (aper.ellipse.height*ic.pixscale, 'Radius of circular aperture')
+                    hdu.header['RA'] = (world[0][0]/15., 'RA of aperture center [hours]')
+                    hdu.header['DEC'] = (world[0][1], 'Dec of aperture center [degs]')
+                    hdu.header['RADIUS'] = (aper.ellipse.height*ic.pixscale, 'Radius of circular aperture [arcsec]')
                 elif aper.type == 'Square':
+                    x0,y0 = aper.xy[0]
+                    pixel = np.array([[x0, y0]], np.float_)
+                    world = ic.wcs.wcs_pix2world(pixel, 1)
                     hdu.header['APERTURE']=('Square','Type of photometric aperture')
+                    hdu.header['RA'] = (world[0][0]/15., 'RA of aperture center [hours]')
+                    hdu.header['DEC'] = (world[0][1], 'Dec of aperture center [degs]')
+                    hdu.header['ANGLE'] = (aper.rect.angle, 'Angle of square aperture')
+                    hdu.header['SIDE'] = (aper.rect.get_height()*ic.pixscale, 'Side of square aperture [arcsec]')
                 elif aper.type == 'Rectangle':
+                    x0,y0 = aper.xy[0]
+                    pixel = np.array([[x0, y0]], np.float_)
+                    world = ic.wcs.wcs_pix2world(pixel, 1)
                     hdu.header['APERTURE']=('Rectangle','Type of photometric aperture')
+                    hdu.header['RA'] = (world[0][0]/15., 'RA of aperture center [hours]')
+                    hdu.header['DEC'] = (world[0][1], 'Dec of aperture center [degs]')
+                    hdu.header['WIDTH'] = (aper.rect.get_width()*ic.pixscale, 'Width of rectangle aperture [arcsec]')
+                    hdu.header['HEIGHT'] = (aper.rect.get_height()*ic.pixscale, 'Height of rectangle aperture [arcsec]')
+                    hdu.header['ANGLE'] = (aper.rect.angle, 'Angle of rectangle aperture [degs]')
                 elif aper.type == 'Polygon':
                     hdu.header['APERTURE']=('Polygon','Type of photometric aperture')
+                    xy = np.asarray(aper.poly.xy)
+                    world = ic.wcs.wcs_pix2world(xy, 1)
+                    i = 0
+                    for w in world:
+                        hdu.header['RA_PT'+"{:03d}".format(i)] = (w[0]/15.,'RA [hours] of polygon aperture point no {:d}'.format(i))
+                        hdu.header['DECPT'+"{:03d}".format(i)] = (w[1],'Dec [degs] of polygon aperture point no {:d}'.format(i))
+                        i += 1
                 # Add extensions
                 hdu1 = self.addExtension(sc.spectrum.wave,'WAVELENGTH','um',None)
                 hdu2 = self.addExtension(sc.spectrum.flux,'FLUX','Jy',None)
@@ -1286,40 +1338,83 @@ class GUI (QMainWindow):
                     hdlist.append(hdu3)
                     hdlist.append(hdu4)
                     hdlist.append(hdu5)
-                    
-                hdul = fits.HDUList(hdlist)
-                
                 # Save file
-                hdul.info()    
+                hdul = fits.HDUList(hdlist)
+                #hdul.info()    
                 hdul.writeto(outfile,overwrite=True) # clobber true  allows rewriting
                 hdul.close()
-            elif file_extension == '.txt':
+            elif file_extension == '.txt' or file_extension == '.csv':
+                header = "# Object name: "+self.specCube.objname
+                header += "\n# Instrument: "+self.specCube.instrument
+                header += "\n# z: {:.8f}".format(self.specCube.redshift)
+                aper = ic.photApertures[n]
+                if aper.type == 'Ellipse':
+                    x0,y0 = aper.ellipse.center
+                    pixel = np.array([[x0, y0]], np.float_)
+                    world = ic.wcs.wcs_pix2world(pixel, 1)                    
+                    header += '\n# Aperture: Ellipse'
+                    header += '\n# Center: {:.5f} {:.6f}'.format(world[0][0], world[0][1])
+                    header += '\n# Angle: {:.1f} degs'.format(aper.ellipse.angle)
+                    header += '\n# Axes: {:.1f} {:.1f} [arcsec]'.format(aper.ellipse.width*ic.pixscale,aper.ellipse.height*ic.pixscale)
+                elif aper.type == 'Circle':
+                    x0,y0 = aper.ellipse.center
+                    pixel = np.array([[x0, y0]], np.float_)
+                    world = ic.wcs.wcs_pix2world(pixel, 1)                    
+                    header += '\n# Aperture: Circle'
+                    header += '\n# Center: {:.5f} {:.6f}'.format(world[0][0], world[0][1])
+                    header += '\n# Radius: {:.1f} [arcsec]'.format(aper.ellipse.height*ic.pixscale)
+                elif aper.type == 'Square':
+                    x0,y0 = aper.xy[0]
+                    pixel = np.array([[x0, y0]], np.float_)
+                    world = ic.wcs.wcs_pix2world(pixel, 1)
+                    header += '\n# Aperture: Square'
+                    header += '\n# Center: {:.5f} {:.6f}'.format(world[0][0], world[0][1])
+                    header += '\n# Side: {:.1f} [arcsec]'.format(aper.rect.get_height()*ic.pixscale)
+                    header += '\n# Angle: {:.1f} degs'.format(aper.rect.angle)
+                elif aper.type == 'Rectangle':
+                    x0,y0 = aper.xy[0]
+                    pixel = np.array([[x0, y0]], np.float_)
+                    world = ic.wcs.wcs_pix2world(pixel, 1)
+                    header += '\n# Aperture: Rectangle'
+                    header += '\n# Center: {:.5f} {:.6f}'.format(world[0][0], world[0][1])
+                    header += '\n# Height: {:.1f} [arcsec]'.format(aper.rect.get_height()*ic.pixscale)
+                    header += '\n# Width: {:.1f} [arcsec]'.format(aper.rect.get_width()*ic.pixscale)
+                    header += '\n# Angle: {:.1f} degs'.format(aper.rect.angle)
+                elif aper.type == 'Polygon':
+                    header += '\n# Aperture: Polygon'
+                    xy = np.asarray(aper.poly.xy)
+                    world = ic.wcs.wcs_pix2world(xy, 1)
+                    i = 0
+                    for w in world:
+                        header += '\n# Point {:03d}: {:.5f}h {:.6f}d'.format(i,w[0]/15.,w[1])
+                        i += 1
+                #
                 w = sc.spectrum.wave
                 f = sc.spectrum.flux
-                sred = "# z = {:.5f}\n".format(self.specCube.redshift)
+                if file_extension == '.txt':
+                    delimiter = ' '
+                else:
+                    delimiter = ','
                 if self.specCube.instrument == 'FIFI-LS':
                     uf = sc.spectrum.flux
                     e  = sc.spectrum.exposure
                     a  = self.specCube.atran
                     # Normal ASCII file
-                    fmt = " ".join(["%10.6e"]*5)
-                    
+                    fmt = delimiter.join(["%10.6e"]*5)
                     with open(outfile, 'wb') as file:
-                        file.write(sred.encode())
-                        file.write(b'# wavelenght,flux,uflux,exposure,atran\n')
-                        np.savetxt(file, np.column_stack((w,f,uf,e,a)), fmt=fmt, delimiter=" ")
+                        file.write(header.encode())
+                        file.write(b'\n"wavelenght","flux","uflux","exposure","atran"\n')
+                        np.savetxt(file, np.column_stack((w,f,uf,e,a)), fmt=fmt, delimiter=delimiter)
                 else:
-                    fmt = " ".join(["%10.6e"]*2)
+                    fmt = delimiter.join(["%10.6e"]*2)
                     with open(outfile, 'wb') as file:
-                        file.write(sred.encode())
-                        file.write(b'# wavelenght,flux\n')
-                        np.savetxt(file, np.column_stack((w,f)), fmt=fmt, delimiter=" ")                
-            #elif file_extension == '.csv':               
-                # Perhaps add CSV file                
+                        file.write(header.encode())
+                        file.write(b'\n"wavelenght","flux"\n')
+                        np.savetxt(file, np.column_stack((w,f)), fmt=fmt, delimiter=delimiter)                
             elif file_extension == '.png' or file_extension == '.pdf' or file_extension == '.jpg':
                 sc.fig.savefig(outfile)
             else:
-                print('extension has to be *.fits, *.txt, *.png, *.jpg, or *.pdf')
+                print('extension has to be *.fits, *.txt, *.csv, *.png, *.jpg, or *.pdf')
 
     def saveCube(self):
         """ Save a cut/cropped cube """ # TODO
@@ -1876,9 +1971,39 @@ class GUI (QMainWindow):
                     #ap.mySignal.disconnect()
                 ap.line.set_visible(ap.showverts)
             ic.fig.canvas.draw_idle()
-            
-        
 
+    def hresizeSpectrum(self):
+        """ Expand spectrum to maximum wavelength range """
+
+        istab = self.stabs.currentIndex()
+        sc = self.sci[istab]
+
+        xlim0 = np.min(sc.spectrum.wave)
+        xlim1 = np.max(sc.spectrum.wave)
+        sc.xlimits=(xlim0,xlim1)
+        sc.axes.set_xlim(xlim0,xlim1)
+        sc.fig.canvas.draw_idle()
+        
+    def vresizeSpectrum(self):
+        """ Expand spectrum to maximum flux range """
+
+        istab = self.stabs.currentIndex()
+        sc = self.sci[istab]
+        spec = sc.spectrum
+
+        ylim0 = np.nanmin(spec.flux)
+        ylim1 = np.nanmax(spec.flux)
+
+        if sc.instrument == 'FIFI-LS':
+            u0 = np.nanmin(spec.uflux)
+            u1 = np.nanmax(spec.uflux)
+            if u0 < ylim0: ylim0 = u0
+            if u1 > ylim1: ylim1 = u1
+        
+        sc.ylimits = (ylim0,ylim1)
+        sc.axes.set_ylim(ylim0,ylim1)
+        sc.fig.canvas.draw_idle()
+        
         
 if __name__ == '__main__':
     app = QApplication(sys.argv)
@@ -1888,4 +2013,6 @@ if __name__ == '__main__':
     width = screen_resolution.width()
     gui.setGeometry(width*0.025, 0, width*0.95, width*0.5)
     gui.hsplitter.setSizes ([width*0.38,width*0.5])
+    # Add an icon for the GUI
+    app.setWindowIcon(QIcon(gui.path0+'/icons/sospex.png'))
     sys.exit(app.exec_())

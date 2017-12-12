@@ -298,7 +298,7 @@ class SpectrumCanvas(MplCanvas):
 
 
         # Fake line to have the lines in the legend
-        self.linesLine = self.axes.plot([0,0.1],[0,0],color='purple',alpha=0.4,label='Spec Lines')
+        self.linesLine = self.axes.plot([0,0.1],[0,0],color='purple',alpha=0.4,label='Lines')
         self.linesLayer, = self.linesLine
 
         # Add spectral lines
@@ -355,7 +355,7 @@ class SpectrumCanvas(MplCanvas):
             self.ax2.set_ylim([0.01,1.1])
             self.ax4.tick_params(labelright='off',right='off')
             self.atranLine = self.ax2.step(self.xr, s.atran,color='red',label='Atm Trans')
-            self.exposureLine = self.ax3.step(self.x, s.exposure, color='orange',label='Exposure')
+            self.exposureLine = self.ax3.step(self.x, s.exposure, color='orange',label='Exp')
             ymax = np.nanmax(s.flux); ymin = np.nanmin(s.flux)
             yumax = np.nanmax(s.uflux); yumin = np.nanmin(s.uflux)
             if yumax > ymax: ymax=yumax
@@ -391,8 +391,7 @@ class SpectrumCanvas(MplCanvas):
             self.displayUFlux = False
             self.displayAtran = False
             self.displayExposure = False
-            lns = self.fluxLine \
-                  +self.linesLine
+            lns = self.fluxLine + self.linesLine
             lines = [self.fluxLayer,self.linesLayer]
             visibility = [self.displayFlux,self.displayLines]
 
@@ -438,13 +437,15 @@ class SpectrumCanvas(MplCanvas):
         # Hide lines
         for line, legline, vis in zip(lines, leg.get_lines(), visibility):
             line.set_visible(vis)
+            txt = self.labed[legline]
             if vis:
                 alpha=1.0
             else:
                 alpha=0.2
+                #txt.set_text('')
             legline.set_alpha(alpha)
-            txt = self.labed[legline]
             txt.set_alpha(alpha)
+        #self.fig.canvas.draw_idle()
             
         # Shade region considered for the images
         if self.shade == True:
@@ -528,23 +529,29 @@ class SpectrumCanvas(MplCanvas):
             if vis:
                 legline.set_alpha(1.0)
                 txt.set_alpha(1.0)
-                if label == 'Exposure':
+                if label == 'Exp':
                     self.displayExposure = True
                     self.ax3.tick_params(labelright='on',right='on',direction='in',pad=-30,colors='orange')
+                    txt.set_text('Exp')
                 elif label == 'Atm Trans':
                     self.displayAtran = True
                     self.ax2.get_yaxis().set_tick_params(labelright='on',right='on')            
                     self.ax2.get_yaxis().set_tick_params(which='both', direction='out',colors='red')
+                    txt.set_text('Atm Trans')
                 elif label == 'Unc Flux':
                     self.displayUFlux = True
+                    txt.set_text('Unc Flux')
                 elif label == 'Flux':
                     self.displayFlux = True
-                elif label == 'Spec Lines':
+                    txt.set_text('Flux')
+                elif label == 'Lines':
                     self.displayLines = True
+                    txt.set_text('Lines')
             else:
                 legline.set_alpha(0.2)
                 txt.set_alpha(0.2)
-                if label == 'Exposure':
+                txt.set_text('')
+                if label == 'Exp':
                     self.displayExposure = False
                     self.ax3.get_yaxis().set_tick_params(labelright='off',right='off')
                 elif label == 'Atm Trans':
@@ -554,7 +561,7 @@ class SpectrumCanvas(MplCanvas):
                     self.displayUFlux = False
                 elif label == 'Flux':
                     self.displayFlux = False
-                elif label == 'Spec Lines':
+                elif label == 'Lines':
                     self.displayLines = False
             if self.shade == True:
                 self.shadeRegion()

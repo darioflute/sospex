@@ -631,7 +631,7 @@ class PolygonInteractor(QObject):
         d = np.hypot(xt - event.x, yt - event.y)
         indseq, = np.nonzero(d == d.min())
         ind = indseq[0]
-
+        
         if d[ind] >= self.epsilon:
             ind = None
 

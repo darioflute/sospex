@@ -79,19 +79,21 @@ class specCube(object):
         self.points = np.array([np.ravel(xi),np.ravel(yi)]).transpose()
 
 
-#class spectrum(object):
-#    """ class for external spectrum """
-#    def __init__(self, infile):
-#        hdl = fits.open(infile)
-#        header = hdl[0].header
-#        self.flux = hdl[0].data
-#        crval = header['CRVAL']
-#        crpix = header['CRPIX']
-#        cdelt = header['CDELT']
-#        naxis = header['NAXIS1']
-#        # I should consider the unit here,
-#        # now I assume everything in um ...
-#        self.wave = crval+(np.arange(naxis)-crpix+1)*cdelt
+class ExtSpectrum(object):
+    """ class for external spectrum """
+    def __init__(self, infile):
+        hdl = fits.open(infile)
+        header = hdl[0].header
+        # Assuming flux and wavelength are conserved in the respective extensions
+        self.flux = hdl['FLUX'].data # in Jansky
+        self.wave = hdl['WAVELENGTH'].data  # in micronmeters
+        try:
+            self.redshift = header['REDSHIFT']
+        except:
+            self.redshift = 0.
+        hdl.close()
+        # If wavelength is in the header, use:
+        #self.wave = crval+(np.arange(naxis)-crpix+1)*cdelt
 
 class Spectrum(object):
     """ class to define a spectrum """
