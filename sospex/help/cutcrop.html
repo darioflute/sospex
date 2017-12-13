@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8" />
-<title>tutorials</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
+<title>cutcrop</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
 
 <style type="text/css">
@@ -11778,7 +11778,7 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p><a href="Help.html">Previous</a> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="start.html">Next</a>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="tutorials.html">Tutorials</a> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="Help.html">Help</a></p>
+<p><a href="slice.html">Previous</a> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="apertures.html">Next</a>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="tutorials.html">Tutorials</a> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="Help.html">Help</a></p>
 
 </div>
 </div>
@@ -11788,7 +11788,7 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="Tutorials">Tutorials<a class="anchor-link" href="#Tutorials">&#182;</a></h2>
+<h2 id="Cut-and-crop-the-spectral-cube">Cut and crop the spectral cube<a class="anchor-link" href="#Cut-and-crop-the-spectral-cube">&#182;</a></h2>
 </div>
 </div>
 </div>
@@ -11797,30 +11797,36 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>The following tutorials explain how to use most of the features of SOSPEX for exploring, analyzing, and 
-manipulating the data or comparing to other images from public archives.</p>
-<ul>
-<li><p><a href="start.html">Load a spectral cube</a></p>
-</li>
-<li><p><a href="zoom.html">Zoom and Pan</a></p>
-</li>
-<li><p><a href="intensity.html">Change image intensity levels</a></p>
-</li>
-<li><p><a href="slice.html">Select a slice of the cube</a></p>
-</li>
-<li><p><a href="cutcrop.html">Crop and cut the cubes</a></p>
-</li>
-<li><p><a href="apertures.html">Select and modify apertures</a></p>
-</li>
-<li><p><a href="extimages.html">Load external images</a></p>
-</li>
-<li><p><a href="blink.html">Blink between images</a></p>
-</li>
-<li><p><a href="contours.html">Overlap contours</a></p>
-</li>
-<li><p><a href="save.html">Save images and spectra</a></p>
-</li>
-</ul>
+<table>
+<thead><tr>
+<th style="text-align:center">Button</th>
+<th style="text-align:left">Function</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center"><img src="../icons/cut.png" alt="Cut" style="width: 20px;"/></td>
+<td style="text-align:left">Cut. Allows one to select and save a slice of the cube.</td>
+</tr>
+<tr>
+<td style="text-align:center"><img src="../icons/crop.png" alt="Crop" style="width: 20px;"/></td>
+<td style="text-align:left">Crop. Allows one to save the spatial region of the cube selected by the current zoom.</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h3 id="Cut">Cut<a class="anchor-link" href="#Cut">&#182;</a></h3><p>Under the spectral panel, the "cut" icon activates the span selector on the spectral plot. It is now possible to click and drag the mouse to select the wavelength range one wants to save into a new spectral cube.
+In fact, some part can be unusable or not interesting. Doing so it will speed up the process of analysis of the cube, especially when fitting lines all over the cube.</p>
+<p>Once the range is selected, a pop-up window asks if one is interested in saving the new spectral cube with reduced wavelength coverage. If the answer is positive, another pop-up window allows one to choose a name for the new cube and the folder where to save it.</p>
+<h3 id="Crop">Crop<a class="anchor-link" href="#Crop">&#182;</a></h3><p>The "crop" icon is under the image panel. If the image was blown up using the "zoom" icon (see tutorial on <a href="zoom.html">zooming</a>), clicking on the "crop" icon will generate a pop-up window asking if one is interested in saving the new cube. At this point, if the answer is positive, another pop-up window allows one to select name and folder to save the new cube.</p>
 
 </div>
 </div>
