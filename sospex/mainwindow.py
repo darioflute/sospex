@@ -17,6 +17,9 @@ from matplotlib.path import Path
 
 
 from apertures import photoAperture
+import warnings
+# To avoid excessive warning messages
+warnings.filterwarnings('ignore')
 
 class GUI (QMainWindow):
  
@@ -40,6 +43,7 @@ class GUI (QMainWindow):
         """ Define the user interface """
         
         self.setWindowTitle(self.title)
+        self.setWindowIcon(QIcon(self.path0+'/icons/sospex.png'))
         self.setGeometry(self.left, self.top, self.width, self.height)
 
         # Create main widget
@@ -116,10 +120,11 @@ class GUI (QMainWindow):
         toolbar.addAction(self.cutAction)
         #toolbar.addAction(self.maskAction)
         toolbar.addAction(self.specAction)
+        toolbar.addSeparator()
+        toolbar.addSeparator()
         toolbar.addAction(self.hresizeAction)
         toolbar.addAction(self.vresizeAction)
 
-        toolbar.addSeparator()
 
         
         # Navigation toolbar
@@ -298,7 +303,7 @@ class GUI (QMainWindow):
     def onHelp(self, event):
         import webbrowser
 
-        print(self.path0+'/readme.html')
+        #print(self.path0+'/readme.html')
         webbrowser.open('file://'+os.path.abspath(self.path0+'/help/Help.html'))
 
     def onMotion(self, event):
@@ -383,7 +388,7 @@ class GUI (QMainWindow):
         n = istab-1
         ap = self.ici[itab].photApertures[n]
         apertype = ap.__class__.__name__
-        print("event ",event, " aperture ",apertype)
+        #print("event ",event, " aperture ",apertype)
         if (event == 'rectangle deleted' and apertype == 'RectangleInteractor') or \
            (event == 'ellipse deleted' and apertype == 'EllipseInteractor') \
            or (event == 'polygon deleted' and apertype == 'PolygonInteractor'):
@@ -596,7 +601,6 @@ class GUI (QMainWindow):
         # Actions
         self.helpAction = self.createAction(self.path0+'/icons/help.png','Help','Ctrl+q',self.onHelp)
         self.quitAction = self.createAction(self.path0+'/icons/exit.png','Quit program','Ctrl+q',self.fileQuit)
-        #self.startAction = self.createAction(self.path0+'/icons/new.png','Load new observation','Ctrl+s',self.newFile)
         self.startAction = self.createAction(self.path0+'/icons/next.png','Load new observation','Ctrl+s',self.newFile)
         self.levelsAction = self.createAction(self.path0+'/icons/levels.png','Adjust image levels','Ctrl+L',self.changeVisibility)
         self.blink = 'off'
@@ -622,27 +626,11 @@ class GUI (QMainWindow):
         self.spacer = QWidget()
         self.spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-        
-        ##self.tb.addWidget(self.spacer)
         self.tb.addAction(self.startAction)
         self.tb.addAction(self.quitAction)
         self.tb.addAction(self.helpAction)
         self.tb.addWidget(self.apertureAction)        
 
-        #self.tb.addAction(self.levelsAction)
-        #self.tb.addAction(self.blinkAction)
-        #self.tb.addAction(self.contoursAction)
-        #self.tb.addAction(self.momentAction)
-        #self.tb.addAction(self.cropAction)
-        #self.tb.addAction(self.cloudAction)
-        ##self.tb.addSeparator()
-        #self.tb.addAction(self.sliceAction)
-        #self.tb.addAction(self.cutAction)
-        #self.tb.addAction(self.maskAction)
-
-
-
-        
     
     def createAction(self,icon,text,shortcut,action):
         act = QAction(QIcon(icon),text, self)
@@ -739,8 +727,8 @@ class GUI (QMainWindow):
         self.scid1.append(scid1)
         self.scid2.append(scid2)
 
-        print('apertures are: ',len(self.ici[0].photApertures))
-        print('current aperture is: ',n)
+        #print('apertures are: ',len(self.ici[0].photApertures))
+        #print('current aperture is: ',n)
         
         # Draw spectrum from polygon
         aperture = self.ici[0].photApertures[n].aperture
@@ -779,8 +767,6 @@ class GUI (QMainWindow):
         
         x1, y1 = eclick.xdata, eclick.ydata
         x2, y2 = erelease.xdata, erelease.ydata
-        #print("(%3.2f, %3.2f) --> (%3.2f, %3.2f)" % (x1, y1, x2, y2))
-        #print(" The button you used were: %s %s" % (eclick.button, erelease.button))
 
         if self.selAp == 'square' or self.selAp == 'rectangle':
             x0=x1;y0=y1
@@ -956,7 +942,6 @@ class GUI (QMainWindow):
         lon,lat = self.specCube.wcs.celestial.all_pix2world(ny//2,nx//2, 0)
         xsize = nx * self.specCube.pixscale /60. #size in arcmin
         ysize = ny * self.specCube.pixscale /60. #size in arcmin
-        print('center: ',lon,lat,' and size: ',xsize,ysize)
 
         # Compute center and size (arcmin) of the displayed image 
         itab = self.itabs.currentIndex()
@@ -968,19 +953,18 @@ class GUI (QMainWindow):
         lat = np.mean(dec)
         xsize = np.abs(ra[0]-ra[1])*np.cos(lat*np.pi/180.)*60.
         ysize = np.abs(dec[0]-dec[1])*60.
-        print('center: ',lon,lat,' and size: ',xsize,ysize)
-        
+        #print('center: ',lon,lat,' and size: ',xsize,ysize)        
         print('Band selected is: ',band)
         self.downloadedImage = cloudImage(lon,lat,xsize,ysize,band)
             
         # Open tab and display the image
         if self.downloadedImage.data is not None:
-            print('image downloaded')
             image = self.downloadedImage.data
             mask = np.isfinite(image)
             if np.sum(mask) == 0:
                 self.sb.showMessage("The selected survey does not cover the displayed image", 2000)
             else:
+                self.sb.showMessage("Image downloaed", 2000)
                 self.bands.append(band)
                 t,ic,ih,h,c1,c2,c3 = self.addImage(band)
                 self.tabi.append(t)
@@ -1030,7 +1014,7 @@ class GUI (QMainWindow):
 
         if (fd.exec()):
             fileName= fd.selectedFiles()
-            print(fileName[0])
+            #print(fileName[0])
             # Read external spectrum
             self.extSpectrum = ExtSpectrum(filename[0])            
             # Plot over selected tab
@@ -1038,7 +1022,6 @@ class GUI (QMainWindow):
             sc = self.sci[istab]
             sc.extspecLayer, = sc.axes.plot(self.extSpectrum.wave,self.extSpectrum.flux, color='orange')
             sc.displayExtSpec = True
-            #self.panel2.refreshSpectrum()
 
     def addApertures(self, ic):
         """ Add apertures already defined on new image """
@@ -1067,7 +1050,7 @@ class GUI (QMainWindow):
                 x0,y0 = aper.rect.get_xy()
                 w0    = aper.rect.get_width()
                 h0    = aper.rect.get_height()
-                print(type(h0))
+                #print(type(h0))
                 angle = aper.rect.angle
                 ra0,dec0 = ic0.wcs.all_pix2world(x0,y0,1)
                 ws = w0 * ic0.pixscale; hs = h0 * ic0.pixscale
@@ -1190,6 +1173,7 @@ class GUI (QMainWindow):
         """ Generate cut cube """
 
         self.specCube.flux = self.specCube.flux[xmin:xmax,:,:]
+        self.specCube.wave = self.specCube.wave[xmin:xmax]
         nz,ny,nx = np.shape(self.specCube.flux)
         print('new cube z-size is ',nz)
         self.specCube.n = nz
@@ -1199,6 +1183,8 @@ class GUI (QMainWindow):
             self.specCube.uflux = self.specCube.uflux[xmin:xmax,:,:]
             self.specCube.euflux = self.specCube.euflux[xmin:xmax,:,:]
             self.specCube.exposure = self.specCube.exposure[xmin:xmax,:,:]
+            self.specCube.atran = self.specCube.atran[xmin:xmax]
+            self.specCube.response = self.specCube.response[xmin:xmax]
        
     def saveFits(self):
         """ Save the displayed image as a FITS file """
@@ -1214,7 +1200,7 @@ class GUI (QMainWindow):
 
         if (fd.exec()):
             fileName = fd.selectedFiles()
-            print(fileName[0])
+            #print(fileName[0])
             outfile = fileName[0]
 
             itab = self.itabs.currentIndex()
@@ -1231,7 +1217,7 @@ class GUI (QMainWindow):
 
             if file_extension == '.fits':
                 # Primary header
-                print(self.specCube.wcs)
+                #print(self.specCube.wcs)
                 header = self.specCube.wcs.to_header()
                 header.remove('WCSAXES')
                 header['INSTRUME'] = instrument
@@ -1241,10 +1227,11 @@ class GUI (QMainWindow):
                 hdul = fits.HDUList([hdu])
                 hdul.writeto(outfile,overwrite=True) # clobber true  allows rewriting
                 hdul.close()
-            elif file_extension == '.png' or file_extension == '.pdf':
+            elif file_extension == '.png' or file_extension == '.pdf' or file_extension == '.jpg':
                 ic.fig.savefig(outfile)
             else:
                 print('extension has to be *.fits, *.png, *.jpg or *.pdf')
+                self.sb.showMessage("Extension has to be *.fits, *.png, *.jpg, or *.pdf ", 1000)
 
 
     def saveSpectrum(self):
@@ -1261,7 +1248,7 @@ class GUI (QMainWindow):
 
         if (fd.exec()):
             fileName = fd.selectedFiles()
-            print(fileName[0])
+            #print(fileName[0])
             outfile = fileName[0]
 
             istab = self.stabs.currentIndex()
@@ -1281,7 +1268,8 @@ class GUI (QMainWindow):
                 hdu.header['REDSHIFT'] = (self.specCube.redshift, 'Object Redshift')
                 if self.specCube.instrument == 'FIFI-LS':
                     hdu.header['BARYSHFT'] = (self.specCube.baryshift, 'Barycentric shift')
-                aper = ic.photApertures[n]
+                if n >= 0:
+                    aper = ic.photApertures[n]
                 if aper.type == 'Ellipse':
                     x0,y0 = aper.ellipse.center
                     pixel = np.array([[x0, y0]], np.float_)
@@ -1348,7 +1336,8 @@ class GUI (QMainWindow):
                 header = "# Object name: "+self.specCube.objname
                 header += "\n# Instrument: "+self.specCube.instrument
                 header += "\n# z: {:.8f}".format(self.specCube.redshift)
-                aper = ic.photApertures[n]
+                if n >= 0:
+                    aper = ic.photApertures[n]
                 if aper.type == 'Ellipse':
                     x0,y0 = aper.ellipse.center
                     pixel = np.array([[x0, y0]], np.float_)
@@ -1415,6 +1404,7 @@ class GUI (QMainWindow):
             elif file_extension == '.png' or file_extension == '.pdf' or file_extension == '.jpg':
                 sc.fig.savefig(outfile)
             else:
+                self.sb.showMessage("Extension has to be *.fits, *.txt, *.csv, *.png, *.jpg, or *.pdf ", 1000)
                 print('extension has to be *.fits, *.txt, *.csv, *.png, *.jpg, or *.pdf')
 
     def saveCube(self):
@@ -1426,14 +1416,13 @@ class GUI (QMainWindow):
         fd.setNameFilters(["Fits Files (*.fits)","All Files (*)"])
         fd.setOptions(QFileDialog.DontUseNativeDialog)
         fd.setViewMode(QFileDialog.List)
-        #fd.setFileMode(QFileDialog.ExistingFile)
 
         if (fd.exec()):
             fileName = fd.selectedFiles()
-            print(fileName[0])
+            #print(fileName[0])
             outfile = fileName[0]
 
-            print('Saving the cube with z size: ',self.specCube.n)
+            #print('Saving the cube with z size: ',self.specCube.n)
             # Reusable header
             header = self.specCube.wcs.to_header()
             header.remove('WCSAXES')
@@ -1591,7 +1580,8 @@ class GUI (QMainWindow):
                 ic.contour = ic.axes.contour(ic0.oimage,ih0.levels, colors='cyan',transform=ic.axes.get_transform(ic0.wcs))
                 ic.fig.canvas.draw_idle()
             else:
-                print("No contours available")
+                pass
+                #print("No contours available")
             
     def overlapContours(self):
         """ Compute contours and overlap/remove them on images """
@@ -1617,7 +1607,7 @@ class GUI (QMainWindow):
                     ic.changed = True
             # Update current tab
             itab = self.itabs.currentIndex()
-            print('current tab is: ',itab)
+            #print('current tab is: ',itab)
             ic0 = self.ici[itab]
             ic0.fig.canvas.draw_idle()
             ic0.changed = False
@@ -1635,8 +1625,7 @@ class GUI (QMainWindow):
             levels = ih0.median + np.array([1,2,3,5,10,15,20]) * ih0.sdev
             mask = levels < ih0.max
             ih0.levels = list(levels[mask])
-            #ih0.levels = list(ih0.median + np.array([1,2,3,5,10,15,20]) * ih0.sdev)
-        print('Contour levels are: ',ih0.levels)
+        #print('Contour levels are: ',ih0.levels)
         ic0.contour = ic0.axes.contour(ic0.oimage,ih0.levels,colors='cyan')
         ic0.fig.canvas.draw_idle()
         # Add levels to histogram
@@ -1661,13 +1650,10 @@ class GUI (QMainWindow):
             #print('Number of existing contours is: ',nlev)
             if n > 1000:
                 n -= 1000
-                #print('The contour ',n,' has been added')
                 new = ic0.axes.contour(ic0.oimage, [ih0.levels[n]], colors='cyan')
                 # Insert new contour in the contour collection
                 contours = ic0.contour.collections
-                print('type of contours is ', type(contours), contours)
                 contours.insert(n,new.collections[0])
-                #ic0.contour.collections.insert(new.collections[0], n)
             elif n < 0:
                 #print('The contour ', n,' has been removed')
                 # Remove contour from image
@@ -1682,7 +1668,6 @@ class GUI (QMainWindow):
                 ic0.contour.collections[n] = new.collections[0]
             ic0.fig.canvas.draw_idle()
             # Then change contours in the other images
-            # Update contours on all other images
             ici = self.ici.copy()
             ici.remove(ic0)
             for ic in ici:
@@ -1707,10 +1692,14 @@ class GUI (QMainWindow):
 
         if (fd.exec()):
             fileName= fd.selectedFiles()
-            print(fileName[0])
-            # Ask to save analysis (cubes, spectra) TODO
+            #print(fileName[0])
             # Read the spectral cube
-            self.specCube = specCube(fileName[0])
+            # A more robust step to skip bad files should be added
+            try:
+                self.specCube = specCube(fileName[0])
+            except:
+                self.sb.showMessage("ERROR: The selected file is not a good spectral cube ", 2000)
+                return
             # Delete pre-existing spectral tabs
             try:
                 for stab in reversed(range(len(self.sci))):
@@ -2061,6 +2050,6 @@ if __name__ == '__main__':
     width = screen_resolution.width()
     gui.setGeometry(width*0.025, 0, width*0.95, width*0.5)
     gui.hsplitter.setSizes ([width*0.38,width*0.5])
-    # Add an icon for the GUI
+    # Add an icon for the application
     app.setWindowIcon(QIcon(gui.path0+'/icons/sospex.png'))
     sys.exit(app.exec_())

@@ -246,6 +246,10 @@ class ImageHistoCanvas(MplCanvas):
             pass
         self.limSignal.emit('limits changed')
         self.shade = self.axes.axvspan(self.limits[0],self.limits[1],facecolor='Lavender',alpha=0.5,linewidth=0)
+        # Redefine limits
+        x1,x2 = self.axes.get_xlim()
+        x2 = self.limits[1] + 5 * self.sdev
+        self.axes.set_xlim((x1,x2))
         self.fig.canvas.draw_idle()
 
     def connect(self):
@@ -279,8 +283,8 @@ class ImageHistoCanvas(MplCanvas):
         'whenever a mouse button is pressed'
         if not self.showLevels:
             return
-        #if not event.inaxes:
-        #    return
+        if not event.inaxes:
+            return
         if event.button != 1:
             return
         self._ind = self.get_ind_under_point(event)
@@ -289,8 +293,8 @@ class ImageHistoCanvas(MplCanvas):
         'whenever a mouse button is released'
         if not self.showLevels:
             return
-        #if not event.inaxes:
-        #    return
+        if not event.inaxes:
+            return
         if event.button != 1:
             return
         self._ind = None
@@ -298,10 +302,8 @@ class ImageHistoCanvas(MplCanvas):
     def get_ind_under_point(self, event):
         """get the index of the level if within epsilon tolerance"""
 
-        #print(event.xdata)
         if not event.inaxes:
-            print('out of axes')
-        #    return
+            return
         levels = np.array(self.levels)
         d = np.abs(levels - event.xdata)
         indseq, = np.nonzero(d == d.min())
@@ -312,6 +314,8 @@ class ImageHistoCanvas(MplCanvas):
 
     def key_press_callback(self, event):
         'whenever a key is pressed'
+        if not event.inaxes:
+            return
 
         if event.key == 't':
             # Toggle between seeing and hide contours
@@ -366,12 +370,14 @@ class ImageHistoCanvas(MplCanvas):
         self.fig.canvas.draw_idle()
 
     def motion_notify_callback(self, event):
-        'on mouse movement'
+        'on mouse movement - this should be allowed only if the image size is reasonably small'
         if not self.showLevels:
             return
         if self._ind is None:
             return
         if event.button != 1:
+            return
+        if not event.inaxes:
             return
         x, y = event.xdata, event.ydata
         #print(x,y)
@@ -380,8 +386,6 @@ class ImageHistoCanvas(MplCanvas):
         lev = self.lev[self._ind]
         xl,yl = lev.get_data()
         lev.set_data([x,x],yl)
-        # Emit a signal to communicate change of contour
-        self.levSignal.emit(self._ind)
 
         self.fig.canvas.restore_region(self.background)
         for lev in self.lev:
@@ -389,6 +393,8 @@ class ImageHistoCanvas(MplCanvas):
         self.fig.canvas.update()
         self.fig.canvas.flush_events()
 
+        # Emit a signal to communicate change of contour
+        self.levSignal.emit(self._ind)
     
 
 class SpectrumCanvas(MplCanvas):
@@ -533,14 +539,14 @@ class SpectrumCanvas(MplCanvas):
             self.ax4 = self.axes.twinx()
             self.ax2.set_ylim([0.01,1.1])
             self.ax4.tick_params(labelright='off',right='off')
-            self.atranLine = self.ax2.step(self.xr, s.atran,color='red',label='Atm Trans')
+            self.atranLine = self.ax2.step(self.xr, s.atran,color='red',label='Atm')
             self.exposureLine = self.ax3.step(self.x, s.exposure, color='orange',label='Exp')
             ymax = np.nanmax(s.flux); ymin = np.nanmin(s.flux)
             yumax = np.nanmax(s.uflux); yumin = np.nanmin(s.uflux)
             if yumax > ymax: ymax=yumax
             if yumin < ymin: ymin=yumin
             self.ax3.set_ylim([0.5,np.nanmax(s.exposure)*1.54])
-            self.ufluxLine = self.ax4.step(self.xr,s.uflux,color='green',label='Unc Flux')
+            self.ufluxLine = self.ax4.step(self.xr,s.uflux,color='green',label='Uflux')
             self.ax4.set_ylim(self.axes.get_ylim())
             #self.ax1.set_title(spectrum.objname+" ["+spectrum.filegpid+"] @ "+spectrum.obsdate)
             self.ufluxLayer, = self.ufluxLine
@@ -712,14 +718,14 @@ class SpectrumCanvas(MplCanvas):
                     self.displayExposure = True
                     self.ax3.tick_params(labelright='on',right='on',direction='in',pad=-30,colors='orange')
                     txt.set_text('Exp')
-                elif label == 'Atm Trans':
+                elif label == 'Atm':
                     self.displayAtran = True
                     self.ax2.get_yaxis().set_tick_params(labelright='on',right='on')            
                     self.ax2.get_yaxis().set_tick_params(which='both', direction='out',colors='red')
-                    txt.set_text('Atm Trans')
-                elif label == 'Unc Flux':
+                    txt.set_text('Atm')
+                elif label == 'Uflux':
                     self.displayUFlux = True
-                    txt.set_text('Unc Flux')
+                    txt.set_text('Uflux')
                 elif label == 'Flux':
                     self.displayFlux = True
                     txt.set_text('Flux')
@@ -733,10 +739,10 @@ class SpectrumCanvas(MplCanvas):
                 if label == 'Exp':
                     self.displayExposure = False
                     self.ax3.get_yaxis().set_tick_params(labelright='off',right='off')
-                elif label == 'Atm Trans':
+                elif label == 'Atm':
                     self.displayAtran = False
                     self.ax2.get_yaxis().set_tick_params(labelright='off',right='off')            
-                elif label == 'Unc Flux':
+                elif label == 'Uflux':
                     self.displayUFlux = False
                 elif label == 'Flux':
                     self.displayFlux = False
