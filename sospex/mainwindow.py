@@ -1000,6 +1000,9 @@ class GUI (QMainWindow):
             
                 # Add existing apertures
                 self.addApertures(ic)
+
+                # Add contours
+                self.addContours(ic)
             
                 # Align with spectral cube
                 ic0 = self.ici[0]
@@ -1579,13 +1582,16 @@ class GUI (QMainWindow):
         """ Add existing contours to newly added images """
 
         if self.contours == 'on':
+            ih0 = None
             for ih,ic_ in zip(self.ihi, self.ici):
                 if len(ih.levels) > 0:
                     ih0 = ih
                     ic0 = ic_
-            ic.contour = ic.axes.contour(ic0.oimage,ih0.levels, colors='cyan',transform=ic.axes.get_transform(ic0.wcs))
-            ic.fig.canvas.draw_idle()
-
+            if ih0 is not None:
+                ic.contour = ic.axes.contour(ic0.oimage,ih0.levels, colors='cyan',transform=ic.axes.get_transform(ic0.wcs))
+                ic.fig.canvas.draw_idle()
+            else:
+                print("No contours available")
             
     def overlapContours(self):
         """ Compute contours and overlap/remove them on images """
@@ -1618,7 +1624,7 @@ class GUI (QMainWindow):
             self.sb.showMessage('Contours deleted ', 1000)
 
     def drawContours(self):
-        """ Draw contours of image in ctab[0] over image in ctab[1] """
+        """ Draw contours of image """
 
         itab = self.itabs.currentIndex()
         ic0 = self.ici[itab]

@@ -299,6 +299,9 @@ class ImageHistoCanvas(MplCanvas):
         """get the index of the level if within epsilon tolerance"""
 
         #print(event.xdata)
+        if not event.inaxes:
+            print('out of axes')
+        #    return
         levels = np.array(self.levels)
         d = np.abs(levels - event.xdata)
         indseq, = np.nonzero(d == d.min())
