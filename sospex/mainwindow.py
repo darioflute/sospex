@@ -174,7 +174,7 @@ class GUI (QMainWindow):
         t.layout.addWidget(foot)
         self.itabs.resize(self.itabs.minimumSizeHint())  # Avoid expansion
         # connect image and histogram to  events
-        cidh=ih.mySignal.connect(self.onChangeIntensity)
+        cidh=ih.limSignal.connect(self.onChangeIntensity)
         cid1=ic.mpl_connect('button_release_event', self.onDraw)
         cid2=ic.mpl_connect('scroll_event',self.onWheel)
         cid3=ic.mpl_connect('motion_notify_event', self.onMotion)
@@ -182,7 +182,7 @@ class GUI (QMainWindow):
         return t,ic,ih,cidh,cid1,cid2,cid3
 
     def removeTab(self, itab):
-        print('removing tab no ',itab)
+        print('Removing image tab no ',itab)
         widget = self.itabs.widget(itab)
         if widget is not None:
             widget.deleteLater()
@@ -212,7 +212,7 @@ class GUI (QMainWindow):
         del self.bands[itab]
         
     def removeSpecTab(self, stab):
-        print('Removing tab no ',stab)
+        print('Removing spectral tab no ',stab)
         if stab > 0:
             # Once the tab is removed, also the relative aperture should be removed
             itab = self.itabs.currentIndex()
@@ -227,34 +227,32 @@ class GUI (QMainWindow):
                 ap.disconnect()
                 del ic.photApertureSignal[n]
                 del ic.photApertures[n]
-            # Remove tab
-            widget = self.stabs.widget(stab)
-            if widget is not None:
-                widget.deleteLater()
-                self.stabs.removeTab(stab)
-            # Disconnect and remove canvases
-            tab = self.stabi[stab]
-            spec = self.sci[stab]
-            c1 = self.scid1[stab]
-            c2 = self.scid2[stab]
-            spec.mpl_disconnect(c1)
-            spec.mpl_disconnect(c2)
-            self.stabi.remove(tab)
-            self.sci.remove(spec)
-            self.scid1.remove(c1)
-            self.scid2.remove(c2)
-            spec = None
-            # Remove photoAperture
-            del self.photoApertures[n]
-            # Rename aperture tabs
-            if len(self.stabs)> 1:
-                for i in range(1,len(self.stabs)):
-                    apname = "Ap{:d}".format(i-1)
-                    self.stabs.setTabText(i,apname)
-            # Redraw apertures
-            ic0.fig.canvas.draw_idle()
-        else:
-            print("We cannot remove the tab with the total spectrum")        
+        # Remove tab
+        widget = self.stabs.widget(stab)
+        if widget is not None:
+            widget.deleteLater()
+        self.stabs.removeTab(stab)
+        # Disconnect and remove canvases
+        tab = self.stabi[stab]
+        spec = self.sci[stab]
+        c1 = self.scid1[stab]
+        c2 = self.scid2[stab]
+        spec.mpl_disconnect(c1)
+        spec.mpl_disconnect(c2)
+        self.stabi.remove(tab)
+        self.sci.remove(spec)
+        self.scid1.remove(c1)
+        self.scid2.remove(c2)
+        spec = None
+        # Remove photoAperture
+        del self.photoApertures[n]
+        # Rename aperture tabs
+        if len(self.stabs)> 1:
+            for i in range(1,len(self.stabs)):
+                apname = "Ap{:d}".format(i-1)
+                self.stabs.setTabText(i,apname)
+        # Redraw apertures
+        ic0.fig.canvas.draw_idle()
 
     def onITabChange(self, itab):
         ''' When tab changes check if latest update of ellipse are implemented '''
@@ -284,10 +282,10 @@ class GUI (QMainWindow):
                 self.btab[1] = itab
                 self.blink = 'on'
                 self.timer.start(1000)
-            if self.contours == 'select':
-                self.ctab[1] = itab
-                self.contours = 'on'
-                self.drawContours()
+            #if self.contours == 'select':
+            #    self.ctab[1] = itab
+            #    self.contours = 'on'
+            #    self.drawContours()
         
     def onChangeIntensity(self, event):
         itab = self.itabs.currentIndex()
@@ -1562,7 +1560,10 @@ class GUI (QMainWindow):
 
         # Add apertures
         self.addApertures(ic)
-        
+
+        # Add contours
+        self.addContours(ic) 
+
         # Align with spectral cube
         ic0 = self.ici[0]
         x = ic0.axes.get_xlim()
@@ -1573,28 +1574,36 @@ class GUI (QMainWindow):
         ic.axes.set_ylim(y)
         ic.changed = True
 
-        
+
+    def addContours(self, ic):
+        """ Add existing contours to newly added images """
+
+        if self.contours == 'on':
+            for ih,ic_ in zip(self.ihi, self.ici):
+                if len(ih.levels) > 0:
+                    ih0 = ih
+                    ic0 = ic_
+            ic.contour = ic.axes.contour(ic0.oimage,ih0.levels, colors='cyan',transform=ic.axes.get_transform(ic0.wcs))
+            ic.fig.canvas.draw_idle()
+
+            
     def overlapContours(self):
-        """ Compute contours and overlap them on images """
+        """ Compute contours and overlap/remove them on images """
 
         if self.contours == 'off':
-            self.ctab = [self.itabs.currentIndex(),0]
+            #self.ctab = [self.itabs.currentIndex(),0]
             self.sb.showMessage("Click again to remove contours", 2000)
             self.drawContours()
             self.contours = 'on'
         else:
             self.contours = 'off'
-            #try:
             # Remove level lines in histogram 
             for ih in self.ihi:
-                if ih.lev is not None:
-                    for l in ih.lev:
-                        l.remove()
-                        ih.lev = None
-                    ih.fig.canvas.draw_idle()
+                if len(ih.levels) > 0:
+                    ih.levSignal.disconnect()
+                ih.removeLevels()
             # Remove contours
             for ic in self.ici:
-                print('delete contours in ',ic)
                 if ic.contour is not None:
                     for coll in ic.contour.collections:
                         coll.remove()
@@ -1607,44 +1616,77 @@ class GUI (QMainWindow):
             ic0.fig.canvas.draw_idle()
             ic0.changed = False
             self.sb.showMessage('Contours deleted ', 1000)
-            #except:
-            #    self.sb.showMessage('No contours to delete ', 1000)
-            #    print('No contours to delete')
 
     def drawContours(self):
         """ Draw contours of image in ctab[0] over image in ctab[1] """
 
-        ic0 = self.ici[self.ctab[0]]
-        ih0 = self.ihi[self.ctab[0]]
-        if self.bands[self.ctab[0]] == 'Cov':
-            #levels = np.arange(minimum,maximum,(maximum-minimum)/8)
-            levels = np.arange(ih0.min,ih0.max,(ih0.max-ih0.min)/8)
+        itab = self.itabs.currentIndex()
+        ic0 = self.ici[itab]
+        ih0 = self.ihi[itab]
+        if self.bands[itab] == 'Cov':
+            ih0.levels = list(np.arange(ih0.min,ih0.max,(ih0.max-ih0.min)/8))
         else:
-            #sdev = np.nanstd(image-imedian)
-            #levels = imedian + np.array([1,2,3,5,10,15,20]) * sdev
             levels = ih0.median + np.array([1,2,3,5,10,15,20]) * ih0.sdev
-        ic0.contour = ic0.axes.contour(ic0.oimage,levels,colors='cyan')
+            mask = levels < ih0.max
+            ih0.levels = list(levels[mask])
+            #ih0.levels = list(ih0.median + np.array([1,2,3,5,10,15,20]) * ih0.sdev)
+        print('Contour levels are: ',ih0.levels)
+        ic0.contour = ic0.axes.contour(ic0.oimage,ih0.levels,colors='cyan')
         ic0.fig.canvas.draw_idle()
         # Add levels to histogram
-        ih0.lev = []
-        for l in levels:
-            lev = ih0.axes.axvline(x=l)
-            ih0.lev.append(lev)
-        ih0.fig.canvas.draw_idle()
-
+        ih0.drawLevels()
+        # Connect signal event to action
+        cidh0=ih0.levSignal.connect(self.onModifyContours)
+        # Update contours on all other images
         ici = self.ici.copy()
         ici.remove(ic0)
         for ic in ici:
-        #ic1 = self.ici[self.ctab[1]]
-        #image = ic0.oimage # is this needed (we have to save the original image in the canvas)
-        #minimum = np.nanmin(image)
-        #imedian = np.nanmedian(image)
-        #maximum = np.nanmax(image)
-            ic.contour = ic.axes.contour(ic0.oimage,levels, colors='cyan',transform=ic.axes.get_transform(ic0.wcs))
+            ic.contour = ic.axes.contour(ic0.oimage,ih0.levels, colors='cyan',transform=ic.axes.get_transform(ic0.wcs))
             ic.changed = True
-        #ic1.fig.canvas.draw_idle() # this shouldn't be necessary
-        #print('Overlap contours of ',self.bands[self.ctab[0]],' over image ',self.bands[self.ctab[1]])
+
+    def onModifyContours(self, n):
+        """ Called by mysignal in the histogram canvas if contour levels change """
         
+        itab = self.itabs.currentIndex()
+        ic0 = self.ici[itab]
+        ih0 = self.ihi[itab]
+        if ic0.contour is not None:
+            nlev = len(ic0.contour.collections)
+            #print('Number of existing contours is: ',nlev)
+            if n > 1000:
+                n -= 1000
+                #print('The contour ',n,' has been added')
+                new = ic0.axes.contour(ic0.oimage, [ih0.levels[n]], colors='cyan')
+                # Insert new contour in the contour collection
+                contours = ic0.contour.collections
+                print('type of contours is ', type(contours), contours)
+                contours.insert(n,new.collections[0])
+                #ic0.contour.collections.insert(new.collections[0], n)
+            elif n < 0:
+                #print('The contour ', n,' has been removed')
+                # Remove contour from image
+                ic0.axes.collections.remove(ic0.contour.collections[n])
+                # Delete element from contour collection list
+                del ic0.contour.collections[n]
+            else:
+                #print('The contour ', n,' has been modified')
+                ic0.axes.collections.remove(ic0.contour.collections[n])
+                ic0.fig.canvas.draw_idle()
+                new = ic0.axes.contour(ic0.oimage, [ih0.levels[n]], colors='cyan')
+                ic0.contour.collections[n] = new.collections[0]
+            ic0.fig.canvas.draw_idle()
+            # Then change contours in the other images
+            # Update contours on all other images
+            ici = self.ici.copy()
+            ici.remove(ic0)
+            for ic in ici:
+                if ic.contour is not None:
+                    for coll in ic.contour.collections:
+                        coll.remove()
+                    ic.contour = None
+                ic.contour = ic.axes.contour(ic0.oimage,ih0.levels, colors='cyan',transform=ic.axes.get_transform(ic0.wcs))
+                ic.changed = True
+            
         
     def newFile(self):
         """ Display a new image """
@@ -1663,20 +1705,20 @@ class GUI (QMainWindow):
             # Ask to save analysis (cubes, spectra) TODO
             # Read the spectral cube
             self.specCube = specCube(fileName[0])
+            # Delete pre-existing spectral tabs
+            try:
+                for stab in reversed(range(len(self.sci))):
+                    self.removeSpecTab(stab)
+                print('all spectral tabs removed')
+            except:
+                pass
             # Delete pre-existing image tabs
             try:
                 # Remove tabs, image and histo canvases and disconnect them
                 # The removal is done in reversed order to get all the tabs
                 for itab in reversed(range(len(self.ici))):
                     self.removeTab(itab)
-            except:
-                pass
-            # Delete spectral tabs
-            try:
-                for stab in reversed(range(len(self.sci))):
-                    self.removeSpecTab(stab)
-                self.stabs.removeTab(0)
-                print('spectral tabs removed')
+                print('all image tabs removed')
             except:
                 pass
 

@@ -47,9 +47,6 @@ class NavigationToolbar(NavigationToolbar2QT):
         self.parent = parent
         super().__init__(canvas,parent)
 
-#    def fileQuit(self):
-#        """ Quitting the program """
-#        self.parent.close()
 
 
 class MplCanvas(FigureCanvas):
@@ -143,18 +140,24 @@ class ImageCanvas(MplCanvas):
         self.image.set_clim([_cmin, _cmax])
         self.fig.canvas.draw_idle()
 
-    def ArcEll(self,pos,w,h,color,theta):
+    # def ArcEll(self,pos,w,h,color,theta):
 
-        arcell = []
-        arcell.append(Ellipse(pos,w,h,edgecolor=color,facecolor='none'))
-        arcell.append(Arc(pos,w,h, edgecolor=color, facecolor='none',theta1=0 -theta,theta2=0 +theta,lw=4))
-        arcell.append(Arc(pos,w,h, edgecolor=color, facecolor='none',theta1=90 -theta,theta2=90 +theta,lw=4))
-        arcell.append(Arc(pos,w,h, edgecolor=color, facecolor='none',theta1=180 -theta,theta2=180 +theta,lw=4))
-        arcell.append(Arc(pos,w,h, edgecolor=color, facecolor='none',theta1=270 -theta,theta2=270 +theta,lw=4))
-        return arcell
+    #     arcell = []
+    #     arcell.append(Ellipse(pos,w,h,edgecolor=color,facecolor='none'))
+    #     arcell.append(Arc(pos,w,h, edgecolor=color, facecolor='none',theta1=0 -theta,theta2=0 +theta,lw=4))
+    #     arcell.append(Arc(pos,w,h, edgecolor=color, facecolor='none',theta1=90 -theta,theta2=90 +theta,lw=4))
+    #     arcell.append(Arc(pos,w,h, edgecolor=color, facecolor='none',theta1=180 -theta,theta2=180 +theta,lw=4))
+    #     arcell.append(Arc(pos,w,h, edgecolor=color, facecolor='none',theta1=270 -theta,theta2=270 +theta,lw=4))
+    #     return arcell
 
 class ImageHistoCanvas(MplCanvas):
     """ Canvas to plot the histogram of image intensity """
+
+
+    limSignal = pyqtSignal(str)
+    levSignal = pyqtSignal(int)
+    showLevels = False
+    
     def __init__(self, *args, **kwargs):
         MplCanvas.__init__(self, *args, **kwargs)
         self.axes = self.fig.add_axes([0.0,0.4,1.,1.])
@@ -166,7 +169,6 @@ class ImageHistoCanvas(MplCanvas):
         self.span = SpanSelector(self.axes, self.onSelect, 'horizontal', useblit=True,
                                  rectprops=dict(alpha=0.5, facecolor='LightSalmon'),button=1)
 
-    mySignal = pyqtSignal(str)
         
     def compute_initial_figure(self, image=None,xmin=None,xmax=None):
         if image is None:
@@ -188,6 +190,7 @@ class ImageHistoCanvas(MplCanvas):
             self.sdev   = np.std(ima-self.median)
             self.min    = np.min(ima)
             self.max    = np.max(ima)
+            self.epsilon = self.sdev/3.
             
             # Define the interval containing 99% of the values
             if xmin == None:
@@ -197,8 +200,42 @@ class ImageHistoCanvas(MplCanvas):
             self.onSelect(xmin,xmax)
 
             # Initialize contour level vertical lines
-            self.lev = None
+            self.lev = []
+            self.levels = []
+            self._ind = None
 
+            # Draw grid (median, median+n*sigma)
+            x = self.median
+            while x < self.max:
+                self.axes.axvline(x=x,color='black',alpha=0.5)
+                x += self.sdev
+
+
+    def drawLevels(self):
+        """ Draw levels as defined in levels"""
+
+        if len(self.levels) > 0:
+            for l in self.levels:
+                lev = self.axes.axvline(x=l, animated=True, color='cyan')
+                self.lev.append(lev)
+            print('there are ',len(self.lev),' contours')
+            self.span.set_visible(False)
+            self.connect()
+            self.showLevels = True
+
+    def removeLevels(self):
+        """ Delete levels and disconnect """
+
+        if len(self.levels) > 0:
+            for lev in self.lev:
+                lev.remove()
+            self.lev = []
+            self.levels = []
+            self.disconnect()
+            self.span.set_visible(True)
+            self.showLevels = False
+            print("All levels have been removed")
+            
     def onSelect(self,xmin, xmax):
         indmin, indmax = np.searchsorted(self.bins, (xmin, xmax))
         indmax = min(len(self.bins) - 1, indmax)
@@ -207,10 +244,149 @@ class ImageHistoCanvas(MplCanvas):
             self.shade.remove()
         except:
             pass
-        self.mySignal.emit('limits changed')
+        self.limSignal.emit('limits changed')
         self.shade = self.axes.axvspan(self.limits[0],self.limits[1],facecolor='Lavender',alpha=0.5,linewidth=0)
         self.fig.canvas.draw_idle()
 
+    def connect(self):
+        """ When contours are present """
+        self.cid_draw = self.fig.canvas.mpl_connect('draw_event', self.draw_callback)
+        self.cid_press = self.fig.canvas.mpl_connect('button_press_event', self.button_press_callback)
+        self.cid_release = self.fig.canvas.mpl_connect('button_release_event', self.button_release_callback)
+        self.cid_motion = self.fig.canvas.mpl_connect('motion_notify_event', self.motion_notify_callback)
+        self.cid_key = self.fig.canvas.mpl_connect('key_press_event', self.key_press_callback)
+        self.fig.canvas.draw_idle()
+        self.fig.canvas.setFocus()
+
+    def disconnect(self):
+        """ When no contours are present """
+        self.fig.canvas.mpl_disconnect(self.cid_draw)
+        self.fig.canvas.mpl_disconnect(self.cid_press)
+        self.fig.canvas.mpl_disconnect(self.cid_release)
+        self.fig.canvas.mpl_disconnect(self.cid_motion)
+        self.fig.canvas.mpl_disconnect(self.cid_key)
+        self.fig.canvas.draw_idle()
+        # add something about levels ?
+
+
+    def draw_callback(self, event):
+        self.background = self.fig.canvas.copy_from_bbox(self.axes.bbox)
+        if len(self.lev) > 0:
+            for lev in self.lev:
+                self.axes.draw_artist(lev)
+
+    def button_press_callback(self, event):
+        'whenever a mouse button is pressed'
+        if not self.showLevels:
+            return
+        #if not event.inaxes:
+        #    return
+        if event.button != 1:
+            return
+        self._ind = self.get_ind_under_point(event)
+
+    def button_release_callback(self, event):
+        'whenever a mouse button is released'
+        if not self.showLevels:
+            return
+        #if not event.inaxes:
+        #    return
+        if event.button != 1:
+            return
+        self._ind = None
+        
+    def get_ind_under_point(self, event):
+        """get the index of the level if within epsilon tolerance"""
+
+        #print(event.xdata)
+        levels = np.array(self.levels)
+        d = np.abs(levels - event.xdata)
+        indseq, = np.nonzero(d == d.min())
+        ind = indseq[0]
+        if d[ind] >= self.epsilon:
+            ind = None
+        return ind
+
+    def key_press_callback(self, event):
+        'whenever a key is pressed'
+
+        if event.key == 't':
+            # Toggle between seeing and hide contours
+            self.showLevels = not self.showLevels
+            for lev in self.lev:
+                lev.set_visible(self.showLevels)
+            if self.showLevels:
+                self.span.set_visible(False)
+                self.cid_draw = self.fig.canvas.mpl_connect('draw_event', self.draw_callback)
+                self.cid_press = self.fig.canvas.mpl_connect('button_press_event', self.button_press_callback)
+                self.cid_release = self.fig.canvas.mpl_connect('button_release_event', self.button_release_callback)
+                self.cid_motion = self.fig.canvas.mpl_connect('motion_notify_event', self.motion_notify_callback)
+                #self.connect()
+            else:
+                self._ind = None
+                # If levels are not visible, show the span selector
+                self.span.set_visible(True)
+                self.fig.canvas.mpl_disconnect(self.cid_draw)
+                self.fig.canvas.mpl_disconnect(self.cid_press)
+                self.fig.canvas.mpl_disconnect(self.cid_release)
+                self.fig.canvas.mpl_disconnect(self.cid_motion)
+                #self.disconnect()
+        elif event.key == 'd':
+            ind = self.get_ind_under_point(event)
+            if ind is not None:
+                # Delete contour level
+                self.lev[ind].remove()
+                # Remove level from lists
+                del self.lev[ind]
+                del self.levels[ind]
+                # Emit signal to communicate it to images
+                self.levSignal.emit(-ind)
+                # If there are no more levels, show the span selector
+                if len(self.levels) == 0:
+                    self.span.set_visible(True)
+        elif event.key == 'i':
+            x = event.xdata
+            n = len(self.lev)
+            # Add to contour list
+            self.levels.append(x)
+            lev = self.axes.axvline(x=x,color='cyan',animated='True')
+            self.lev.append(lev)
+            # Sort the levels in increasing order
+            levels = np.array(self.levels)
+            idx = np.argsort(levels)
+            self.lev = [self.lev[i] for i in idx]
+            self.levels = list(levels[idx])
+            # Emit signal to communicate it to images (add 1000 to tell that this is a new level)
+            self.levSignal.emit(1000+idx[n])
+
+        # Update image
+        self.fig.canvas.draw_idle()
+
+    def motion_notify_callback(self, event):
+        'on mouse movement'
+        if not self.showLevels:
+            return
+        if self._ind is None:
+            return
+        if event.button != 1:
+            return
+        x, y = event.xdata, event.ydata
+        #print(x,y)
+
+        self.levels[self._ind] = x
+        lev = self.lev[self._ind]
+        xl,yl = lev.get_data()
+        lev.set_data([x,x],yl)
+        # Emit a signal to communicate change of contour
+        self.levSignal.emit(self._ind)
+
+        self.fig.canvas.restore_region(self.background)
+        for lev in self.lev:
+            self.axes.draw_artist(lev)
+        self.fig.canvas.update()
+        self.fig.canvas.flush_events()
+
+    
 
 class SpectrumCanvas(MplCanvas):
     """ Canvas to plot spectra """
@@ -241,7 +417,7 @@ class SpectrumCanvas(MplCanvas):
         self.fig.canvas.mpl_connect('pick_event', self.onpick)
         self.fig.canvas.mpl_connect('button_release_event', self.onrelease)
         self.dragged = None
-
+        self.region = None
         
     def compute_initial_spectrum(self, spectrum=None,xmin=None,xmax=None):
         if spectrum is None:

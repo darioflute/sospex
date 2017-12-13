@@ -586,7 +586,6 @@ class PolygonInteractor(QObject):
         self.aperture = self.poly
 
 
-
     def connect(self):
         self.cid_draw = self.canvas.mpl_connect('draw_event', self.draw_callback)
         self.cid_press = self.canvas.mpl_connect('button_press_event', self.button_press_callback)
