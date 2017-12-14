@@ -8,6 +8,7 @@ from astropy.wcs import WCS
 import numpy as np
 from html.parser import HTMLParser
 from PyQt5.QtWidgets import QFileDialog
+from PyQt5.QtCore import QObject
 
 class MyHTMLParser(HTMLParser):
 

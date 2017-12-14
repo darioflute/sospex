@@ -180,6 +180,7 @@ class ImageHistoCanvas(MplCanvas):
             mask = np.isfinite(ima)
             ima = ima[mask]
             print('image has size', len(ima))
+            self.nh = len(ima)
             ima = np.sort(ima)
             s = np.size(ima)
             smax = min(int(s*0.9995),s-1)
@@ -297,7 +298,11 @@ class ImageHistoCanvas(MplCanvas):
             return
         if event.button != 1:
             return
+        # Emit a signal to communicate change of contour (for large images)
+        if self.nh > 100000:
+            self.levSignal.emit(self._ind)
         self._ind = None
+
         
     def get_ind_under_point(self, event):
         """get the index of the level if within epsilon tolerance"""
@@ -394,7 +399,9 @@ class ImageHistoCanvas(MplCanvas):
         self.fig.canvas.flush_events()
 
         # Emit a signal to communicate change of contour
-        self.levSignal.emit(self._ind)
+        if self.nh <= 100000:
+            self.levSignal.emit(self._ind)
+
     
 
 class SpectrumCanvas(MplCanvas):

@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import (QApplication, QWidget, QMainWindow, QTabWidget, QTa
                              QToolBar, QAction, QFileDialog,  QTableView, QComboBox, QAbstractItemView,
                              QToolButton, QMessageBox, QPushButton, QInputDialog, QDialog)
 from PyQt5.QtGui import QIcon, QStandardItem, QStandardItemModel
-from PyQt5.QtCore import Qt, QSize, QTimer, pyqtSignal
+from PyQt5.QtCore import Qt, QSize, QTimer, QThread, QObject, pyqtSignal
 
 import matplotlib
 matplotlib.use('Qt5Agg')
@@ -21,6 +21,68 @@ import warnings
 # To avoid excessive warning messages
 warnings.filterwarnings('ignore')
 
+
+class UpdateTabs(QObject):
+    from cloud import cloudImage
+    newImage = pyqtSignal([cloudImage])
+
+class DownloadThread(QThread):
+    """ Thread to download images from web archives """
+
+    updateTabs = UpdateTabs()
+    sendMessage = pyqtSignal([str])
+
+    def __init__(self,lon,lat,xsize,ysize,band, parent = None):
+        super().__init__(parent)
+        self.lon = lon
+        self.lat = lat
+        self.xsize = xsize
+        self.ysize = ysize
+        self.band = band
+        self.parent = parent
+
+    def run(self):
+        from cloud import cloudImage
+        downloadedImage = cloudImage(self.lon,self.lat,self.xsize,self.ysize,self.band)
+        if downloadedImage.data is not None:
+            self.updateTabs.newImage.emit(downloadedImage)
+            print('New image downloaded')
+        else:
+            message = 'The selected survey does not cover the displayed image'
+            print(message)
+            self.sendMessage.emit(message)
+        # Disconnect signal at the end of the thread
+        self.updateTabs.newImage.disconnect()
+
+# Does not work since calls for matplotlib threads
+class ContoursThread(QThread):
+    """ Thread to compute new contour and add it to the existing collection """
+
+    updateOtherContours = pyqtSignal([int])
+
+    def __init__(self, ic0, level, n, i0, parent=None):
+        super().__init__(parent)
+        self.ic0 = ic0
+        self.level = level
+        self.n = n
+        self.i0 = i0
+
+    def run(self):
+        if self.n > 1000:
+            self.n -= 1000
+            new = self.ic0.axes.contour(self.ic0.oimage, self.level, colors='cyan')
+            # Insert new contour in the contour collection
+            print("insert new contour")
+            contours = self.ic0.contour.collections
+            contours.insert(self.n,new.collections[0])
+        else:
+            new = self.ic0.axes.contour(self.ic0.oimage, self.level, colors='cyan')
+            # Update the collection
+            print("update contour")
+            self.ic0.contour.collections[self.n] = new.collections[0]
+        self.updateOtherContours.emit(self.i0)
+        
+        
 class GUI (QMainWindow):
  
     def __init__(self):
@@ -935,7 +997,6 @@ class GUI (QMainWindow):
 
     def downloadImage(self, band):
         """ Download an image covering the cube """
-        from cloud import cloudImage
 
         # Compute center and size of image (in arcmin)
         nz,ny,nx = np.shape(self.specCube.flux)
@@ -955,50 +1016,61 @@ class GUI (QMainWindow):
         ysize = np.abs(dec[0]-dec[1])*60.
         #print('center: ',lon,lat,' and size: ',xsize,ysize)        
         print('Band selected is: ',band)
-        self.downloadedImage = cloudImage(lon,lat,xsize,ysize,band)
-            
-        # Open tab and display the image
-        if self.downloadedImage.data is not None:
-            image = self.downloadedImage.data
-            mask = np.isfinite(image)
-            if np.sum(mask) == 0:
-                self.sb.showMessage("The selected survey does not cover the displayed image", 2000)
-            else:
-                self.sb.showMessage("Image downloaed", 2000)
-                self.bands.append(band)
-                t,ic,ih,h,c1,c2,c3 = self.addImage(band)
-                self.tabi.append(t)
-                self.ici.append(ic)
-                self.ihi.append(ih)
-                self.ihcid.append(h)
-                self.icid1.append(c1)
-                self.icid2.append(c2)
-                self.icid3.append(c3)
-                
-                ic.compute_initial_figure(image=self.downloadedImage.data,wcs=self.downloadedImage.wcs,title=band)
-                # Callback to propagate axes limit changes among images
-                ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
-                ih = self.ihi[self.bands.index(band)]
-                clim = ic.image.get_clim()
-                ih.compute_initial_figure(image=self.downloadedImage.data,xmin=clim[0],xmax=clim[1])
-            
-                # Add existing apertures
-                self.addApertures(ic)
 
-                # Add contours
-                self.addContours(ic)
-            
-                # Align with spectral cube
-                ic0 = self.ici[0]
-                x = ic0.axes.get_xlim()
-                y = ic0.axes.get_ylim()
-                ra,dec = ic0.wcs.all_pix2world(x,y,1)
-                x,y = ic.wcs.all_world2pix(ra,dec,1)            
-                ic.axes.set_xlim(x)
-                ic.axes.set_ylim(y)
-                ic.changed = True
-        else:
+        # Here call the thread
+        self.downloadThread = DownloadThread(lon,lat,xsize,ysize,band)
+        self.downloadThread.updateTabs.newImage.connect(self.newImageTab)
+        self.downloadThread.sendMessage.connect(self.newImageMessage)
+        self.downloadThread.start()
+
+    def newImageMessage(self, message):
+        """ Message sent from download thread """
+        
+        self.sb.showMessage(message, 5000)
+
+    def newImageTab(self, downloadedImage):
+        """ Open  a tab and display the new image """
+
+        print("Adding the new image ...")
+        image = downloadedImage.data
+        mask = np.isfinite(image)
+        if np.sum(mask) == 0:
             self.sb.showMessage("The selected survey does not cover the displayed image", 2000)
+        else:
+            self.sb.showMessage("Image downloaed", 2000)
+            band = downloadedImage.source
+            self.bands.append(band)
+            t,ic,ih,h,c1,c2,c3 = self.addImage(band)
+            self.tabi.append(t)
+            self.ici.append(ic)
+            self.ihi.append(ih)
+            self.ihcid.append(h)
+            self.icid1.append(c1)
+            self.icid2.append(c2)
+            self.icid3.append(c3)
+                
+            ic.compute_initial_figure(image=downloadedImage.data,wcs=downloadedImage.wcs,title=band)
+            # Callback to propagate axes limit changes among images
+            ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
+            ih = self.ihi[self.bands.index(band)]
+            clim = ic.image.get_clim()
+            ih.compute_initial_figure(image=downloadedImage.data,xmin=clim[0],xmax=clim[1])
+            
+            # Add existing apertures
+            self.addApertures(ic)
+
+            # Add contours
+            self.addContours(ic)
+            
+            # Align with spectral cube
+            ic0 = self.ici[0]
+            x = ic0.axes.get_xlim()
+            y = ic0.axes.get_ylim()
+            ra,dec = ic0.wcs.all_pix2world(x,y,1)
+            x,y = ic.wcs.all_world2pix(ra,dec,1)            
+            ic.axes.set_xlim(x)
+            ic.axes.set_ylim(y)
+            ic.changed = True
 
     def uploadSpectrum(self, event):
         """
@@ -1622,10 +1694,10 @@ class GUI (QMainWindow):
         if self.bands[itab] == 'Cov':
             ih0.levels = list(np.arange(ih0.min,ih0.max,(ih0.max-ih0.min)/8))
         else:
-            levels = ih0.median + np.array([1,2,3,5,10,15,20]) * ih0.sdev
+            levels = ih0.median + np.array([1,2,3,5,10]) * ih0.sdev
             mask = levels < ih0.max
             ih0.levels = list(levels[mask])
-        #print('Contour levels are: ',ih0.levels)
+        print('Contour levels are: ',ih0.levels)
         ic0.contour = ic0.axes.contour(ic0.oimage,ih0.levels,colors='cyan')
         ic0.fig.canvas.draw_idle()
         # Add levels to histogram
@@ -1641,41 +1713,58 @@ class GUI (QMainWindow):
 
     def onModifyContours(self, n):
         """ Called by mysignal in the histogram canvas if contour levels change """
+
+        # In some cases, computing contours can be computationally intense. So
+        # we call threads in the case of new/modified contours
+        # Unfortunately this does not work because matplotlib is not thread safe.
         
         itab = self.itabs.currentIndex()
         ic0 = self.ici[itab]
         ih0 = self.ihi[itab]
         if ic0.contour is not None:
             nlev = len(ic0.contour.collections)
-            #print('Number of existing contours is: ',nlev)
             if n > 1000:
+                #contoursThread = ContoursThread(ic0,ih0.levels[n-1000], n, itab)
+                #contoursThread.updateOtherContours.connect(self.modifyOtherImagesContours)
+                #contoursThread.start()
                 n -= 1000
                 new = ic0.axes.contour(ic0.oimage, [ih0.levels[n]], colors='cyan')
                 # Insert new contour in the contour collection
                 contours = ic0.contour.collections
                 contours.insert(n,new.collections[0])
             elif n < 0:
-                #print('The contour ', n,' has been removed')
                 # Remove contour from image
                 ic0.axes.collections.remove(ic0.contour.collections[n])
                 # Delete element from contour collection list
                 del ic0.contour.collections[n]
             else:
-                #print('The contour ', n,' has been modified')
                 ic0.axes.collections.remove(ic0.contour.collections[n])
                 ic0.fig.canvas.draw_idle()
+                #contoursThread = ContoursThread(ic0,ih0.levels[n], n, itab)
+                #contoursThread.updateOtherContours.connect(self.modifyOtherImagesContours)
+                #contoursThread.start()
                 new = ic0.axes.contour(ic0.oimage, [ih0.levels[n]], colors='cyan')
+                # Update the collection
                 ic0.contour.collections[n] = new.collections[0]
-            ic0.fig.canvas.draw_idle()
-            # Then change contours in the other images
-            ici = self.ici.copy()
-            ici.remove(ic0)
-            for ic in ici:
-                if ic.contour is not None:
-                    for coll in ic.contour.collections:
-                        coll.remove()
+            self.modifyOtherImagesContours(itab)
+                
+    def modifyOtherImagesContours(self, i0):
+        """ Once the new contours are computed, propagate them to other images """
+        
+        ic0 = self.ici[i0]
+        ic0.fig.canvas.draw_idle()
+        
+        ici = self.ici.copy()
+        ici.remove(ic0)
+        for ic in ici:
+            if ic.contour is not None:
+                # Remove previous contours
+                for coll in ic.contour.collections:
+                    coll.remove()
                     ic.contour = None
+                # Compute new contours
                 ic.contour = ic.axes.contour(ic0.oimage,ih0.levels, colors='cyan',transform=ic.axes.get_transform(ic0.wcs))
+                # Differ drawing until changing tab
                 ic.changed = True
             
         
@@ -1961,7 +2050,7 @@ class GUI (QMainWindow):
             
     def doZoomSpec(self,event):
         """ In the future impose the same limits to all the spectral tabs """
-        stab = self.itabs.currentIndex()
+        stab = self.stabs.currentIndex()
         sc = self.sci[stab]
         if sc.toolbar._active == 'ZOOM':
             sc.toolbar.zoom()  # turn off zoom
