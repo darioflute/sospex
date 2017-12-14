@@ -815,8 +815,8 @@ class GUI (QMainWindow):
         sc.cid = sc.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomSpec)
         # Start the span selector to show only part of the cube
         sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
-                               rectprops=dict(alpha=0.5, facecolor='LightSalmon'), button=1)
-        sc.span.set_visible(False)
+                               rectprops=dict(alpha=0.5, facecolor='green'))
+        sc.span.active = False
 
         # Select new tab
         self.stabs.setCurrentIndex(n+1)
@@ -1184,8 +1184,8 @@ class GUI (QMainWindow):
         istab = self.spectra.index('All')
         self.stabs.setCurrentIndex(istab)
         sc = self.sci[istab]
-        sc.span.set_visible(True)
-        #sc.span.set_active(True)
+        #sc.span.set_visible(True)
+        sc.span.set_active(True)
 
         
     def cropCube(self):
@@ -1578,8 +1578,8 @@ class GUI (QMainWindow):
         istab = self.spectra.index('All')
         self.stabs.setCurrentIndex(istab)
         sc = self.sci[istab]
-        sc.span.set_visible(True)
-        #sc.span.active=True
+        #sc.span.set_visible(True)
+        sc.span.active=True
 
     def maskCube(self):
         """ Mask a slice of the cube """
@@ -1753,6 +1753,7 @@ class GUI (QMainWindow):
         """ Once the new contours are computed, propagate them to other images """
         
         ic0 = self.ici[i0]
+        ih0 = self.ihi[i0]
         ic0.fig.canvas.draw_idle()
         
         ici = self.ici.copy()
@@ -1764,7 +1765,8 @@ class GUI (QMainWindow):
                     coll.remove()
                     ic.contour = None
                 # Compute new contours
-                ic.contour = ic.axes.contour(ic0.oimage,ih0.levels, colors='cyan',transform=ic.axes.get_transform(ic0.wcs))
+                levels =  sorted(ih0.levels)   
+                ic.contour = ic.axes.contour(ic0.oimage, levels, colors='cyan',transform=ic.axes.get_transform(ic0.wcs))
                 # Differ drawing until changing tab
                 ic.changed = True
             
@@ -1892,9 +1894,10 @@ class GUI (QMainWindow):
             sc.cid = sc.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomSpec)
             # Start the span selector to show only part of the cube
             sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
-                                   rectprops=dict(alpha=0.5, facecolor='LightSalmon'), button=1)
-            sc.span.set_visible(False)
-            #sc.span.active = False
+                                   rectprops=dict(alpha=0.5, facecolor='LightSalmon'))
+            print('span selector ',sc.span.active)
+            #sc.span.set_visible(False)
+            sc.span.active = False
                 
             # Re-initiate variables
             self.contours = 'off'
@@ -1923,8 +1926,8 @@ class GUI (QMainWindow):
             # Draw region on spectrum (All) and hide span selector
             sc.shadeSpectrum()
             sc.fig.canvas.draw_idle()
-            sc.span.set_visible(False)
-            #sc.span.active = False
+            #sc.span.set_visible(False)
+            sc.span.active = False
 
             # Update images (flux, uflux, coverage)
             if self.specCube.instrument == 'GREAT':
@@ -1964,8 +1967,8 @@ class GUI (QMainWindow):
                 xmin, xmax = c/xmax*1.e-6, c/xmin*1.e-6
             sc.shadeRegion([xmin,xmax],'LightYellow')
             sc.fig.canvas.draw_idle()
-            sc.span.set_visible(False)
-            #sc.span.active = False
+            #sc.span.set_visible(False)
+            sc.span.active = False
             indmin, indmax = np.searchsorted(self.specCube.wave, (xmin, xmax))
             indmax = min(len(self.specCube.wave) - 1, indmax)
             print('indmin, indmax', indmin,indmax)

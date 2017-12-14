@@ -220,7 +220,8 @@ class ImageHistoCanvas(MplCanvas):
                 lev = self.axes.axvline(x=l, animated=True, color='cyan')
                 self.lev.append(lev)
             print('there are ',len(self.lev),' contours')
-            self.span.set_visible(False)
+            #self.span.set_visible(False)
+            self.span.active = False
             self.connect()
             self.showLevels = True
 
@@ -233,7 +234,8 @@ class ImageHistoCanvas(MplCanvas):
             self.lev = []
             self.levels = []
             self.disconnect()
-            self.span.set_visible(True)
+            #self.span.set_visible(True)
+            self.span.active = True
             self.showLevels = False
             print("All levels have been removed")
             
@@ -328,7 +330,8 @@ class ImageHistoCanvas(MplCanvas):
             for lev in self.lev:
                 lev.set_visible(self.showLevels)
             if self.showLevels:
-                self.span.set_visible(False)
+                #self.span.set_visible(False)
+                self.span.active = False
                 self.cid_draw = self.fig.canvas.mpl_connect('draw_event', self.draw_callback)
                 self.cid_press = self.fig.canvas.mpl_connect('button_press_event', self.button_press_callback)
                 self.cid_release = self.fig.canvas.mpl_connect('button_release_event', self.button_release_callback)
@@ -337,7 +340,8 @@ class ImageHistoCanvas(MplCanvas):
             else:
                 self._ind = None
                 # If levels are not visible, show the span selector
-                self.span.set_visible(True)
+                #self.span.set_visible(True)
+                self.span.active = True
                 self.fig.canvas.mpl_disconnect(self.cid_draw)
                 self.fig.canvas.mpl_disconnect(self.cid_press)
                 self.fig.canvas.mpl_disconnect(self.cid_release)
@@ -355,7 +359,8 @@ class ImageHistoCanvas(MplCanvas):
                 self.levSignal.emit(-ind)
                 # If there are no more levels, show the span selector
                 if len(self.levels) == 0:
-                    self.span.set_visible(True)
+                    #self.span.set_visible(True)
+                    self.span.active = True
         elif event.key == 'i':
             x = event.xdata
             n = len(self.lev)
@@ -414,7 +419,7 @@ class SpectrumCanvas(MplCanvas):
         self.Lines = define_lines()
         self.fig.set_edgecolor('none')
         self.axes = self.fig.add_axes([0.12,0.15,.8,.78])
-        
+
         # Checks
         self.displayFlux = True
         self.displayUFlux = True
@@ -435,14 +440,6 @@ class SpectrumCanvas(MplCanvas):
         self.fig.canvas.mpl_connect('button_release_event', self.onrelease)
         self.dragged = None
         self.region = None
-
-        # Start a span selector
-        #self.span = SpanSelector(self.axes, self.onSelect, 'horizontal', useblit=True,
-        #                         rectprops=dict(alpha=0.5, facecolor='LightSalmon'),button=1)
-        #self.span.set_visible(True)
-        
-    #def onSelect(self):
-    #    pass
         
     def compute_initial_spectrum(self, spectrum=None,xmin=None,xmax=None):
         if spectrum is None:
@@ -775,17 +772,17 @@ class SpectrumCanvas(MplCanvas):
             if event.artist == self.zannotation:
                 c = 299792.458 #km/s
                 znew = self.getDouble(self.spectrum.redshift*c)
-                znew /= c
-                if znew != self.spectrum.redshift:
-                    self.spectrum.redshift = znew
-                    #self.parent.specCube.redshift = znew # Update original redshift
-                    for annotation in self.annotations:
-                        annotation.remove()
-                    self.zannotation.remove()
-                    self.drawSpectrum()
-                    self.fig.canvas.draw_idle()
-                    # Simulate a release to activate the update or redshift in main program
-                    QTest.mouseRelease(self, Qt.LeftButton)
+                if znew is not None:
+                    znew /= c
+                    if znew != self.spectrum.redshift:
+                        self.spectrum.redshift = znew
+                        for annotation in self.annotations:
+                            annotation.remove()
+                        self.zannotation.remove()
+                        self.drawSpectrum()
+                        self.fig.canvas.draw_idle()
+                        # Simulate a release to activate the update or redshift in main program
+                        QTest.mouseRelease(self, Qt.LeftButton)
             else:
                 if text == 'Wavelength [$\mu$m]' or text == 'Frequency [THz]':
                     if self.xunit == 'um':
@@ -812,9 +809,12 @@ class SpectrumCanvas(MplCanvas):
         return True
 
     def getDouble(self,z):
-        znew, okPressed = QInputDialog.getDouble(self, "Redshift","cz:", z, -1000, 10000, 2)
+        znew, okPressed = QInputDialog.getDouble(self, "Redshift","cz:", z, -1000., 30000., 2)
         if okPressed:
             return znew
+        else:
+            return None
+        
 
     def onrelease(self, event):
         if self.dragged is not None :
