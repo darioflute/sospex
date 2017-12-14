@@ -1185,6 +1185,7 @@ class GUI (QMainWindow):
         self.stabs.setCurrentIndex(istab)
         sc = self.sci[istab]
         sc.span.set_visible(True)
+        #sc.span.set_active(True)
 
         
     def cropCube(self):
@@ -1578,7 +1579,7 @@ class GUI (QMainWindow):
         self.stabs.setCurrentIndex(istab)
         sc = self.sci[istab]
         sc.span.set_visible(True)
-
+        #sc.span.active=True
 
     def maskCube(self):
         """ Mask a slice of the cube """
@@ -1893,6 +1894,7 @@ class GUI (QMainWindow):
             sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
                                    rectprops=dict(alpha=0.5, facecolor='LightSalmon'), button=1)
             sc.span.set_visible(False)
+            #sc.span.active = False
                 
             # Re-initiate variables
             self.contours = 'off'
@@ -1922,6 +1924,7 @@ class GUI (QMainWindow):
             sc.shadeSpectrum()
             sc.fig.canvas.draw_idle()
             sc.span.set_visible(False)
+            #sc.span.active = False
 
             # Update images (flux, uflux, coverage)
             if self.specCube.instrument == 'GREAT':
@@ -1962,6 +1965,7 @@ class GUI (QMainWindow):
             sc.shadeRegion([xmin,xmax],'LightYellow')
             sc.fig.canvas.draw_idle()
             sc.span.set_visible(False)
+            #sc.span.active = False
             indmin, indmax = np.searchsorted(self.specCube.wave, (xmin, xmax))
             indmax = min(len(self.specCube.wave) - 1, indmax)
             print('indmin, indmax', indmin,indmax)

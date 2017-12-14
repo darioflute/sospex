@@ -396,6 +396,7 @@ class ImageHistoCanvas(MplCanvas):
         for lev in self.lev:
             self.axes.draw_artist(lev)
         self.fig.canvas.update()
+        #self.fig.canvas.repaint()
         self.fig.canvas.flush_events()
 
         # Emit a signal to communicate change of contour
@@ -434,6 +435,14 @@ class SpectrumCanvas(MplCanvas):
         self.fig.canvas.mpl_connect('button_release_event', self.onrelease)
         self.dragged = None
         self.region = None
+
+        # Start a span selector
+        #self.span = SpanSelector(self.axes, self.onSelect, 'horizontal', useblit=True,
+        #                         rectprops=dict(alpha=0.5, facecolor='LightSalmon'),button=1)
+        #self.span.set_visible(True)
+        
+    #def onSelect(self):
+    #    pass
         
     def compute_initial_spectrum(self, spectrum=None,xmin=None,xmax=None):
         if spectrum is None:
