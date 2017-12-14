@@ -412,7 +412,7 @@ class ImageHistoCanvas(MplCanvas):
         if self.nh <= 100000:
             self.levSignal.emit(self._ind)
 
-    
+
 
 class SpectrumCanvas(MplCanvas):
     """ Canvas to plot spectra """
@@ -505,44 +505,6 @@ class SpectrumCanvas(MplCanvas):
 
 
 
-        
-        # Add spectral lines
-        self.annotations = []
-        font = FontProperties(family='DejaVu Sans', size=12)
-        xlim0,xlim1 = self.axes.get_xlim()
-        ylim0,ylim1 = self.axes.get_ylim()
-        if self.xunit == 'THz':
-            c = 299792458.0  # speed of light in m/s
-            xlim1,xlim0 = c/xlim0*1.e-6,c/xlim1*1.e-6
-        dy = ylim1-ylim0
-
-
-
-        for line in self.Lines.keys():
-            nline = self.Lines[line][0]
-            wline = self.Lines[line][1]*(1.+s.redshift)
-            if (wline > xlim0 and wline < xlim1):
-                wdiff = abs(s.wave - wline)
-                y = s.flux[(wdiff == wdiff.min())]
-                y1 = y
-                if (ylim1-(y+0.2*dy)) > ((y-0.2*dy)-ylim0):
-                    y2 = y+0.2*dy
-                else:
-                    y2 = y-0.2*dy
-
-                if self.xunit == 'um':
-                    xline = wline
-                elif self.xunit == 'THz':
-                    c = 299792458.0  # speed of light in m/s
-                    xline = c/wline * 1.e-6
-                annotation = self.axes.annotate(nline, xy=(xline,y1),  xytext=(xline, y2), color='purple', alpha=0.4,
-                                                arrowprops=dict(edgecolor='purple',facecolor='y', arrowstyle='-',alpha=0.4,
-                                                connectionstyle="angle,angleA=0,angleB=90,rad=10"),
-                                                rotation = 90, fontstyle = 'italic', fontproperties=font,
-                                                visible=self.displayLines,)
-                annotation.draggable()
-                self.annotations.append(annotation)     
-
 
         # Add redshift value on the plot
         c = 299792.458  #km/s
@@ -594,7 +556,6 @@ class SpectrumCanvas(MplCanvas):
                 self.ax2.get_yaxis().set_tick_params(labelright='on',right='on', direction='in', pad = -25, colors='red')
             else:
                 self.ax2.get_yaxis().set_tick_params(labelright='off',right='off')            
-
         elif s.instrument == 'GREAT':
             self.displayUFlux = False
             self.displayAtran = False
@@ -604,30 +565,6 @@ class SpectrumCanvas(MplCanvas):
             visibility = [self.displayFlux,self.displayLines]
 
 
-        # Check if vel is defined and draw velocity axis
-        #if s.l0 is not None:
-        try:
-            #tl = self.axes.get_xticks()
-            #tl = tl[1:-1]
-            #print('ticks positions ', tl)
-            x1,x2 = self.axes.get_xlim()
-            c = 299792.458  # speed of light in km/s
-            if self.xunit == 'um':
-                vx1 = (x1/(1+s.redshift)/s.l0-1.)*c
-                vx2 = (x2/(1+s.redshift)/s.l0-1.)*c
-            elif self.xunit == 'THz':
-                vx1 = (c/x1/(1+s.redshift)/s.l0*1.e-3-1.)*c
-                vx2 = (c/x2/(1+s.redshift)/s.l0*1.e-3-1.)*c
-            try:
-                self.fig.delaxes(self.vaxes)
-            except:
-                pass
-            self.vaxes = self.axes.twiny()
-            self.vaxes.xaxis.set_major_formatter(ScalarFormatter(useOffset=False))
-            self.vaxes.set_xlim((vx1,vx2))
-            self.vaxes.set_xlabel("Velocity [km/s]")
-        except:
-            print('l0 is not defined')
                 
         # Prepare legend                
         self.labs = [l.get_label() for l in lns]
@@ -653,11 +590,70 @@ class SpectrumCanvas(MplCanvas):
                 #txt.set_text('')
             legline.set_alpha(alpha)
             txt.set_alpha(alpha)
-        #self.fig.canvas.draw_idle()
             
         # Shade region considered for the images
         if self.shade == True:
             self.shadeRegion()
+
+        # Check if vel is defined and draw velocity axis
+        try:
+            x1,x2 = self.axes.get_xlim()
+            c = 299792.458  # speed of light in km/s
+            if self.xunit == 'um':
+                vx1 = (x1/(1+s.redshift)/s.l0-1.)*c
+                vx2 = (x2/(1+s.redshift)/s.l0-1.)*c
+            elif self.xunit == 'THz':
+                vx1 = (c/x1/(1+s.redshift)/s.l0*1.e-3-1.)*c
+                vx2 = (c/x2/(1+s.redshift)/s.l0*1.e-3-1.)*c
+            try:
+                self.fig.delaxes(self.vaxes)
+            except:
+                pass
+            self.vaxes = self.axes.twiny()
+            self.vaxes.xaxis.set_major_formatter(ScalarFormatter(useOffset=False))
+            self.vaxes.set_xlim((vx1,vx2))
+            self.vaxes.set_xlabel("Velocity [km/s]")
+            # Elevate zorder of first axes (to guarantee axes gets the events)
+            self.axes.set_zorder(self.vaxes.get_zorder()+1) # put axes in front of vaxes
+            self.axes.patch.set_visible(False) # hide the 'canvas' 
+        except:
+            print('l0 is not defined')
+        
+        # Add spectral lines
+        self.annotations = []
+        font = FontProperties(family='DejaVu Sans', size=12)
+        xlim0,xlim1 = self.axes.get_xlim()
+        ylim0,ylim1 = self.axes.get_ylim()
+        if self.xunit == 'THz':
+            c = 299792458.0  # speed of light in m/s
+            xlim1,xlim0 = c/xlim0*1.e-6,c/xlim1*1.e-6
+        dy = ylim1-ylim0
+
+        for line in self.Lines.keys():
+            nline = self.Lines[line][0]
+            wline = self.Lines[line][1]*(1.+s.redshift)
+            if (wline > xlim0 and wline < xlim1):
+                wdiff = abs(s.wave - wline)
+                y = s.flux[(wdiff == wdiff.min())]
+                y1 = y
+                if (ylim1-(y+0.2*dy)) > ((y-0.2*dy)-ylim0):
+                    y2 = y+0.2*dy
+                else:
+                    y2 = y-0.2*dy
+                c = 299792.458  # speed of light in km/s
+                if self.xunit == 'um':
+                    xline = wline
+                    vline = (xline/(1+s.redshift)/s.l0-1.)*c
+                elif self.xunit == 'THz':
+                    xline = c/wline * 1.e-9
+                    vline = (c/xline/(1+s.redshift)/s.l0*1.e-3-1.)*c
+                annotation = self.axes.annotate(nline, xy=(xline,y1),  xytext=(xline, y2), color='purple', alpha=0.4,
+                                                arrowprops=dict(edgecolor='purple',facecolor='y', arrowstyle='-',alpha=0.4,
+                                                connectionstyle="angle,angleA=0,angleB=90,rad=10"),
+                                                rotation = 90, fontstyle = 'italic', fontproperties=font,
+                                                visible=self.displayLines,)
+                annotation.draggable()
+                self.annotations.append(annotation)     
 
 
     def updateSpectrum(self,f,uf=None,exp=None):

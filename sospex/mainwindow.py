@@ -1578,7 +1578,6 @@ class GUI (QMainWindow):
         istab = self.spectra.index('All')
         self.stabs.setCurrentIndex(istab)
         sc = self.sci[istab]
-        #sc.span.set_visible(True)
         sc.span.active=True
 
     def maskCube(self):
@@ -1895,8 +1894,6 @@ class GUI (QMainWindow):
             # Start the span selector to show only part of the cube
             sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
                                    rectprops=dict(alpha=0.5, facecolor='LightSalmon'))
-            print('span selector ',sc.span.active)
-            #sc.span.set_visible(False)
             sc.span.active = False
                 
             # Re-initiate variables
@@ -1926,7 +1923,6 @@ class GUI (QMainWindow):
             # Draw region on spectrum (All) and hide span selector
             sc.shadeSpectrum()
             sc.fig.canvas.draw_idle()
-            #sc.span.set_visible(False)
             sc.span.active = False
 
             # Update images (flux, uflux, coverage)
@@ -1967,7 +1963,6 @@ class GUI (QMainWindow):
                 xmin, xmax = c/xmax*1.e-6, c/xmin*1.e-6
             sc.shadeRegion([xmin,xmax],'LightYellow')
             sc.fig.canvas.draw_idle()
-            #sc.span.set_visible(False)
             sc.span.active = False
             indmin, indmax = np.searchsorted(self.specCube.wave, (xmin, xmax))
             indmax = min(len(self.specCube.wave) - 1, indmax)

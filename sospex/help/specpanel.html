@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8" />
-<title>slice</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
+<title>specpanel</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
 
 <style type="text/css">
@@ -11778,7 +11778,7 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p><a href="specpanel.html">Previous</a> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="cutcrop.html">Next</a>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="tutorials.html">Tutorials</a> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="Help.html">Help</a></p>
+<p><a href="intensity.html">Previous</a> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="slice.html">Next</a>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="tutorials.html">Tutorials</a> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="Help.html">Help</a></p>
 
 </div>
 </div>
@@ -11788,23 +11788,25 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="Slice-the-spectral-cube">Slice the spectral cube<a class="anchor-link" href="#Slice-the-spectral-cube">&#182;</a></h2><table>
-<thead><tr>
-<th style="text-align:center">Button</th>
-<th style="text-align:left">Function</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align:center"><img src="../icons/slice.png" alt="New" style="width: 20px;"/></td>
-<td style="text-align:left">Select a slice of the cube to display on the image panel</td>
-</tr>
-</tbody>
-</table>
-<p>By clicking the icon, a span selector is activated on the spectral panel. At this point, by clicking and dragging the
-mouse it is possible to select a slice of the cube in the spectral direction which is considered to produce the images on the image panel.
-In particular, only the wavelength range selected on the spectral plot is considered to obtain the median values of the flux (uncorrected flux, exposure map) images.</p>
-<p>Once the slice is selected, by using the mouse wheel it is possible to move the wavelength window to see different features in the cube at different wavelengths, such as for instance molecular clouds at different distances/velocities.</p>
+<h2 id="The-spectral-panel">The spectral panel<a class="anchor-link" href="#The-spectral-panel">&#182;</a></h2>
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered">
+<div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>Several actions are possible on the spectral panel.
+We describe here only the one which do not involve pressing any icon on the toolbar.</p>
+<ul>
+<li><strong>change x-axis scale</strong> It is possible to switch between wavelength (in $\mu$m) and frequecy (in THz) by pressing the label on the x-axis.</li>
+<li><strong>change velocity</strong> By pressing the label with the value of cz, it is possible to write in a different value of velocity.</li>
+<li><strong>select a line</strong> By clicking on the name of a line, it is possible to change the velocity reference selecting as velocity origin the position of the line</li>
+<li><strong>select redshift and line</strong> By dragging the label of a line to a spectral feature, the line becomes the reference frequency for velocity computations and, if agreed, also the redshift of the object is changed by identifying the spectral feature with the selected line.</li>
+<li><strong>hide/show lines</strong> By clicking on the lines in the legend at the bottom of the plot, it is possible to hide/show different lines and the spectral line names.</li>
+</ul>
+<p>Finally, the legend is draggable. If one wants to save the figure with the legend at another position, just drag the legend at the desired place and then save the image.</p>
 
 </div>
 </div>
