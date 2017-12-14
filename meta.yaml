@@ -18,7 +18,6 @@ requirements:
     - numpy
     - astropy >=2.0.2
     - matplotlib >=2.1.0
-    - webbrowser
         
 test:
   imports:
