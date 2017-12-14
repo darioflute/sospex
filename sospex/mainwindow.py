@@ -10,7 +10,6 @@ from PyQt5.QtCore import Qt, QSize, QTimer, QThread, QObject, pyqtSignal
 
 import matplotlib
 matplotlib.use('Qt5Agg')
-from graphics import  NavigationToolbar
 from matplotlib.widgets import SpanSelector, PolygonSelector, RectangleSelector, EllipseSelector
 from matplotlib.patches import Ellipse, Rectangle, Circle, Ellipse, Polygon
 from matplotlib.path import Path
@@ -20,6 +19,9 @@ from apertures import photoAperture
 import warnings
 # To avoid excessive warning messages
 warnings.filterwarnings('ignore')
+
+# Local import
+from sospex.graphics import  NavigationToolbar
 
 
 class UpdateTabs(QObject):
