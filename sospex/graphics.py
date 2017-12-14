@@ -140,15 +140,6 @@ class ImageCanvas(MplCanvas):
         self.image.set_clim([_cmin, _cmax])
         self.fig.canvas.draw_idle()
 
-    # def ArcEll(self,pos,w,h,color,theta):
-
-    #     arcell = []
-    #     arcell.append(Ellipse(pos,w,h,edgecolor=color,facecolor='none'))
-    #     arcell.append(Arc(pos,w,h, edgecolor=color, facecolor='none',theta1=0 -theta,theta2=0 +theta,lw=4))
-    #     arcell.append(Arc(pos,w,h, edgecolor=color, facecolor='none',theta1=90 -theta,theta2=90 +theta,lw=4))
-    #     arcell.append(Arc(pos,w,h, edgecolor=color, facecolor='none',theta1=180 -theta,theta2=180 +theta,lw=4))
-    #     arcell.append(Arc(pos,w,h, edgecolor=color, facecolor='none',theta1=270 -theta,theta2=270 +theta,lw=4))
-    #     return arcell
 
 class ImageHistoCanvas(MplCanvas):
     """ Canvas to plot the histogram of image intensity """
@@ -168,6 +159,19 @@ class ImageHistoCanvas(MplCanvas):
         # Start a span selector
         self.span = SpanSelector(self.axes, self.onSelect, 'horizontal', useblit=True,
                                  rectprops=dict(alpha=0.5, facecolor='LightSalmon'),button=1)
+        # Test
+        xlim0,xlim1 = self.axes.get_xlim()
+        ylim0,ylim1 = self.axes.get_ylim()
+        bbox_args = dict(boxstyle="round", fc="0.8")
+        xl = (xlim0+xlim1)*0.5
+        yl = (ylim0+ylim1)*0.5
+        a1=self.axes.annotate('Drag me 1', xy=(xl,yl), xycoords='data',
+                              #xytext=(.5, .7), textcoords='data',
+                              ha="center", va="center",
+                              bbox=bbox_args,
+                              #arrowprops=arrow_args
+                          )
+        a1.draggable()
 
         
     def compute_initial_figure(self, image=None,xmin=None,xmax=None):
@@ -499,6 +503,9 @@ class SpectrumCanvas(MplCanvas):
         self.linesLine = self.axes.plot([0,0.1],[0,0],color='purple',alpha=0.4,label='Lines')
         self.linesLayer, = self.linesLine
 
+
+
+        
         # Add spectral lines
         self.annotations = []
         font = FontProperties(family='DejaVu Sans', size=12)
@@ -508,6 +515,9 @@ class SpectrumCanvas(MplCanvas):
             c = 299792458.0  # speed of light in m/s
             xlim1,xlim0 = c/xlim0*1.e-6,c/xlim1*1.e-6
         dy = ylim1-ylim0
+
+
+
         for line in self.Lines.keys():
             nline = self.Lines[line][0]
             wline = self.Lines[line][1]*(1.+s.redshift)
