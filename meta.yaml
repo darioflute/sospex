@@ -3,7 +3,7 @@ package:
   version: 0.1.beta
 
 source:
-  git_rev: v0.1-beta
+  git_tag: python3
   git_url: https://github.com/darioflute/sospex.git
 
 build:
