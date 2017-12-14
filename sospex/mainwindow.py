@@ -23,7 +23,7 @@ warnings.filterwarnings('ignore')
 
 
 class UpdateTabs(QObject):
-    from cloud import cloudImage
+    from sospex.cloud import cloudImage
     newImage = pyqtSignal([cloudImage])
 
 class DownloadThread(QThread):
@@ -42,7 +42,7 @@ class DownloadThread(QThread):
         self.parent = parent
 
     def run(self):
-        from cloud import cloudImage
+        from sospex.cloud import cloudImage
         downloadedImage = cloudImage(self.lon,self.lat,self.xsize,self.ysize,self.band)
         if downloadedImage.data is not None:
             self.updateTabs.newImage.emit(downloadedImage)
@@ -136,7 +136,7 @@ class GUI (QMainWindow):
         self.timer.timeout.connect(self.blinkTab)
 
         # Load lines
-        from lines import define_lines
+        from sospex.lines import define_lines
         self.Lines = define_lines()
 
     def createImagePanel(self):
@@ -167,7 +167,7 @@ class GUI (QMainWindow):
         
 
     def addSpectrum(self,b):
-        from graphics import SpectrumCanvas
+        from sospex.graphics import SpectrumCanvas
         ''' Add a tab with an image '''
         t = QWidget()
         t.layout = QVBoxLayout(t)
@@ -206,7 +206,7 @@ class GUI (QMainWindow):
         return t,sc,sid1,sid2
 
     def addImage(self,b):
-        from graphics import ImageCanvas, ImageHistoCanvas
+        from sospex.graphics import ImageCanvas, ImageHistoCanvas
         ''' Add a tab with an image '''
         t = QWidget()
         t.layout = QVBoxLayout(t)
@@ -754,7 +754,7 @@ class GUI (QMainWindow):
 
 
     def onPolySelect(self, verts):
-        from apertures import PolygonInteractor
+        from sospex.apertures import PolygonInteractor
         
         self.PS.set_active(False)
         # 1 vertices in RA,Dec coords
@@ -779,7 +779,7 @@ class GUI (QMainWindow):
     def drawNewSpectrum(self, n):        
         """ Add tab with the flux inside the aperture """
 
-        from specobj import Spectrum
+        from sospex.specobj import Spectrum
 
         apname = "Ap{:d}".format(n)
         self.spectra.append(apname)
@@ -825,7 +825,7 @@ class GUI (QMainWindow):
     def onRectSelect(self, eclick, erelease):
         'eclick and erelease are the press and release events'
 
-        from apertures import EllipseInteractor, RectangleInteractor
+        from sospex.apertures import EllipseInteractor, RectangleInteractor
         
         x1, y1 = eclick.xdata, eclick.ydata
         x2, y2 = erelease.xdata, erelease.ydata
@@ -1076,7 +1076,7 @@ class GUI (QMainWindow):
         """
         Upload existing spectrum
         """
-        from specobj import Spectrum
+        from sospex.specobj import Spectrum
         
         fd = QFileDialog()
         fd.setNameFilters(["Fits Files (*.fits)","All Files (*)"])
@@ -1097,7 +1097,7 @@ class GUI (QMainWindow):
 
     def addApertures(self, ic):
         """ Add apertures already defined on new image """
-        from apertures import PolygonInteractor, EllipseInteractor, RectangleInteractor
+        from sospex.apertures import PolygonInteractor, EllipseInteractor, RectangleInteractor
 
         ic0 = self.ici[0]
         for aper in ic0.photApertures:
@@ -1773,7 +1773,7 @@ class GUI (QMainWindow):
     def newFile(self):
         """ Display a new image """
 
-        from specobj import specCube, Spectrum
+        from sospex.specobj import specCube, Spectrum
 
         fd = QFileDialog()
         fd.setNameFilters(["Fits Files (*.fits)","All Files (*)"])
@@ -2133,7 +2133,8 @@ class GUI (QMainWindow):
         sc.fig.canvas.draw_idle()
         
         
-if __name__ == '__main__':
+#if __name__ == '__main__':
+def main():
     app = QApplication(sys.argv)
     gui = GUI()
     # Adjust geometry to size of the screen

@@ -418,7 +418,7 @@ class SpectrumCanvas(MplCanvas):
     """ Canvas to plot spectra """
     def __init__(self, *args, **kwargs):
         MplCanvas.__init__(self, *args, **kwargs)
-        from lines import define_lines
+        from sospex.lines import define_lines
 
         self.Lines = define_lines()
         self.fig.set_edgecolor('none')
