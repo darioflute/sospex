@@ -15,13 +15,13 @@ from matplotlib.patches import Ellipse, Rectangle, Circle, Ellipse, Polygon
 from matplotlib.path import Path
 
 
-from apertures import photoAperture
 import warnings
 # To avoid excessive warning messages
 warnings.filterwarnings('ignore')
 
 # Local import
 from sospex.graphics import  NavigationToolbar
+from sospex.apertures import photoAperture
 
 
 class UpdateTabs(QObject):
