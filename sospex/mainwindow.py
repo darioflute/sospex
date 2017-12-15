@@ -757,8 +757,8 @@ class GUI (QMainWindow):
 
     def onPolySelect(self, verts):
         from sospex.apertures import PolygonInteractor
-        
-        self.PS.set_active(False)
+
+        self.disactiveSelectors()
         # 1 vertices in RA,Dec coords
         itab = self.itabs.currentIndex()
         ic0 = self.ici[itab]
@@ -851,7 +851,7 @@ class GUI (QMainWindow):
         
         n = len(self.photoApertures)
         if self.selAp == 'square':
-            self.RS.set_active(False)
+            self.disactiveSelectors()
             self.RS = None
             # Define square
             data = [r0,d0,ws]
@@ -864,7 +864,7 @@ class GUI (QMainWindow):
                 cidap=square.mySignal.connect(self.onRemoveAperture)
                 ic.photApertureSignal.append(cidap)
         elif self.selAp == 'rectangle':
-            self.RS.set_active(False)
+            self.disactiveSelectors()
             self.RS = None
             # Define rectangle
             data = [r0,d0,ws,hs]
@@ -877,7 +877,7 @@ class GUI (QMainWindow):
                 cidap=rectangle.mySignal.connect(self.onRemoveAperture)
                 ic.photApertureSignal.append(cidap)
         elif self.selAp == 'circle':
-            self.ES.set_active(False)
+            self.disactiveSelectors()
             self.ES = None
             pass
             # Define circle
@@ -891,7 +891,7 @@ class GUI (QMainWindow):
                 cidap=circle.mySignal.connect(self.onRemoveAperture)
                 ic.photApertureSignal.append(cidap)
         elif self.selAp == 'ellipse':
-            self.ES.set_active(False)
+            self.disactiveSelectors()
             self.ES = None
             # Define ellipse
             data = [r0,d0,ws,hs]
@@ -905,7 +905,17 @@ class GUI (QMainWindow):
                 ic.photApertureSignal.append(cidap)
         self.drawNewSpectrum(n)
 
-    
+
+    def disactiveSelectors(self):
+        """ Disactive all selectors, in the case more than one is selected """
+        if self.RS is not None:
+            self.RS.set_active(False)
+        if self.ES is not None:
+            self.ES.set_active(False)
+        if self.PS is not None:
+            self.PS.set_active(False)
+
+        
     def chooseAperture(self, i):
         """ Choosing an aperture """
         index  = self.apView.selectionModel().currentIndex()
@@ -1903,7 +1913,12 @@ class GUI (QMainWindow):
             self.blink = 'off'
             self.slice = 'off'
             self.cutcube = 'off'
+            # Selectors
+            self.PS = None
+            self.ES = None
+            self.RS = None
 
+            
     def onSelect(self, xmin, xmax):
         """ Consider only a slice of the cube when computing the image """
 
