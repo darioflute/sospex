@@ -642,7 +642,7 @@ class GUI (QMainWindow):
         
         # Status bar
         self.sb = QStatusBar()
-        self.sb.showMessage("Click the double arrow to load a cube !", 10000)
+        self.sb.showMessage("Click the folder icon to load a cube !", 10000)
         
         # Add widgets to panel
         banner = QWidget()
