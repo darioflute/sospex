@@ -665,7 +665,7 @@ class GUI (QMainWindow):
         # Actions
         self.helpAction = self.createAction(self.path0+'/icons/help.png','Help','Ctrl+q',self.onHelp)
         self.quitAction = self.createAction(self.path0+'/icons/exit.png','Quit program','Ctrl+q',self.fileQuit)
-        self.startAction = self.createAction(self.path0+'/icons/next.png','Load new observation','Ctrl+s',self.newFile)
+        self.startAction = self.createAction(self.path0+'/icons/open.png','Load new observation','Ctrl+s',self.newFile)
         self.levelsAction = self.createAction(self.path0+'/icons/levels.png','Adjust image levels','Ctrl+L',self.changeVisibility)
         self.blink = 'off'
         self.blinkAction = self.createAction(self.path0+'/icons/blink.png','Blink between 2 images','Ctrl+B',self.blinkImages)
@@ -2135,8 +2135,8 @@ class GUI (QMainWindow):
         sc.fig.canvas.draw_idle()
         
         
-#if __name__ == '__main__':
-def main():
+if __name__ == '__main__':
+#def main():
     app = QApplication(sys.argv)
     gui = GUI()
     # Adjust geometry to size of the screen
