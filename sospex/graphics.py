@@ -649,8 +649,10 @@ class SpectrumCanvas(MplCanvas):
                 self.annotations.append(annotation)     
 
     def computeVelLimits(self):
+        """ Compute velocity limits """            
         x1,x2 = self.axes.get_xlim()
         c = 299792.458  # speed of light in km/s
+        s = self.spectrum
         if self.xunit == 'um':
             vx1 = (x1/(1+s.redshift)/s.l0-1.)*c
             vx2 = (x2/(1+s.redshift)/s.l0-1.)*c
@@ -663,14 +665,14 @@ class SpectrumCanvas(MplCanvas):
 
     def updateXlim(self):
         """ update xlimits """
-        xlim0,xlim1 = sc.xlimits
-        vlim = sc.computeVelLimits(xlim0,xlim1)
+        xlim0,xlim1 = self.xlimits
+        vlim = self.computeVelLimits(xlim0,xlim1)
         if self.xunit == 'THz':
             c = 299792458.0  # speed of light in m/s
             xlim1,xlim0 = c/xlim0*1.e-6,c/xlim1*1.e-6
-        sc.axes.set_xlim(xlim0,xlim1)
-        sc.vaxes.set_xlim(vlim)
-        sc.fig.canvas.draw_idle()
+        self.axes.set_xlim(xlim0,xlim1)
+        self.vaxes.set_xlim(vlim)
+        self.fig.canvas.draw_idle()
 
         
     def updateSpectrum(self,f,uf=None,exp=None):
