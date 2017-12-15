@@ -1,6 +1,6 @@
 package:
   name: sospex
-  version: 0.1.beta
+  version: 0.2.beta
 
 source:
   git_tag: python3
@@ -14,8 +14,8 @@ requirements:
     - setuptools
 
   run:
-    - python
-    - numpy
+    - python 
+    - numpy >=1.12.1
     - astropy >=2.0.2
     - matplotlib >=2.1.0
         
