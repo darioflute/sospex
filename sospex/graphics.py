@@ -598,20 +598,21 @@ class SpectrumCanvas(MplCanvas):
         # Check if vel is defined and draw velocity axis
         try:
             x1,x2 = self.axes.get_xlim()
-            c = 299792.458  # speed of light in km/s
-            if self.xunit == 'um':
-                vx1 = (x1/(1+s.redshift)/s.l0-1.)*c
-                vx2 = (x2/(1+s.redshift)/s.l0-1.)*c
-            elif self.xunit == 'THz':
-                vx1 = (c/x1/(1+s.redshift)/s.l0*1.e-3-1.)*c
-                vx2 = (c/x2/(1+s.redshift)/s.l0*1.e-3-1.)*c
+            vlims = self.computeVelLimits(x1,x2)            
+            #c = 299792.458  # speed of light in km/s
+            #if self.xunit == 'um':
+            #    vx1 = (x1/(1+s.redshift)/s.l0-1.)*c
+            #    vx2 = (x2/(1+s.redshift)/s.l0-1.)*c
+            #elif self.xunit == 'THz':
+            #    vx1 = (c/x1/(1+s.redshift)/s.l0*1.e-3-1.)*c
+            #    vx2 = (c/x2/(1+s.redshift)/s.l0*1.e-3-1.)*c
             try:
                 self.fig.delaxes(self.vaxes)
             except:
                 pass
             self.vaxes = self.axes.twiny()
             self.vaxes.xaxis.set_major_formatter(ScalarFormatter(useOffset=False))
-            self.vaxes.set_xlim((vx1,vx2))
+            self.vaxes.set_xlim(vlims)
             self.vaxes.set_xlabel("Velocity [km/s]")
             # Elevate zorder of first axes (to guarantee axes gets the events)
             self.axes.set_zorder(self.vaxes.get_zorder()+1) # put axes in front of vaxes
@@ -655,7 +656,19 @@ class SpectrumCanvas(MplCanvas):
                 annotation.draggable()
                 self.annotations.append(annotation)     
 
+    def computeVelLimits(self,x1,x2):
+        
+        c = 299792.458  # speed of light in km/s
+        if self.xunit == 'um':
+            vx1 = (x1/(1+s.redshift)/s.l0-1.)*c
+            vx2 = (x2/(1+s.redshift)/s.l0-1.)*c
+        elif self.xunit == 'THz':
+            vx1 = (c/x1/(1+s.redshift)/s.l0*1.e-3-1.)*c
+            vx2 = (c/x2/(1+s.redshift)/s.l0*1.e-3-1.)*c
 
+        return (vx1,vx2)
+            
+                
     def updateSpectrum(self,f,uf=None,exp=None):
 
         try:

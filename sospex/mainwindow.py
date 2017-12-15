@@ -2126,7 +2126,9 @@ class GUI (QMainWindow):
         xlim0 = np.min(sc.spectrum.wave)
         xlim1 = np.max(sc.spectrum.wave)
         sc.xlimits=(xlim0,xlim1)
-        sc.axes.set_xlim(xlim0,xlim1)
+        sc.axes.set_xlim(sc.xlimits)
+        vlim = sc.computeVelLimits(xlim0,xlim1)
+        sc.vaxes.set_xlim(vlim)
         sc.fig.canvas.draw_idle()
         
     def vresizeSpectrum(self):
@@ -2146,7 +2148,8 @@ class GUI (QMainWindow):
             if u1 > ylim1: ylim1 = u1
         
         sc.ylimits = (ylim0,ylim1)
-        sc.axes.set_ylim(ylim0,ylim1)
+        sc.axes.set_ylim(sc.ylimits)
+        sc.ax4.set_ylim(sc.ylimits)
         sc.fig.canvas.draw_idle()
         
         
