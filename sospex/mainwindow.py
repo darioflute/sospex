@@ -2135,8 +2135,8 @@ class GUI (QMainWindow):
         sc.fig.canvas.draw_idle()
         
         
-if __name__ == '__main__':
-#def main():
+#if __name__ == '__main__':
+def main():
     app = QApplication(sys.argv)
     gui = GUI()
     # Adjust geometry to size of the screen
