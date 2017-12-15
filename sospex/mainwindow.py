@@ -2122,14 +2122,10 @@ class GUI (QMainWindow):
 
         istab = self.stabs.currentIndex()
         sc = self.sci[istab]
-
         xlim0 = np.min(sc.spectrum.wave)
         xlim1 = np.max(sc.spectrum.wave)
         sc.xlimits=(xlim0,xlim1)
-        sc.axes.set_xlim(sc.xlimits)
-        vlim = sc.computeVelLimits(xlim0,xlim1)
-        sc.vaxes.set_xlim(vlim)
-        sc.fig.canvas.draw_idle()
+        sc.updateXlim()
         
     def vresizeSpectrum(self):
         """ Expand spectrum to maximum flux range """
