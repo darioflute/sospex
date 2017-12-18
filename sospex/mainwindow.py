@@ -2144,7 +2144,7 @@ class GUI (QMainWindow):
             if u1 > ylim1: ylim1 = u1
 
         # Slightly higher maximum
-        ylim1 *= 1.1
+        ylim1 *= 1.05
         
         sc.ylimits = (ylim0,ylim1)
         sc.updateYlim()
