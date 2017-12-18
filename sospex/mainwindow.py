@@ -2144,9 +2144,7 @@ class GUI (QMainWindow):
             if u1 > ylim1: ylim1 = u1
         
         sc.ylimits = (ylim0,ylim1)
-        sc.axes.set_ylim(sc.ylimits)
-        sc.ax4.set_ylim(sc.ylimits)
-        sc.fig.canvas.draw_idle()
+        sc.updateYlim()
         
         
 #if __name__ == '__main__':

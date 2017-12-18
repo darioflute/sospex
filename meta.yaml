@@ -1,6 +1,6 @@
 package:
   name: sospex
-  version: 0.4.beta
+  version: 0.5.beta
 
 source:
   git_tag: python3
