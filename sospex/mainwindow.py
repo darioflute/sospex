@@ -2142,6 +2142,9 @@ class GUI (QMainWindow):
             u1 = np.nanmax(spec.uflux)
             if u0 < ylim0: ylim0 = u0
             if u1 > ylim1: ylim1 = u1
+
+        # Slightly higher maximum
+        ylim1 *= 1.1
         
         sc.ylimits = (ylim0,ylim1)
         sc.updateYlim()
