@@ -678,10 +678,10 @@ class SpectrumCanvas(MplCanvas):
         """ update ylimits """
 
         # Grab new limits and update flux and 
-        lims = self.ylimits()
-        self.axes.set_ylim(limits)
+        ylims = self.ylimits
+        self.axes.set_ylim(ylims)
         if self.instrument == 'FIFI-LS':
-            self.ax4.set_ylim(limits)
+            self.ax4.set_ylim(ylims)
             s = self.spectrum            
             self.ax3.set_ylim([0.5,np.nanmax(s.exposure)*1.54])
             self.ax2.set_ylim([0.01,1.1])
