@@ -124,7 +124,7 @@ class ImageCanvas(MplCanvas):
 
     def showImage(self, image):
         
-            self.oimage = image
+            self.oimage = image.copy()
             self.image = self.axes.imshow(image, cmap='gist_heat_r',interpolation='none')
             self.fig.colorbar(self.image, cax=self.cbaxes)
             # Intensity limits
@@ -159,19 +159,19 @@ class ImageHistoCanvas(MplCanvas):
         # Start a span selector
         self.span = SpanSelector(self.axes, self.onSelect, 'horizontal', useblit=True,
                                  rectprops=dict(alpha=0.5, facecolor='LightSalmon'),button=1)
-        # Test
-        xlim0,xlim1 = self.axes.get_xlim()
-        ylim0,ylim1 = self.axes.get_ylim()
-        bbox_args = dict(boxstyle="round", fc="0.8")
-        xl = (xlim0+xlim1)*0.5
-        yl = (ylim0+ylim1)*0.5
-        a1=self.axes.annotate('Drag me 1', xy=(xl,yl), xycoords='data',
-                              #xytext=(.5, .7), textcoords='data',
-                              ha="center", va="center",
-                              bbox=bbox_args,
-                              #arrowprops=arrow_args
-                          )
-        a1.draggable()
+        # # Test
+        # xlim0,xlim1 = self.axes.get_xlim()
+        # ylim0,ylim1 = self.axes.get_ylim()
+        # bbox_args = dict(boxstyle="round", fc="0.8")
+        # xl = (xlim0+xlim1)*0.5
+        # yl = (ylim0+ylim1)*0.5
+        # a1=self.axes.annotate('Drag me 1', xy=(xl,yl), xycoords='data',
+        #                       #xytext=(.5, .7), textcoords='data',
+        #                       ha="center", va="center",
+        #                       bbox=bbox_args,
+        #                       #arrowprops=arrow_args
+        #                   )
+        # a1.draggable()
 
         
     def compute_initial_figure(self, image=None,xmin=None,xmax=None):
@@ -202,7 +202,10 @@ class ImageHistoCanvas(MplCanvas):
                 xmin = ima[int(s*0.01)]
             if xmax == None:
                 xmax = ima[int(s*0.99)-1]
-            self.onSelect(xmin,xmax)
+            if np.isfinite(xmin) and np.isfinite(xmax):
+                self.onSelect(xmin,xmax)
+            else:
+                print('Problems with the image')
 
             # Initialize contour level vertical lines
             self.lev = []

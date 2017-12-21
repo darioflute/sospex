@@ -4,8 +4,8 @@ import numpy as np
 from PyQt5.QtWidgets import (QApplication, QWidget, QMainWindow, QTabWidget, QTabBar,QHBoxLayout,
                              QGroupBox, QVBoxLayout, QSizePolicy, QStatusBar, QSplitter,
                              QToolBar, QAction, QFileDialog,  QTableView, QComboBox, QAbstractItemView,
-                             QToolButton, QMessageBox, QPushButton, QInputDialog, QDialog)
-from PyQt5.QtGui import QIcon, QStandardItem, QStandardItemModel
+                             QToolButton, QMessageBox, QPushButton, QInputDialog, QDialog, QProgressDialog, QLabel)
+from PyQt5.QtGui import QIcon, QStandardItem, QStandardItemModel, QPixmap, QMovie
 from PyQt5.QtCore import Qt, QSize, QTimer, QThread, QObject, pyqtSignal
 
 import matplotlib
@@ -36,6 +36,7 @@ class DownloadThread(QThread):
 
     def __init__(self,lon,lat,xsize,ysize,band, parent = None):
         super().__init__(parent)
+        #super().__init__()
         self.lon = lon
         self.lat = lat
         self.xsize = xsize
@@ -45,17 +46,18 @@ class DownloadThread(QThread):
 
     def run(self):
         from sospex.cloud import cloudImage
+
         downloadedImage = cloudImage(self.lon,self.lat,self.xsize,self.ysize,self.band)
         if downloadedImage.data is not None:
             self.updateTabs.newImage.emit(downloadedImage)
-            print('New image downloaded')
+            message = 'New image downloaded'
         else:
             message = 'The selected survey does not cover the displayed image'
-            print(message)
-            self.sendMessage.emit(message)
+        print(message)
+        self.sendMessage.emit(message)
         # Disconnect signal at the end of the thread
         self.updateTabs.newImage.disconnect()
-
+        
 # Does not work since calls for matplotlib threads
 class ContoursThread(QThread):
     """ Thread to compute new contour and add it to the existing collection """
@@ -208,7 +210,8 @@ class GUI (QMainWindow):
         return t,sc,sid1,sid2
 
     def addImage(self,b):
-        from sospex.graphics import ImageCanvas, ImageHistoCanvas
+        #from sospex.graphics import ImageCanvas, ImageHistoCanvas
+        from graphics import ImageCanvas, ImageHistoCanvas
         ''' Add a tab with an image '''
         t = QWidget()
         t.layout = QVBoxLayout(t)
@@ -1029,16 +1032,51 @@ class GUI (QMainWindow):
         #print('center: ',lon,lat,' and size: ',xsize,ysize)        
         print('Band selected is: ',band)
 
-        # Here call the thread
-        self.downloadThread = DownloadThread(lon,lat,xsize,ysize,band)
-        self.downloadThread.updateTabs.newImage.connect(self.newImageTab)
-        self.downloadThread.sendMessage.connect(self.newImageMessage)
-        self.downloadThread.start()
 
+        if band != 'local':
+            # Here call the thread
+            self.downloadThread = DownloadThread(lon,lat,xsize,ysize,band,parent=self)
+            self.downloadThread.updateTabs.newImage.connect(self.newImageTab)
+            self.downloadThread.sendMessage.connect(self.newImageMessage)
+            self.downloadThread.start()
+            # and start the spinning messagebox
+            self.msgbox = QMessageBox()
+            #self.msgbox.setIcon(QMessageBox.Information)
+            label = QLabel(self.msgbox)
+            pixmap = QPixmap(self.path0+'/icons/niet.png')
+            label.setPixmap(pixmap)
+            movie = QMovie(self.path0+'/icons/spinplane.gif')
+            #movie = QMovie(self.path0+'/icons/loader.gif')
+            label.setMovie(movie)
+            movie.jumpToFrame(0)
+            movie.start()
+            label.resize(QSize(200,200))
+            self.msgbox.setIconPixmap(pixmap)
+            #label.show()        
+            #self.msgbox.setInformativeText("Quering "+band+"...")
+            self.msgbox.setText("Quering "+band+" ... ")
+            #self.msgbox.show()
+            retval = self.msgbox.exec_()
+        else:
+            # Download the local fits
+            from sospex.cloud import cloudImage
+            downloadedImage = cloudImage(lon,lat,xsize,ysize,band)
+            if downloadedImage.data is not None:
+                self.newImageTab(downloadedImage)
+                message = 'New image downloaded'
+            else:
+                message = 'The selected survey does not cover the displayed image'
+            self.newImageMessage(message)
+
+        
     def newImageMessage(self, message):
         """ Message sent from download thread """
         
         self.sb.showMessage(message, 5000)
+        try:
+            self.msgbox.done(1)
+        except:
+            pass
 
     def newImageTab(self, downloadedImage):
         """ Open  a tab and display the new image """
@@ -1049,7 +1087,7 @@ class GUI (QMainWindow):
         if np.sum(mask) == 0:
             self.sb.showMessage("The selected survey does not cover the displayed image", 2000)
         else:
-            self.sb.showMessage("Image downloaed", 2000)
+            self.sb.showMessage("Image downloaded", 2000)
             band = downloadedImage.source
             self.bands.append(band)
             t,ic,ih,h,c1,c2,c3 = self.addImage(band)
@@ -1065,8 +1103,9 @@ class GUI (QMainWindow):
             # Callback to propagate axes limit changes among images
             ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
             ih = self.ihi[self.bands.index(band)]
-            clim = ic.image.get_clim()
-            ih.compute_initial_figure(image=downloadedImage.data,xmin=clim[0],xmax=clim[1])
+            #clim = ic.image.get_clim()
+            #print('clim are ',clim)
+            ih.compute_initial_figure(image=downloadedImage.data)#,xmin=clim[0],xmax=clim[1])
             
             # Add existing apertures
             self.addApertures(ic)
@@ -1302,8 +1341,7 @@ class GUI (QMainWindow):
 
             if file_extension == '.fits':
                 # Primary header
-                #print(self.specCube.wcs)
-                header = self.specCube.wcs.to_header()
+                header = ic.wcs.to_header()
                 header.remove('WCSAXES')
                 header['INSTRUME'] = instrument
                 header['OBJECT'] = (self.specCube.objname, 'Object Name')
@@ -2150,8 +2188,8 @@ class GUI (QMainWindow):
         sc.updateYlim()
         
         
-#if __name__ == '__main__':
-def main():
+if __name__ == '__main__':
+#def main():
     app = QApplication(sys.argv)
     gui = GUI()
     # Adjust geometry to size of the screen

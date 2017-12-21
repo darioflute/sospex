@@ -3,7 +3,7 @@
 from distutils.core import setup
 
 setup(name='sospex',
-      version='0.5.beta',
+      version='0.6.beta',
       description='SOFIA SPectrum EXplorer',
       long_description='The package displays FIFI-LS cubes',
       author='Dario Fadda',
@@ -14,5 +14,5 @@ setup(name='sospex',
       packages=['sospex'],
       scripts=['bin/sospex'],
       include_package_data=True,
-      package_data={'sospex':['icons/*.png','help/*.html','yellow-stylesheet.css']}
+      package_data={'sospex':['icons/*.png','icons/*.gif','help/*.html','yellow-stylesheet.css']}
      )
