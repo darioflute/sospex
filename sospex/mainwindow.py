@@ -210,8 +210,8 @@ class GUI (QMainWindow):
         return t,sc,sid1,sid2
 
     def addImage(self,b):
-        #from sospex.graphics import ImageCanvas, ImageHistoCanvas
-        from graphics import ImageCanvas, ImageHistoCanvas
+        from sospex.graphics import ImageCanvas, ImageHistoCanvas
+        #from graphics import ImageCanvas, ImageHistoCanvas
         ''' Add a tab with an image '''
         t = QWidget()
         t.layout = QVBoxLayout(t)
@@ -2188,8 +2188,8 @@ class GUI (QMainWindow):
         sc.updateYlim()
         
         
-if __name__ == '__main__':
-#def main():
+#if __name__ == '__main__':
+def main():
     app = QApplication(sys.argv)
     gui = GUI()
     # Adjust geometry to size of the screen
