@@ -14,5 +14,5 @@ setup(name='sospex',
       packages=['sospex'],
       scripts=['bin/sospex'],
       include_package_data=True,
-      package_data={'sospex':['icons/*.png','icons/*.gif','help/*.html','yellow-stylesheet.css']}
+      package_data={'sospex':['copyright.txt','icons/*.png','icons/*.gif','help/*.html','yellow-stylesheet.css']}
      )

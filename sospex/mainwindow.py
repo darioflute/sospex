@@ -109,7 +109,7 @@ class GUI (QMainWindow):
         """ Define the user interface """
         
         self.setWindowTitle(self.title)
-        self.setWindowIcon(QIcon(self.path0+'/icons/sospex.png'))
+        #self.setWindowIcon(QIcon(self.path0+'/icons/sospex.png'))
         self.setGeometry(self.left, self.top, self.width, self.height)
 
         # Create main widget
@@ -142,6 +142,45 @@ class GUI (QMainWindow):
         # Load lines
         from sospex.lines import define_lines
         self.Lines = define_lines()
+
+        # Welcome message
+        self.welcomeMessage()
+
+        # Menu
+        self.createMenu()
+        
+    def welcomeMessage(self):
+        self.wbox = QMessageBox()
+        pixmap = QPixmap(self.path0+'/icons/sospex.png')
+        self.wbox.setIconPixmap(pixmap)
+        self.wbox.setText("Welcome to SOSPEX")
+        self.wbox.setInformativeText("Start by loading a first spectral cube by clicking the folder icon,"+\
+                                     " then click on '?' for further information. You can load another"+\
+                                     " cube by clicking again on the folder icon.")
+        self.wbox.show()
+        
+    def createMenu(self):
+
+        bar = self.menuBar()
+        file = bar.addMenu("File")
+        quit = QAction("Quit",self,shortcut='Ctrl+q',triggered=self.fileQuit)
+        file.addAction(quit)
+        new = QAction("New",self,shortcut='Ctrl+n',triggered=self.newFile)
+        file.addAction(new)
+
+        help = bar.addMenu("Help")
+        about = QAction('About', self, shortcut='Ctrl+a',triggered=self.about)
+        help.addAction(about)
+        tutorials = QAction('Tutorials', self, shortcut='Ctrl+T',triggered=self.onHelp)
+        help.addAction(tutorials)
+
+        bar.setNativeMenuBar(False)
+
+    def about(self):
+        # Get path of the package
+        file=open(self.path0+"/copyright.txt","r")
+        message=file.read()
+        QMessageBox.about(self, "About", message)
 
     def createImagePanel(self):
         """ Panel to display images """
@@ -668,7 +707,7 @@ class GUI (QMainWindow):
         # Actions
         self.helpAction = self.createAction(self.path0+'/icons/help.png','Help','Ctrl+q',self.onHelp)
         self.quitAction = self.createAction(self.path0+'/icons/exit.png','Quit program','Ctrl+q',self.fileQuit)
-        self.startAction = self.createAction(self.path0+'/icons/open.png','Load new observation','Ctrl+s',self.newFile)
+        self.startAction = self.createAction(self.path0+'/icons/open.png','Load new observation','Ctrl+n',self.newFile)
         self.levelsAction = self.createAction(self.path0+'/icons/levels.png','Adjust image levels','Ctrl+L',self.changeVisibility)
         self.blink = 'off'
         self.blinkAction = self.createAction(self.path0+'/icons/blink.png','Blink between 2 images','Ctrl+B',self.blinkImages)
@@ -676,6 +715,7 @@ class GUI (QMainWindow):
         self.contours = 'off'
         self.contoursAction = self.createAction(self.path0+'/icons/contours.png','Overlap contours','Ctrl+c',self.overlapContours)
         self.apertureAction = self.createApertureAction()
+        self.fitAction = self.createFitAction()
         self.cutAction = self.createAction(self.path0+'/icons/cut.png','Cut part of the cube','Ctrl+k',self.cutCube)
         self.cropAction = self.createAction(self.path0+'/icons/crop.png','Crop the cube','Ctrl+K',self.cropCube)
         self.sliceAction = self.createAction(self.path0+'/icons/slice.png','Select a slice of the cube','Ctrl+K',self.sliceCube)
@@ -697,6 +737,7 @@ class GUI (QMainWindow):
         self.tb.addAction(self.quitAction)
         self.tb.addAction(self.helpAction)
         self.tb.addWidget(self.apertureAction)        
+        self.tb.addWidget(self.fitAction)        
 
     
     def createAction(self,icon,text,shortcut,action):
@@ -757,7 +798,54 @@ class GUI (QMainWindow):
 
         return apertureAction
 
+    def createFitAction(self):
+        """ Create combo box for choosing an aperture """
 
+        self.fitoptions = [['gaussfit','continuum','list'],
+                           ['location','dispersion','check']]
+
+        self.fmodel = QStandardItemModel()
+        for d in self.fitoptions:                
+            row = []
+            for text in d:
+                item = QStandardItem(QIcon(self.path0+'/icons/'+text+'.png'),"")
+                item.setTextAlignment(Qt.AlignCenter)
+                if text != 'gauss':
+                    item.setToolTip("Choose a "+text)
+                else:
+                    item.setToolTip("Choose an option ")
+                row.append(item)
+            self.fmodel.appendRow(row)
+
+        self.fitView = QTableView()
+        # Remove headers and grid
+        self.fitView.verticalHeader().setVisible(False) 
+        self.fitView.horizontalHeader().setVisible(False)
+        self.fitView.setShowGrid(False)
+        self.fitView.setIconSize(QSize(24,24))
+
+        
+        fitAction = QComboBox()
+        fitAction.setToolTip("Fit line and continuum\n")
+        #apertureAction.SizeAdjustPolicy(QComboBox.AdjustToContentsOnFirstShow)
+        fitAction.SizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
+        fitAction.setIconSize(QSize(24,24))
+        fitAction.setView(self.fitView)
+        fitAction.setModel(self.fmodel)
+        self.fitView.setModel(self.fmodel)
+            
+        self.fitView.resizeColumnsToContents()  # Once defined the model, resize the column width
+        self.fitView.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.fitView.setSelectionBehavior(QAbstractItemView.SelectItems)
+        self.fitView.setMinimumWidth(120)  
+        self.fitView.setMinimumHeight(70)  
+
+        fitAction.activated.connect(self.chooseFitOption)
+
+        return fitAction
+
+
+    
     def onPolySelect(self, verts):
         from sospex.apertures import PolygonInteractor
 
@@ -918,6 +1006,24 @@ class GUI (QMainWindow):
         if self.PS is not None:
             self.PS.set_active(False)
 
+    def chooseFitOption(self, i):
+        """ Choosing a fit option """
+
+        index  = self.fitView.selectionModel().currentIndex()
+        i = index.row()
+        j = index.column()
+
+        self.selFit = self.fitoptions[i][j]
+        if self.selFit == 'list':
+            self.sb.showMessage("You chose to open the "+self.selFit, 1000)
+        if self.selFit == 'check':
+            self.sb.showMessage("You chose to compute the fit for all the pixels ", 1000)
+        elif self.selFit == 'gaussfit':
+            self.sb.showMessage("Choose a fitting option ", 1000)
+        else:
+            self.sb.showMessage("You chose the action "+self.selFit, 1000)
+
+            
         
     def chooseAperture(self, i):
         """ Choosing an aperture """
@@ -2188,8 +2294,8 @@ class GUI (QMainWindow):
         sc.updateYlim()
         
         
-#if __name__ == '__main__':
-def main():
+if __name__ == '__main__':
+#def main():
     app = QApplication(sys.argv)
     gui = GUI()
     # Adjust geometry to size of the screen
@@ -2199,4 +2305,6 @@ def main():
     gui.hsplitter.setSizes ([width*0.38,width*0.5])
     # Add an icon for the application
     app.setWindowIcon(QIcon(gui.path0+'/icons/sospex.png'))
+    app.setApplicationName('SOSPEX')
+    app.setApplicationVersion('0.6-beta')
     sys.exit(app.exec_())
