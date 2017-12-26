@@ -154,9 +154,11 @@ class GUI (QMainWindow):
         pixmap = QPixmap(self.path0+'/icons/sospex.png')
         self.wbox.setIconPixmap(pixmap)
         self.wbox.setText("Welcome to SOSPEX")
-        self.wbox.setInformativeText("Start by loading a first spectral cube by clicking the folder icon,"+\
-                                     " then click on '?' for further information. You can load another"+\
-                                     " cube by clicking again on the folder icon.")
+        #spath = "{:s}/icons/".format(self.path0)
+        #self.wbox.setInformativeText('SOFIA Spectrum Explorer\n\n * Click on <img src="'+spath+'open.png"> to load spectra\n\n'+\
+        self.wbox.setInformativeText('SOFIA Spectrum Explorer\n\n * Click on folder icon to load spectra\n\n'+\
+                                     '* Click on running men icon to exit\n\n'+\
+                                     '* Click on question mark for further help')
         self.wbox.show()
         
     def createMenu(self):
@@ -810,10 +812,14 @@ class GUI (QMainWindow):
             for text in d:
                 item = QStandardItem(QIcon(self.path0+'/icons/'+text+'.png'),"")
                 item.setTextAlignment(Qt.AlignCenter)
-                if text != 'gauss':
-                    item.setToolTip("Choose a "+text)
+                if text == 'gaussfit':
+                    item.setToolTip("Choose an option")
+                elif text == 'list':
+                    item.setToolTip("Select manually all the constrains")
+                elif text == 'check':
+                    item.setToolTip("Fit all over the cube")
                 else:
-                    item.setToolTip("Choose an option ")
+                    item.setToolTip("Constrain the "+text)
                 row.append(item)
             self.fmodel.appendRow(row)
 
@@ -1023,7 +1029,10 @@ class GUI (QMainWindow):
         else:
             self.sb.showMessage("You chose the action "+self.selFit, 1000)
 
-            
+
+        #put back to the 0-th item
+        self.fitAction.setCurrentIndex(0)
+
         
     def chooseAperture(self, i):
         """ Choosing an aperture """
