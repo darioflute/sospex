@@ -1,31 +1,24 @@
 package:
   name: sospex
-  version: 0.10.alpha
+  version: 0.6.beta
 
 source:
-  git_rev: v0.10-alpha
+  git_tag: python3
   git_url: https://github.com/darioflute/sospex.git
 
 build:
-  script:
-    -python setup.py install
   
 requirements:
   build:
     - python
     - setuptools
-    - matplotlib
-    - numpy
 
   run:
-    - python
-    - numpy
-    - astropy >=1.2.1
-    - scipy
-    - matplotlib
-    - wxpython
-    
-    
+    - python 
+    - numpy >=1.12.1
+    - astropy >=2.0.2
+    - matplotlib >=2.1.0
+        
 test:
   imports:
     - sospex
@@ -34,4 +27,4 @@ about:
   home: https://github.com/darioflute/sospex
   license: GPL3
   license_file: LICENSE
-  description: 'The package displays FIFI-LS spectral cubes'
+  description: 'The package displays FIFI-LS and GREAT spectral cubes'
