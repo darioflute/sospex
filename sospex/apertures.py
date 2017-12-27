@@ -36,6 +36,7 @@ class EllipseInteractor(QObject):
     epsilon = 5
     showverts = True
     mySignal = pyqtSignal(str)
+    modSignal = pyqtSignal(str)
    
     def __init__(self,ax,center,width,height=None,angle=0.):
         super().__init__()
@@ -206,6 +207,10 @@ class EllipseInteractor(QObject):
         self.canvas.update()
         self.canvas.flush_events()
 
+        # Notify callback
+        self.modSignal.emit('ellipse modified')
+
+
     def update_ellipse(self):
 
         x0, y0, w0, h0, theta0, xpress, ypress = self.press
@@ -293,6 +298,7 @@ class RectangleInteractor(QObject):
     epsilon = 5
     showverts = True
     mySignal = pyqtSignal(str)
+    modSignal = pyqtSignal(str)
     
     def __init__(self,ax,corner,width,height=None,angle=0.):
         super().__init__()
@@ -474,6 +480,9 @@ class RectangleInteractor(QObject):
         self.canvas.update()
         self.canvas.flush_events()
 
+        # Notify callback
+        self.modSignal.emit('rectangle modified')
+
     def update_rectangle(self):
 
         x0, y0, w0, h0, theta0, xpress, ypress = self.press
@@ -562,6 +571,7 @@ class PolygonInteractor(QObject):
     showverts = True
     epsilon = 5  # max pixel distance to count as a vertex hit
     mySignal = pyqtSignal(str)
+    modSignal = pyqtSignal(str)
 
     def __init__(self, ax, verts):
         super().__init__()
@@ -722,6 +732,9 @@ class PolygonInteractor(QObject):
         self.ax.draw_artist(self.line)
         self.canvas.update()
         self.canvas.flush_events()
+
+        # Notify callback
+        self.modSignal.emit('polygon modified')
 
     def updateMarkers(self):
         self.line.set_data(zip(*self.poly.xy))

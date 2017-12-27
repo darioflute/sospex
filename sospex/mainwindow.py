@@ -21,7 +21,8 @@ warnings.filterwarnings('ignore')
 
 # Local import
 from sospex.graphics import  NavigationToolbar
-from sospex.apertures import photoAperture
+#from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor
+from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor
 
 
 class UpdateTabs(QObject):
@@ -213,6 +214,7 @@ class GUI (QMainWindow):
 
     def addSpectrum(self,b):
         from sospex.graphics import SpectrumCanvas
+        #from graphics import SpectrumCanvas
         ''' Add a tab with an image '''
         t = QWidget()
         t.layout = QVBoxLayout(t)
@@ -417,35 +419,36 @@ class GUI (QMainWindow):
     def onMotion(self, event):
         """ Update spectrum when moving an aperture on the image """
 
+        pass
+        
+        # itab = self.itabs.currentIndex()
+        # ic = self.ici[itab]
 
-        itab = self.itabs.currentIndex()
-        ic = self.ici[itab]
-
-        if ic.toolbar._active == 'PAN':
-            return
+        # if ic.toolbar._active == 'PAN':
+        #     return
 
         # Grab aperture in the flux image to compute the new fluxes
         istab = self.stabs.currentIndex()
-        if istab > 0:
-            sc = self.sci[istab]
-            s = self.specCube
-            # I should find a way to know if the aperture has changed
-            if itab != 0:
-                self.updateAperture()
-            aperture = self.ici[0].photApertures[istab-1].aperture
-            path = aperture.get_path()
-            transform = aperture.get_patch_transform()
-            npath = transform.transform_path(path)
-            inpoints = s.points[npath.contains_points(s.points)]
-            xx,yy = inpoints.T
+        # if istab > 0:
+        #     sc = self.sci[istab]
+        #     s = self.specCube
+        #     # I should find a way to know if the aperture has changed
+        #     if itab != 0:
+        #         self.updateAperture()
+        #     aperture = self.ici[0].photApertures[istab-1].aperture
+        #     path = aperture.get_path()
+        #     transform = aperture.get_patch_transform()
+        #     npath = transform.transform_path(path)
+        #     inpoints = s.points[npath.contains_points(s.points)]
+        #     xx,yy = inpoints.T
         
-            fluxAll = np.nansum(s.flux[:,yy,xx], axis=1)
-            if s.instrument == 'GREAT':
-                sc.updateSpectrum(fluxAll)
-            elif s.instrument == 'FIFI-LS':
-                ufluxAll = np.nansum(s.uflux[:,yy,xx], axis=1)
-                expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
-                sc.updateSpectrum(fluxAll,uf=ufluxAll,exp=expAll)
+        #     fluxAll = np.nansum(s.flux[:,yy,xx], axis=1)
+        #     if s.instrument == 'GREAT':
+        #         sc.updateSpectrum(fluxAll)
+        #     elif s.instrument == 'FIFI-LS':
+        #         ufluxAll = np.nansum(s.uflux[:,yy,xx], axis=1)
+        #         expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
+        #         sc.updateSpectrum(fluxAll,uf=ufluxAll,exp=expAll)
 
     def updateAperture(self):
 
@@ -509,6 +512,37 @@ class GUI (QMainWindow):
             print(event)
 
 
+    def onModifiedAperture(self, event):
+        """ Update spectrum when aperture is modified """
+
+        itab = self.itabs.currentIndex()
+        ic = self.ici[itab]
+
+        # Grab aperture in the flux image to compute the new fluxes
+        istab = self.stabs.currentIndex()
+        if istab > 0:
+            sc = self.sci[istab]
+            s = self.specCube
+            # I should find a way to know if the aperture has changed
+            if itab != 0:
+                self.updateAperture()
+            aperture = self.ici[0].photApertures[istab-1].aperture
+            path = aperture.get_path()
+            transform = aperture.get_patch_transform()
+            npath = transform.transform_path(path)
+            inpoints = s.points[npath.contains_points(s.points)]
+            xx,yy = inpoints.T
+        
+            fluxAll = np.nansum(s.flux[:,yy,xx], axis=1)
+            sc.spectrum.flux = fluxAll
+            if s.instrument == 'GREAT':
+                sc.updateSpectrum(fluxAll)
+            elif s.instrument == 'FIFI-LS':
+                ufluxAll = np.nansum(s.uflux[:,yy,xx], axis=1)
+                expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
+                sc.updateSpectrum(fluxAll,uf=ufluxAll,exp=expAll)
+                sc.spectrum.uflux = ufluxAll
+        
             
     def onDraw(self,event):
         
@@ -736,10 +770,10 @@ class GUI (QMainWindow):
         self.spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         self.tb.addAction(self.startAction)
-        self.tb.addAction(self.quitAction)
         self.tb.addAction(self.helpAction)
         self.tb.addWidget(self.apertureAction)        
         self.tb.addWidget(self.fitAction)        
+        self.tb.addAction(self.quitAction)
 
     
     def createAction(self,icon,text,shortcut,action):
@@ -853,7 +887,7 @@ class GUI (QMainWindow):
 
     
     def onPolySelect(self, verts):
-        from sospex.apertures import PolygonInteractor
+        #from sospex.apertures import PolygonInteractor
 
         self.disactiveSelectors()
         # 1 vertices in RA,Dec coords
@@ -871,6 +905,7 @@ class GUI (QMainWindow):
             ic.photApertures.append(poly)
             cidap=poly.mySignal.connect(self.onRemoveAperture)
             ic.photApertureSignal.append(cidap)
+            cidapm=poly.modSignal.connect(self.onModifiedAperture)
         self.PS = None
 
         self.drawNewSpectrum(n)
@@ -924,7 +959,7 @@ class GUI (QMainWindow):
     def onRectSelect(self, eclick, erelease):
         'eclick and erelease are the press and release events'
 
-        from sospex.apertures import EllipseInteractor, RectangleInteractor
+        #from sospex.apertures import EllipseInteractor, RectangleInteractor
         
         x1, y1 = eclick.xdata, eclick.ydata
         x2, y2 = erelease.xdata, erelease.ydata
@@ -960,6 +995,7 @@ class GUI (QMainWindow):
                 ic.photApertures.append(square)
                 cidap=square.mySignal.connect(self.onRemoveAperture)
                 ic.photApertureSignal.append(cidap)
+                cidapm=square.modSignal.connect(self.onModifiedAperture)
         elif self.selAp == 'rectangle':
             self.disactiveSelectors()
             self.RS = None
@@ -973,6 +1009,7 @@ class GUI (QMainWindow):
                 ic.photApertures.append(rectangle)
                 cidap=rectangle.mySignal.connect(self.onRemoveAperture)
                 ic.photApertureSignal.append(cidap)
+                cidapm=rectangle.modSignal.connect(self.onModifiedAperture)
         elif self.selAp == 'circle':
             self.disactiveSelectors()
             self.ES = None
@@ -987,6 +1024,7 @@ class GUI (QMainWindow):
                 ic.photApertures.append(circle)
                 cidap=circle.mySignal.connect(self.onRemoveAperture)
                 ic.photApertureSignal.append(cidap)
+                cidapm=circle.modSignal.connect(self.onModifiedAperture)
         elif self.selAp == 'ellipse':
             self.disactiveSelectors()
             self.ES = None
@@ -1000,6 +1038,7 @@ class GUI (QMainWindow):
                 ic.photApertures.append(ellipse)
                 cidap=ellipse.mySignal.connect(self.onRemoveAperture)
                 ic.photApertureSignal.append(cidap)
+                cidapm=ellipse.modSignal.connect(self.onModifiedAperture)
         self.drawNewSpectrum(n)
 
 
@@ -1263,7 +1302,7 @@ class GUI (QMainWindow):
 
     def addApertures(self, ic):
         """ Add apertures already defined on new image """
-        from sospex.apertures import PolygonInteractor, EllipseInteractor, RectangleInteractor
+        #from sospex.apertures import 
 
         ic0 = self.ici[0]
         for aper in ic0.photApertures:
@@ -1508,52 +1547,52 @@ class GUI (QMainWindow):
                     hdu.header['BARYSHFT'] = (self.specCube.baryshift, 'Barycentric shift')
                 if n >= 0:
                     aper = ic.photApertures[n]
-                if aper.type == 'Ellipse':
-                    x0,y0 = aper.ellipse.center
-                    pixel = np.array([[x0, y0]], np.float_)
-                    world = ic.wcs.wcs_pix2world(pixel, 1)
-                    hdu.header['APERTURE']=('Ellipse','Type of photometric aperture')
-                    hdu.header['RA'] = (world[0][0], 'RA of aperture center')
-                    hdu.header['DEC'] = (world[0][1], 'Dec of aperture center')
-                    hdu.header['ANGLE'] = (aper.ellipse.angle, 'Angle of elliptical aperture [degs]')
-                    hdu.header['MAJAX'] = (aper.ellipse.width*ic.pixscale, 'Major axis of elliptical aperture [arcsec]')
-                    hdu.header['MINAX'] = (aper.ellipse.height*ic.pixscale, 'Minor axis of elliptical aperture [arcsec]')
-                elif aper.type == 'Circle':
-                    x0,y0 = aper.ellipse.center
-                    pixel = np.array([[x0, y0]], np.float_)
-                    world = ic.wcs.wcs_pix2world(pixel, 1)
-                    hdu.header['APERTURE']=('Circle','Type of photometric aperture')
-                    hdu.header['RA'] = (world[0][0]/15., 'RA of aperture center [hours]')
-                    hdu.header['DEC'] = (world[0][1], 'Dec of aperture center [degs]')
-                    hdu.header['RADIUS'] = (aper.ellipse.height*ic.pixscale, 'Radius of circular aperture [arcsec]')
-                elif aper.type == 'Square':
-                    x0,y0 = aper.xy[0]
-                    pixel = np.array([[x0, y0]], np.float_)
-                    world = ic.wcs.wcs_pix2world(pixel, 1)
-                    hdu.header['APERTURE']=('Square','Type of photometric aperture')
-                    hdu.header['RA'] = (world[0][0]/15., 'RA of aperture center [hours]')
-                    hdu.header['DEC'] = (world[0][1], 'Dec of aperture center [degs]')
-                    hdu.header['ANGLE'] = (aper.rect.angle, 'Angle of square aperture')
-                    hdu.header['SIDE'] = (aper.rect.get_height()*ic.pixscale, 'Side of square aperture [arcsec]')
-                elif aper.type == 'Rectangle':
-                    x0,y0 = aper.xy[0]
-                    pixel = np.array([[x0, y0]], np.float_)
-                    world = ic.wcs.wcs_pix2world(pixel, 1)
-                    hdu.header['APERTURE']=('Rectangle','Type of photometric aperture')
-                    hdu.header['RA'] = (world[0][0]/15., 'RA of aperture center [hours]')
-                    hdu.header['DEC'] = (world[0][1], 'Dec of aperture center [degs]')
-                    hdu.header['WIDTH'] = (aper.rect.get_width()*ic.pixscale, 'Width of rectangle aperture [arcsec]')
-                    hdu.header['HEIGHT'] = (aper.rect.get_height()*ic.pixscale, 'Height of rectangle aperture [arcsec]')
-                    hdu.header['ANGLE'] = (aper.rect.angle, 'Angle of rectangle aperture [degs]')
-                elif aper.type == 'Polygon':
-                    hdu.header['APERTURE']=('Polygon','Type of photometric aperture')
-                    xy = np.asarray(aper.poly.xy)
-                    world = ic.wcs.wcs_pix2world(xy, 1)
-                    i = 0
-                    for w in world:
-                        hdu.header['RA_PT'+"{:03d}".format(i)] = (w[0]/15.,'RA [hours] of polygon aperture point no {:d}'.format(i))
-                        hdu.header['DECPT'+"{:03d}".format(i)] = (w[1],'Dec [degs] of polygon aperture point no {:d}'.format(i))
-                        i += 1
+                    if aper.type == 'Ellipse':
+                        x0,y0 = aper.ellipse.center
+                        pixel = np.array([[x0, y0]], np.float_)
+                        world = ic.wcs.wcs_pix2world(pixel, 1)
+                        hdu.header['APERTURE']=('Ellipse','Type of photometric aperture')
+                        hdu.header['RA'] = (world[0][0], 'RA of aperture center')
+                        hdu.header['DEC'] = (world[0][1], 'Dec of aperture center')
+                        hdu.header['ANGLE'] = (aper.ellipse.angle, 'Angle of elliptical aperture [degs]')
+                        hdu.header['MAJAX'] = (aper.ellipse.width*ic.pixscale, 'Major axis of elliptical aperture [arcsec]')
+                        hdu.header['MINAX'] = (aper.ellipse.height*ic.pixscale, 'Minor axis of elliptical aperture [arcsec]')
+                    elif aper.type == 'Circle':
+                        x0,y0 = aper.ellipse.center
+                        pixel = np.array([[x0, y0]], np.float_)
+                        world = ic.wcs.wcs_pix2world(pixel, 1)
+                        hdu.header['APERTURE']=('Circle','Type of photometric aperture')
+                        hdu.header['RA'] = (world[0][0]/15., 'RA of aperture center [hours]')
+                        hdu.header['DEC'] = (world[0][1], 'Dec of aperture center [degs]')
+                        hdu.header['RADIUS'] = (aper.ellipse.height*ic.pixscale, 'Radius of circular aperture [arcsec]')
+                    elif aper.type == 'Square':
+                        x0,y0 = aper.xy[0]
+                        pixel = np.array([[x0, y0]], np.float_)
+                        world = ic.wcs.wcs_pix2world(pixel, 1)
+                        hdu.header['APERTURE']=('Square','Type of photometric aperture')
+                        hdu.header['RA'] = (world[0][0]/15., 'RA of aperture center [hours]')
+                        hdu.header['DEC'] = (world[0][1], 'Dec of aperture center [degs]')
+                        hdu.header['ANGLE'] = (aper.rect.angle, 'Angle of square aperture')
+                        hdu.header['SIDE'] = (aper.rect.get_height()*ic.pixscale, 'Side of square aperture [arcsec]')
+                    elif aper.type == 'Rectangle':
+                        x0,y0 = aper.xy[0]
+                        pixel = np.array([[x0, y0]], np.float_)
+                        world = ic.wcs.wcs_pix2world(pixel, 1)
+                        hdu.header['APERTURE']=('Rectangle','Type of photometric aperture')
+                        hdu.header['RA'] = (world[0][0]/15., 'RA of aperture center [hours]')
+                        hdu.header['DEC'] = (world[0][1], 'Dec of aperture center [degs]')
+                        hdu.header['WIDTH'] = (aper.rect.get_width()*ic.pixscale, 'Width of rectangle aperture [arcsec]')
+                        hdu.header['HEIGHT'] = (aper.rect.get_height()*ic.pixscale, 'Height of rectangle aperture [arcsec]')
+                        hdu.header['ANGLE'] = (aper.rect.angle, 'Angle of rectangle aperture [degs]')
+                    elif aper.type == 'Polygon':
+                        hdu.header['APERTURE']=('Polygon','Type of photometric aperture')
+                        xy = np.asarray(aper.poly.xy)
+                        world = ic.wcs.wcs_pix2world(xy, 1)
+                        i = 0
+                        for w in world:
+                            hdu.header['RA_PT'+"{:03d}".format(i)] = (w[0]/15.,'RA [hours] of polygon aperture point no {:d}'.format(i))
+                            hdu.header['DECPT'+"{:03d}".format(i)] = (w[1],'Dec [degs] of polygon aperture point no {:d}'.format(i))
+                            i += 1
                 # Add extensions
                 hdu1 = self.addExtension(sc.spectrum.wave,'WAVELENGTH','um',None)
                 hdu2 = self.addExtension(sc.spectrum.flux,'FLUX','Jy',None)
@@ -1576,46 +1615,46 @@ class GUI (QMainWindow):
                 header += "\n# z: {:.8f}".format(self.specCube.redshift)
                 if n >= 0:
                     aper = ic.photApertures[n]
-                if aper.type == 'Ellipse':
-                    x0,y0 = aper.ellipse.center
-                    pixel = np.array([[x0, y0]], np.float_)
-                    world = ic.wcs.wcs_pix2world(pixel, 1)                    
-                    header += '\n# Aperture: Ellipse'
-                    header += '\n# Center: {:.5f} {:.6f}'.format(world[0][0], world[0][1])
-                    header += '\n# Angle: {:.1f} degs'.format(aper.ellipse.angle)
-                    header += '\n# Axes: {:.1f} {:.1f} [arcsec]'.format(aper.ellipse.width*ic.pixscale,aper.ellipse.height*ic.pixscale)
-                elif aper.type == 'Circle':
-                    x0,y0 = aper.ellipse.center
-                    pixel = np.array([[x0, y0]], np.float_)
-                    world = ic.wcs.wcs_pix2world(pixel, 1)                    
-                    header += '\n# Aperture: Circle'
-                    header += '\n# Center: {:.5f} {:.6f}'.format(world[0][0], world[0][1])
-                    header += '\n# Radius: {:.1f} [arcsec]'.format(aper.ellipse.height*ic.pixscale)
-                elif aper.type == 'Square':
-                    x0,y0 = aper.xy[0]
-                    pixel = np.array([[x0, y0]], np.float_)
-                    world = ic.wcs.wcs_pix2world(pixel, 1)
-                    header += '\n# Aperture: Square'
-                    header += '\n# Center: {:.5f} {:.6f}'.format(world[0][0], world[0][1])
-                    header += '\n# Side: {:.1f} [arcsec]'.format(aper.rect.get_height()*ic.pixscale)
-                    header += '\n# Angle: {:.1f} degs'.format(aper.rect.angle)
-                elif aper.type == 'Rectangle':
-                    x0,y0 = aper.xy[0]
-                    pixel = np.array([[x0, y0]], np.float_)
-                    world = ic.wcs.wcs_pix2world(pixel, 1)
-                    header += '\n# Aperture: Rectangle'
-                    header += '\n# Center: {:.5f} {:.6f}'.format(world[0][0], world[0][1])
-                    header += '\n# Height: {:.1f} [arcsec]'.format(aper.rect.get_height()*ic.pixscale)
-                    header += '\n# Width: {:.1f} [arcsec]'.format(aper.rect.get_width()*ic.pixscale)
-                    header += '\n# Angle: {:.1f} degs'.format(aper.rect.angle)
-                elif aper.type == 'Polygon':
-                    header += '\n# Aperture: Polygon'
-                    xy = np.asarray(aper.poly.xy)
-                    world = ic.wcs.wcs_pix2world(xy, 1)
-                    i = 0
-                    for w in world:
-                        header += '\n# Point {:03d}: {:.5f}h {:.6f}d'.format(i,w[0]/15.,w[1])
-                        i += 1
+                    if aper.type == 'Ellipse':
+                        x0,y0 = aper.ellipse.center
+                        pixel = np.array([[x0, y0]], np.float_)
+                        world = ic.wcs.wcs_pix2world(pixel, 1)                    
+                        header += '\n# Aperture: Ellipse'
+                        header += '\n# Center: {:.5f} {:.6f}'.format(world[0][0], world[0][1])
+                        header += '\n# Angle: {:.1f} degs'.format(aper.ellipse.angle)
+                        header += '\n# Axes: {:.1f} {:.1f} [arcsec]'.format(aper.ellipse.width*ic.pixscale,aper.ellipse.height*ic.pixscale)
+                    elif aper.type == 'Circle':
+                        x0,y0 = aper.ellipse.center
+                        pixel = np.array([[x0, y0]], np.float_)
+                        world = ic.wcs.wcs_pix2world(pixel, 1)                    
+                        header += '\n# Aperture: Circle'
+                        header += '\n# Center: {:.5f} {:.6f}'.format(world[0][0], world[0][1])
+                        header += '\n# Radius: {:.1f} [arcsec]'.format(aper.ellipse.height*ic.pixscale)
+                    elif aper.type == 'Square':
+                        x0,y0 = aper.xy[0]
+                        pixel = np.array([[x0, y0]], np.float_)
+                        world = ic.wcs.wcs_pix2world(pixel, 1)
+                        header += '\n# Aperture: Square'
+                        header += '\n# Center: {:.5f} {:.6f}'.format(world[0][0], world[0][1])
+                        header += '\n# Side: {:.1f} [arcsec]'.format(aper.rect.get_height()*ic.pixscale)
+                        header += '\n# Angle: {:.1f} degs'.format(aper.rect.angle)
+                    elif aper.type == 'Rectangle':
+                        x0,y0 = aper.xy[0]
+                        pixel = np.array([[x0, y0]], np.float_)
+                        world = ic.wcs.wcs_pix2world(pixel, 1)
+                        header += '\n# Aperture: Rectangle'
+                        header += '\n# Center: {:.5f} {:.6f}'.format(world[0][0], world[0][1])
+                        header += '\n# Height: {:.1f} [arcsec]'.format(aper.rect.get_height()*ic.pixscale)
+                        header += '\n# Width: {:.1f} [arcsec]'.format(aper.rect.get_width()*ic.pixscale)
+                        header += '\n# Angle: {:.1f} degs'.format(aper.rect.angle)
+                    elif aper.type == 'Polygon':
+                        header += '\n# Aperture: Polygon'
+                        xy = np.asarray(aper.poly.xy)
+                        world = ic.wcs.wcs_pix2world(xy, 1)
+                        i = 0
+                        for w in world:
+                            header += '\n# Point {:03d}: {:.5f}h {:.6f}d'.format(i,w[0]/15.,w[1])
+                            i += 1
                 #
                 w = sc.spectrum.wave
                 f = sc.spectrum.flux
@@ -2297,14 +2336,12 @@ class GUI (QMainWindow):
             if u1 > ylim1: ylim1 = u1
 
         # Slightly higher maximum
-        ylim1 *= 1.05
-        
-        sc.ylimits = (ylim0,ylim1)
+        sc.ylimits = (ylim0,ylim1*1.1)
         sc.updateYlim()
         
         
-if __name__ == '__main__':
-#def main():
+#if __name__ == '__main__':
+def main():
     app = QApplication(sys.argv)
     gui = GUI()
     # Adjust geometry to size of the screen

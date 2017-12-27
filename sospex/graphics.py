@@ -125,7 +125,7 @@ class ImageCanvas(MplCanvas):
     def showImage(self, image):
         
             self.oimage = image.copy()
-            self.image = self.axes.imshow(image, cmap='gist_heat_r',interpolation='none')
+            self.image = self.axes.imshow(image, origin='lower',cmap='gist_heat_r',interpolation='none')
             self.fig.colorbar(self.image, cax=self.cbaxes)
             # Intensity limits
             vmed0=np.nanmedian(image)
@@ -704,12 +704,20 @@ class SpectrumCanvas(MplCanvas):
                 self.exposureLine[0].set_ydata(exp)
                 self.ax3.draw_artist(self.exposureLine[0])
             ylim0,ylim1 = self.axes.get_ylim()
-            if np.nanmax(f) > ylim1:
-                self.axes.set_ylim(ylim0, np.nanmax(f)*1.1)
-                self.axes.draw_artist(self.axes.yaxis)
-            self.fig.canvas.draw_idle()
-            #self.fig.canvas.update()
-            #self.fig.canvas.flush_events()
+            maxf = np.nanmax(f)
+            if uf is not None:
+                umaxf = np.nanmax(uf)
+                if umaxf > maxf: maxf = umaxf
+            ylim1 = maxf
+            self.axes.set_ylim(ylim0, maxf*1.1)
+            self.updateYlim()
+            #if np.nanmax(f) > ylim1:
+            #    self.axes.set_ylim(ylim0, maxf*1.1)
+            #    self.axes.draw_artist(self.axes.yaxis)
+            ## Resize also the uncorrected flux
+            #if uf is not None:
+            #    self.ax4.set_ylim(ylim0, maxf*1.1)
+            #self.fig.canvas.draw_idle()
         except:
             pass
 
