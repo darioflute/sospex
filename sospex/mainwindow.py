@@ -23,8 +23,8 @@ warnings.filterwarnings('ignore')
 from sospex.graphics import  NavigationToolbar
 #from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor
 from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor
-#from sospex.graphics import ImageCanvas, ImageHistoCanvas, SpectrumCanvas
-from graphics import ImageCanvas, ImageHistoCanvas, SpectrumCanvas
+from sospex.graphics import ImageCanvas, ImageHistoCanvas, SpectrumCanvas
+#from graphics import ImageCanvas, ImageHistoCanvas, SpectrumCanvas
 
 
 class UpdateTabs(QObject):
@@ -2366,8 +2366,8 @@ class GUI (QMainWindow):
         sc.updateYlim()
         
         
-if __name__ == '__main__':
-#def main():
+#if __name__ == '__main__':
+def main():
     app = QApplication(sys.argv)
     gui = GUI()
     # Adjust geometry to size of the screen
