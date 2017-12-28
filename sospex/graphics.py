@@ -512,7 +512,9 @@ class SpectrumCanvas(MplCanvas):
         # Add redshift value on the plot
         c = 299792.458  #km/s
         self.zannotation = self.axes.annotate(" cz = {:.1f} km/s".format(c*s.redshift), xy=(-0.05,-0.1), picker=5, xycoords='axes fraction')
-        #self.zannotation.draggable()
+        # Add reference wavelength value on the plot
+        print('ref wav is ',s.l0, type(s.l0))
+        self.lannotation = self.axes.annotate(" $\\lambda_0$ = {:.2f} $\\mu$m".format(s.l0), xy=(-0.05,-0.15), picker=5, xycoords='axes fraction')
                 
         
         if s.instrument == 'FIFI-LS':
@@ -829,6 +831,20 @@ class SpectrumCanvas(MplCanvas):
                         for annotation in self.annotations:
                             annotation.remove()
                         self.zannotation.remove()
+                        self.lannotation.remove()
+                        self.drawSpectrum()
+                        self.fig.canvas.draw_idle()
+                        # Simulate a release to activate the update or redshift in main program
+                        QTest.mouseRelease(self, Qt.LeftButton)
+            if event.artist == self.lannotation:
+                lnew = self.getlDouble(self.spectrum.l0)
+                if lnew is not None:
+                    if lnew != self.spectrum.l0:
+                        self.spectrum.l0 = lnew
+                        for annotation in self.annotations:
+                            annotation.remove()
+                        self.lannotation.remove()
+                        self.zannotation.remove()
                         self.drawSpectrum()
                         self.fig.canvas.draw_idle()
                         # Simulate a release to activate the update or redshift in main program
@@ -859,15 +875,22 @@ class SpectrumCanvas(MplCanvas):
         return True
 
     def getDouble(self,z):
-        znew, okPressed = QInputDialog.getDouble(self, "Redshift","cz:", z, -1000., 30000., 2)
+        znew, okPressed = QInputDialog.getDouble(self, "Redshift","cz:", z, -10000., 50000., 2)
         if okPressed:
             return znew
         else:
             return None
-        
+
+    def getlDouble(self,l):
+        lnew, okPressed = QInputDialog.getDouble(self, "Reference wavelength","lambda:", l, 0., 500., 2)
+        if okPressed:
+            return lnew
+        else:
+            return None
+
 
     def onrelease(self, event):
-        if self.dragged is not None :
+        if self.dragged is not None and self.pick_pos is not None:
             print ('old ', self.dragged.get_position(), ' new ', event.xdata)
             x1 = event.xdata
             x0 = self.pick_pos
@@ -882,12 +905,13 @@ class SpectrumCanvas(MplCanvas):
                 c = 299792458.0  # speed of light in m/s
                 l0 = c/x0 * 1.e-6
             wdiff = abs(l0 - wz)
-            self.spectrum.l0 = w0[(wdiff == wdiff.min())]
+            self.spectrum.l0 = (w0[(wdiff == wdiff.min())])[0]
             print('Reference wavelength is ',self.spectrum.l0)
             self.spectrum.redshift = (1.+self.spectrum.redshift)*(1+z)-1.
             for annotation in self.annotations:
                 annotation.remove()
             self.zannotation.remove()
+            self.lannotation.remove()
             self.drawSpectrum()
             self.fig.canvas.draw_idle()
             self.dragged = None

@@ -23,6 +23,8 @@ warnings.filterwarnings('ignore')
 from sospex.graphics import  NavigationToolbar
 #from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor
 from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor
+#from sospex.graphics import ImageCanvas, ImageHistoCanvas, SpectrumCanvas
+from graphics import ImageCanvas, ImageHistoCanvas, SpectrumCanvas
 
 
 class UpdateTabs(QObject):
@@ -213,7 +215,7 @@ class GUI (QMainWindow):
         
 
     def addSpectrum(self,b):
-        from sospex.graphics import SpectrumCanvas
+        #from sospex.graphics import SpectrumCanvas
         #from graphics import SpectrumCanvas
         ''' Add a tab with an image '''
         t = QWidget()
@@ -253,7 +255,7 @@ class GUI (QMainWindow):
         return t,sc,sid1,sid2
 
     def addImage(self,b):
-        from sospex.graphics import ImageCanvas, ImageHistoCanvas
+        #from sospex.graphics import ImageCanvas, ImageHistoCanvas
         #from graphics import ImageCanvas, ImageHistoCanvas
         ''' Add a tab with an image '''
         t = QWidget()
@@ -540,8 +542,8 @@ class GUI (QMainWindow):
             elif s.instrument == 'FIFI-LS':
                 ufluxAll = np.nansum(s.uflux[:,yy,xx], axis=1)
                 expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
-                sc.updateSpectrum(fluxAll,uf=ufluxAll,exp=expAll)
                 sc.spectrum.uflux = ufluxAll
+                sc.updateSpectrum(fluxAll,uf=ufluxAll,exp=expAll)
         
             
     def onDraw(self,event):
@@ -656,11 +658,35 @@ class GUI (QMainWindow):
                 for annotation in sc.annotations:
                     annotation.remove()
                 sc.zannotation.remove()
+                sc.lannotation.remove()
+                sc.drawSpectrum()
+                sc.fig.canvas.draw_idle()
+            else:
+                pass           
+        if sc.spectrum.l0 != self.specCube.l0:
+            flags = QMessageBox.Yes 
+            flags |= QMessageBox.No
+            question = "Do you want to update the reference wavelength ?"
+            response = QMessageBox.question(self, "Question",
+                                                  question,
+                                                  flags)            
+            if response == QMessageBox.Yes:
+                self.sb.showMessage("Updating the reference wavelength ", 2000)
+                self.specCube.l0 = sc.spectrum.l0
+            elif QMessageBox.No:
+                self.sb.showMessage("Redshift value unchanged ", 2000)
+                sc.spectrum.l0 = self.specCube.l0
+                for annotation in sc.annotations:
+                    annotation.remove()
+                sc.zannotation.remove()
+                sc.lannotation.remove()
                 sc.drawSpectrum()
                 sc.fig.canvas.draw_idle()
             else:
                 pass           
 
+
+            
         # Deselect pan & zoom options on mouse release
         if sc.toolbar._active == "PAN":
             sc.toolbar.pan()
@@ -2340,8 +2366,8 @@ class GUI (QMainWindow):
         sc.updateYlim()
         
         
-#if __name__ == '__main__':
-def main():
+if __name__ == '__main__':
+#def main():
     app = QApplication(sys.argv)
     gui = GUI()
     # Adjust geometry to size of the screen
