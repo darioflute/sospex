@@ -21,7 +21,8 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # Local import
-from sospex.graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
+#from sospex.graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
+from graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
 
 #from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor
 from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor
@@ -2406,8 +2407,8 @@ class GUI (QMainWindow):
         sc.updateYlim()
         
         
-#if __name__ == '__main__':
-def main():
+if __name__ == '__main__':
+#def main():
     app = QApplication(sys.argv)
     gui = GUI()
     # Adjust geometry to size of the screen
