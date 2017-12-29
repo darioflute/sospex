@@ -4,7 +4,8 @@ import numpy as np
 from PyQt5.QtWidgets import (QApplication, QWidget, QMainWindow, QTabWidget, QTabBar,QHBoxLayout,
                              QGroupBox, QVBoxLayout, QSizePolicy, QStatusBar, QSplitter,
                              QToolBar, QAction, QFileDialog,  QTableView, QComboBox, QAbstractItemView,
-                             QToolButton, QMessageBox, QPushButton, QInputDialog, QDialog, QProgressDialog, QLabel)
+                             QToolButton, QMessageBox, QPushButton, QInputDialog, QDialog, QProgressDialog, QLabel,
+                             QCheckBox, QButtonGroup, QAbstractButton)
 from PyQt5.QtGui import QIcon, QStandardItem, QStandardItemModel, QPixmap, QMovie
 from PyQt5.QtCore import Qt, QSize, QTimer, QThread, QObject, pyqtSignal
 
@@ -20,11 +21,10 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # Local import
-from sospex.graphics import  NavigationToolbar
+from sospex.graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
+
 #from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor
 from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor
-from sospex.graphics import ImageCanvas, ImageHistoCanvas, SpectrumCanvas
-#from graphics import ImageCanvas, ImageHistoCanvas, SpectrumCanvas
 
 
 class UpdateTabs(QObject):
@@ -100,6 +100,10 @@ class GUI (QMainWindow):
         self.width = 640
         self.height = 480
 
+        # Default color map for images
+        self.colorMap = 'gist_heat'
+        self.colorMapDirection = '_r'
+        
         # Get the path of the package
         self.path0, file0 = os.path.split(__file__)
         # Define style
@@ -270,6 +274,7 @@ class GUI (QMainWindow):
         # Toolbar
         toolbar = QToolBar()
         toolbar.addAction(self.levelsAction)
+        toolbar.addAction(self.cmapAction)
         toolbar.addAction(self.blinkAction)
         toolbar.addAction(self.contoursAction)
         toolbar.addAction(self.momentAction)
@@ -344,32 +349,32 @@ class GUI (QMainWindow):
                 ap.disconnect()
                 del ic.photApertureSignal[n]
                 del ic.photApertures[n]
-        # Remove tab
-        widget = self.stabs.widget(stab)
-        if widget is not None:
-            widget.deleteLater()
-        self.stabs.removeTab(stab)
-        # Disconnect and remove canvases
-        tab = self.stabi[stab]
-        spec = self.sci[stab]
-        c1 = self.scid1[stab]
-        c2 = self.scid2[stab]
-        spec.mpl_disconnect(c1)
-        spec.mpl_disconnect(c2)
-        self.stabi.remove(tab)
-        self.sci.remove(spec)
-        self.scid1.remove(c1)
-        self.scid2.remove(c2)
-        spec = None
-        # Remove photoAperture
-        del self.photoApertures[n]
-        # Rename aperture tabs
-        if len(self.stabs)> 1:
-            for i in range(1,len(self.stabs)):
-                apname = "Ap{:d}".format(i-1)
-                self.stabs.setTabText(i,apname)
-        # Redraw apertures
-        ic0.fig.canvas.draw_idle()
+            # Remove tab
+            widget = self.stabs.widget(stab)
+            if widget is not None:
+                widget.deleteLater()
+            self.stabs.removeTab(stab)
+            # Disconnect and remove canvases
+            tab = self.stabi[stab]
+            spec = self.sci[stab]
+            c1 = self.scid1[stab]
+            c2 = self.scid2[stab]
+            spec.mpl_disconnect(c1)
+            spec.mpl_disconnect(c2)
+            self.stabi.remove(tab)
+            self.sci.remove(spec)
+            self.scid1.remove(c1)
+            self.scid2.remove(c2)
+            spec = None
+            # Remove photoAperture
+            del self.photoApertures[n]
+            # Rename aperture tabs
+            if len(self.stabs)> 1:
+                for i in range(1,len(self.stabs)):
+                    apname = "Ap{:d}".format(i-1)
+                    self.stabs.setTabText(i,apname)
+            # Redraw apertures
+            ic0.fig.canvas.draw_idle()
 
     def onITabChange(self, itab):
         ''' When tab changes check if latest update of ellipse are implemented '''
@@ -771,6 +776,7 @@ class GUI (QMainWindow):
         self.quitAction = self.createAction(self.path0+'/icons/exit.png','Quit program','Ctrl+q',self.fileQuit)
         self.startAction = self.createAction(self.path0+'/icons/open.png','Load new observation','Ctrl+n',self.newFile)
         self.levelsAction = self.createAction(self.path0+'/icons/levels.png','Adjust image levels','Ctrl+L',self.changeVisibility)
+        self.cmapAction = self.createAction(self.path0+'/icons/rainbow.png','Choose color map','Ctrl+m',self.changeColorMap)
         self.blink = 'off'
         self.blinkAction = self.createAction(self.path0+'/icons/blink.png','Blink between 2 images','Ctrl+B',self.blinkImages)
         self.momentAction = self.createAction(self.path0+'/icons/map.png','Compute moment 0','Ctrl+m',self.zeroMoment)
@@ -1696,13 +1702,13 @@ class GUI (QMainWindow):
                     fmt = delimiter.join(["%10.6e"]*5)
                     with open(outfile, 'wb') as file:
                         file.write(header.encode())
-                        file.write(b'\n"wavelenght","flux","uflux","exposure","atran"\n')
+                        file.write(b'\n"wavelength","flux","uflux","exposure","atran"\n')
                         np.savetxt(file, np.column_stack((w,f,uf,e,a)), fmt=fmt, delimiter=delimiter)
                 else:
                     fmt = delimiter.join(["%10.6e"]*2)
                     with open(outfile, 'wb') as file:
                         file.write(header.encode())
-                        file.write(b'\n"wavelenght","flux"\n')
+                        file.write(b'\n"wavelength","flux"\n')
                         np.savetxt(file, np.column_stack((w,f)), fmt=fmt, delimiter=delimiter)                
             elif file_extension == '.png' or file_extension == '.pdf' or file_extension == '.jpg':
                 sc.fig.savefig(outfile)
@@ -2312,6 +2318,40 @@ class GUI (QMainWindow):
             self.sb.showMessage("First choose a cube (press arrow) ", 1000)
             
 
+    def changeColorMap(self):
+        """ Change a color map for the images """
+
+        self.CMlist = ['gist_heat','gist_earth','gist_gray','afmhot','inferno','ocean','plasma']
+        self.selectCM = cmDialog(self.CMlist, self.colorMap)
+        self.selectCM.list.currentRowChanged.connect(self.updateColorMap)
+        self.selectCM.dirSignal.connect(self.reverseColorMap)
+        self.selectCM.exec_()
+        
+    def updateColorMap(self,newRow):
+        """ Update the color map of the image tabs """
+        
+        newCM = self.CMlist[newRow]
+        if newCM != self.colorMap:
+            self.colorMap = newCM
+            for ic in self.ici:
+                ic.colorMap = self.colorMap
+                ic.showImage(ic.oimage)
+                ic.fig.canvas.draw_idle()
+
+    def reverseColorMap(self, reverse):
+        """ Reverse color map direction """
+
+        if self.colorMapDirection == "":
+            self.colorMapDirection = "_r"
+        else:
+            self.colorMapDirection = ""
+
+        for ic in self.ici:
+            ic.colorMapDirection = self.colorMapDirection
+            ic.showImage(ic.oimage)
+            ic.fig.canvas.draw_idle()
+
+            
     def onSTabChange(self, stab):
         print('Spectral tab changed to ', stab)
 

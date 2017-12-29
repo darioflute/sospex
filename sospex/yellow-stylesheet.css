@@ -123,10 +123,11 @@ QComboBox {
     border-radius: 3px;
     padding: 1px 2px 1px 3px;
     min-width: 32px;
+    background-color: LemonChiffon;
 }
 
 QComboBox:editable {
-    background: white;
+    background: LemonChiffon;
 }
 
 QComboBox:!editable, QComboBox::drop-down:editable {

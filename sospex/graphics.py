@@ -25,7 +25,7 @@ from astropy.wcs.utils import proj_plane_pixel_scales as pixscales
 from PyQt5.QtWidgets import (QApplication, QWidget, QMainWindow, QTabWidget, QHBoxLayout,
                              QGroupBox, QVBoxLayout, QSizePolicy, QStatusBar, QSplitter,
                              QToolBar, QAction, QFileDialog, QInputDialog, QTableView, QComboBox, QAbstractItemView,
-                             QToolButton)
+                             QToolButton,QDialog, QListWidget,QListWidgetItem,QPushButton)
 from PyQt5.QtGui import QIcon, QStandardItem, QStandardItemModel
 from PyQt5.QtCore import Qt, QSize, pyqtSignal
 from PyQt5.QtTest import QTest
@@ -37,7 +37,7 @@ class NavigationToolbar(NavigationToolbar2QT):
         #                  t[0] in ('Home', 'Pan', 'Zoom', 'Save')]
         self.iconDir = os.path.join(os.path.dirname(os.path.abspath(__file__)),"icons")
 
-        icon = QIcon(self.iconDir+'exit.png')
+        #icon = QIcon(self.iconDir+'exit.png')
         #print('path of icons is ', icon)
         self.toolitems = [
             ('Home','Go back to original limits','home','home'),
@@ -47,8 +47,50 @@ class NavigationToolbar(NavigationToolbar2QT):
         self.parent = parent
         super().__init__(canvas,parent)
 
+        
+class cmDialog(QDialog):
 
+    dirSignal = pyqtSignal(str)
+    
+    def __init__(self, cmlist, currentCM, parent=None):
+        super().__init__()
 
+        path0, file0 = os.path.split(__file__)
+        print('path0 is ',path0)
+        self.setWindowTitle('Color Map Selector')
+        layout = QVBoxLayout()
+        self.list = QListWidget(self)
+        self.cmlist = cmlist
+        for cm in cmlist:
+            #item = QListWidgetItem(self.list)
+            #item.setText(cm)
+            #item.setIcon(QIcon(path0+"/icons/"+cm+".png"))
+            item = QListWidgetItem(QIcon(path0+"/icons/"+cm+".png"),cm,self.list)
+            
+        n = cmlist.index(currentCM)
+        self.list.setCurrentRow(n)
+        # Button to reverse color map direction
+        b1 = QPushButton("Reverse", self)
+        b1.clicked.connect(self.reverse)
+        
+        # Button with OK to close dialog
+        b2 = QPushButton("OK",self)
+        b2.clicked.connect(self.end)
+
+        # Layout
+        layout.addWidget(self.list)
+        layout.addWidget(b1)
+        layout.addWidget(b2)
+        self.setLayout(layout)
+
+    def end(self):
+        self.close()
+        
+    def reverse(self):
+        self.dirSignal.emit('color map reversed')
+        
+
+        
 class MplCanvas(FigureCanvas):
     """ Basic matplotlib canvas class """
 
@@ -79,6 +121,9 @@ class ImageCanvas(MplCanvas):
     
     def __init__(self, *args, **kwargs):
         MplCanvas.__init__(self, *args, **kwargs)
+        # Define color map
+        self.colorMap = 'gist_heat'
+        self.colorMapDirection = '_r'
 
             
     def compute_initial_figure(self, image=None, wcs=None, title=None):
@@ -104,6 +149,7 @@ class ImageCanvas(MplCanvas):
             if title != None:
                 self.fig.suptitle(title)
 
+
             # Show image
             self.showImage(image)
             
@@ -120,12 +166,12 @@ class ImageCanvas(MplCanvas):
             # Activate focus
             self.setFocusPolicy(Qt.ClickFocus)
             self.setFocus()
-            
+
 
     def showImage(self, image):
         
             self.oimage = image.copy()
-            self.image = self.axes.imshow(image, origin='lower',cmap='gist_heat_r',interpolation='none')
+            self.image = self.axes.imshow(image, origin='lower',cmap=self.colorMap+self.colorMapDirection,interpolation='none')
             self.fig.colorbar(self.image, cax=self.cbaxes)
             # Intensity limits
             vmed0=np.nanmedian(image)
@@ -513,8 +559,7 @@ class SpectrumCanvas(MplCanvas):
         c = 299792.458  #km/s
         self.zannotation = self.axes.annotate(" cz = {:.1f} km/s".format(c*s.redshift), xy=(-0.05,-0.1), picker=5, xycoords='axes fraction')
         # Add reference wavelength value on the plot
-        print('ref wav is ',s.l0, type(s.l0))
-        self.lannotation = self.axes.annotate(" $\\lambda_0$ = {:.2f} $\\mu$m".format(s.l0), xy=(-0.05,-0.15), picker=5, xycoords='axes fraction')
+        self.lannotation = self.axes.annotate(" $\\lambda_0$ = {:.4f} $\\mu$m".format(s.l0), xy=(-0.05,-0.15), picker=5, xycoords='axes fraction')
                 
         
         if s.instrument == 'FIFI-LS':
