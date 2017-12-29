@@ -11726,9 +11726,7 @@ body {
 div#notebook {
   overflow: visible;
   border-top: none;
-}
-
-@media print {
+}@media print {
   div.cell {
     display: block;
     page-break-inside: avoid;
@@ -11749,7 +11747,7 @@ div#notebook {
 
 <!-- Loading mathjax macro -->
 <!-- Load mathjax -->
-    <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS_HTML"></script>
     <!-- MathJax configuration -->
     <script type="text/x-mathjax-config">
     MathJax.Hub.Config({
@@ -11773,8 +11771,7 @@ div#notebook {
   <div tabindex="-1" id="notebook" class="border-box-sizing">
     <div class="container" id="notebook-container">
 
-<div class="cell border-box-sizing text_cell rendered">
-<div class="prompt input_prompt">
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
@@ -11783,8 +11780,7 @@ div#notebook {
 </div>
 </div>
 </div>
-<div class="cell border-box-sizing text_cell rendered">
-<div class="prompt input_prompt">
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
@@ -11792,8 +11788,7 @@ div#notebook {
 </div>
 </div>
 </div>
-<div class="cell border-box-sizing text_cell rendered">
-<div class="prompt input_prompt">
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
@@ -11805,17 +11800,23 @@ div#notebook {
 </thead>
 <tbody>
 <tr>
-<td style="text-align:center"><img src="../icons/levels.png" alt="New" style="width: 20px;"/></td>
+<td style="text-align:center"><img src="../icons/levels.png" alt="Intensity" style="width: 20px;"/></td>
 <td style="text-align:left">Regulation of the intensity levels.</td>
+</tr>
+<tr>
+<td style="text-align:center"><img src="../icons/rainbow.png" alt="ColorMap" style="width: 20px;"/></td>
+<td style="text-align:left">Change the color map.</td>
 </tr>
 </tbody>
 </table>
-<p>After clicking the icon, the histogram of image levels appears on the bottom of the image.
+<p>After clicking the first icon, the histogram of image levels appears on the bottom of the image.
 It is possible to select a different stretch by clicking and dragging the mouse over the
 intensity interval one wants to display.</p>
 <p>The histogram disappear by clicking the same intensity icon.
 As you can read on the tutorial on contours, the levels used to draw contours on the image are shown as
 vertical bars on the intensity histogram.</p>
+<p>The second icon opens a dialog window with a list of color maps and a button to reverse the color map.
+After doing the selection, press 'OK' to exit the dialog window.</p>
 
 </div>
 </div>
