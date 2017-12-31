@@ -20,16 +20,10 @@ To install the code in your computer, you need first to install the anaconda
 python (https://www.continuum.io/downloads).
 You will have to use the Python 3.x distribution.
 
-Then, install wxpython:
 
-conda install wxpython
-
-You have also to install the conda packages lmfit and wcsaxes:
+You have also to install the conda packages lmfit:
 
 conda install -c astropy lmfit
-
-conda install -c astropy wcsaxes
-
 
 At this point you can install sospex:
 
@@ -46,7 +40,7 @@ Each button has a tooltip help, i.e. hovering over the button will make appear
 a succinct explanation of what the button is supposed to do.
 
 To open a FITS file containing a spectral cube from FIFI-LS, you have to
-press the double arrow icon. This will pop-up a open window to navigate the directory
+press the folder icon. This will pop-up a open window to navigate the directory
 tree and select a file.
 
 To quit the program, click on the icon shaped as an exiting person.
