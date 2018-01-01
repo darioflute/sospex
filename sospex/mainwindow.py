@@ -101,6 +101,9 @@ class GUI (QMainWindow):
         self.width = 640
         self.height = 480
 
+        # Avoid Python deleting object in unpredictable order on exit
+        self.setAttribute(Qt.WA_DeleteOnClose)
+
         # Default color map for images
         self.colorMap = 'gist_heat'
         self.colorMapDirection = '_r'
@@ -2407,8 +2410,8 @@ class GUI (QMainWindow):
         sc.updateYlim()
         
         
-#if __name__ == '__main__':
-def main():
+if __name__ == '__main__':
+#def main():
     app = QApplication(sys.argv)
     gui = GUI()
     # Adjust geometry to size of the screen
