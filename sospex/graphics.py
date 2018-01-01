@@ -557,9 +557,9 @@ class SpectrumCanvas(MplCanvas):
 
         # Add redshift value on the plot
         c = 299792.458  #km/s
-        self.zannotation = self.axes.annotate(" cz = {:.1f} km/s".format(c*s.redshift), xy=(-0.15,-0.1), picker=5, xycoords='axes fraction')
+        self.zannotation = self.axes.annotate(" cz = {:.1f} km/s".format(c*s.redshift), xy=(-0.15,-0.07), picker=5, xycoords='axes fraction')
         # Add reference wavelength value on the plot
-        self.lannotation = self.axes.annotate(" $\\lambda_0$ = {:.4f} $\\mu$m".format(s.l0), xy=(-0.15,-0.15), picker=5, xycoords='axes fraction')
+        self.lannotation = self.axes.annotate(" $\\lambda_0$ = {:.4f} $\\mu$m".format(s.l0), xy=(-0.15,-0.12), picker=5, xycoords='axes fraction')
                 
         
         if s.instrument == 'FIFI-LS':
