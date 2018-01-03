@@ -56,7 +56,6 @@ class cmDialog(QDialog):
         super().__init__()
 
         path0, file0 = os.path.split(__file__)
-        print('path0 is ',path0)
         self.setWindowTitle('Color Map Selector')
         layout = QVBoxLayout()
         self.list = QListWidget(self)
@@ -216,7 +215,7 @@ class ImageHistoCanvas(MplCanvas):
             ima = image.ravel()
             mask = np.isfinite(ima)
             ima = ima[mask]
-            print('image has size', len(ima))
+            #print('image has size', len(ima))
             self.nh = len(ima)
             ima = np.sort(ima)
             s = np.size(ima)
@@ -259,7 +258,6 @@ class ImageHistoCanvas(MplCanvas):
             for l in self.levels:
                 lev = self.axes.axvline(x=l, animated=True, color='cyan')
                 self.lev.append(lev)
-            print('there are ',len(self.lev),' contours')
             #self.span.set_visible(False)
             self.span.active = False
             self.connect()
@@ -331,6 +329,7 @@ class ImageHistoCanvas(MplCanvas):
         if event.button != 1:
             return
         self._ind = self.get_ind_under_point(event)
+        #print('index of point ',self._ind)
 
     def button_release_callback(self, event):
         'whenever a mouse button is released'
@@ -341,7 +340,7 @@ class ImageHistoCanvas(MplCanvas):
         if event.button != 1:
             return
         # Emit a signal to communicate change of contour (for large images)
-        if self.nh > 100000:
+        if self.nh > 100000 and self._ind is not None:
             self.levSignal.emit(self._ind)
         self._ind = None
 
@@ -357,6 +356,9 @@ class ImageHistoCanvas(MplCanvas):
         ind = indseq[0]
         if d[ind] >= self.epsilon:
             ind = None
+        # Check if ind is greater than self.levels
+        if ind >= np.size(levels):
+            ind = np.size(levels)-1
         return ind
 
     def key_press_callback(self, event):
@@ -445,7 +447,7 @@ class ImageHistoCanvas(MplCanvas):
         self.fig.canvas.flush_events()
 
         # Emit a signal to communicate change of contour
-        if self.nh <= 100000:
+        if self.nh <= 100000 and self._ind is not None:
             self.levSignal.emit(self._ind)
 
 

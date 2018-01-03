@@ -1,5 +1,14 @@
 # Compiled python modules.
 *.pyc
 
+# fits images
+*.fits
+
+# old emacs copies
+*.*~
+
+# .ipynb files
+.ipynb*
+
 # spyder project
 .spyderproject

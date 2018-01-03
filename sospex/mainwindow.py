@@ -21,19 +21,16 @@ import warnings
 # To avoid excessive warning messages
 warnings.filterwarnings('ignore')
 
-# Local import
+# Local imports
 from sospex.graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
-#from graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
-
-#from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor
 from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor
+from sospex.specobj import specCube, Spectrum
+from sospex.cloud import cloudImage
 
-#from sospex.specobj import specCube, Spectrum
-from specobj import specCube,Spectrum
-
-#from sospex.cloud import cloudImage
-from cloud import cloudImage
-
+#from graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
+#from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor
+#from specobj import specCube,Spectrum
+#from cloud import cloudImage
 
 class UpdateTabs(QObject):
 #    from sospex.cloud import cloudImage
@@ -2216,6 +2213,15 @@ class GUI (QMainWindow):
             print('indmin, indmax', indmin,indmax)
             sc.regionlimits = [xmin,xmax]
 
+
+            # Remove previous contours on image
+            for ic in self.ici:
+                if ic.contour is not None:
+                    for coll in ic.contour.collections:
+                        coll.remove()
+                    ic.contour = None
+                    ic.changed = True
+            self.contours = 'off'
 
             # Draw region on spectrum (All) and hide span selector
             sc.shadeSpectrum()
