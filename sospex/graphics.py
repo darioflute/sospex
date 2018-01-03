@@ -205,19 +205,6 @@ class ImageHistoCanvas(MplCanvas):
         # Start a span selector
         self.span = SpanSelector(self.axes, self.onSelect, 'horizontal', useblit=True,
                                  rectprops=dict(alpha=0.5, facecolor='LightSalmon'),button=1)
-        # # Test
-        # xlim0,xlim1 = self.axes.get_xlim()
-        # ylim0,ylim1 = self.axes.get_ylim()
-        # bbox_args = dict(boxstyle="round", fc="0.8")
-        # xl = (xlim0+xlim1)*0.5
-        # yl = (ylim0+ylim1)*0.5
-        # a1=self.axes.annotate('Drag me 1', xy=(xl,yl), xycoords='data',
-        #                       #xytext=(.5, .7), textcoords='data',
-        #                       ha="center", va="center",
-        #                       bbox=bbox_args,
-        #                       #arrowprops=arrow_args
-        #                   )
-        # a1.draggable()
 
         
     def compute_initial_figure(self, image=None,xmin=None,xmax=None):
@@ -758,13 +745,6 @@ class SpectrumCanvas(MplCanvas):
             ylim1 = maxf
             self.axes.set_ylim(ylim0, maxf*1.1)
             self.updateYlim()
-            #if np.nanmax(f) > ylim1:
-            #    self.axes.set_ylim(ylim0, maxf*1.1)
-            #    self.axes.draw_artist(self.axes.yaxis)
-            ## Resize also the uncorrected flux
-            #if uf is not None:
-            #    self.ax4.set_ylim(ylim0, maxf*1.1)
-            #self.fig.canvas.draw_idle()
         except:
             pass
 

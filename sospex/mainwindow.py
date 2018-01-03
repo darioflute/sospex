@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (QApplication, QWidget, QMainWindow, QTabWidget, QTa
                              QGroupBox, QVBoxLayout, QSizePolicy, QStatusBar, QSplitter,
                              QToolBar, QAction, QFileDialog,  QTableView, QComboBox, QAbstractItemView,
                              QToolButton, QMessageBox, QPushButton, QInputDialog, QDialog, QProgressDialog, QLabel,
-                             QCheckBox, QButtonGroup, QAbstractButton)
+                             QCheckBox, QButtonGroup, QAbstractButton, QSplashScreen)
 from PyQt5.QtGui import QIcon, QStandardItem, QStandardItemModel, QPixmap, QMovie
 from PyQt5.QtCore import Qt, QSize, QTimer, QThread, QObject, pyqtSignal
 
@@ -15,6 +15,7 @@ from matplotlib.widgets import SpanSelector, PolygonSelector, RectangleSelector,
 from matplotlib.patches import Ellipse, Rectangle, Circle, Ellipse, Polygon
 from matplotlib.path import Path
 
+import time
 
 import warnings
 # To avoid excessive warning messages
@@ -27,9 +28,15 @@ from sospex.graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, S
 #from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor
 from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor
 
+#from sospex.specobj import specCube, Spectrum
+from specobj import specCube,Spectrum
+
+#from sospex.cloud import cloudImage
+from cloud import cloudImage
+
 
 class UpdateTabs(QObject):
-    from sospex.cloud import cloudImage
+#    from sospex.cloud import cloudImage
     newImage = pyqtSignal([cloudImage])
 
 class DownloadThread(QThread):
@@ -49,7 +56,7 @@ class DownloadThread(QThread):
         self.parent = parent
 
     def run(self):
-        from sospex.cloud import cloudImage
+#        from sospex.cloud import cloudImage
 
         downloadedImage = cloudImage(self.lon,self.lat,self.xsize,self.ysize,self.band)
         if downloadedImage.data is not None:
@@ -353,36 +360,36 @@ class GUI (QMainWindow):
                 ap.disconnect()
                 del ic.photApertureSignal[n]
                 del ic.photApertures[n]
-            # Remove tab
-            widget = self.stabs.widget(stab)
-            if widget is not None:
-                widget.deleteLater()
-            self.stabs.removeTab(stab)
-            # Disconnect and remove canvases
-            tab = self.stabi[stab]
-            spec = self.sci[stab]
-            c1 = self.scid1[stab]
-            c2 = self.scid2[stab]
-            spec.mpl_disconnect(c1)
-            spec.mpl_disconnect(c2)
-            self.stabi.remove(tab)
-            self.sci.remove(spec)
-            self.scid1.remove(c1)
-            self.scid2.remove(c2)
-            spec = None
             # Remove photoAperture
             del self.photoApertures[n]
-            # Rename aperture tabs
-            if len(self.stabs)> 1:
-                for i in range(1,len(self.stabs)):
-                    apname = "Ap{:d}".format(i-1)
-                    self.stabs.setTabText(i,apname)
             # Redraw apertures
             ic0.fig.canvas.draw_idle()
-
+        # Remove tab
+        widget = self.stabs.widget(stab)
+        if widget is not None:
+            widget.deleteLater()
+        self.stabs.removeTab(stab)
+        # Disconnect and remove canvases
+        tab = self.stabi[stab]
+        spec = self.sci[stab]
+        c1 = self.scid1[stab]
+        c2 = self.scid2[stab]
+        spec.mpl_disconnect(c1)
+        spec.mpl_disconnect(c2)
+        self.stabi.remove(tab)
+        self.sci.remove(spec)
+        self.scid1.remove(c1)
+        self.scid2.remove(c2)
+        spec = None
+        # Rename aperture tabs
+        if len(self.stabs)> 1:
+            for i in range(1,len(self.stabs)):
+                apname = "Ap{:d}".format(i-1)
+                self.stabs.setTabText(i,apname)
+                
     def onITabChange(self, itab):
         ''' When tab changes check if latest update of ellipse are implemented '''
-        #print("current index is ", itab)
+
         if itab < len(self.ici):
             ima = self.ici[itab]
             if len(self.stabs) > 1:
@@ -408,10 +415,6 @@ class GUI (QMainWindow):
                 self.btab[1] = itab
                 self.blink = 'on'
                 self.timer.start(1000)
-            #if self.contours == 'select':
-            #    self.ctab[1] = itab
-            #    self.contours = 'on'
-            #    self.drawContours()
         
     def onChangeIntensity(self, event):
         itab = self.itabs.currentIndex()
@@ -424,7 +427,6 @@ class GUI (QMainWindow):
     def onHelp(self, event):
         import webbrowser
 
-        #print(self.path0+'/readme.html')
         webbrowser.open('file://'+os.path.abspath(self.path0+'/help/Help.html'))
 
     def onMotion(self, event):
@@ -505,12 +507,13 @@ class GUI (QMainWindow):
         
     def onRemoveAperture(self,event):
         """ Interpret signal from apertures """
+        
         itab = self.itabs.currentIndex()
         istab = self.stabs.currentIndex()
         n = istab-1
         ap = self.ici[itab].photApertures[n]
         apertype = ap.__class__.__name__
-        #print("event ",event, " aperture ",apertype)
+
         if (event == 'rectangle deleted' and apertype == 'RectangleInteractor') or \
            (event == 'ellipse deleted' and apertype == 'EllipseInteractor') \
            or (event == 'polygon deleted' and apertype == 'PolygonInteractor'):
@@ -543,7 +546,8 @@ class GUI (QMainWindow):
             npath = transform.transform_path(path)
             inpoints = s.points[npath.contains_points(s.points)]
             xx,yy = inpoints.T
-        
+            npoints = np.size(xx)
+            
             fluxAll = np.nansum(s.flux[:,yy,xx], axis=1)
             sc.spectrum.flux = fluxAll
             if s.instrument == 'GREAT':
@@ -693,8 +697,6 @@ class GUI (QMainWindow):
                 sc.fig.canvas.draw_idle()
             else:
                 pass           
-
-
             
         # Deselect pan & zoom options on mouse release
         if sc.toolbar._active == "PAN":
@@ -949,7 +951,7 @@ class GUI (QMainWindow):
     def drawNewSpectrum(self, n):        
         """ Add tab with the flux inside the aperture """
 
-        from sospex.specobj import Spectrum
+        #from sospex.specobj import Spectrum
 
         apname = "Ap{:d}".format(n)
         self.spectra.append(apname)
@@ -1219,14 +1221,13 @@ class GUI (QMainWindow):
         lat = np.mean(dec)
         xsize = np.abs(ra[0]-ra[1])*np.cos(lat*np.pi/180.)*60.
         ysize = np.abs(dec[0]-dec[1])*60.
-        #print('center: ',lon,lat,' and size: ',xsize,ysize)        
         print('Band selected is: ',band)
 
 
         if band != 'local':
             # Here call the thread
             self.downloadThread = DownloadThread(lon,lat,xsize,ysize,band,parent=self)
-            self.downloadThread.updateTabs.newImage.connect(self.newImageTab)
+            self.downloadThread.updateTabs.newImage.connect(self.newImage)
             self.downloadThread.sendMessage.connect(self.newImageMessage)
             self.downloadThread.start()
             # and start the spinning messagebox
@@ -1242,14 +1243,11 @@ class GUI (QMainWindow):
             movie.start()
             label.resize(QSize(200,200))
             self.msgbox.setIconPixmap(pixmap)
-            #label.show()        
-            #self.msgbox.setInformativeText("Quering "+band+"...")
             self.msgbox.setText("Quering "+band+" ... ")
-            #self.msgbox.show()
             retval = self.msgbox.exec_()
         else:
             # Download the local fits
-            from sospex.cloud import cloudImage
+#            from sospex.cloud import cloudImage
             downloadedImage = cloudImage(lon,lat,xsize,ysize,band)
             if downloadedImage.data is not None:
                 self.newImageTab(downloadedImage)
@@ -1267,6 +1265,12 @@ class GUI (QMainWindow):
             self.msgbox.done(1)
         except:
             pass
+
+    def newImage(self, downloadedImage):
+        " Save and display "
+        self.saveDownloadedFits(downloadedImage)
+        self.newImageTab(downloadedImage)
+        
 
     def newImageTab(self, downloadedImage):
         """ Open  a tab and display the new image """
@@ -1288,20 +1292,12 @@ class GUI (QMainWindow):
             self.icid1.append(c1)
             self.icid2.append(c2)
             self.icid3.append(c3)
-                
-            ic.compute_initial_figure(image=downloadedImage.data,wcs=downloadedImage.wcs,title=band)
-            # Callback to propagate axes limit changes among images
-            ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
-            ih = self.ihi[self.bands.index(band)]
-            #clim = ic.image.get_clim()
-            #print('clim are ',clim)
-            ih.compute_initial_figure(image=downloadedImage.data)#,xmin=clim[0],xmax=clim[1])
             
-            # Add existing apertures
-            self.addApertures(ic)
+            image = downloadedImage.data
+            wcs = downloadedImage.wcs
 
-            # Add contours
-            self.addContours(ic)
+            ic.compute_initial_figure(image=image,wcs=wcs,title=band)
+            ih.compute_initial_figure(image=image)
             
             # Align with spectral cube
             ic0 = self.ici[0]
@@ -1313,11 +1309,54 @@ class GUI (QMainWindow):
             ic.axes.set_ylim(y)
             ic.changed = True
 
+
+            # Add existing apertures
+            self.addApertures(ic)
+
+            # Add existing contours
+            self.addContours(ic)
+
+            # Callback to propagate axes limit changes to other images
+            ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
+
+
+    def saveDownloadedFits(self, downloadedImage):
+        """ Save the downloaded FITS image """
+
+        from astropy.io import fits
+        
+        # Dialog to save file
+        fd = QFileDialog()
+        fd.setNameFilters(["Fits Files (*.fits)","All Files (*)"])
+        fd.setOptions(QFileDialog.DontUseNativeDialog)
+        fd.setViewMode(QFileDialog.List)
+        fd.selectFile(downloadedImage.source+'.fits')
+        
+        if (fd.exec()):
+            fileName = fd.selectedFiles()
+            outfile = fileName[0]
+
+            # Check the 
+            filename, file_extension = os.path.splitext(outfile)
+            
+            # Primary header
+            image = downloadedImage.data
+            wcs   = downloadedImage.wcs
+            header = wcs.to_header()
+            header.remove('WCSAXES')
+            header['OBJECT'] = (self.specCube.objname, 'Object Name')
+            hdu = fits.PrimaryHDU(image)
+            hdu.header.extend(header)
+            hdul = fits.HDUList([hdu])
+            hdul.writeto(outfile,overwrite=True) # clobber true  allows rewriting
+            hdul.close()
+
+            
     def uploadSpectrum(self, event):
         """
         Upload existing spectrum
         """
-        from sospex.specobj import Spectrum
+        #from sospex.specobj import Spectrum
         
         fd = QFileDialog()
         fd.setNameFilters(["Fits Files (*.fits)","All Files (*)"])
@@ -1561,18 +1600,28 @@ class GUI (QMainWindow):
 
         if (fd.exec()):
             fileName = fd.selectedFiles()
-            #print(fileName[0])
             outfile = fileName[0]
+            filename, file_extension = os.path.splitext(outfile)
 
+            # Tabs
             istab = self.stabs.currentIndex()
             itab = self.itabs.currentIndex()
             sc = self.sci[istab]
             ic = self.ici[itab]
             n = istab-1
 
-            # Check the 
-            filename, file_extension = os.path.splitext(outfile)
-
+            # Compute area of the aperture
+            if n >= 0:
+                aperture = self.ici[0].photApertures[n].aperture
+                path = aperture.get_path()
+                transform = aperture.get_patch_transform()
+                npath = transform.transform_path(path)
+                s = self.specCube
+                inpoints = s.points[npath.contains_points(s.points)]
+                npoints = np.size(inpoints)/2
+                ps = s.pixscale/3600.
+                area = npoints*ps*ps
+            
             if file_extension == '.fits':
                 # Primary header
                 hdu = fits.PrimaryHDU()
@@ -1629,6 +1678,7 @@ class GUI (QMainWindow):
                             hdu.header['RA_PT'+"{:03d}".format(i)] = (w[0]/15.,'RA [hours] of polygon aperture point no {:d}'.format(i))
                             hdu.header['DECPT'+"{:03d}".format(i)] = (w[1],'Dec [degs] of polygon aperture point no {:d}'.format(i))
                             i += 1
+                    hdu.header['AREA'] = (area,'Area aperture in sq. degs.')
                 # Add extensions
                 hdu1 = self.addExtension(sc.spectrum.wave,'WAVELENGTH','um',None)
                 hdu2 = self.addExtension(sc.spectrum.flux,'FLUX','Jy',None)
@@ -1649,6 +1699,7 @@ class GUI (QMainWindow):
                 header = "# Object name: "+self.specCube.objname
                 header += "\n# Instrument: "+self.specCube.instrument
                 header += "\n# z: {:.8f}".format(self.specCube.redshift)
+                header += "\n# Ref. Wav.: {:.8f}".format(self.specCube.l0)
                 if n >= 0:
                     aper = ic.photApertures[n]
                     if aper.type == 'Ellipse':
@@ -1691,6 +1742,7 @@ class GUI (QMainWindow):
                         for w in world:
                             header += '\n# Point {:03d}: {:.5f}h {:.6f}d'.format(i,w[0]/15.,w[1])
                             i += 1
+                    header += '\n# Area aperture: {:.5f} degs'.format(area)
                 #
                 w = sc.spectrum.wave
                 f = sc.spectrum.flux
@@ -2013,7 +2065,7 @@ class GUI (QMainWindow):
     def newFile(self):
         """ Display a new image """
 
-        from sospex.specobj import specCube, Spectrum
+        #from sospex.specobj import specCube, Spectrum
 
         fd = QFileDialog()
         fd.setNameFilters(["Fits Files (*.fits)","All Files (*)"])
@@ -2414,6 +2466,15 @@ if __name__ == '__main__':
 #def main():
     app = QApplication(sys.argv)
     gui = GUI()
+    
+    # Create and display the splash screen
+    #splash_pix = QPixmap(gui.path0+'/icons/sospex.png')
+    #splash = QSplashScreen(splash_pix, Qt.WindowStaysOnTopHint)
+    #splash.setMask(splash_pix.mask())
+    #splash.show()
+    #splash.showMessage("<h1><font color='green'>Welcome to SOSPEX!</font></h1>", Qt.AlignTop | Qt.AlignCenter, Qt.white)
+    #app.processEvents()
+    
     # Adjust geometry to size of the screen
     screen_resolution = app.desktop().screenGeometry()
     width = screen_resolution.width()
@@ -2422,5 +2483,6 @@ if __name__ == '__main__':
     # Add an icon for the application
     app.setWindowIcon(QIcon(gui.path0+'/icons/sospex.png'))
     app.setApplicationName('SOSPEX')
-    app.setApplicationVersion('0.10-beta')
+    app.setApplicationVersion('0.11-beta')
     sys.exit(app.exec_())
+    #splash.finish(gui)

@@ -1,3 +1,5 @@
+SOSPEX - version 0.11-beta
+
 Copyright 2017 -  Dario Fadda.
 
 SOSPEX stands for SOFIA Spectral Explorer.
@@ -5,6 +7,3 @@ SOSPEX stands for SOFIA Spectral Explorer.
 The tool allows one to explore and analyze spectral cubes obtained with the FIFI-LS and GREAT instruments onboard SOFIA.
 
 The software has been developed by Dario Fadda (SOFIA Science Center) and it is publicly avaible under the GNU General Public License v3.0.
-
-
-

@@ -178,13 +178,13 @@ class cloudImage(object):
                 header = hdulist['PRIMARY'].header
                 self.data = hdulist['PRIMARY'].data
                 hdulist.close()
-                print(header)
+                #print(header)
                 self.wcs = WCS(header)#.celestial
-                print('wcs is ',self.wcs)
+                #print('wcs is ',self.wcs)
                 # Check if coordinates are inside the image
-                print('data shape is',np.shape(self.data))
+                #print('data shape is',np.shape(self.data))
                 x,y = self.wcs.all_world2pix(self.lon,self.lat,1)
-                print('x y ',x,y)
+                #print('x y ',x,y)
                 ny,nx = np.shape(self.data)
                 if x >= 0 and x< nx and y >= 0 and y  <= ny:
                     print('Source inside the FITS image')
