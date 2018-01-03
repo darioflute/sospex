@@ -2468,8 +2468,8 @@ class GUI (QMainWindow):
         sc.updateYlim()
         
         
-if __name__ == '__main__':
-#def main():
+#if __name__ == '__main__':
+def main():
     app = QApplication(sys.argv)
     gui = GUI()
     
