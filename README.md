@@ -20,10 +20,6 @@ To install the code in your computer, you need first to install the anaconda
 python (https://www.continuum.io/downloads).
 You will have to use the Python 3.x distribution.
 
-We recommend to install the latest Qt version (5.9) to avoid random crashes on Mac OS-X:
-
-conda install -c haasad pyqt
-
 
 At this point you can install sospex:
 

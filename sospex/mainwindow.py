@@ -117,7 +117,8 @@ class GUI (QMainWindow):
         # Define style
         with open(self.path0+'/yellow-stylesheet.css',"r") as fh:
             self.setStyleSheet(fh.read())
-        
+
+            
         self.initUI()
  
     def initUI(self):
@@ -381,7 +382,7 @@ class GUI (QMainWindow):
         # Rename aperture tabs
         if len(self.stabs)> 1:
             for i in range(1,len(self.stabs)):
-                apname = "Ap{:d}".format(i-1)
+                apname = "{:d}".format(i-1)
                 self.stabs.setTabText(i,apname)
                 
     def onITabChange(self, itab):
@@ -958,7 +959,7 @@ class GUI (QMainWindow):
 
         #from sospex.specobj import Spectrum
 
-        apname = "Ap{:d}".format(n)
+        apname = "{:d}".format(n)
         self.spectra.append(apname)
         t,sc,scid1,scid2 = self.addSpectrum(apname)
         self.stabi.append(t)
@@ -2485,6 +2486,7 @@ class GUI (QMainWindow):
         
 #if __name__ == '__main__':
 def main():
+    #QApplication.setStyle('Fusion')
     app = QApplication(sys.argv)
     gui = GUI()
     
@@ -2504,6 +2506,6 @@ def main():
     # Add an icon for the application
     app.setWindowIcon(QIcon(gui.path0+'/icons/sospex.png'))
     app.setApplicationName('SOSPEX')
-    app.setApplicationVersion('0.12-beta')
+    app.setApplicationVersion('0.13-beta')
     sys.exit(app.exec_())
     #splash.finish(gui)

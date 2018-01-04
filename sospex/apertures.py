@@ -582,7 +582,7 @@ class PolygonInteractor(QObject):
 
         self.ax = ax
         self.type = 'Polygon'
-        self.poly = Polygon(list(verts), animated=True, fill=False, closed=True, color='g')
+        self.poly = Polygon(list(verts), animated=True, fill=False, closed=True, color='lime')
         self.ax.add_patch(self.poly)
         self.canvas = self.poly.figure.canvas
 
