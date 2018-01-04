@@ -499,6 +499,7 @@ class SpectrumCanvas(MplCanvas):
         self.axes.grid(True, which='both')
         self.axes.xaxis.set_major_formatter(ScalarFormatter(useOffset=False))
         self.axes.yaxis.set_major_formatter(ScalarFormatter(useOffset=False))
+        self.axes.fmt_xdata = lambda x: "{:.4f}".format(x)
         
         # Write labels
         self.axes.set_ylabel('Flux [Jy]')
@@ -902,14 +903,14 @@ class SpectrumCanvas(MplCanvas):
         return True
 
     def getDouble(self,z):
-        znew, okPressed = QInputDialog.getDouble(self, "Redshift","cz:", z, -10000., 50000., 2)
+        znew, okPressed = QInputDialog.getDouble(self, "Redshift","cz", z, -10000., 50000., 2)
         if okPressed:
             return znew
         else:
             return None
 
     def getlDouble(self,l):
-        lnew, okPressed = QInputDialog.getDouble(self, "Reference wavelength","lambda:", l, 0., 500., 2)
+        lnew, okPressed = QInputDialog.getDouble(self, "Reference wavelength","Ref. wavelength [um]", l, 0., 500., 4)
         if okPressed:
             return lnew
         else:
