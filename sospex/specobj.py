@@ -13,13 +13,22 @@ class specCube(object):
         header = hdl['PRIMARY'].header
         self.header = header
         self.filename = infile
-        self.instrument = header['INSTRUME']        
-
-        self.obsdate = header['DATE-OBS']
+        try:
+            self.instrument = header['INSTRUME']        
+        except:
+            origin = header['ORIGIN']
+            if origin == 'GILDAS Consortium':
+                self.instrument = 'GREAT'
+        try:
+            self.obsdate = header['DATE-OBS']
+        except:
+            self.obsdate = header['DATE']
         self.wcs = WCS(header).celestial
         self.crpix3 = header['CRPIX3']
         self.crval3 = header['CRVAL3']
         self.cdelt3 = header['CDELT3']
+
+        print('instrument ',self.instrument)
 
         if self.instrument == 'FIFI-LS':        
             self.objname = header['OBJ_NAME']
