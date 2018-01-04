@@ -426,6 +426,12 @@ class GUI (QMainWindow):
 
         webbrowser.open('file://'+os.path.abspath(self.path0+'/help/Help.html'))
 
+
+    def onIssue(self, event):
+        import webbrowser
+        
+        webbrowser.open('https://github.com/darioflute/sospex/issues')
+
     def onMotion(self, event):
         """ Update spectrum when moving an aperture on the image """
 
@@ -776,6 +782,7 @@ class GUI (QMainWindow):
 
         # Actions
         self.helpAction = self.createAction(self.path0+'/icons/help.png','Help','Ctrl+q',self.onHelp)
+        self.issueAction = self.createAction(self.path0+'/icons/issue.png','Report an issue','Ctrl+q',self.onIssue)
         self.quitAction = self.createAction(self.path0+'/icons/exit.png','Quit program','Ctrl+q',self.fileQuit)
         self.startAction = self.createAction(self.path0+'/icons/open.png','Load new observation','Ctrl+n',self.newFile)
         self.levelsAction = self.createAction(self.path0+'/icons/levels.png','Adjust image levels','Ctrl+L',self.changeVisibility)
@@ -806,6 +813,7 @@ class GUI (QMainWindow):
 
         self.tb.addAction(self.startAction)
         self.tb.addAction(self.helpAction)
+        self.tb.addAction(self.issueAction)
         self.tb.addWidget(self.apertureAction)        
         self.tb.addWidget(self.fitAction)        
         self.tb.addAction(self.quitAction)
@@ -901,7 +909,7 @@ class GUI (QMainWindow):
 
         
         fitAction = QComboBox()
-        fitAction.setToolTip("Fit line and continuum\n")
+        fitAction.setToolTip("Fit line and continuum (under construction)\n")
         #apertureAction.SizeAdjustPolicy(QComboBox.AdjustToContentsOnFirstShow)
         fitAction.SizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
         fitAction.setIconSize(QSize(24,24))
@@ -2489,6 +2497,6 @@ def main():
     # Add an icon for the application
     app.setWindowIcon(QIcon(gui.path0+'/icons/sospex.png'))
     app.setApplicationName('SOSPEX')
-    app.setApplicationVersion('0.11-beta')
+    app.setApplicationVersion('0.12-beta')
     sys.exit(app.exec_())
     #splash.finish(gui)
