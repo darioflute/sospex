@@ -1880,10 +1880,9 @@ class GUI (QMainWindow):
     def maskCube(self):
         """ Mask a slice of the cube """
         self.sb.showMessage("Drag your mouse over the spectrum to mask part of the cube or click over to unmask", 2000)
-        
-    def zeroMoment(self):
-        """ Compute and display zero moment of flux """
 
+    def computeZeroMoment(self):
+        
         c = 299792458. # m/s
         w = self.specCube.wave
         dw = [] 
@@ -1899,7 +1898,12 @@ class GUI (QMainWindow):
                 Snu = self.specCube.flux[:,j,i]
                 Slambda = c*(Snu-np.nanmedian(Snu))/(w*w)*1.e6   # [Jy * Hz / um]
                 self.M0[j,i] = np.nansum(Slambda*dw)*1.e-26 # [Jy Hz]  (W/m2 = Jy*Hz*1.e-26)
+        
+    def zeroMoment(self):
+        """ Compute and display zero moment of flux """
 
+        self.computeZeroMoment()
+        
         band = 'M0'
         # Open tab and display the image
         self.bands.append(band)
@@ -2123,7 +2127,7 @@ class GUI (QMainWindow):
                 self.bands = ['Flux','uFlux','Exp']
                 self.spectra = ['All']
             elif self.specCube.instrument == 'GREAT':
-                self.bands = ['Flux']
+                self.bands = ['Flux','M0']
                 self.spectra = ['All']
             else:
                 self.spectra = []
@@ -2159,6 +2163,9 @@ class GUI (QMainWindow):
                     image = np.nanmedian(self.specCube.uflux, axis=0)
                 elif ima == 'Exp':
                     image = np.nansum(self.specCube.exposure, axis=0)
+                elif ima == 'M0':
+                    self.computeZeroMoment()
+                    image = self.M0
                 else:
                     pass
                 print('size of image is ',np.shape(image))

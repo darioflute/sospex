@@ -151,6 +151,7 @@ class ImageCanvas(MplCanvas):
 
             # Show image
             self.showImage(image)
+            self.changed = False
             
             # Add ellipse centered on source
             self.pixscale = pixscales(self.wcs)[0]*3600. # Scale in arcsec
@@ -177,7 +178,6 @@ class ImageCanvas(MplCanvas):
             d0 = np.nanstd(image)
             self.image.set_clim([vmed0-d0,vmed0+4*d0])
 
-            self.changed = False
 
     def updateScale(self,val):
         _cmin = self.s_cmin.val
