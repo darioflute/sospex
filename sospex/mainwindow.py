@@ -1002,8 +1002,6 @@ class GUI (QMainWindow):
         
     def onRectSelect(self, eclick, erelease):
         'eclick and erelease are the press and release events'
-
-        #from sospex.apertures import EllipseInteractor, RectangleInteractor
         
         x1, y1 = eclick.xdata, eclick.ydata
         x2, y2 = erelease.xdata, erelease.ydata
@@ -1018,6 +1016,9 @@ class GUI (QMainWindow):
             w  = np.abs(x2-x1)
             h  = np.abs(y2-y1)
 
+        self.newSelectedAperture(x0,y0,w,h,self.selAp)
+
+    def newSelectedAperture(self, x0, y0, w, h, selAp):
         
         itab = self.itabs.currentIndex()
         ic0 = self.ici[itab]
@@ -1026,7 +1027,7 @@ class GUI (QMainWindow):
 
         
         n = len(self.photoApertures)
-        if self.selAp == 'square':
+        if selAp == 'square':
             self.disactiveSelectors()
             self.RS = None
             # Define square
@@ -1040,7 +1041,7 @@ class GUI (QMainWindow):
                 cidap=square.mySignal.connect(self.onRemoveAperture)
                 ic.photApertureSignal.append(cidap)
                 cidapm=square.modSignal.connect(self.onModifiedAperture)
-        elif self.selAp == 'rectangle':
+        elif selAp == 'rectangle':
             self.disactiveSelectors()
             self.RS = None
             # Define rectangle
@@ -1054,7 +1055,7 @@ class GUI (QMainWindow):
                 cidap=rectangle.mySignal.connect(self.onRemoveAperture)
                 ic.photApertureSignal.append(cidap)
                 cidapm=rectangle.modSignal.connect(self.onModifiedAperture)
-        elif self.selAp == 'circle':
+        elif selAp == 'circle':
             self.disactiveSelectors()
             self.ES = None
             pass
@@ -1069,7 +1070,7 @@ class GUI (QMainWindow):
                 cidap=circle.mySignal.connect(self.onRemoveAperture)
                 ic.photApertureSignal.append(cidap)
                 cidapm=circle.modSignal.connect(self.onModifiedAperture)
-        elif self.selAp == 'ellipse':
+        elif selAp == 'ellipse':
             self.disactiveSelectors()
             self.ES = None
             # Define ellipse
@@ -2211,6 +2212,12 @@ class GUI (QMainWindow):
             self.ES = None
             self.RS = None
 
+            # Add first aperture (size of a pixel)
+            w=h=s.pixscale/2.
+            x0 = np.abs(x[1]-x[0])/2.
+            y0 = np.abs(y[1]-y[0])/2.
+            self.newSelectedAperture(x0,y0,w,h,'square')
+
             
     def onSelect(self, xmin, xmax):
         """ Consider only a slice of the cube when computing the image """
@@ -2484,8 +2491,8 @@ class GUI (QMainWindow):
         sc.updateYlim()
         
         
-#if __name__ == '__main__':
-def main():
+if __name__ == '__main__':
+#def main():
     #QApplication.setStyle('Fusion')
     app = QApplication(sys.argv)
     gui = GUI()
