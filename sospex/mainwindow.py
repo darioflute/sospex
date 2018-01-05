@@ -2169,6 +2169,7 @@ class GUI (QMainWindow):
                 self.icid3.append(c3)
             # Make tab 'Flux' unclosable
             self.itabs.tabBar().setTabButton(0,QTabBar.LeftSide,None)
+            self.itabs.tabBar().setTabButton(0,QTabBar.RightSide,None)
             for s in self.spectra:
                 t,sc,scid1,scid2,scid3,scid4 = self.addSpectrum(s)
                 self.stabi.append(t)
@@ -2179,6 +2180,7 @@ class GUI (QMainWindow):
                 self.scid4.append(scid4)
             # Make tab 'All' unclosable
             self.stabs.tabBar().setTabButton(0,QTabBar.LeftSide,None)
+            self.stabs.tabBar().setTabButton(0,QTabBar.RightSide,None)
                 
             # Compute initial images
             for ima in self.bands:
@@ -2537,6 +2539,6 @@ if __name__ == '__main__':
     # Add an icon for the application
     app.setWindowIcon(QIcon(gui.path0+'/icons/sospex.png'))
     app.setApplicationName('SOSPEX')
-    app.setApplicationVersion('0.14-beta')
+    app.setApplicationVersion('0.15-beta')
     sys.exit(app.exec_())
     #splash.finish(gui)
