@@ -718,12 +718,12 @@ class GUI (QMainWindow):
             sc.toolbar.zoom()
 
     def onKeyPress2(self,event):
-        print(event.key)        
-        if event.key == 'shift':
+        #print(event.key)        
+        if event.key == 'control':
             self.shiftIsHeld = True
 
     def onKeyRelease2(self,event):
-        if event.key == 'shift':
+        if event.key == 'control':
             self.shiftIsHeld = False
 
             
@@ -731,6 +731,7 @@ class GUI (QMainWindow):
         """ Wheel moves right/left the slice defined on spectrum """
 
         sc = self.sci[self.spectra.index('All')]
+        #print('shift: ',self.shiftIsHeld)
         if sc.regionlimits is not None and self.shiftIsHeld:
             eb = event.button
             xmin,xmax = sc.regionlimits
