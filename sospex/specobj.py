@@ -13,13 +13,21 @@ class specCube(object):
         header = hdl['PRIMARY'].header
         self.header = header
         self.filename = infile
-        self.instrument = header['INSTRUME']        
-
-        self.obsdate = header['DATE-OBS']
+        try:
+            self.instrument = header['INSTRUME']        
+        except:
+            origin = header['ORIGIN']
+            if origin == 'GILDAS Consortium':
+                self.instrument = 'GREAT'
+        try:
+            self.obsdate = header['DATE-OBS']
+        except:
+            self.obsdate = header['DATE']
         self.wcs = WCS(header).celestial
         self.crpix3 = header['CRPIX3']
         self.crval3 = header['CRVAL3']
         self.cdelt3 = header['CDELT3']
+
 
         if self.instrument == 'FIFI-LS':        
             self.objname = header['OBJ_NAME']
@@ -40,7 +48,7 @@ class specCube(object):
             self.pixscale,ypixscale = proj_plane_pixel_scales(self.wcs)*3600. # Pixel scale in arcsec
         else:
             print('This is not a standard spectral cube')
-            
+
 
         if self.instrument == 'FIFI-LS':
             self.flux = hdl['FLUX'].data
@@ -58,7 +66,11 @@ class specCube(object):
             self.exposure = hdl['EXPOSURE_MAP'].data
         elif self.instrument == 'GREAT':
             self.n = header['NAXIS3']
-            self.flux = hdl['PRIMARY'].data
+            naxes = header['NAXIS']
+            if naxes == 4:
+                self.flux = (hdl['PRIMARY'].data)[0,:,:,:]
+            else:
+                self.flux = hdl['PRIMARY'].data
             eta_fss=0.97
             eta_mb =0.67
             calib = 971.
@@ -71,8 +83,10 @@ class specCube(object):
             #self.vel = vel
             self.wave = l0 + l0*vel/c
 
+            
         hdl.close()
         # Create a grid of points
+        
         self.nz,self.ny,self.nx = np.shape(self.flux)
         xi = np.arange(self.nx); yi = np.arange(self.ny)
         xi,yi = np.meshgrid(xi,yi)
