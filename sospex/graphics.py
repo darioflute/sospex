@@ -250,6 +250,11 @@ class ImageHistoCanvas(MplCanvas):
                 self.axes.axvline(x=x,color='black',alpha=0.5)
                 x += self.sdev
 
+            # Activate focus
+            self.setFocusPolicy(Qt.ClickFocus)
+            self.setFocus()
+
+
 
     def drawLevels(self):
         """ Draw levels as defined in levels"""
@@ -301,7 +306,7 @@ class ImageHistoCanvas(MplCanvas):
         self.cid_motion = self.fig.canvas.mpl_connect('motion_notify_event', self.motion_notify_callback)
         self.cid_key = self.fig.canvas.mpl_connect('key_press_event', self.key_press_callback)
         self.fig.canvas.draw_idle()
-        self.fig.canvas.setFocus()
+        #self.fig.canvas.setFocus()
 
     def disconnect(self):
         """ When no contours are present """
@@ -311,7 +316,6 @@ class ImageHistoCanvas(MplCanvas):
         self.fig.canvas.mpl_disconnect(self.cid_motion)
         self.fig.canvas.mpl_disconnect(self.cid_key)
         self.fig.canvas.draw_idle()
-        # add something about levels ?
 
 
     def draw_callback(self, event):
@@ -491,7 +495,12 @@ class SpectrumCanvas(MplCanvas):
             self.spectrum = spectrum
             self.instrument = spectrum.instrument
             self.drawSpectrum()
-        
+
+            # Activate focus
+            self.setFocusPolicy(Qt.ClickFocus)
+            self.setFocus()
+
+            
     def drawSpectrum(self):
         
         # Initialize

@@ -22,12 +22,12 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # Local imports
-from sospex.graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
+#from sospex.graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
 from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor
 from sospex.specobj import specCube, Spectrum
 from sospex.cloud import cloudImage
 
-#from graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
+from graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
 #from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor
 #from specobj import specCube,Spectrum
 #from cloud import cloudImage
@@ -263,9 +263,12 @@ class GUI (QMainWindow):
         t.layout.addWidget(foot)
         self.stabs.resize(self.stabs.minimumSizeHint())  # Avoid expansion
         # connect image and histogram to  events
-        sid1=sc.mpl_connect('button_release_event', self.onDraw2)
-        sid2=sc.mpl_connect('scroll_event',self.onWheel2)
-        return t,sc,sid1,sid2
+        scid1=sc.mpl_connect('button_release_event', self.onDraw2)
+        scid2=sc.mpl_connect('scroll_event',self.onWheel2)
+        scid3=sc.mpl_connect('key_press_event',self.onKeyPress2)
+        scid4=sc.mpl_connect('key_release_event',self.onKeyRelease2)
+        self.shiftIsHeld = False
+        return t,sc,scid1,scid2,scid3,scid4
 
     def addImage(self,b):
         #from sospex.graphics import ImageCanvas, ImageHistoCanvas
@@ -372,12 +375,18 @@ class GUI (QMainWindow):
         spec = self.sci[stab]
         c1 = self.scid1[stab]
         c2 = self.scid2[stab]
+        c3 = self.scid3[stab]
+        c4 = self.scid4[stab]
         spec.mpl_disconnect(c1)
         spec.mpl_disconnect(c2)
+        spec.mpl_disconnect(c3)
+        spec.mpl_disconnect(c4)
         self.stabi.remove(tab)
         self.sci.remove(spec)
         self.scid1.remove(c1)
         self.scid2.remove(c2)
+        self.scid3.remove(c3)
+        self.scid4.remove(c4)
         spec = None
         # Rename aperture tabs
         if len(self.stabs)> 1:
@@ -708,14 +717,21 @@ class GUI (QMainWindow):
         if sc.toolbar._active == "ZOOM":
             sc.toolbar.zoom()
 
-            
+    def onKeyPress2(self,event):
+        print(event.key)        
+        if event.key == 'shift':
+            self.shiftIsHeld = True
+
+    def onKeyRelease2(self,event):
+        if event.key == 'shift':
+            self.shiftIsHeld = False
+
             
     def onWheel2(self,event):
         """ Wheel moves right/left the slice defined on spectrum """
 
         sc = self.sci[self.spectra.index('All')]
-        #print(event.button)
-        if sc.regionlimits is not None:
+        if sc.regionlimits is not None and self.shiftIsHeld:
             eb = event.button
             xmin,xmax = sc.regionlimits
             dx = (xmax-xmin) * 0.5
@@ -758,6 +774,8 @@ class GUI (QMainWindow):
         self.sci  = []
         self.scid1 = []
         self.scid2 = []
+        self.scid3 = []
+        self.scid4 = []
         
         # Status bar
         self.sb = QStatusBar()
@@ -961,11 +979,13 @@ class GUI (QMainWindow):
 
         apname = "{:d}".format(n)
         self.spectra.append(apname)
-        t,sc,scid1,scid2 = self.addSpectrum(apname)
+        t,sc,scid1,scid2,scid3,scid4 = self.addSpectrum(apname)
         self.stabi.append(t)
         self.sci.append(sc)
         self.scid1.append(scid1)
         self.scid2.append(scid2)
+        self.scid3.append(scid3)
+        self.scid4.append(scid4)
 
         #print('apertures are: ',len(self.ici[0].photApertures))
         #print('current aperture is: ',n)
@@ -2123,6 +2143,8 @@ class GUI (QMainWindow):
             self.sci  = []
             self.scid1 = []
             self.scid2 = []
+            self.scid3 = []
+            self.scid4 = []
 
             # Open new tabs and display it
             if self.specCube.instrument == 'FIFI-LS':
@@ -2148,11 +2170,13 @@ class GUI (QMainWindow):
             # Make tab 'Flux' unclosable
             self.itabs.tabBar().setTabButton(0,QTabBar.LeftSide,None)
             for s in self.spectra:
-                t,sc,scid1,scid2 = self.addSpectrum(s)
+                t,sc,scid1,scid2,scid3,scid4 = self.addSpectrum(s)
                 self.stabi.append(t)
                 self.sci.append(sc)
                 self.scid1.append(scid1)
                 self.scid2.append(scid2)
+                self.scid3.append(scid3)
+                self.scid4.append(scid4)
             # Make tab 'All' unclosable
             self.stabs.tabBar().setTabButton(0,QTabBar.LeftSide,None)
                 
