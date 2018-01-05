@@ -12,7 +12,7 @@ the wavelength dimension.
 External images can be uploaded and overplotted on the spectral cube.
 
 The code runs with Python 3.
-The code has been developed on Mac OS-X 10.12 (Sierra) and Ubuntu Linux (14.04 LTS, Trusty Tahr).
+The code has been developed on Mac OS-X 10.11.6 (El Capitan) and Ubuntu Linux (14.04 LTS, Trusty Tahr).
 
 ### How to install the program
 
