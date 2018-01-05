@@ -84,13 +84,13 @@ class ContoursThread(QThread):
             self.n -= 1000
             new = self.ic0.axes.contour(self.ic0.oimage, self.level, colors='cyan')
             # Insert new contour in the contour collection
-            print("insert new contour")
+            #print("insert new contour")
             contours = self.ic0.contour.collections
             contours.insert(self.n,new.collections[0])
         else:
             new = self.ic0.axes.contour(self.ic0.oimage, self.level, colors='cyan')
             # Update the collection
-            print("update contour")
+            #print("update contour")
             self.ic0.contour.collections[self.n] = new.collections[0]
         self.updateOtherContours.emit(self.i0)
         
@@ -316,7 +316,7 @@ class GUI (QMainWindow):
         return t,ic,ih,cidh,cid1,cid2,cid3
 
     def removeTab(self, itab):
-        print('Removing image tab no ',itab)
+        #print('Removing image tab no ',itab)
         widget = self.itabs.widget(itab)
         if widget is not None:
             widget.deleteLater()
@@ -346,17 +346,17 @@ class GUI (QMainWindow):
         del self.bands[itab]
         
     def removeSpecTab(self, stab):
-        print('Removing spectral tab no ',stab)
+        #print('Removing spectral tab no ',stab)
         if stab > 0:
             # Once the tab is removed, also the relative aperture should be removed
             itab = self.itabs.currentIndex()
             ic0 = self.ici[itab]
             n = stab-1
-            print('removing aperture ',n,' type: ',ic0.photApertures[n].type)
+            #print('removing aperture ',n,' type: ',ic0.photApertures[n].type)
             for ic in self.ici:
                 ap = ic.photApertures[n]
                 aps = ic.photApertureSignal[n]
-                print('removing the aperture: ',ap.type)
+                #print('removing the aperture: ',ap.type)
                 ap.mySignal.disconnect()
                 ap.disconnect()
                 del ic.photApertureSignal[n]
@@ -1272,7 +1272,7 @@ class GUI (QMainWindow):
         lat = np.mean(dec)
         xsize = np.abs(ra[0]-ra[1])*np.cos(lat*np.pi/180.)*60.
         ysize = np.abs(dec[0]-dec[1])*60.
-        print('Band selected is: ',band)
+        #print('Band selected is: ',band)
 
 
         if band != 'local':
@@ -1326,7 +1326,7 @@ class GUI (QMainWindow):
     def newImageTab(self, downloadedImage):
         """ Open  a tab and display the new image """
 
-        print("Adding the new image ...")
+        #print("Adding the new image ...")
         image = downloadedImage.data
         mask = np.isfinite(image)
         if np.sum(mask) == 0:
@@ -1530,7 +1530,7 @@ class GUI (QMainWindow):
         center =  ((xlimits[0]+xlimits[1])*0.5,(ylimits[0]+ylimits[1])*0.5)
         size = (np.abs((ylimits[1]-ylimits[0]).astype(int)),np.abs((xlimits[1]-xlimits[0]).astype(int)))
         nz,nx,ny = np.shape(self.specCube.flux)
-        print('Size is ',size,nx,ny)
+        #print('Size is ',size,nx,ny)
         if size[0] == nx and size[1] == ny:
             self.sb.showMessage("No cropping needed ", 2000)
         else:
@@ -1579,7 +1579,7 @@ class GUI (QMainWindow):
         self.specCube.flux = self.specCube.flux[xmin:xmax,:,:]
         self.specCube.wave = self.specCube.wave[xmin:xmax]
         nz,ny,nx = np.shape(self.specCube.flux)
-        print('new cube z-size is ',nz)
+        #print('new cube z-size is ',nz)
         self.specCube.n = nz
         # Cut the cubes
         if self.specCube.instrument == 'FIFI-LS':
@@ -1633,8 +1633,9 @@ class GUI (QMainWindow):
             elif file_extension == '.png' or file_extension == '.pdf' or file_extension == '.jpg':
                 ic.fig.savefig(outfile)
             else:
-                print('extension has to be *.fits, *.png, *.jpg or *.pdf')
-                self.sb.showMessage("Extension has to be *.fits, *.png, *.jpg, or *.pdf ", 1000)
+                message = 'extension has to be *.fits, *.png, *.jpg or *.pdf' 
+                print(message)
+                self.sb.showMessage(message, 2000)
 
 
     def saveSpectrum(self):
@@ -1820,8 +1821,9 @@ class GUI (QMainWindow):
             elif file_extension == '.png' or file_extension == '.pdf' or file_extension == '.jpg':
                 sc.fig.savefig(outfile)
             else:
-                self.sb.showMessage("Extension has to be *.fits, *.txt, *.csv, *.png, *.jpg, or *.pdf ", 1000)
-                print('extension has to be *.fits, *.txt, *.csv, *.png, *.jpg, or *.pdf')
+                message = "Extension has to be *.fits, *.txt, *.csv, *.png, *.jpg, or *.pdf "
+                self.sb.showMessage(message, 2000)
+                print(message)
 
     def saveCube(self):
         """ Save a cut/cropped cube """ # TODO
@@ -2044,7 +2046,7 @@ class GUI (QMainWindow):
             levels = ih0.median + np.array([1,2,3,5,10]) * ih0.sdev
             mask = levels < ih0.max
             ih0.levels = list(levels[mask])
-        print('Contour levels are: ',ih0.levels)
+        #print('Contour levels are: ',ih0.levels)
         ic0.contour = ic0.axes.contour(ic0.oimage,ih0.levels,colors='cyan')
         ic0.fig.canvas.draw_idle()
         # Add levels to histogram
@@ -2142,7 +2144,7 @@ class GUI (QMainWindow):
             try:
                 for stab in reversed(range(len(self.sci))):
                     self.removeSpecTab(stab)
-                print('all spectral tabs removed')
+                #print('all spectral tabs removed')
             except:
                 pass
             # Delete pre-existing image tabs
@@ -2151,7 +2153,7 @@ class GUI (QMainWindow):
                 # The removal is done in reversed order to get all the tabs
                 for itab in reversed(range(len(self.ici))):
                     self.removeTab(itab)
-                print('all image tabs removed')
+                #print('all image tabs removed')
             except:
                 pass
 
@@ -2180,7 +2182,7 @@ class GUI (QMainWindow):
             else:
                 self.spectra = []
                 self.bands = []
-            print ("bands are ", self.bands)
+            #print ("bands are ", self.bands)
             self.photoApertures = []
             for b in self.bands:
                 t,ic,ih,h,c1,c2,c3 = self.addImage(b)
@@ -2220,7 +2222,7 @@ class GUI (QMainWindow):
                     image = self.M0
                 else:
                     pass
-                print('size of image is ',np.shape(image))
+                #print('size of image is ',np.shape(image))
                 ic.compute_initial_figure(image=image,wcs=self.specCube.wcs,title=ima)
                 # Callback to propagate axes limit changes among images
                 ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
@@ -2243,7 +2245,7 @@ class GUI (QMainWindow):
                 spec = Spectrum(s.wave, fluxAll, uflux= ufluxAll,
                                 exposure=expAll, atran = s.atran, instrument=s.instrument,
                                 redshift=s.redshift, baryshift = s.baryshift, l0=s.l0)
-            print("Compute initial spectrum")
+            #print("Compute initial spectrum")
             sc.compute_initial_spectrum(spectrum=spec)
             self.specZoomlimits = [sc.xlimits,sc.ylimits]
             sc.cid = sc.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomSpec)
@@ -2488,7 +2490,7 @@ class GUI (QMainWindow):
 
             
     def onSTabChange(self, stab):
-        print('Spectral tab changed to ', stab)
+        #print('Spectral tab changed to ', stab)
 
         # This should activate an aperture (put dots on it and/or change color)
         if len(self.stabs) > 1:
@@ -2563,6 +2565,6 @@ def main():
     # Add an icon for the application
     app.setWindowIcon(QIcon(gui.path0+'/icons/sospex.png'))
     app.setApplicationName('SOSPEX')
-    app.setApplicationVersion('0.15-beta')
+    app.setApplicationVersion('0.16-beta')
     sys.exit(app.exec_())
     #splash.finish(gui)

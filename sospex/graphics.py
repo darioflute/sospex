@@ -903,7 +903,7 @@ class SpectrumCanvas(MplCanvas):
                     self.drawSpectrum()
                     self.fig.canvas.draw_idle()
                 else:
-                    print(text, event.mouseevent.xdata)
+                    #print(text, event.mouseevent.xdata)
                     self.dragged = event.artist
                     self.pick_pos = event.mouseevent.xdata
                 
@@ -928,10 +928,10 @@ class SpectrumCanvas(MplCanvas):
 
     def onrelease(self, event):
         if self.dragged is not None and self.pick_pos is not None:
-            print ('old ', self.dragged.get_position(), ' new ', event.xdata)
+            #print ('old ', self.dragged.get_position(), ' new ', event.xdata)
             x1 = event.xdata
             x0 = self.pick_pos
-            print('pick up position is ',x0)
+            #print('pick up position is ',x0)
             w0 = np.array([self.Lines[line][1]  for  line in self.Lines.keys()])
             wz = w0*(1.+self.spectrum.redshift)
             if self.xunit == 'um':
@@ -943,7 +943,7 @@ class SpectrumCanvas(MplCanvas):
                 l0 = c/x0 * 1.e-6
             wdiff = abs(l0 - wz)
             self.spectrum.l0 = (w0[(wdiff == wdiff.min())])[0]
-            print('Reference wavelength is ',self.spectrum.l0)
+            #print('Reference wavelength is ',self.spectrum.l0)
             self.spectrum.redshift = (1.+self.spectrum.redshift)*(1+z)-1.
             for annotation in self.annotations:
                 annotation.remove()
