@@ -2283,7 +2283,7 @@ class GUI (QMainWindow):
             #print('xmin, xmax ',xmin,xmax)
             indmin, indmax = np.searchsorted(self.specCube.wave, (xmin, xmax))
             indmax = min(len(self.specCube.wave) - 1, indmax)
-            print('indmin, indmax', indmin,indmax)
+            #print('indmin, indmax', indmin,indmax)
             sc.regionlimits = [xmin,xmax]
 
 

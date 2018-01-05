@@ -791,7 +791,7 @@ class SpectrumCanvas(MplCanvas):
 
         # Clean previous region
         try:
-            print("previous shade removed")
+            #print("previous shade removed")
             self.region.remove()
         except:
             pass
