@@ -22,12 +22,12 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # Local imports
-#from sospex.graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
+from sospex.graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
 from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor
 from sospex.specobj import specCube, Spectrum
 from sospex.cloud import cloudImage
 
-from graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
+#from graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
 #from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor
 #from specobj import specCube,Spectrum
 #from cloud import cloudImage
@@ -2239,10 +2239,10 @@ class GUI (QMainWindow):
             self.RS = None
 
             # Add first aperture (size of a pixel)
-            w=h=s.pixscale/2.
-            x0 = np.abs(x[1]-x[0])/2.
-            y0 = np.abs(y[1]-y[0])/2.
-            self.newSelectedAperture(x0,y0,w,h,'square')
+            #w=h=s.pixscale/2.
+            #x0 = np.abs(x[1]-x[0])/2.
+            #y0 = np.abs(y[1]-y[0])/2.
+            #self.newSelectedAperture(x0,y0,w,h,'square')
 
             
     def onSelect(self, xmin, xmax):
@@ -2517,8 +2517,8 @@ class GUI (QMainWindow):
         sc.updateYlim()
         
         
-if __name__ == '__main__':
-#def main():
+#if __name__ == '__main__':
+def main():
     #QApplication.setStyle('Fusion')
     app = QApplication(sys.argv)
     gui = GUI()
