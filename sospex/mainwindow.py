@@ -648,7 +648,7 @@ class GUI (QMainWindow):
             factor=0.9
         elif eb == 'down':
             factor=1.1
-        print('zooming by a factor ',factor)
+        #print('zooming by a factor ',factor)
         new_width = (curr_xlim[1]-curr_xlim[0])*factor*0.5
         new_height= (curr_ylim[1]-curr_ylim[0])*factor*0.5
         x = [curr_x0-new_width,curr_x0+new_width]
@@ -732,28 +732,51 @@ class GUI (QMainWindow):
 
         sc = self.sci[self.spectra.index('All')]
         #print('shift: ',self.shiftIsHeld)
-        if sc.regionlimits is not None and self.shiftIsHeld:
-            eb = event.button
-            xmin,xmax = sc.regionlimits
-            dx = (xmax-xmin) * 0.5
+        if self.shiftIsHeld:
+            if sc.regionlimits is not None:
+                eb = event.button
+                xmin,xmax = sc.regionlimits
+                dx = (xmax-xmin) * 0.5
+                
+                # Increment region limits
+                if eb == 'up':
+                    xmin += dx
+                    xmax += dx
+                elif eb == 'down':
+                    xmin -= dx
+                    xmax -= dx
+                else:
+                    pass        
+                # redraw images
+                self.slice = 'on'
+                if sc.xunit == 'THz':
+                    c = 299792458.0  # speed of light in m/s
+                    xmin, xmax = c/xmax*1.e-6, c/xmin*1.e-6  # Transform in THz as expected by onSelect
+                self.onSelect(xmin,xmax)
+        else:
+            if event.inaxes:
+                # zoom/unzoom 
+                eb = event.button
+                itab = self.itabs.currentIndex()
+                sc = self.sci[itab]
+                curr_xlim = sc.axes.get_xlim()
+                curr_ylim = sc.axes.get_ylim()
+                curr_x0 = (curr_xlim[0]+curr_xlim[1])*0.5
+                curr_y0 = (curr_ylim[0]+curr_ylim[1])*0.5
+                if eb == 'up':
+                    factor=0.9
+                elif eb == 'down':
+                    factor=1.1
+                #print('zooming by a factor ',factor)
+                new_width = (curr_xlim[1]-curr_xlim[0])*factor*0.5
+                new_height= (curr_ylim[1]-curr_ylim[0])*factor*0.5
+                sc.xlimits = (curr_x0-new_width,curr_x0+new_width)
+                sc.updateXlim()
+                sc.ylimits = (curr_y0-new_height,curr_y0+new_height)
+                sc.updateYlim()
+            
 
-            # Increment region limits
-            if eb == 'up':
-                xmin += dx
-                xmax += dx
-            elif eb == 'down':
-                xmin -= dx
-                xmax -= dx
-            else:
-                pass        
-            # redraw images
-            self.slice = 'on'
-            if sc.xunit == 'THz':
-                c = 299792458.0  # speed of light in m/s
-                xmin, xmax = c/xmax*1.e-6, c/xmin*1.e-6  # Transform in THz as expected by onSelect
-            self.onSelect(xmin,xmax)
-
-
+                
     def createSpectralPanel(self):
         """ Panel to plot spectra """
 
@@ -2251,13 +2274,13 @@ class GUI (QMainWindow):
 
         if self.slice == 'on':
             # Find indices of the shaded region
-            print('xmin, xmax ',xmin,xmax)
+            #print('xmin, xmax ',xmin,xmax)
             sc = self.sci[self.spectra.index('All')]
             if sc.xunit == 'THz':
                 c = 299792458.0  # speed of light in m/s
                 xmin, xmax = c/xmax*1.e-6, c/xmin*1.e-6
 
-            print('xmin, xmax ',xmin,xmax)
+            #print('xmin, xmax ',xmin,xmax)
             indmin, indmax = np.searchsorted(self.specCube.wave, (xmin, xmax))
             indmax = min(len(self.specCube.wave) - 1, indmax)
             print('indmin, indmax', indmin,indmax)
@@ -2309,7 +2332,7 @@ class GUI (QMainWindow):
             self.slice = 'off'
         elif self.cutcube == 'on':
             # Find indices of the shaded region
-            print('xmin, xmax ',xmin,xmax)
+            #print('xmin, xmax ',xmin,xmax)
             sc = self.sci[self.spectra.index('All')]
             if sc.xunit == 'THz':
                 c = 299792458.0  # speed of light in m/s
@@ -2319,7 +2342,7 @@ class GUI (QMainWindow):
             sc.span.active = False
             indmin, indmax = np.searchsorted(self.specCube.wave, (xmin, xmax))
             indmax = min(len(self.specCube.wave) - 1, indmax)
-            print('indmin, indmax', indmin,indmax)
+            #print('indmin, indmax', indmin,indmax)
             size = indmax-indmin
             nz,nx,ny = np.shape(self.specCube.flux)
             if size == nx:
