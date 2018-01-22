@@ -612,7 +612,14 @@ class SpectrumCanvas(MplCanvas):
             lns = self.fluxLine + self.linesLine
             lines = [self.fluxLayer,self.linesLayer]
             visibility = [self.displayFlux,self.displayLines]
-
+        elif s.instrument == 'PACS':
+            self.displayUFlux = False
+            self.displayAtran = False
+            self.displayExposure = False # For the moment
+            lns = self.fluxLine + self.linesLine
+            lines = [self.fluxLayer,self.linesLayer]
+            visibility = [self.displayFlux,self.displayLines]
+            
 
                 
         # Prepare legend                

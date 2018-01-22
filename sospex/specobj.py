@@ -23,13 +23,13 @@ class specCube(object):
             self.obsdate = header['DATE-OBS']
         except:
             self.obsdate = header['DATE']
-        self.wcs = WCS(header).celestial
-        self.crpix3 = header['CRPIX3']
-        self.crval3 = header['CRVAL3']
-        self.cdelt3 = header['CDELT3']
 
 
         if self.instrument == 'FIFI-LS':        
+            self.wcs = WCS(header).celestial
+            #self.crpix3 = header['CRPIX3']
+            #self.crval3 = header['CRVAL3']
+            #self.cdelt3 = header['CDELT3']
             self.objname = header['OBJ_NAME']
             self.filegpid = header['FILEGPID']
             self.baryshift = header['BARYSHFT']
@@ -41,16 +41,6 @@ class specCube(object):
                 self.redshift = hdl['REDSHIFT'].data
             except:
                 self.redshift = 0.0
-        elif self.instrument == 'GREAT':
-            self.objname = header['OBJECT']
-            self.redshift = header['VELO-LSR'] # in m/s
-            self.redshift /= c
-            self.pixscale,ypixscale = proj_plane_pixel_scales(self.wcs)*3600. # Pixel scale in arcsec
-        else:
-            print('This is not a standard spectral cube')
-
-
-        if self.instrument == 'FIFI-LS':
             self.flux = hdl['FLUX'].data
             self.eflux = hdl['ERROR'].data
             self.uflux = hdl['UNCORRECTED_FLUX'].data
@@ -65,6 +55,14 @@ class specCube(object):
             self.response = hdl['RESPONSE'].data
             self.exposure = hdl['EXPOSURE_MAP'].data
         elif self.instrument == 'GREAT':
+            self.wcs = WCS(header).celestial
+            self.crpix3 = header['CRPIX3']
+            self.crval3 = header['CRVAL3']
+            self.cdelt3 = header['CDELT3']
+            self.objname = header['OBJECT']
+            self.redshift = header['VELO-LSR'] # in m/s
+            self.redshift /= c
+            self.pixscale,ypixscale = proj_plane_pixel_scales(self.wcs)*3600. # Pixel scale in arcsec
             self.n = header['NAXIS3']
             naxes = header['NAXIS']
             if naxes == 4:
@@ -80,8 +78,33 @@ class specCube(object):
             l0 = c/nu0  # in micron
             vel = -self.cdelt3*self.crpix3+self.cdelt3*np.arange(self.n)+self.crval3
             self.l0 = l0
-            #self.vel = vel
             self.wave = l0 + l0*vel/c
+        elif self.instrument == 'PACS':
+            """ Case of PACS spectral cubes """
+            self.objname = header['OBJECT']
+            self.redshift = header['REDSHFTV']*1000. # in km/s
+            self.redshift /= c
+            self.flux = hdl['image'].data
+            self.exposure = hdl['coverage'].data
+            wave = hdl['wcs-tab'].data
+            self.wave = np.concatenate(wave[0][0])
+            self.l0 = np.nanmedian(self.wave)
+            self.n = len(self.wave)
+            header = hdl['IMAGE'].header
+            hdu = fits.PrimaryHDU(self.flux)
+            hdu.header
+            hdu.header['CRPIX1']=header['CRPIX1']
+            hdu.header['CRPIX2']=header['CRPIX2']
+            hdu.header['CDELT1']=header['CDELT1']
+            hdu.header['CDELT2']=header['CDELT2']
+            hdu.header['CRVAL1']=header['CRVAL1']
+            hdu.header['CRVAL2']=header['CRVAL2']
+            hdu.header['CTYPE1']=header['CTYPE1']
+            hdu.header['CTYPE2']=header['CTYPE2']
+            self.wcs = WCS(hdu.header).celestial
+            self.pixscale,ypixscale = proj_plane_pixel_scales(self.wcs)*3600. # Pixel scale in arcsec
+        else:
+            print('This is not a standard spectral cube')
 
             
         hdl.close()

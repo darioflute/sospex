@@ -22,15 +22,15 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # Local imports
-from sospex.graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
+#from sospex.graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
 from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor
-from sospex.specobj import specCube, Spectrum
-from sospex.cloud import cloudImage
+#from sospex.specobj import specCube, Spectrum
+#from sospex.cloud import cloudImage
 
-#from graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
+from graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
 #from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor
-#from specobj import specCube,Spectrum
-#from cloud import cloudImage
+from specobj import specCube,Spectrum
+from cloud import cloudImage
 
 class UpdateTabs(QObject):
 #    from sospex.cloud import cloudImage
@@ -565,6 +565,9 @@ class GUI (QMainWindow):
             sc.spectrum.flux = fluxAll
             if s.instrument == 'GREAT':
                 sc.updateSpectrum(fluxAll)
+            elif s.instrument == 'PACS':
+                expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
+                sc.updateSpectrum(fluxAll,exp=expAll)
             elif s.instrument == 'FIFI-LS':
                 ufluxAll = np.nansum(s.uflux[:,yy,xx], axis=1)
                 expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
@@ -1032,6 +1035,10 @@ class GUI (QMainWindow):
             spec = Spectrum(s.wave, fluxAll, uflux= ufluxAll,
                             exposure=expAll, atran = s.atran, instrument=s.instrument,
                             redshift=s.redshift, baryshift = s.baryshift, l0=s.l0)
+        elif s.instrument == 'PACS':
+            expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
+            spec = Spectrum(s.wave, fluxAll, exposure=expAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0 )
+            
         sc.compute_initial_spectrum(spectrum=spec)
         self.specZoomlimits = [sc.xlimits,sc.ylimits]
         sc.cid = sc.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomSpec)
@@ -2179,6 +2186,9 @@ class GUI (QMainWindow):
             elif self.specCube.instrument == 'GREAT':
                 self.bands = ['Flux','M0']
                 self.spectra = ['All']
+            elif self.specCube.instrument == 'PACS':
+                self.bands = ['Flux','Exp']
+                self.spectra = ['All']
             else:
                 self.spectra = []
                 self.bands = []
@@ -2239,7 +2249,10 @@ class GUI (QMainWindow):
             s = self.specCube
             if s.instrument == 'GREAT':
                 spec = Spectrum(s.wave, fluxAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0 )
-            elif self.specCube.instrument == 'FIFI-LS':
+            elif s.instrument == 'PACS':
+                expAll = np.nansum(s.exposure, axis=(1,2))
+                spec = Spectrum(s.wave, fluxAll, exposure=expAll,instrument=s.instrument, redshift=s.redshift, l0=s.l0 )
+            elif s.instrument == 'FIFI-LS':
                 ufluxAll = np.nansum(s.uflux, axis=(1,2))
                 expAll = np.nansum(s.exposure, axis=(1,2))
                 spec = Spectrum(s.wave, fluxAll, uflux= ufluxAll,
@@ -2306,6 +2319,8 @@ class GUI (QMainWindow):
             # Update images (flux, uflux, coverage)
             if self.specCube.instrument == 'GREAT':
                 imas = ['Flux']
+            elif self.specCube.instrument == 'PACS':
+                imas = ['Flux','Exp']
             elif self.specCube.instrument == 'FIFI-LS':
                 imas = ['Flux','uFlux','Exp']
             
@@ -2422,6 +2437,9 @@ class GUI (QMainWindow):
         fluxAll = np.nansum(self.specCube.flux[:,y0:y1,x0:x1], axis=(1,2))
         if s.instrument == 'GREAT':
             sc.updateSpectrum(fluxAll)
+        elif s.instrument == 'PACS':
+            expAll = np.nansum(s.exposure[:,y0:y1,x0:x1], axis=(1,2))
+            sc.updateSpectrum(fluxAll,exp=expAll)            
         elif self.specCube.instrument == 'FIFI-LS':
             ufluxAll = np.nansum(s.uflux[:,y0:y1,x0:x1], axis=(1,2))
             expAll = np.nansum(s.exposure[:,y0:y1,x0:x1], axis=(1,2))
@@ -2543,8 +2561,8 @@ class GUI (QMainWindow):
         sc.updateYlim()
         
         
-#if __name__ == '__main__':
-def main():
+if __name__ == '__main__':
+#def main():
     #QApplication.setStyle('Fusion')
     app = QApplication(sys.argv)
     gui = GUI()
