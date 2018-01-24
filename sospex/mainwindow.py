@@ -11,7 +11,7 @@ from PyQt5.QtCore import Qt, QSize, QTimer, QThread, QObject, pyqtSignal
 
 import matplotlib
 matplotlib.use('Qt5Agg')
-from matplotlib.widgets import SpanSelector, PolygonSelector, RectangleSelector, EllipseSelector
+from matplotlib.widgets import SpanSelector, PolygonSelector, RectangleSelector, EllipseSelector, LassoSelector
 from matplotlib.patches import Ellipse, Rectangle, Circle, Ellipse, Polygon
 from matplotlib.path import Path
 
@@ -244,6 +244,7 @@ class GUI (QMainWindow):
         toolbar.addAction(self.cutAction)
         #toolbar.addAction(self.maskAction)
         toolbar.addAction(self.specAction)
+        toolbar.addAction(self.guessAction)
         toolbar.addSeparator()
         toolbar.addSeparator()
         toolbar.addAction(self.hresizeAction)
@@ -293,6 +294,7 @@ class GUI (QMainWindow):
         toolbar.addAction(self.cropAction)
         toolbar.addAction(self.cloudAction)
         toolbar.addAction(self.fitsAction)
+        toolbar.addAction(self.fitregionAction)
         toolbar.addSeparator()
         #toolbar.addWidget(self.apertureAction)        
 
@@ -454,7 +456,7 @@ class GUI (QMainWindow):
         #     return
 
         # Grab aperture in the flux image to compute the new fluxes
-        istab = self.stabs.currentIndex()
+        # istab = self.stabs.currentIndex()
         # if istab > 0:
         #     sc = self.sci[istab]
         #     s = self.specCube
@@ -850,7 +852,8 @@ class GUI (QMainWindow):
 
         self.vresizeAction = self.createAction(self.path0+'/icons/vresize.png','Resize image vertically','Ctrl+V',self.vresizeSpectrum)
         self.hresizeAction = self.createAction(self.path0+'/icons/hresize.png','Resize image horizontally','Ctrl+H',self.hresizeSpectrum)
-        
+        self.guessAction = self.createAction(self.path0+'/icons/guess.png','Draw guess Gaussian fit','Ctrl+g',self.guessLine)
+        self.fitregionAction = self.createAction(self.path0+'/icons/fitregion.png','Fit line inside chosen region','Ctrl+f',self.fitRegion)
         
         # Add buttons to the toolbar
 
@@ -864,6 +867,50 @@ class GUI (QMainWindow):
         self.tb.addWidget(self.fitAction)        
         self.tb.addAction(self.quitAction)
 
+
+
+
+    def guessLine(self):
+        """ Create a first guess for fitting """
+        from moments import SegmentsSelector
+
+        # Similar to defining a region. A Gaussian+offset is defined with two points,
+        # limits of the continuum. Other two points define the Gaussian (top and 1-sigma).
+        # i: adds a Gaussian component
+
+
+        self.sb.showMessage("Drag the mouse over the spectrum to select two continuum regions ", 2000)        
+        
+        #self.continuum = 'one'
+        istab = self.stabs.currentIndex()
+        sc = self.sci[istab]
+        #sc.span.set_active(True)
+
+        self.CS = SegmentsSelector(sc.axes,sc.fig)
+
+        #istab = self.stabs.currentIndex()
+        #sc = self.sci[istab]
+        #self.LS = LassoSelector(sc.axes, self.onLassoSelect, lineprops=dict(linestyle='-',color='g'),
+        #                        useblit=True)#,markerprops=dict(marker='o',mec='g'),vertex_select_radius=15)
+        #self.PS = PolygonSelector(sc.axes, self.onLassoSelect, lineprops=dict(linestyle='-',color='g'),
+        #                        useblit=True,markerprops=dict(marker='o',mec='g'),vertex_select_radius=15)
+
+
+    def onLassoSelect(self,verts):
+        """ Generate a guess structure based on the lasso selection """
+        #path = Path(verts)
+        #print('Select the guess')
+        #self.disactiveSelectors()
+        #self.LS = None
+        
+    def fitRegion(self):
+        """ Fit the guess over a square region """
+
+        # 1) Define region
+        # 2) Create 4 tabs (location, scale, dispersion, offset)
+        # 3) Run fit on pixels inside region
+        # 4) Display fits on 4 planes
+        
     
     def createAction(self,icon,text,shortcut,action):
         act = QAction(QIcon(icon),text, self)
@@ -1146,6 +1193,8 @@ class GUI (QMainWindow):
             self.ES.set_active(False)
         if self.PS is not None:
             self.PS.set_active(False)
+        #if self.LS is not None:
+        #    self.LS.set_active(False)
 
     def chooseFitOption(self, i):
         """ Choosing a fit option """
@@ -2272,10 +2321,12 @@ class GUI (QMainWindow):
             self.blink = 'off'
             self.slice = 'off'
             self.cutcube = 'off'
+            self.continuum = 'off'
             # Selectors
             self.PS = None
             self.ES = None
             self.RS = None
+            self.LS = None
 
             # Add first aperture (size of a pixel)
             #w=h=s.pixscale/2.
@@ -2382,6 +2433,37 @@ class GUI (QMainWindow):
             self.cutcube = 'off'
             sc.tmpRegion.remove()
             sc.fig.canvas.draw_idle()
+        elif self.continuum == 'one' or self.continuum == 'two':
+            print('continuum is ', self.continuum)
+            istab = self.stabs.currentIndex()
+            sc = self.sci[istab]
+            if sc.xunit == 'THz':
+                c = 299792458.0  # speed of light in m/s
+                xmin, xmax = c/xmax*1.e-6, c/xmin*1.e-6
+            sc.shadeRegion([xmin,xmax],'lightcoral')
+            sc.fig.canvas.draw_idle()
+            indmin, indmax = np.searchsorted(self.specCube.wave, (xmin, xmax))
+            indmax = min(len(self.specCube.wave) - 1, indmax)
+            print('indmin, indmax', indmin,indmax)
+            if self.continuum == 'one':
+                self.continuum = 'two'
+                self.contpts = [indmin, indmax]
+            elif self.continuum == 'two':
+                self.contpts.extend([indmin,indmax])
+                # order the list
+                self.contpts.sort()
+                xpts = self.specCube.wave[self.contpts]
+                yc = np.nanmax(sc.spectrum.flux[xpts[1]:xpts[2]])
+                continuum = sc.spectrum.flux[xpts[0]:xpts[1]]
+                continuum.append(sc.spectrum.flux[xpts[2]:xpts[3]])
+                offset = np.nanmedian(continuum)
+                # build the guess structure and display the curve
+                self.guess = Guess(self.contpts,xpts,yc,offset)
+                # span inactive
+                sc.span.active = False
+                self.continuum = 'off'
+                self.contpts = None
+            
             
     def doZoomAll(self, event):
         ''' propagate limit changes to all images '''
