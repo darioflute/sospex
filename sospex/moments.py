@@ -30,7 +30,7 @@ class Guess(object):
 
 class SegmentsSelector:
 
-    def __init__(self, ax, fig, color='b'):
+    def __init__(self, ax, fig, callback, color='b'):
 
         self.x = []
         self.y = []
@@ -39,6 +39,7 @@ class SegmentsSelector:
         self.color = color
         self.fig = fig
         self.ax = ax
+        self.callback = callback
 
         self.__ID1 = self.fig.canvas.mpl_connect('motion_notify_event', self.__motion_notify_callback)
         self.__ID2 = self.fig.canvas.mpl_connect('button_press_event', self.__button_press_callback)
@@ -67,26 +68,40 @@ class SegmentsSelector:
                 if self.line2 == None:  # Segment 1 completed
                     self.x.append(x)
                     self.y.append(y)
-                    self.line1 = Line2D([self.x[0], self.x[1]],
-                                        [self.y[0], self.y[1]],
-                                        marker='o',
-                                        color=self.color)
+                    self.line1.set_data([self.x[0], self.x[1]],
+                                        [self.y[0], self.y[1]])
+                    #self.line1 = Line2D([self.x[0], self.x[1]],
+                    #                    [self.y[0], self.y[1]],
+                    #                    marker='o',
+                    #                    color=self.color)
                     self.fig.canvas.draw_idle()
                     self.fig.canvas.mpl_disconnect(self.__ID1)
                     self.line2 = 'start'
                 else:
                     self.x.append(x)
                     self.y.append(y)
-                    self.line2 = Line2D([self.x[2], self.x[3]],
-                                        [self.y[2], self.y[3]],
-                                        marker='o',
-                                        color=self.color)
+                    # Adjust to the same slope between first and last point
+                    m = (self.y[3]-self.y[0])/(self.x[3]-self.x[0])
+                    for i in range(4):
+                        self.y[i] = self.y[0]+m*(self.x[i]-self.x[0])
+                    self.line1.set_data([self.x[0], self.x[1]],
+                                        [self.y[0], self.y[1]])
+                    self.line2.set_data([self.x[2], self.x[3]],
+                                        [self.y[2], self.y[3]])
+                    #self.line2 = Line2D([self.x[2], self.x[3]],
+                    #                    [self.y[2], self.y[3]],
+                    #                    marker='o',
+                    #                    color=self.color)
                     self.fig.canvas.draw_idle()
                     self.xy = [(i,j) for (i,j) in zip(self.x,self.y)]
                     # Disconnect
                     self.fig.canvas.mpl_disconnect(self.__ID1) 
                     self.fig.canvas.mpl_disconnect(self.__ID2) 
                     self.fig.canvas.mpl_disconnect(self.__ID3) 
+                    # Callback function, pass the vertices
+                    self.callback(self.xy)
+                    # Remove lines
+                    self.remove()
 
                     
             
@@ -123,11 +138,14 @@ class SegmentsSelector:
                     ax.add_line(self.line2)
                     self.fig.canvas.draw()
 
+    def remove(self):
+        """ Remove lines from plot """
+        try:
+            self.ax.lines.remove()
 
 
 
-
-class ContinuumInteractor(QObject):
+class SegmentsInteractor(QObject):
     """
     An continuum editor.
 
@@ -148,11 +166,11 @@ class ContinuumInteractor(QObject):
         self.ax = ax
         self.type = 'Continuum'
 
-        x, y = zip(*self.poly.xy)
+        x, y = zip(*verts)
         self.xy = [(i,j) for (i,j) in zip(x,y)]
         lines = [[(x[0],y[0]),(x[1],y[1])],[(x[2],y[2]),(x[3],y[3])]]
-        lc = mc.LineCollection(lines, colors = 'g', linewidths=2)
-        ax.add_collection(lc)
+        self.lc = mc.LineCollection(lines, colors = 'g', linewidths=2)
+        self.ax.add_collection(self.lc)
 
         self.canvas = ax.figure.canvas
         self.line = Line2D(x, y, marker='o', linestyle=None, linewidth=0., markerfacecolor='g', animated=True)                
@@ -167,7 +185,6 @@ class ContinuumInteractor(QObject):
     def connect(self):
         self.cid_draw = self.canvas.mpl_connect('draw_event', self.draw_callback)
         self.cid_press = self.canvas.mpl_connect('button_press_event', self.button_press_callback)
-        self.cid_key = self.canvas.mpl_connect('key_press_event', self.key_press_callback)
         self.cid_release = self.canvas.mpl_connect('button_release_event', self.button_release_callback)
         self.cid_motion = self.canvas.mpl_connect('motion_notify_event', self.motion_notify_callback)
         self.canvas.draw_idle()
@@ -175,7 +192,6 @@ class ContinuumInteractor(QObject):
     def disconnect(self):
         self.canvas.mpl_disconnect(self.cid_draw)
         self.canvas.mpl_disconnect(self.cid_press)
-        self.canvas.mpl_disconnect(self.cid_key)
         self.canvas.mpl_disconnect(self.cid_release)
         self.canvas.mpl_disconnect(self.cid_motion)
         self.lc.remove()
@@ -192,8 +208,8 @@ class ContinuumInteractor(QObject):
         'this method is called whenever the polygon object is called'
         # only copy the artist props to the line (except visibility)
         vis = self.line.get_visible()
-        Artist.update_from(self.line, lc)
-        self.line.set_visible(vis)  # don't use the poly visibility state
+        Artist.update_from(self.line, self.lc)
+        self.line.set_visible(vis)  
 
     def get_ind_under_point(self, event):
         'get the index of the point if within epsilon tolerance'
@@ -227,49 +243,6 @@ class ContinuumInteractor(QObject):
             return
         self._ind = None
 
-    def key_press_callback(self, event):
-        'whenever a key is pressed'
-        if not event.inaxes:
-            return
-
-        if event.key == 't':
-            self.showverts = not self.showverts
-            self.line.set_visible(self.showverts)
-            if not self.showverts:
-                self._ind = None
-        elif event.key == 'd':
-            ind = self.get_ind_under_point(event)
-            if ind is not None:
-                if len(self.poly.xy) < 5:  # the minimum polygon has 4 points since the 1st is repeated as final
-                    # Delete polygon
-                    #self.disconnect()
-                    #self.poly = None
-                    #self.line = None
-                    self.mySignal.emit('polygon deleted')
-                else:
-                    self.poly.xy = [tup
-                                    for i, tup in enumerate(self.poly.xy)
-                                    if i != ind]
-                    self.line.set_data(zip(*self.poly.xy))
-                    self.mySignal.emit('one vertex of polygon removed')
-
-                
-        elif event.key == 'i':
-            xys = self.poly.get_transform().transform(self.poly.xy)
-            p = event.x, event.y  # display coords
-            for i in range(len(xys) - 1):
-                s0 = xys[i]
-                s1 = xys[i + 1]
-                d = dist_point_to_segment(p, s0, s1)
-                if d <= self.epsilon:
-                    self.poly.xy = np.array(
-                        list(self.poly.xy[:i+1]) +
-                        [(event.xdata, event.ydata)] +
-                        list(self.poly.xy[i+1:]))
-                    self.line.set_data(zip(*self.poly.xy))
-                    break
-
-        self.canvas.draw_idle()
 
     def motion_notify_callback(self, event):
         'on mouse movement'
@@ -282,22 +255,31 @@ class ContinuumInteractor(QObject):
         if event.button != 1:
             return
         x, y = event.xdata, event.ydata
+        self.xy[_ind] = (x,y)
 
-        self.poly.xy[self._ind] = x, y
-        if self._ind == 0:
-            self.poly.xy[-1] = x, y
-        elif self._ind == len(self.poly.xy) - 1:
-            self.poly.xy[0] = x, y
+        
+        # Rebuild line collection
+        x,y = zip(*self.xy)
+        if _ind == 0:
+            m = (y[3]-y[0])/(x[3]-x[0])
+        else:
+            m = (y[_ind]-y[0])/(x[_ind]-x[0])
+
+        for i in range(4):
+            y[i] = y[0]+m*(x[i]-x[0])
+            self.xy[i] = (x[i],y[i])
+
+        
         self.updateMarkers()
 
         self.canvas.restore_region(self.background)
-        self.ax.draw_artist(self.poly)
+        self.ax.draw_artist(self.lc)
         self.ax.draw_artist(self.line)
         self.canvas.update()
         self.canvas.flush_events()
 
         # Notify callback
-        self.modSignal.emit('polygon modified')
+        self.modSignal.emit('continuum guess modified')
 
     def updateMarkers(self):
         self.line.set_data(zip(*self.xy))

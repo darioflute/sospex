@@ -486,6 +486,7 @@ class SpectrumCanvas(MplCanvas):
         self.fig.canvas.mpl_connect('button_release_event', self.onrelease)
         self.dragged = None
         self.region = None
+        self.guessCont = None
         
     def compute_initial_spectrum(self, spectrum=None,xmin=None,xmax=None):
         if spectrum is None:

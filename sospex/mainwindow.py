@@ -886,8 +886,11 @@ class GUI (QMainWindow):
         sc = self.sci[istab]
         #sc.span.set_active(True)
 
-        self.CS = SegmentsSelector(sc.axes,sc.fig)
+        self.CS = SegmentsSelector(sc.axes,sc.fig, self.onContinuumSelect)
 
+        
+
+        
         #istab = self.stabs.currentIndex()
         #sc = self.sci[istab]
         #self.LS = LassoSelector(sc.axes, self.onLassoSelect, lineprops=dict(linestyle='-',color='g'),
@@ -895,6 +898,15 @@ class GUI (QMainWindow):
         #self.PS = PolygonSelector(sc.axes, self.onLassoSelect, lineprops=dict(linestyle='-',color='g'),
         #                        useblit=True,markerprops=dict(marker='o',mec='g'),vertex_select_radius=15)
 
+
+    def onContinuumSelect(self, verts):
+        from moments import SegmentsInteractor
+        
+        istab = self.stabs.currentIndex()
+        sc = self.sci[istab]
+        SI = SegmentsInteractor(sc.axes, verts)
+        sc.guess = SI
+        cidapm=SI.modSignal.connect(self.onModifiedGuess)
 
     def onLassoSelect(self,verts):
         """ Generate a guess structure based on the lasso selection """
