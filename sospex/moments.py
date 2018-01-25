@@ -1,6 +1,8 @@
 import numpy as np
 from PyQt5.QtCore import pyqtSignal,QObject
 from matplotlib.lines import Line2D
+from matplotlib.artist import Artist
+from matplotlib import collections  as mc
 
 class Guess(object):
     """ class to define a spectrum """
@@ -103,8 +105,6 @@ class SegmentsSelector:
                     # Remove lines
                     self.remove()
 
-                    
-            
     def __button_press_callback(self, event):
         if event.inaxes:
             x, y = event.xdata, event.ydata
@@ -141,45 +141,49 @@ class SegmentsSelector:
     def remove(self):
         """ Remove lines from plot """
         try:
-            self.ax.lines.remove()
-
+            self.line1.remove()
+            self.line2.remove()
+        except:
+            print('no lines to remove')
 
 
 class SegmentsInteractor(QObject):
     """
     An continuum editor.
-
+    
     """
-
+    
     showverts = True
-    epsilon = 5  # max pixel distance to count as a vertex hit
+    epsilon = 10  # max pixel distance to count as a vertex hit
     mySignal = pyqtSignal(str)
     modSignal = pyqtSignal(str)
 
     def __init__(self, ax, verts):
         super().__init__()
 
-        from matplotlib.lines import Line2D
-        from matplotlib.artist import Artist
-        from matplotlib import collections  as mc
 
         self.ax = ax
         self.type = 'Continuum'
 
         x, y = zip(*verts)
         self.xy = [(i,j) for (i,j) in zip(x,y)]
-        lines = [[(x[0],y[0]),(x[1],y[1])],[(x[2],y[2]),(x[3],y[3])]]
-        self.lc = mc.LineCollection(lines, colors = 'g', linewidths=2)
-        self.ax.add_collection(self.lc)
+        #lines = [[(x[0],y[0]),(x[1],y[1])],[(x[2],y[2]),(x[3],y[3])]]
+        #self.lc = mc.LineCollection(lines, colors = 'g', linewidths=2)
+        #self.ax.add_collection(self.lc)
+        self.line1 = Line2D(x[:2],y[:2],color='g',linewidth=2, animated = True)
+        self.line2 = Line2D(x[2:],y[2:],color='g',linewidth=2, animated = True)
 
         self.canvas = ax.figure.canvas
         self.line = Line2D(x, y, marker='o', linestyle=None, linewidth=0., markerfacecolor='g', animated=True)                
+        self.ax.add_line(self.line1)
+        self.ax.add_line(self.line2)
         self.ax.add_line(self.line)
 
-        self.cid = self.lc.add_callback(self.lc_changed)
+        #self.cid = self.lc.add_callback(self.lc_changed)
+        self.cid = self.line.add_callback(self.lc_changed)
         self._ind = None  # the active vert
         self.connect()
-        self.aperture = self.continuum
+        #self.aperture = self.continuum
 
 
     def connect(self):
@@ -201,14 +205,15 @@ class SegmentsInteractor(QObject):
         
     def draw_callback(self, event):
         self.background = self.canvas.copy_from_bbox(self.ax.bbox)
-        self.ax.draw_artist(self.lc)
+        self.ax.draw_artist(self.line1)
+        self.ax.draw_artist(self.line2)
         self.ax.draw_artist(self.line)
 
     def lc_changed(self, lc):
         'this method is called whenever the polygon object is called'
         # only copy the artist props to the line (except visibility)
         vis = self.line.get_visible()
-        Artist.update_from(self.line, self.lc)
+        Artist.update_from(self.line, self.line1,self.line2)
         self.line.set_visible(vis)  
 
     def get_ind_under_point(self, event):
@@ -254,26 +259,53 @@ class SegmentsInteractor(QObject):
             return
         if event.button != 1:
             return
-        x, y = event.xdata, event.ydata
-        self.xy[_ind] = (x,y)
 
-        
-        # Rebuild line collection
+        x_, y_ = event.xdata, event.ydata
+
+        # Rebuild line collection and resort points
         x,y = zip(*self.xy)
-        if _ind == 0:
-            m = (y[3]-y[0])/(x[3]-x[0])
-        else:
-            m = (y[_ind]-y[0])/(x[_ind]-x[0])
+        x = np.asarray(x)
+        y = np.asarray(y)
+        # update point
+        y[self._ind] = y_
 
+        if self._ind > 0:
+            if x_ < x[self._ind-1]:
+                dx = x[self._ind-1]-x[self._ind]
+                x[self._ind] = x[self._ind-1]+dx/10.
+            else:
+                x[self._ind] = x_
+        if self._ind < 3:
+            if x_ > x[self._ind+1]:
+                dx = x[self._ind+1]-x[self._ind]
+                x[self._ind] = x[self._ind+1]-dx/10.
+            else:
+                x[self._ind] = x_
+        
+        if self._ind < 2:
+            m = (y[3]-y[self._ind])/(x[3]-x[self._ind])
+        else:
+            m = (y[self._ind]-y[0])/(x[self._ind]-x[0])
+
+            
         for i in range(4):
-            y[i] = y[0]+m*(x[i]-x[0])
+            y[i] = y[self._ind]+m*(x[i]-x[self._ind])
             self.xy[i] = (x[i],y[i])
+#        self.xy = [(i,j) for (i,j) in zip(x,y)]
+
+        # Update lines
+        #lines = [[(x[0],y[0]),(x[1],y[1])],[(x[2],y[2]),(x[3],y[3])]]
+        #self.lc = mc.LineCollection(lines, colors = 'g', linewidths=2)
+        self.line1.set_data(zip(*self.xy[:2]))
+        self.line2.set_data(zip(*self.xy[2:]))
 
         
+        # Update markers
         self.updateMarkers()
 
         self.canvas.restore_region(self.background)
-        self.ax.draw_artist(self.lc)
+        self.ax.draw_artist(self.line1)
+        self.ax.draw_artist(self.line2)
         self.ax.draw_artist(self.line)
         self.canvas.update()
         self.canvas.flush_events()

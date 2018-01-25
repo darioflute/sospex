@@ -908,6 +908,10 @@ class GUI (QMainWindow):
         sc.guess = SI
         cidapm=SI.modSignal.connect(self.onModifiedGuess)
 
+
+    def onModifiedGuess(self):
+        print('modified guess')    
+        
     def onLassoSelect(self,verts):
         """ Generate a guess structure based on the lasso selection """
         #path = Path(verts)
