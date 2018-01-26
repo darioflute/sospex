@@ -23,12 +23,12 @@ warnings.filterwarnings('ignore')
 
 # Local imports
 #from sospex.graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
-from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor
+#from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
 #from sospex.specobj import specCube, Spectrum
 #from sospex.cloud import cloudImage
 
 from graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
-#from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor
+from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
 from specobj import specCube,Spectrum
 from cloud import cloudImage
 
@@ -910,7 +910,8 @@ class GUI (QMainWindow):
 
 
     def onModifiedGuess(self):
-        print('modified guess')    
+        pass
+        #print('modified guess')    
         
     def onLassoSelect(self,verts):
         """ Generate a guess structure based on the lasso selection """
@@ -922,12 +923,48 @@ class GUI (QMainWindow):
     def fitRegion(self):
         """ Fit the guess over a square region """
 
-        # 1) Define region
+        # 0) Check if guess is defined
+        sc = self.sci[1]
+        if sc.guess is None:
+            self.sb.showMessage("Please, define a guess for the continuum", 4000)
+        else:
+            # 1) Define region
+            itab = self.itabs.currentIndex()
+            ic = self.ici[itab]
+            self.RS = RectangleSelector(ic.axes, self.onFitRect,
+                                        drawtype='box', useblit=False,
+                                        button=[1, 3],  # don't use middle button
+                                        minspanx=5, minspany=5,
+                                        spancoords='pixels',
+                                        rectprops = dict(facecolor='g', edgecolor = 'g',alpha=0.8, fill=False),
+                                        lineprops = dict(color='g', linestyle='-',linewidth = 2, alpha=0.8),
+                                        interactive=False)
+            self.RS.to_draw.set_visible(False)
+            self.RS.set_visible(True)
+            #self.RS.state.add('center')
+
+            
+        # 2) Fit baseline based on guess
+        
         # 2) Create 4 tabs (location, scale, dispersion, offset)
         # 3) Run fit on pixels inside region
         # 4) Display fits on 4 planes
         
-    
+
+    def onFitRect(self, eclick, erelease):
+        'eclick and erelease are the press and release events'
+        
+        x1, y1 = eclick.xdata, eclick.ydata
+        x2, y2 = erelease.xdata, erelease.ydata
+
+        x0=x1;y0=y1
+        w  = np.abs(x2-x1)
+        h  = np.abs(y2-y1)
+        # Select pixels inside aperture
+        print('rectangle ',x0,y0,w,h)
+
+        
+        
     def createAction(self,icon,text,shortcut,action):
         act = QAction(QIcon(icon),text, self)
         act.setShortcut(shortcut)
@@ -2247,13 +2284,13 @@ class GUI (QMainWindow):
             # Open new tabs and display it
             if self.specCube.instrument == 'FIFI-LS':
                 self.bands = ['Flux','uFlux','Exp']
-                self.spectra = ['All']
+                self.spectra = ['All','Pix']
             elif self.specCube.instrument == 'GREAT':
                 self.bands = ['Flux','M0']
-                self.spectra = ['All']
+                self.spectra = ['All','Pix']
             elif self.specCube.instrument == 'PACS':
                 self.bands = ['Flux','Exp']
-                self.spectra = ['All']
+                self.spectra = ['All','Pix']
             else:
                 self.spectra = []
                 self.bands = []
@@ -2282,6 +2319,9 @@ class GUI (QMainWindow):
             # Make tab 'All' unclosable
             self.stabs.tabBar().setTabButton(0,QTabBar.LeftSide,None)
             self.stabs.tabBar().setTabButton(0,QTabBar.RightSide,None)
+            # Make tab 'Pix' unclosable
+            self.stabs.tabBar().setTabButton(1,QTabBar.LeftSide,None)
+            self.stabs.tabBar().setTabButton(1,QTabBar.RightSide,None)
                 
             # Compute initial images
             for ima in self.bands:
@@ -2307,7 +2347,7 @@ class GUI (QMainWindow):
                 x = ic.axes.get_xlim()
                 y = ic.axes.get_ylim()
                 self.zoomlimits = [x,y]
-            # Compute initial spectra
+            # Compute initial total spectrum
             spectrum = self.spectra[0]
             sc = self.sci[self.spectra.index(spectrum)]
             fluxAll = np.nansum(self.specCube.flux, axis=(1,2))
@@ -2331,7 +2371,51 @@ class GUI (QMainWindow):
             sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
                                    rectprops=dict(alpha=0.5, facecolor='LightSalmon'))
             sc.span.active = False
-                
+            # Compute initial pixel spectrum
+            spectrum = self.spectra[1]
+            sc = self.sci[self.spectra.index(spectrum)]
+            nz,ny,nx = np.shape(self.specCube.flux)
+            # Add pixel aperture
+
+            ic0 = self.ici[0]
+            x0 = nx // 2
+            y0 = ny // 2
+            r0,d0 = ic0.wcs.all_pix2world(x0,y0,1)
+            ws = ic0.pixscale; hs = ic0.pixscale        
+            n = len(self.photoApertures)
+            # Define pixel aperture
+            data = [r0,d0,ws]
+            self.photoApertures.append(photoAperture(n,'pixel',data))
+            for ic in self.ici:
+                x0,y0 = ic.wcs.all_world2pix(r0,d0,1)
+                w = ws/ic.pixscale; h = hs/ic.pixscale
+                pixel = PixelInteractor(ic.axes, (x0,y0), w)
+                ic.photApertures.append(pixel)
+                cidap=pixel.mySignal.connect(self.onRemoveAperture)
+                ic.photApertureSignal.append(cidap)
+                cidapm=pixel.modSignal.connect(self.onModifiedAperture)
+
+            print('Initialize spectrum')
+            s = self.specCube
+            x0 = nx // 2
+            y0 = ny // 2
+            fluxAll = s.flux[:,y0,x0]
+            if s.instrument == 'GREAT':
+                spec = Spectrum(s.wave, fluxAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0 )
+            elif s.instrument == 'PACS':
+                expAll = s.exposure[:,y0,x0]
+                spec = Spectrum(s.wave, fluxAll, exposure=expAll,instrument=s.instrument, redshift=s.redshift, l0=s.l0 )
+            elif s.instrument == 'FIFI-LS':
+                ufluxAll = s.uflux[:,y0,x0]
+                expAll = s.exposure[:,y0,x0]
+                spec = Spectrum(s.wave, fluxAll, uflux= ufluxAll,
+                                exposure=expAll, atran = s.atran, instrument=s.instrument,
+                                redshift=s.redshift, baryshift = s.baryshift, l0=s.l0)
+            sc.compute_initial_spectrum(spectrum=spec)
+            self.specZoomlimits = [sc.xlimits,sc.ylimits]
+            sc.cid = sc.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomSpec)
+
+            
             # Re-initiate variables
             self.contours = 'off'
             self.blink = 'off'

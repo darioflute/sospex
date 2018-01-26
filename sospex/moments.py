@@ -262,23 +262,24 @@ class SegmentsInteractor(QObject):
 
         x_, y_ = event.xdata, event.ydata
 
-        # Rebuild line collection and resort points
+        # Rebuild line collection
         x,y = zip(*self.xy)
         x = np.asarray(x)
         y = np.asarray(y)
-        # update point
+
+        # Update point
         y[self._ind] = y_
 
         if self._ind > 0:
             if x_ < x[self._ind-1]:
-                dx = x[self._ind-1]-x[self._ind]
-                x[self._ind] = x[self._ind-1]+dx/10.
+                dx = x[self._ind]-x[self._ind-1]
+                x[self._ind] = x[self._ind-1]
             else:
                 x[self._ind] = x_
         if self._ind < 3:
             if x_ > x[self._ind+1]:
                 dx = x[self._ind+1]-x[self._ind]
-                x[self._ind] = x[self._ind+1]-dx/10.
+                x[self._ind] = x[self._ind+1]
             else:
                 x[self._ind] = x_
         
@@ -286,19 +287,14 @@ class SegmentsInteractor(QObject):
             m = (y[3]-y[self._ind])/(x[3]-x[self._ind])
         else:
             m = (y[self._ind]-y[0])/(x[self._ind]-x[0])
-
-            
+    
         for i in range(4):
             y[i] = y[self._ind]+m*(x[i]-x[self._ind])
             self.xy[i] = (x[i],y[i])
-#        self.xy = [(i,j) for (i,j) in zip(x,y)]
 
         # Update lines
-        #lines = [[(x[0],y[0]),(x[1],y[1])],[(x[2],y[2]),(x[3],y[3])]]
-        #self.lc = mc.LineCollection(lines, colors = 'g', linewidths=2)
         self.line1.set_data(zip(*self.xy[:2]))
         self.line2.set_data(zip(*self.xy[2:]))
-
         
         # Update markers
         self.updateMarkers()

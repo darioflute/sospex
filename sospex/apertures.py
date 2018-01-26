@@ -31,6 +31,214 @@ class photoAperture(QObject):
                 self.radius = data[2]
 
 
+class PixelInteractor(QObject):
+
+    epsilon = 5
+    showverts = True
+    mySignal = pyqtSignal(str)
+    modSignal = pyqtSignal(str)
+
+    
+    def __init__(self,ax,corner,width,angle=0.):
+        super().__init__()
+        from matplotlib.patches import Rectangle
+        from matplotlib.lines import Line2D
+        from matplotlib.artist import Artist
+        # To avoid crashing with maximum recursion depth exceeded
+        import sys
+        sys.setrecursionlimit(10000) # 10000 is 10x the default value
+
+        self.type = 'Square'
+        height = width
+        self.ax = ax
+        self.angle  = 0.
+        self.width  = width
+        self.height = width
+        self.rect = Rectangle(corner,width,height,edgecolor='Lime',facecolor='none',angle=angle,fill=False,animated=True)
+        self.ax.add_patch(self.rect)
+        self.canvas = self.rect.figure.canvas
+
+        x,y = self.compute_markers()
+        self.line = Line2D(x, y, marker='s', linestyle=None, linewidth=0., markerfacecolor='g', animated=True)
+        self.ax.add_line(self.line)
+
+        self.cid = self.rect.add_callback(self.rectangle_changed)
+        self._ind = None  # the active point
+
+        self.connect()
+
+        self.aperture = self.rect
+        self.press = None
+        self.lock = None
+
+
+    def compute_markers(self):
+
+        theta0 = self.rect.angle / 180.*np.pi
+        w0 = self.rect.get_width()
+        h0 = self.rect.get_height()
+        x0,y0 = self.rect.get_xy()
+
+        x = [x0+0.5*w0]
+        y = [y0+0.5*h0]
+
+        self.xy = [(x,y)]
+        return x, y
+
+    def connect(self):
+        self.cid_draw = self.canvas.mpl_connect('draw_event', self.draw_callback)
+        self.cid_press = self.canvas.mpl_connect('button_press_event', self.button_press_callback)
+        self.cid_release = self.canvas.mpl_connect('button_release_event', self.button_release_callback)
+        self.cid_motion = self.canvas.mpl_connect('motion_notify_event', self.motion_notify_callback)
+        self.cid_key = self.canvas.mpl_connect('key_press_event', self.key_press_callback)
+        self.canvas.draw_idle()
+
+        
+    def disconnect(self):
+        self.canvas.mpl_disconnect(self.cid_draw)
+        self.canvas.mpl_disconnect(self.cid_press)
+        self.canvas.mpl_disconnect(self.cid_release)
+        self.canvas.mpl_disconnect(self.cid_motion)
+        self.canvas.mpl_disconnect(self.cid_key)
+        self.rect.remove()
+        self.line.remove()
+        self.canvas.draw_idle()
+        self.aperture = None
+        
+    def draw_callback(self, event):
+        self.background = self.canvas.copy_from_bbox(self.ax.bbox)
+        self.ax.draw_artist(self.rect)
+        self.ax.draw_artist(self.line)
+
+
+    def rectangle_changed(self, rect):
+        'this method is called whenever the polygon object is called'
+        # only copy the artist props to the line (except visibility)
+        vis = self.line.get_visible()
+        Artist.update_from(self.line, rect)
+        self.line.set_visible(vis)  
+
+        
+    def get_ind_under_point(self, event):
+        'get the index of the point if within epsilon tolerance'
+
+        x, y = self.xy[0]
+        d = np.hypot(x - event.xdata, y - event.ydata)
+
+        if d >= self.epsilon:
+            ind = None
+        else:
+            ind = 0
+            
+        return ind
+
+    def button_press_callback(self, event):
+        'whenever a mouse button is pressed'
+        if not self.showverts:
+            return
+        if event.inaxes is None:
+            return
+        if event.button != 1:
+            return
+        self._ind = self.get_ind_under_point(event)
+        x0, y0 = self.rect.get_xy()
+        w0, h0 = self.rect.get_width(), self.rect.get_height()
+        theta0 = self.rect.angle/180*np.pi
+        self.press = x0, y0, w0, h0, theta0, event.xdata, event.ydata
+        self.xy0 = self.xy
+
+        self.lock = "pressed"
+
+
+    def key_press_callback(self, event):
+        'whenever a key is pressed'
+        if not event.inaxes:
+            return
+
+        if event.key == 't':
+            self.showverts = not self.showverts
+            self.line.set_visible(self.showverts)
+            if not self.showverts:
+                self._ind = None
+        elif event.key == 'd':
+            self.mySignal.emit('rectangle deleted')
+
+        self.canvas.draw_idle()
+
+    def button_release_callback(self, event):
+        'whenever a mouse button is released'
+        if not self.showverts:
+            return
+        if event.button != 1:
+            return
+        self._ind = None
+        self.press = None
+        self.lock = "released"
+        self.background = None
+        # To get other aperture redrawn
+        self.canvas.draw_idle()
+        
+
+    def motion_notify_callback(self, event):
+        'on mouse movement'
+
+        if not self.showverts:
+            return
+        if self._ind is None:
+            return
+        if event.inaxes is None:
+            return
+        if event.button != 1:
+            return
+
+        x0, y0, w0, h0, theta0, xpress, ypress = self.press
+        self.dx = event.xdata - xpress
+        self.dy = event.ydata - ypress
+        self.update_rectangle()
+
+        # Redraw rectangle and points
+        self.canvas.restore_region(self.background)
+        self.ax.draw_artist(self.rect)
+        self.ax.draw_artist(self.line)
+        self.canvas.update()
+        self.canvas.flush_events()
+
+        # Notify callback
+        self.modSignal.emit('rectangle modified')
+
+    def update_rectangle(self):
+
+        x0, y0, w0, h0, theta0, xpress, ypress = self.press
+        dx, dy = self.dx, self.dy
+        
+        if self.lock == "pressed":
+            self.lock = "move"
+        elif self.lock == "move":
+            if x0+dx < 0:
+                xn = x0
+                dx = 0
+            else:
+                xn = x0+dx
+            if y0+dy < 0:
+                yn = y0
+                dy = 0
+            else:
+                yn = y0+dy
+            self.rect.set_xy((xn,yn))
+            # update line
+            self.xy = [(i+dx,j+dy) for (i,j) in self.xy0]
+            # Redefine line
+            self.line.set_data(zip(*self.xy))
+            self.updateMarkers()
+
+    def updateMarkers(self):
+        # update points
+        x,y = self.compute_markers()
+        self.line.set_data(x,y)
+
+
+
+    
 class EllipseInteractor(QObject):
 
     epsilon = 5
