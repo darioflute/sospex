@@ -179,8 +179,7 @@ class SegmentsInteractor(QObject):
         self.ax.add_line(self.line2)
         self.ax.add_line(self.line)
 
-        #self.cid = self.lc.add_callback(self.lc_changed)
-        self.cid = self.line.add_callback(self.lc_changed)
+        self.cid = self.line1.add_callback(self.si_changed)
         self._ind = None  # the active vert
         self.connect()
         #self.aperture = self.continuum
@@ -191,6 +190,7 @@ class SegmentsInteractor(QObject):
         self.cid_press = self.canvas.mpl_connect('button_press_event', self.button_press_callback)
         self.cid_release = self.canvas.mpl_connect('button_release_event', self.button_release_callback)
         self.cid_motion = self.canvas.mpl_connect('motion_notify_event', self.motion_notify_callback)
+        self.cid_key = self.canvas.mpl_connect('key_press_event', self.key_press_callback)
         self.canvas.draw_idle()
 
     def disconnect(self):
@@ -198,7 +198,9 @@ class SegmentsInteractor(QObject):
         self.canvas.mpl_disconnect(self.cid_press)
         self.canvas.mpl_disconnect(self.cid_release)
         self.canvas.mpl_disconnect(self.cid_motion)
-        self.lc.remove()
+        self.canvas.mpl_disconnect(self.cid_key)
+        self.line1.remove()
+        self.line2.remove()
         self.line.remove()
         self.canvas.draw_idle()
         self.aperture = None
@@ -209,11 +211,11 @@ class SegmentsInteractor(QObject):
         self.ax.draw_artist(self.line2)
         self.ax.draw_artist(self.line)
 
-    def lc_changed(self, lc):
-        'this method is called whenever the polygon object is called'
+    def si_changed(self, line1):
+        'this method is called whenever the line1 object is called'
         # only copy the artist props to the line (except visibility)
         vis = self.line.get_visible()
-        Artist.update_from(self.line, self.line1,self.line2)
+        Artist.update_from(self.line, line1)
         self.line.set_visible(vis)  
 
     def get_ind_under_point(self, event):
@@ -228,6 +230,22 @@ class SegmentsInteractor(QObject):
             ind = None
 
         return ind
+
+    def key_press_callback(self, event):
+        'whenever a key is pressed'
+        if not event.inaxes:
+            return
+
+        if event.key == 't':
+            self.showverts = not self.showverts
+            self.line.set_visible(self.showverts)
+            if not self.showverts:
+                self._ind = None
+        elif event.key == 'd':
+            self.mySignal.emit('segments deleted')
+
+        self.canvas.draw_idle()
+
 
 
     def button_press_callback(self, event):

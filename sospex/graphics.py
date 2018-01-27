@@ -879,7 +879,7 @@ class SpectrumCanvas(MplCanvas):
                         self.lannotation.remove()
                         self.drawSpectrum()
                         self.fig.canvas.draw_idle()
-                        # Simulate a release to activate the update or redshift in main program
+                        # Simulate a release to activate the update of redshift in main program
                         QTest.mouseRelease(self, Qt.LeftButton)
             if event.artist == self.lannotation:
                 lnew = self.getlDouble(self.spectrum.l0)
@@ -892,7 +892,7 @@ class SpectrumCanvas(MplCanvas):
                         self.zannotation.remove()
                         self.drawSpectrum()
                         self.fig.canvas.draw_idle()
-                        # Simulate a release to activate the update or redshift in main program
+                        # Simulate a release to activate the update of ref. wavelength in main program
                         QTest.mouseRelease(self, Qt.LeftButton)
             else:
                 if text == 'Wavelength [$\mu$m]' or text == 'Frequency [THz]':

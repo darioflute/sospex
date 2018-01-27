@@ -48,7 +48,7 @@ class PixelInteractor(QObject):
         import sys
         sys.setrecursionlimit(10000) # 10000 is 10x the default value
 
-        self.type = 'Square'
+        self.type = 'Pixel'
         height = width
         self.ax = ax
         self.angle  = 0.
