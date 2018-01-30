@@ -32,7 +32,7 @@ class Guess(object):
 
 class SegmentsSelector:
 
-    def __init__(self, ax, fig, callback, color='b'):
+    def __init__(self, ax, fig, callback, color='skyblue'):
 
         self.x = []
         self.y = []
@@ -164,17 +164,18 @@ class SegmentsInteractor(QObject):
 
         self.ax = ax
         self.type = 'Continuum'
-
+        color = 'skyblue'
+        
         x, y = zip(*verts)
         self.xy = [(i,j) for (i,j) in zip(x,y)]
         #lines = [[(x[0],y[0]),(x[1],y[1])],[(x[2],y[2]),(x[3],y[3])]]
         #self.lc = mc.LineCollection(lines, colors = 'g', linewidths=2)
         #self.ax.add_collection(self.lc)
-        self.line1 = Line2D(x[:2],y[:2],color='g',linewidth=2, animated = True)
-        self.line2 = Line2D(x[2:],y[2:],color='g',linewidth=2, animated = True)
+        self.line1 = Line2D(x[:2],y[:2],color=color,linewidth=2, animated = True)
+        self.line2 = Line2D(x[2:],y[2:],color=color,linewidth=2, animated = True)
 
         self.canvas = ax.figure.canvas
-        self.line = Line2D(x, y, marker='o', linestyle=None, linewidth=0., markerfacecolor='g', animated=True)                
+        self.line = Line2D(x, y, marker='o', linestyle=None, linewidth=0., markerfacecolor=color, animated=True)                
         self.ax.add_line(self.line1)
         self.ax.add_line(self.line2)
         self.ax.add_line(self.line)
@@ -182,7 +183,6 @@ class SegmentsInteractor(QObject):
         self.cid = self.line1.add_callback(self.si_changed)
         self._ind = None  # the active vert
         self.connect()
-        #self.aperture = self.continuum
 
 
     def connect(self):

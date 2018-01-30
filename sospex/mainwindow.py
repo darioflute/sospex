@@ -2,20 +2,21 @@
 import sys,os
 import numpy as np
 from PyQt5.QtWidgets import (QApplication, QWidget, QMainWindow, QTabWidget, QTabBar,QHBoxLayout,
-                             QGroupBox, QVBoxLayout, QSizePolicy, QStatusBar, QSplitter,
+                             QVBoxLayout, QSizePolicy, QStatusBar, QSplitter,
                              QToolBar, QAction, QFileDialog,  QTableView, QComboBox, QAbstractItemView,
-                             QToolButton, QMessageBox, QPushButton, QInputDialog, QDialog, QProgressDialog, QLabel,
-                             QCheckBox, QButtonGroup, QAbstractButton, QSplashScreen)
+                             QMessageBox, QInputDialog, QDialog, QLabel)
 from PyQt5.QtGui import QIcon, QStandardItem, QStandardItemModel, QPixmap, QMovie
 from PyQt5.QtCore import Qt, QSize, QTimer, QThread, QObject, pyqtSignal
 
 import matplotlib
 matplotlib.use('Qt5Agg')
-from matplotlib.widgets import SpanSelector, PolygonSelector, RectangleSelector, EllipseSelector, LassoSelector
-from matplotlib.patches import Ellipse, Rectangle, Circle, Ellipse, Polygon
-from matplotlib.path import Path
+from matplotlib.widgets import SpanSelector, PolygonSelector, RectangleSelector, EllipseSelector#, LassoSelector
+#from matplotlib.patches import Ellipse, Rectangle, Circle, Polygon
+#from matplotlib.path import Path
 
-import time
+from lmfit import Parameters, minimize
+
+#import time
 
 import warnings
 # To avoid excessive warning messages
@@ -556,7 +557,7 @@ class GUI (QMainWindow):
         """ Update spectrum when aperture is modified """
 
         itab = self.itabs.currentIndex()
-        ic = self.ici[itab]
+        #ic = self.ici[itab]
 
         # Grab aperture in the flux image to compute the new fluxes
         istab = self.stabs.currentIndex()
@@ -572,20 +573,23 @@ class GUI (QMainWindow):
             npath = transform.transform_path(path)
             inpoints = s.points[npath.contains_points(s.points)]
             xx,yy = inpoints.T
-            npoints = np.size(xx)
+            #npoints = np.size(xx)
+
+            if itab == 1: cont = sc.spectrum.continuum[:,yy,xx]
+            else: cont = None
             
             fluxAll = np.nansum(s.flux[:,yy,xx], axis=1)
             sc.spectrum.flux = fluxAll
             if s.instrument == 'GREAT':
-                sc.updateSpectrum(fluxAll)
+                sc.updateSpectrum(f=fluxAll, cont=cont)
             elif s.instrument == 'PACS':
                 expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
-                sc.updateSpectrum(fluxAll,exp=expAll)
+                sc.updateSpectrum(f=fluxAll,exp=expAll, cont=cont)
             elif s.instrument == 'FIFI-LS':
                 ufluxAll = np.nansum(s.uflux[:,yy,xx], axis=1)
                 expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
                 sc.spectrum.uflux = ufluxAll
-                sc.updateSpectrum(fluxAll,uf=ufluxAll,exp=expAll)
+                sc.updateSpectrum(f=fluxAll,uf=ufluxAll,exp=expAll, cont=cont)
         
             
     def onDraw(self,event):
@@ -923,9 +927,9 @@ class GUI (QMainWindow):
 
         # Create momenta (0,1,2) and continuum (should be value of continuum at reference wavelength at given redshift)
         s = self.specCube
-        self.continuum = np.zeros((2,s.ny,s.nx)) # Fit of continuum
-        self.Cmask = np.zeros((s.nz,s.ny,s.nx)) # Spectral cube mask (for fitting the continuum)
-        self.Mmask = np.zeros((s.nz,s.ny,s.nx)) # Spectral cube mask (for computing the momenta)
+        self.continuum = np.zeros((s.nz,s.ny,s.nx)) # Fit of continuum
+        self.Cmask = np.zeros((s.nz,s.ny,s.nx), dtype=bool) # Spectral cube mask (for fitting the continuum)
+        self.Mmask = np.zeros((s.nz,s.ny,s.nx), dtype=bool) # Spectral cube mask (for computing the momenta)
         self.C0 = np.zeros((s.ny,s.nx)) # Continuum at ref. wavelength
         self.M0 = np.zeros((s.ny,s.nx)) # 0th moment
         self.M1 = np.zeros((s.ny,s.nx)) # 1st moment
@@ -1033,7 +1037,7 @@ class GUI (QMainWindow):
             #self.RS.state.add('center')
             # 2) Untoggle pixel marker
 
-            
+
             
         # 2) Fit baseline based on guess
         
@@ -1061,35 +1065,148 @@ class GUI (QMainWindow):
             ra2,dec2 = ic.wcs.all_pix2world(x2,y2,2)
             x1,y1 = ic0.wcs.all_world2pix(ra1,dec1,1)
             x2,y2 = ic0.wcs.all_world2pix(ra2,dec2,1)
-            
-        # Create new planes and compute the baseline
-        #x0=x1;y0=y1
-        #w  = np.abs(x2-x1)
-        #h  = np.abs(y2-y1)
-        ## Select pixels inside aperture
-        #print('rectangle ',x0,y0,w,h)
+
+        # Disactive the selector
+        self.disactiveSelectors()
+        self.RS = None
 
         # Find the points  (create a meshgrid of the selected rectangle)
-        xi = np.arange(x1,x2); yi = np.arange(y1,y2)
+        x1 = int(np.rint(x1))
+        x2 = int(np.rint(x2))
+        y1 = int(np.rint(y1))
+        y2 = int(np.rint(y2))
+        xi = np.arange(x1,x2)
+        yi = np.arange(y1,y2)
         xi,yi = np.meshgrid(xi,yi)
         points = np.array([np.ravel(xi),np.ravel(yi)]).transpose()
-
 
         # Values
         sc = self.sci[self.spectra.index('Pix')]
         # guess values for the continuum
         xy = sc.guess.xy
+        print('xy',xy)
         # Wavelength, Flux
         # Reference Wavelength, Redshift
         
         # Run the fit and computation of moments for the selected points
-        for p in points:
-            x,y = p
-            
+        # This part will be parallelized in the future
 
-        # Refresh the plotted spectrum (add baseline fit if available)
-
+        # Compute i0,i1,i2,i3 from xy
+        i0 = np.argmin(np.abs(self.specCube.wave-xy[0][0]))
+        i1 = np.argmin(np.abs(self.specCube.wave-xy[1][0]))
+        i2 = np.argmin(np.abs(self.specCube.wave-xy[2][0]))
+        i3 = np.argmin(np.abs(self.specCube.wave-xy[3][0]))
         
+        
+        for p in points:
+            i,j = p
+            print('point is ',i,j)
+            # masks
+            self.Cmask[i0:i1,j,i] = 1
+            self.Cmask[i2:i3,j,i] = 1
+            self.Mmask[i1:i2,j,i] = 1
+            m,q  = self.guessContinuum(xy)
+            c,c0 = self.fitContinuum(i,j,m,q)
+            self.continuum[:,j,i] = c
+            self.C0[j,i] = c0
+            M0,M1,M2,v,sv = self.computeMoments(i,j)
+            self.M0[j,i] = M0
+            self.M1[j,i] = M1
+            self.M2[j,i] = M2
+
+        # Refresh the plotted images
+        bands = ['C0','M0','M1','M2']
+        sbands = [self.C0, self.M0, self.M1, self.M2]
+        for b,sb in zip(bands,sbands):
+            itab = self.bands.index(b)
+            ic = self.ici[itab]
+            ic.compute_initial_figure(image=sb,wcs=self.specCube.wcs,title=b)
+            ih = self.ihi[itab]
+            ih.compute_initial_figure(image = sb)
+            # Add apertures
+            self.addApertures(ic)
+            # Add contours
+            self.addContours(ic)
+
+        # Update continuum on pixel tab
+        sc = self.sci[self.spectra.index('Pix')]
+        ic = self.ici[0]
+        print('xy aperture ',ic.photApertures[0].rect.get_xy())
+        i,j = ic.photApertures[0].rect.get_xy()
+        i = int(np.rint(i)); j = int(np.rint(j))
+        sc.updateSpectrum(cont=self.continuum[:,j,i])
+        
+    def guessContinuum(self,xy):
+        """ Compute slope and intercept of the continuum interactive guess """
+
+        xy0,xy1,xy2,xy3 = xy
+        slope = (xy3[1]-xy0[1])/(xy3[0]-xy0[0])
+        intcpt = xy0[1]-slope*xy0[0]
+        return slope,intcpt
+
+    def residuals(self,p,x,data=None,eps=None):
+        #unpack parameters
+        v = p.valuesdict()
+        m = v['m']
+        q = v['q']
+        # define model
+        model = m*x+q
+        if data is None:
+            return model
+        else:
+            if eps is None:
+                return model-data 
+            else:
+                return (model-data)/eps
+
+    
+    def fitContinuum(self,i,j,slope,q):
+        """ Fit the continuum on a spatial pixel """
+
+                
+        w0 = self.specCube.l0
+        m = self.Cmask[:,j,i]
+        w = self.specCube.wave
+        f = self.specCube.flux[:,j,i]
+        
+        # Define parameters
+        fit_params = Parameters()
+        fit_params.add('m',value=slope)#,min=-200,max=200)
+        fit_params.add('q',value=q)#,min=0.0,max=10)
+        out = minimize(self.residuals,fit_params,args=(w[m],),kws={'data':f[m]},method='Nelder')
+        c  = self.residuals(out.params, w)
+        c0 = self.residuals(out.params, w0)
+
+        return c,c0
+        
+    def computeMoments(self,i,j):
+        """ compute M0 on a spatial pixel """
+
+        c = 299792458. # m/s
+        w0 = self.specCube.l0
+        w = self.specCube.wave
+        f = self.specCube.flux
+        dw = [] 
+        dw.append([w[1]-w[0]])
+        dw.append(list((w[2:]-w[:-2])*0.5))
+        dw.append([w[-1]-w[-2]])
+        dw = np.concatenate(dw)
+        m = self.Mmask[:,j,i]
+        w = w[m]
+        dw = dw[m]
+        Snu = f[m,j,i]-self.continuum[m,j,i] # Flux continuum subtracted
+        Slambda = c*(Snu-np.nanmedian(Snu))/(w*w)*1.e6   # [Jy * Hz / um]
+        # Should I conserve only positive values ?
+        M0 = np.nansum(Slambda*dw) # [Jy Hz]  
+        M1 = np.nansum(w*Slambda*dw)/M0
+        M2 = np.nansum((w-M1)*(w-M1)*Slambda*dw)/M0
+
+        M0 *= 1.e-26 # [W/m2]  (W/m2 = Jy*Hz*1.e-26)
+        v = (M1-w0) * c/w0
+        sv = np.sqrt(M2) * c/w0
+
+        return M0,M1,M2,v,sv
+
         
     def createAction(self,icon,text,shortcut,action):
         act = QAction(QIcon(icon),text, self)
@@ -1654,7 +1771,7 @@ class GUI (QMainWindow):
             fileName= fd.selectedFiles()
             #print(fileName[0])
             # Read external spectrum
-            self.extSpectrum = ExtSpectrum(filename[0])            
+            self.extSpectrum = ExtSpectrum(fileName[0])            
             # Plot over selected tab
             istab = self.stabs.currentIndex()
             sc = self.sci[istab]
@@ -2326,7 +2443,7 @@ class GUI (QMainWindow):
         ic0 = self.ici[itab]
         ih0 = self.ihi[itab]
         if ic0.contour is not None:
-            nlev = len(ic0.contour.collections)
+            #nlev = len(ic0.contour.collections)
             if n > 1000:
                 #contoursThread = ContoursThread(ic0,ih0.levels[n-1000], n, itab)
                 #contoursThread.updateOtherContours.connect(self.modifyOtherImagesContours)

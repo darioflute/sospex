@@ -487,6 +487,7 @@ class SpectrumCanvas(MplCanvas):
         self.dragged = None
         self.region = None
         self.guess = None
+
         
     def compute_initial_spectrum(self, spectrum=None,xmin=None,xmax=None):
         if spectrum is None:
@@ -530,6 +531,9 @@ class SpectrumCanvas(MplCanvas):
              
         self.fluxLine = self.axes.step(self.x,s.flux,color='blue',label='Flux')
         self.fluxLayer, = self.fluxLine
+
+        self.contLine = self.axes.plot(self.x, s.continuum, color='skyblue',label='Cont')
+        self.contLayer, = self.contLine
 
         # Define limits or adjust to previous limits
         if self.xlimits is not None:
@@ -746,11 +750,16 @@ class SpectrumCanvas(MplCanvas):
 
         
         
-    def updateSpectrum(self,f,uf=None,exp=None):
+    def updateSpectrum(self,f=None,uf=None,exp=None,cont=None):
 
         try:
-            self.fluxLine[0].set_ydata(f)
-            self.axes.draw_artist(self.fluxLine[0])
+            if f is not None:
+                self.fluxLine[0].set_ydata(f)
+                self.axes.draw_artist(self.fluxLine[0])
+            if cont is not None:
+                self.spectrum.continuum = cont
+                self.contLine[0].set_ydata(cont)
+                self.axes.draw_artist(self.contLine[0])
             if uf is not None:
                 self.ufluxLine[0].set_ydata(uf)
                 self.ax4.draw_artist(self.ufluxLine[0])
@@ -758,13 +767,14 @@ class SpectrumCanvas(MplCanvas):
                 self.exposureLine[0].set_ydata(exp)
                 self.ax3.draw_artist(self.exposureLine[0])
             ylim0,ylim1 = self.axes.get_ylim()
-            maxf = np.nanmax(f)
-            if uf is not None:
-                umaxf = np.nanmax(uf)
-                if umaxf > maxf: maxf = umaxf
-            ylim1 = maxf
-            self.axes.set_ylim(ylim0, maxf*1.1)
-            self.updateYlim()
+            if f is not None:
+                maxf = np.nanmax(f)
+                if uf is not None:
+                    umaxf = np.nanmax(uf)
+                    if umaxf > maxf: maxf = umaxf
+                ylim1 = maxf
+                self.axes.set_ylim(ylim0, maxf*1.1)
+                self.updateYlim()
         except:
             pass
 

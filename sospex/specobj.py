@@ -153,4 +153,5 @@ class Spectrum(object):
             self.l0 = l0
         if area is not None:
             self.area = area
-            
+        self.continuum = np.ones(len(wave))
+        self.continuum.fill(np.nan)
