@@ -22,11 +22,8 @@ from matplotlib.widgets import SpanSelector
 from astropy.wcs.utils import proj_plane_pixel_scales as pixscales
 
 
-from PyQt5.QtWidgets import (QApplication, QWidget, QMainWindow, QTabWidget, QHBoxLayout,
-                             QGroupBox, QVBoxLayout, QSizePolicy, QStatusBar, QSplitter,
-                             QToolBar, QAction, QFileDialog, QInputDialog, QTableView, QComboBox, QAbstractItemView,
-                             QToolButton,QDialog, QListWidget,QListWidgetItem,QPushButton)
-from PyQt5.QtGui import QIcon, QStandardItem, QStandardItemModel
+from PyQt5.QtWidgets import (QVBoxLayout, QSizePolicy, QInputDialog, QDialog, QListWidget,QListWidgetItem,QPushButton)
+from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt, QSize, pyqtSignal
 from PyQt5.QtTest import QTest
 
@@ -64,7 +61,7 @@ class cmDialog(QDialog):
             #item = QListWidgetItem(self.list)
             #item.setText(cm)
             #item.setIcon(QIcon(path0+"/icons/"+cm+".png"))
-            item = QListWidgetItem(QIcon(path0+"/icons/"+cm+".png"),cm,self.list)
+            QListWidgetItem(QIcon(path0+"/icons/"+cm+".png"),cm,self.list)
             
         n = cmlist.index(currentCM)
         self.list.setCurrentRow(n)
@@ -170,13 +167,21 @@ class ImageCanvas(MplCanvas):
 
     def showImage(self, image):
         
-            self.oimage = image.copy()
-            self.image = self.axes.imshow(image, origin='lower',cmap=self.colorMap+self.colorMapDirection,interpolation='none')
-            self.fig.colorbar(self.image, cax=self.cbaxes)
-            # Intensity limits
+        self.oimage = image.copy()
+        self.image = self.axes.imshow(image, origin='lower',cmap=self.colorMap+self.colorMapDirection,interpolation='none')
+        self.fig.colorbar(self.image, cax=self.cbaxes)
+        # Intensity limits
+        mask =  np.isfinite(image)
+        if np.sum(mask) == 0:
+            cmin=-10
+            cmax=+10
+        else:       
             vmed0=np.nanmedian(image)
             d0 = np.nanstd(image)
-            self.image.set_clim([vmed0-d0,vmed0+4*d0])
+            cmin = vmed0-2*d0
+            cmax = vmed0+5*d0
+
+        self.image.set_clim([cmin,cmax])
 
 
     def updateScale(self,val):
@@ -435,7 +440,7 @@ class ImageHistoCanvas(MplCanvas):
             return
         if not event.inaxes:
             return
-        x, y = event.xdata, event.ydata
+        x = event.xdata
         #print(x,y)
 
         self.levels[self._ind] = x
@@ -697,10 +702,10 @@ class SpectrumCanvas(MplCanvas):
                 c = 299792.458  # speed of light in km/s
                 if self.xunit == 'um':
                     xline = wline
-                    vline = (xline/(1+s.redshift)/s.l0-1.)*c
+                    #vline = (xline/(1+s.redshift)/s.l0-1.)*c
                 elif self.xunit == 'THz':
                     xline = c/wline * 1.e-9
-                    vline = (c/xline/(1+s.redshift)/s.l0*1.e-3-1.)*c
+                    #vline = (c/xline/(1+s.redshift)/s.l0*1.e-3-1.)*c
                 annotation = self.axes.annotate(nline, xy=(xline,y1),  xytext=(xline, y2), color='purple', alpha=0.4,
                                                 arrowprops=dict(edgecolor='purple',facecolor='y', arrowstyle='-',alpha=0.4,
                                                 connectionstyle="angle,angleA=0,angleB=90,rad=10"),
@@ -753,9 +758,6 @@ class SpectrumCanvas(MplCanvas):
     def updateSpectrum(self,f=None,uf=None,exp=None,cont=None):
 
         try:
-            if f is not None:
-                self.fluxLine[0].set_ydata(f)
-                self.axes.draw_artist(self.fluxLine[0])
             if cont is not None:
                 self.spectrum.continuum = cont
                 self.contLine[0].set_ydata(cont)
@@ -766,13 +768,15 @@ class SpectrumCanvas(MplCanvas):
             if exp is not None:
                 self.exposureLine[0].set_ydata(exp)
                 self.ax3.draw_artist(self.exposureLine[0])
-            ylim0,ylim1 = self.axes.get_ylim()
             if f is not None:
+                self.fluxLine[0].set_ydata(f)
+                self.axes.draw_artist(self.fluxLine[0])
+                ylim0,ylim1 = self.axes.get_ylim()
                 maxf = np.nanmax(f)
                 if uf is not None:
                     umaxf = np.nanmax(uf)
                     if umaxf > maxf: maxf = umaxf
-                ylim1 = maxf
+                #ylim1 = maxf
                 self.axes.set_ylim(ylim0, maxf*1.1)
                 self.updateYlim()
         except:

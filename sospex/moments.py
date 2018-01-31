@@ -199,9 +199,18 @@ class SegmentsInteractor(QObject):
         self.canvas.mpl_disconnect(self.cid_release)
         self.canvas.mpl_disconnect(self.cid_motion)
         self.canvas.mpl_disconnect(self.cid_key)
-        self.line1.remove()
-        self.line2.remove()
-        self.line.remove()
+        try:
+            self.line1.remove()
+        except:
+            print('no line 1')
+        try:
+            self.line2.remove()
+        except:
+            print('no line 2')
+        try:
+            self.line.remove()
+        except:
+            print('no markers')
         self.canvas.draw_idle()
         self.aperture = None
         

@@ -25,12 +25,12 @@ warnings.filterwarnings('ignore')
 # Local imports
 #from sospex.graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
 #from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
-#from sospex.specobj import specCube, Spectrum
+#from sospex.specobj import specCube, Spectrum, ExtSpectrum
 #from sospex.cloud import cloudImage
 
 from graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
 from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
-from specobj import specCube,Spectrum
+from specobj import specCube,Spectrum, ExtSpectrum
 from cloud import cloudImage
 
 class UpdateTabs(QObject):
@@ -291,7 +291,7 @@ class GUI (QMainWindow):
         toolbar.addAction(self.cmapAction)
         toolbar.addAction(self.blinkAction)
         toolbar.addAction(self.contoursAction)
-        toolbar.addAction(self.momentAction)
+        #toolbar.addAction(self.momentAction)
         toolbar.addAction(self.cropAction)
         toolbar.addAction(self.cloudAction)
         toolbar.addAction(self.fitsAction)
@@ -358,7 +358,8 @@ class GUI (QMainWindow):
             #print('removing aperture ',n,' type: ',ic0.photApertures[n].type)
             for ic in self.ici:
                 ap = ic.photApertures[n]
-                aps = ic.photApertureSignal[n]
+                #aps = 
+                ic.photApertureSignal[n]
                 #print('removing the aperture: ',ap.type)
                 ap.mySignal.disconnect()
                 ap.disconnect()
@@ -575,7 +576,9 @@ class GUI (QMainWindow):
             xx,yy = inpoints.T
             #npoints = np.size(xx)
 
-            if itab == 1: cont = sc.spectrum.continuum[:,yy,xx]
+            if istab == 1 and self.continuum is not None:
+                cont = self.continuum[:,yy[0],xx[0]]
+                #print("M1 ",self.M1[yy[0],xx[0]])
             else: cont = None
             
             fluxAll = np.nansum(s.flux[:,yy,xx], axis=1)
@@ -927,16 +930,18 @@ class GUI (QMainWindow):
 
         # Create momenta (0,1,2) and continuum (should be value of continuum at reference wavelength at given redshift)
         s = self.specCube
-        self.continuum = np.zeros((s.nz,s.ny,s.nx)) # Fit of continuum
+        self.continuum = np.full((s.nz,s.ny,s.nx), np.nan) # Fit of continuum
         self.Cmask = np.zeros((s.nz,s.ny,s.nx), dtype=bool) # Spectral cube mask (for fitting the continuum)
         self.Mmask = np.zeros((s.nz,s.ny,s.nx), dtype=bool) # Spectral cube mask (for computing the momenta)
-        self.C0 = np.zeros((s.ny,s.nx)) # Continuum at ref. wavelength
-        self.M0 = np.zeros((s.ny,s.nx)) # 0th moment
-        self.M1 = np.zeros((s.ny,s.nx)) # 1st moment
-        self.M2 = np.zeros((s.ny,s.nx)) # 2nd moment
+        self.C0 = np.full((s.ny,s.nx), np.nan) # Continuum at ref. wavelength
+        self.M0 = np.full((s.ny,s.nx), np.nan) # 0th moment
+        self.M1 = np.full((s.ny,s.nx), np.nan) # 1st moment
+        self.M2 = np.full((s.ny,s.nx), np.nan) # 2nd moment
+        self.v = np.full((s.ny,s.nx), np.nan) # velocity field
+        self.sv = np.full((s.ny,s.nx), np.nan) # vel. disp. field
 
         # Open tabs if they do not exist
-        newbands = ['C0','M0','M1','M2']
+        newbands = ['C0','M0','M1','M2','v','sv']
         for new in newbands:
             if new not in self.bands:
                 self.addBand(new)
@@ -964,13 +969,17 @@ class GUI (QMainWindow):
             image = self.M2
         elif band == 'C0':
             image = self.C0
+        elif band == 'v':
+            image = self.v
+        elif band == 'sv':
+            image = self.sv
         
         ic.compute_initial_figure(image=image,wcs=self.specCube.wcs,title=band)
         # Callback to propagate axes limit changes among images
         ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
         ih = self.ihi[self.bands.index(band)]
         clim = ic.image.get_clim()
-        ih.compute_initial_figure(image=image,xmin=clim[0],xmax=clim[1])
+        ih.compute_initial_figure(image=None,xmin=clim[0],xmax=clim[1])
 
         # Add apertures
         self.addApertures(ic)
@@ -996,8 +1005,10 @@ class GUI (QMainWindow):
         sc = self.sci[istab]
         SI = SegmentsInteractor(sc.axes, verts)
         sc.guess = SI
-        cidapm=SI.modSignal.connect(self.onModifiedGuess)
-        cidapr=SI.mySignal.connect(self.onRemoveContinuum)
+        #cidapm=
+        SI.modSignal.connect(self.onModifiedGuess)
+        #cidapr=
+        SI.mySignal.connect(self.onRemoveContinuum)
 
 
     def onModifiedGuess(self):
@@ -1020,10 +1031,12 @@ class GUI (QMainWindow):
             self.sb.showMessage("Please, define a guess for the continuum", 4000)
         else:
             # 0) Toggle pixel marker
-            
-            # 1) Define region
             itab = self.itabs.currentIndex()
             ic = self.ici[itab]
+            pixel = ic.photApertures[0]
+            pixel.showverts = False
+            pixel.line.set_visible(pixel.showverts)
+            # 1) Define region
             self.RS = RectangleSelector(ic.axes, self.onFitRect,
                                         drawtype='box', useblit=False,
                                         button=[1, 3],  # don't use middle button
@@ -1035,8 +1048,6 @@ class GUI (QMainWindow):
             self.RS.to_draw.set_visible(False)
             self.RS.set_visible(True)
             #self.RS.state.add('center')
-            # 2) Untoggle pixel marker
-
 
             
         # 2) Fit baseline based on guess
@@ -1070,6 +1081,13 @@ class GUI (QMainWindow):
         self.disactiveSelectors()
         self.RS = None
 
+        # Untoggle pixel marker
+        itab = self.itabs.currentIndex()
+        ic = self.ici[itab]
+        pixel = ic.photApertures[0]
+        pixel.showverts = True
+        pixel.line.set_visible(pixel.showverts)
+
         # Find the points  (create a meshgrid of the selected rectangle)
         x1 = int(np.rint(x1))
         x2 = int(np.rint(x2))
@@ -1084,7 +1102,7 @@ class GUI (QMainWindow):
         sc = self.sci[self.spectra.index('Pix')]
         # guess values for the continuum
         xy = sc.guess.xy
-        print('xy',xy)
+        #print('xy',xy)
         # Wavelength, Flux
         # Reference Wavelength, Redshift
         
@@ -1097,10 +1115,11 @@ class GUI (QMainWindow):
         i2 = np.argmin(np.abs(self.specCube.wave-xy[2][0]))
         i3 = np.argmin(np.abs(self.specCube.wave-xy[3][0]))
         
+        cz = 299792.458 * self.specCube.redshift
         
         for p in points:
             i,j = p
-            print('point is ',i,j)
+            #print('point is ',i,j)
             # masks
             self.Cmask[i0:i1,j,i] = 1
             self.Cmask[i2:i3,j,i] = 1
@@ -1110,30 +1129,35 @@ class GUI (QMainWindow):
             self.continuum[:,j,i] = c
             self.C0[j,i] = c0
             M0,M1,M2,v,sv = self.computeMoments(i,j)
+            #print('M0, M1', M0 , M1)
             self.M0[j,i] = M0
             self.M1[j,i] = M1
             self.M2[j,i] = M2
+            self.v[j,i] = v - cz
+            self.sv[j,i] = sv
 
         # Refresh the plotted images
-        bands = ['C0','M0','M1','M2']
-        sbands = [self.C0, self.M0, self.M1, self.M2]
+        bands = ['C0','M0','M1','M2','v','sv']
+        sbands = [self.C0, self.M0, self.M1, self.M2,self.v,self.sv]
         for b,sb in zip(bands,sbands):
             itab = self.bands.index(b)
             ic = self.ici[itab]
-            ic.compute_initial_figure(image=sb,wcs=self.specCube.wcs,title=b)
+            ic.showImage(image=sb)
+            #ic.compute_initial_figure(image = sb, wcs = self.specCube.wcs, title=b)
             ih = self.ihi[itab]
             ih.compute_initial_figure(image = sb)
-            # Add apertures
-            self.addApertures(ic)
-            # Add contours
-            self.addContours(ic)
+            ## Add apertures
+            #self.addApertures(ic)
+            ## Add contours
+            #self.addContours(ic)
 
         # Update continuum on pixel tab
         sc = self.sci[self.spectra.index('Pix')]
         ic = self.ici[0]
-        print('xy aperture ',ic.photApertures[0].rect.get_xy())
+        #print('xy aperture ',ic.photApertures[0].rect.get_xy())
         i,j = ic.photApertures[0].rect.get_xy()
         i = int(np.rint(i)); j = int(np.rint(j))
+        #print('cont ',np.nanmean(self.continuum[:,j,i]))
         sc.updateSpectrum(cont=self.continuum[:,j,i])
         
     def guessContinuum(self,xy):
@@ -1147,10 +1171,11 @@ class GUI (QMainWindow):
     def residuals(self,p,x,data=None,eps=None):
         #unpack parameters
         v = p.valuesdict()
-        m = v['m']
+        #m = v['m']
         q = v['q']
         # define model
-        model = m*x+q
+        #model = m*x+q
+        model = q
         if data is None:
             return model
         else:
@@ -1164,47 +1189,61 @@ class GUI (QMainWindow):
         """ Fit the continuum on a spatial pixel """
 
                 
-        w0 = self.specCube.l0
-        m = self.Cmask[:,j,i]
-        w = self.specCube.wave
         f = self.specCube.flux[:,j,i]
-        
-        # Define parameters
-        fit_params = Parameters()
-        fit_params.add('m',value=slope)#,min=-200,max=200)
-        fit_params.add('q',value=q)#,min=0.0,max=10)
-        out = minimize(self.residuals,fit_params,args=(w[m],),kws={'data':f[m]},method='Nelder')
-        c  = self.residuals(out.params, w)
-        c0 = self.residuals(out.params, w0)
+        mnan = np.isnan(f)
+        self.Cmask[mnan,j,i] = 0
+        self.Mmask[mnan,j,i] = 0
+        m = self.Cmask[:,j,i]
 
+        if np.sum(m) > 5:
+            w = self.specCube.wave
+            w0 = self.specCube.l0
+            # Define parameters
+            fit_params = Parameters()
+            fit_params.add('m',value=slope)#,min=-200,max=200)
+            fit_params.add('q',value=q)#,min=0.0,max=10)
+            out = minimize(self.residuals,fit_params,args=(w[m],),kws={'data':f[m]},method='Nelder')
+            c  = self.residuals(out.params, w)
+            c0 = self.residuals(out.params, w0)
+        else:
+            c0 = np.nan
+            c = np.full(len(m), np.nan)
         return c,c0
         
     def computeMoments(self,i,j):
         """ compute M0 on a spatial pixel """
 
-        c = 299792458. # m/s
-        w0 = self.specCube.l0
-        w = self.specCube.wave
-        f = self.specCube.flux
-        dw = [] 
-        dw.append([w[1]-w[0]])
-        dw.append(list((w[2:]-w[:-2])*0.5))
-        dw.append([w[-1]-w[-2]])
-        dw = np.concatenate(dw)
         m = self.Mmask[:,j,i]
-        w = w[m]
-        dw = dw[m]
-        Snu = f[m,j,i]-self.continuum[m,j,i] # Flux continuum subtracted
-        Slambda = c*(Snu-np.nanmedian(Snu))/(w*w)*1.e6   # [Jy * Hz / um]
-        # Should I conserve only positive values ?
-        M0 = np.nansum(Slambda*dw) # [Jy Hz]  
-        M1 = np.nansum(w*Slambda*dw)/M0
-        M2 = np.nansum((w-M1)*(w-M1)*Slambda*dw)/M0
 
-        M0 *= 1.e-26 # [W/m2]  (W/m2 = Jy*Hz*1.e-26)
-        v = (M1-w0) * c/w0
-        sv = np.sqrt(M2) * c/w0
+        if np.sum(m) > 5:
+            c = 299792458. # m/s
+            w0 = self.specCube.l0
+            w = self.specCube.wave
+            f = self.specCube.flux
+            dw = [] 
+            dw.append([w[1]-w[0]])
+            dw.append(list((w[2:]-w[:-2])*0.5))
+            dw.append([w[-1]-w[-2]])
+            dw = np.concatenate(dw)
+            w = w[m]
+            dw = dw[m]
+            Snu = f[m,j,i]-self.continuum[m,j,i] # Flux continuum subtracted
+            pos = Snu > 0
+            Slambda = c*Snu[pos]/(w[pos]*w[pos])*1.e6   # [Jy * Hz / um]
+            w  = w[pos]
+            dw = dw[pos]
+            # Should I conserve only positive values ?
+            M0 = np.sum(Slambda*dw) # [Jy Hz]  
+            M1 = np.sum(w*Slambda*dw)/M0 # [um]
+            M2 = np.sum((w-M1)*(w-M1)*Slambda*dw)/M0 # [um*um]
+            
+            M0 *= 1.e-26 # [W/m2]  (W/m2 = Jy*Hz*1.e-26)
+            v = (M1-w0) * c/w0 *1.e-3 # km/s
+            sv = np.sqrt(M2) * c/w0 * 1.e-3 # km/s
+        else:
+            M0 = M1 = M2 = v = sv = np.nan
 
+        #print('M0, M1, v ',M0, M1, v)
         return M0,M1,M2,v,sv
 
         
@@ -1337,7 +1376,8 @@ class GUI (QMainWindow):
             ic.photApertures.append(poly)
             cidap=poly.mySignal.connect(self.onRemoveAperture)
             ic.photApertureSignal.append(cidap)
-            cidapm=poly.modSignal.connect(self.onModifiedAperture)
+            #cidapm=
+            poly.modSignal.connect(self.onModifiedAperture)
         self.PS = None
 
         self.drawNewSpectrum(n)
@@ -1434,7 +1474,8 @@ class GUI (QMainWindow):
                 ic.photApertures.append(square)
                 cidap=square.mySignal.connect(self.onRemoveAperture)
                 ic.photApertureSignal.append(cidap)
-                cidapm=square.modSignal.connect(self.onModifiedAperture)
+                #cidapm=
+                square.modSignal.connect(self.onModifiedAperture)
         elif selAp == 'rectangle':
             self.disactiveSelectors()
             self.RS = None
@@ -1448,7 +1489,8 @@ class GUI (QMainWindow):
                 ic.photApertures.append(rectangle)
                 cidap=rectangle.mySignal.connect(self.onRemoveAperture)
                 ic.photApertureSignal.append(cidap)
-                cidapm=rectangle.modSignal.connect(self.onModifiedAperture)
+                #cidapm=
+                rectangle.modSignal.connect(self.onModifiedAperture)
         elif selAp == 'circle':
             self.disactiveSelectors()
             self.ES = None
@@ -1463,7 +1505,8 @@ class GUI (QMainWindow):
                 ic.photApertures.append(circle)
                 cidap=circle.mySignal.connect(self.onRemoveAperture)
                 ic.photApertureSignal.append(cidap)
-                cidapm=circle.modSignal.connect(self.onModifiedAperture)
+                #cidapm=
+                circle.modSignal.connect(self.onModifiedAperture)
         elif selAp == 'ellipse':
             self.disactiveSelectors()
             self.ES = None
@@ -1477,7 +1520,8 @@ class GUI (QMainWindow):
                 ic.photApertures.append(ellipse)
                 cidap=ellipse.mySignal.connect(self.onRemoveAperture)
                 ic.photApertureSignal.append(cidap)
-                cidapm=ellipse.modSignal.connect(self.onModifiedAperture)
+                #cidapm=
+                ellipse.modSignal.connect(self.onModifiedAperture)
         self.drawNewSpectrum(n)
 
 
@@ -1647,7 +1691,8 @@ class GUI (QMainWindow):
             label.resize(QSize(200,200))
             self.msgbox.setIconPixmap(pixmap)
             self.msgbox.setText("Quering "+band+" ... ")
-            retval = self.msgbox.exec_()
+            #retval = 
+            self.msgbox.exec_()
         else:
             # Download the local fits
 #            from sospex.cloud import cloudImage
@@ -1848,7 +1893,8 @@ class GUI (QMainWindow):
                 ic.photApertures.append(pixel)
                 cidap=pixel.mySignal.connect(self.onRemoveAperture)
                 ic.photApertureSignal.append(cidap)
-                cidapm=pixel.modSignal.connect(self.onModifiedAperture)
+                #cidapm=
+                pixel.modSignal.connect(self.onModifiedAperture)
 
 
         
@@ -2424,7 +2470,8 @@ class GUI (QMainWindow):
         # Add levels to histogram
         ih0.drawLevels()
         # Connect signal event to action
-        cidh0=ih0.levSignal.connect(self.onModifyContours)
+        #cidh0=
+        ih0.levSignal.connect(self.onModifyContours)
         # Update contours on all other images
         ici = self.ici.copy()
         ici.remove(ic0)
@@ -2656,7 +2703,8 @@ class GUI (QMainWindow):
                 ic.photApertures.append(pixel)
                 cidap=pixel.mySignal.connect(self.onRemoveAperture)
                 ic.photApertureSignal.append(cidap)
-                cidapm=pixel.modSignal.connect(self.onModifiedAperture)
+                #cidapm=
+                pixel.modSignal.connect(self.onModifiedAperture)
 
             print('Initialize spectrum')
             s = self.specCube
@@ -2684,7 +2732,7 @@ class GUI (QMainWindow):
             self.blink = 'off'
             self.slice = 'off'
             self.cutcube = 'off'
-            self.continuum = 'off'
+            self.continuum = None
             # Selectors
             self.PS = None
             self.ES = None
@@ -2796,36 +2844,36 @@ class GUI (QMainWindow):
             self.cutcube = 'off'
             sc.tmpRegion.remove()
             sc.fig.canvas.draw_idle()
-        elif self.continuum == 'one' or self.continuum == 'two':
-            print('continuum is ', self.continuum)
-            istab = self.stabs.currentIndex()
-            sc = self.sci[istab]
-            if sc.xunit == 'THz':
-                c = 299792458.0  # speed of light in m/s
-                xmin, xmax = c/xmax*1.e-6, c/xmin*1.e-6
-            sc.shadeRegion([xmin,xmax],'lightcoral')
-            sc.fig.canvas.draw_idle()
-            indmin, indmax = np.searchsorted(self.specCube.wave, (xmin, xmax))
-            indmax = min(len(self.specCube.wave) - 1, indmax)
-            print('indmin, indmax', indmin,indmax)
-            if self.continuum == 'one':
-                self.continuum = 'two'
-                self.contpts = [indmin, indmax]
-            elif self.continuum == 'two':
-                self.contpts.extend([indmin,indmax])
-                # order the list
-                self.contpts.sort()
-                xpts = self.specCube.wave[self.contpts]
-                yc = np.nanmax(sc.spectrum.flux[xpts[1]:xpts[2]])
-                continuum = sc.spectrum.flux[xpts[0]:xpts[1]]
-                continuum.append(sc.spectrum.flux[xpts[2]:xpts[3]])
-                offset = np.nanmedian(continuum)
-                # build the guess structure and display the curve
-                self.guess = Guess(self.contpts,xpts,yc,offset)
-                # span inactive
-                sc.span.active = False
-                self.continuum = 'off'
-                self.contpts = None
+        # elif self.continuum == 'one' or self.continuum == 'two':
+        #     print('continuum is ', self.continuum)
+        #     istab = self.stabs.currentIndex()
+        #     sc = self.sci[istab]
+        #     if sc.xunit == 'THz':
+        #         c = 299792458.0  # speed of light in m/s
+        #         xmin, xmax = c/xmax*1.e-6, c/xmin*1.e-6
+        #     sc.shadeRegion([xmin,xmax],'lightcoral')
+        #     sc.fig.canvas.draw_idle()
+        #     indmin, indmax = np.searchsorted(self.specCube.wave, (xmin, xmax))
+        #     indmax = min(len(self.specCube.wave) - 1, indmax)
+        #     print('indmin, indmax', indmin,indmax)
+        #     if self.continuum == 'one':
+        #         self.continuum = 'two'
+        #         self.contpts = [indmin, indmax]
+        #     elif self.continuum == 'two':
+        #         self.contpts.extend([indmin,indmax])
+        #         # order the list
+        #         self.contpts.sort()
+        #         xpts = self.specCube.wave[self.contpts]
+        #         #yc = np.nanmax(sc.spectrum.flux[xpts[1]:xpts[2]])
+        #         continuum = sc.spectrum.flux[xpts[0]:xpts[1]]
+        #         continuum.append(sc.spectrum.flux[xpts[2]:xpts[3]])
+        #         #offset = np.nanmedian(continuum)
+        #         # build the guess structure and display the curve
+        #         #self.guess = Guess(self.contpts,xpts,yc,offset)
+        #         # span inactive
+        #         sc.span.active = False
+        #         self.continuum = 'off'
+        #         self.contpts = None
             
             
     def doZoomAll(self, event):
@@ -2965,7 +3013,8 @@ class GUI (QMainWindow):
             # Activate interactor (toogle on) and disactivate
             for iap in range(nap):
                 ap = ic.photApertures[iap]
-                aps = ic.photApertureSignal[iap]
+                #aps = 
+                ic.photApertureSignal[iap]
                 if iap == n:
                     ap.showverts = True
                     #ic.photApertureSignal[iap]=ap.mySignal.connect(self.onRemovePolyAperture)
