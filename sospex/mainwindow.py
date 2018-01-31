@@ -15,6 +15,7 @@ from matplotlib.widgets import SpanSelector, PolygonSelector, RectangleSelector,
 #from matplotlib.path import Path
 
 from lmfit import Parameters, minimize
+import multiprocessing as mp
 
 #import time
 
@@ -577,7 +578,10 @@ class GUI (QMainWindow):
             #npoints = np.size(xx)
 
             if istab == 1 and self.continuum is not None:
-                cont = self.continuum[:,yy[0],xx[0]]
+                try:
+                    cont = self.continuum[:,yy[0],xx[0]]
+                except:
+                    cont = None
                 #print("M1 ",self.M1[yy[0],xx[0]])
             else: cont = None
             
@@ -1115,27 +1119,32 @@ class GUI (QMainWindow):
         i2 = np.argmin(np.abs(self.specCube.wave-xy[2][0]))
         i3 = np.argmin(np.abs(self.specCube.wave-xy[3][0]))
         
-        cz = 299792.458 * self.specCube.redshift
+        m,q  = self.guessContinuum(xy)
         
         for p in points:
             i,j = p
-            #print('point is ',i,j)
             # masks
             self.Cmask[i0:i1,j,i] = 1
             self.Cmask[i2:i3,j,i] = 1
             self.Mmask[i1:i2,j,i] = 1
-            m,q  = self.guessContinuum(xy)
-            c,c0 = self.fitContinuum(i,j,m,q)
-            self.continuum[:,j,i] = c
-            self.C0[j,i] = c0
-            M0,M1,M2,v,sv = self.computeMoments(i,j)
-            #print('M0, M1', M0 , M1)
-            self.M0[j,i] = M0
-            self.M1[j,i] = M1
-            self.M2[j,i] = M2
-            self.v[j,i] = v - cz
-            self.sv[j,i] = sv
+            self.fitContinuum(i,j,m,q)
+            self.computeMoments(i,j)
 
+        # # Pack data for multiprocessing
+        # data = [m,q,points]
+        
+        # # To avoid forking error in MAC OS-X
+        # try:
+        #     mp.set_start_method('spawn')
+        # except RuntimeError:
+        #     pass
+
+        # # Create pool for multiprocessing
+        # with mp.Pool(processes=mp.cpu_count()) as pool:
+        #     res = [pool.apply_async(self.computeContMoments, (k,data)) for k in range(len(points))]
+        #     #results = [r.get() for r in res] # results not needed
+        
+            
         # Refresh the plotted images
         bands = ['C0','M0','M1','M2','v','sv']
         sbands = [self.C0, self.M0, self.M1, self.M2,self.v,self.sv]
@@ -1159,6 +1168,24 @@ class GUI (QMainWindow):
         i = int(np.rint(i)); j = int(np.rint(j))
         #print('cont ',np.nanmean(self.continuum[:,j,i]))
         sc.updateSpectrum(cont=self.continuum[:,j,i])
+
+
+    def computeContMoments(self,k,data):
+        """ multiprocessing function """
+
+        m,q,points = data
+        i,j = points[k]
+
+        print('ij', i, j)
+        
+        self.Cmask[i0:i1,j,i] = 1
+        self.Cmask[i2:i3,j,i] = 1
+        self.Mmask[i1:i2,j,i] = 1
+        self.fitContinuum(i,j,m,q)
+        self.computeMoments(i,j)
+
+        return i,j
+
         
     def guessContinuum(self,xy):
         """ Compute slope and intercept of the continuum interactive guess """
@@ -1205,10 +1232,13 @@ class GUI (QMainWindow):
             out = minimize(self.residuals,fit_params,args=(w[m],),kws={'data':f[m]},method='Nelder')
             c  = self.residuals(out.params, w)
             c0 = self.residuals(out.params, w0)
+            self.continuum[:,j,i] = c
+            self.C0[j,i] = c0
         else:
-            c0 = np.nan
-            c = np.full(len(m), np.nan)
-        return c,c0
+            pass
+#            c0 = np.nan
+#            c = np.full(len(m), np.nan)
+#        return c,c0
         
     def computeMoments(self,i,j):
         """ compute M0 on a spatial pixel """
@@ -1240,11 +1270,16 @@ class GUI (QMainWindow):
             M0 *= 1.e-26 # [W/m2]  (W/m2 = Jy*Hz*1.e-26)
             v = (M1-w0) * c/w0 *1.e-3 # km/s
             sv = np.sqrt(M2) * c/w0 * 1.e-3 # km/s
+            self.M0[j,i] = M0
+            self.M1[j,i] = M1
+            self.M2[j,i] = M2
+            cz = 299792.458 * self.specCube.redshift
+            self.v[j,i] = v - cz
+            self.sv[j,i] = sv
         else:
-            M0 = M1 = M2 = v = sv = np.nan
+            #M0 = M1 = M2 = v = sv = np.nan
+            pass
 
-        #print('M0, M1, v ',M0, M1, v)
-        return M0,M1,M2,v,sv
 
         
     def createAction(self,icon,text,shortcut,action):
