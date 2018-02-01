@@ -139,6 +139,8 @@ class ImageCanvas(MplCanvas):
             self.axes.grid(color='black', ls='dashed')
             self.axes.set_xlabel('R.A.')
             self.axes.set_ylabel('Dec')
+
+            #self.axes.format_coord = lambda x, y: "{:8.4f} um  {:10.4f} Jy".format(x,y)
             # Colorbar
             self.cbaxes = self.fig.add_axes([0.9,0.1,0.02,0.85])
             # Add title
@@ -149,6 +151,10 @@ class ImageCanvas(MplCanvas):
             # Show image
             self.showImage(image)
             self.changed = False
+
+            # Cursor data format
+            #self.image.format_cursor_data = lambda z: "{:.4f} Jy".format(z)
+
             
             # Add ellipse centered on source
             self.pixscale = pixscales(self.wcs)[0]*3600. # Scale in arcsec
@@ -470,7 +476,8 @@ class SpectrumCanvas(MplCanvas):
         self.Lines = define_lines()
         self.fig.set_edgecolor('none')
         self.axes = self.fig.add_axes([0.12,0.15,.8,.78])
-
+        self.axes.format_coord = lambda x, y: "{:8.4f} um  {:10.4f} Jy".format(x,y)
+        
         # Checks
         self.displayFlux = True
         self.displayUFlux = True
@@ -912,8 +919,10 @@ class SpectrumCanvas(MplCanvas):
                 if text == 'Wavelength [$\mu$m]' or text == 'Frequency [THz]':
                     if self.xunit == 'um':
                         self.xunit = 'THz'
+                        self.axes.format_coord = lambda x, y: "{:6.4f} THz  {:10.4f} Jy".format(x,y)
                     else:
                         self.xunit = 'um'
+                        self.axes.format_coord = lambda x, y: "{:8.4f} um  {:10.4f} Jy".format(x,y)
 
                     self.axes.clear()
                     try:

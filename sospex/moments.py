@@ -2,7 +2,12 @@ import numpy as np
 from PyQt5.QtCore import pyqtSignal,QObject
 from matplotlib.lines import Line2D
 from matplotlib.artist import Artist
-from matplotlib import collections  as mc
+#from matplotlib import collections  as mc
+import multiprocessing as mp
+#from lmfit.models import LinearModel
+from lmfit import Parameters, minimize
+
+
 
 class Guess(object):
     """ class to define a spectrum """
@@ -49,7 +54,7 @@ class SegmentsSelector:
 
     def __motion_notify_callback(self, event):
         if event.inaxes:
-            ax = event.inaxes
+            #ax = event.inaxes
             x, y = event.xdata, event.ydata
             if (event.button == None or event.button == 1):
                 if self.line1 != None: # Move line around
@@ -65,7 +70,7 @@ class SegmentsSelector:
     def __button_release_callback(self, event):
         if event.inaxes:
             x, y = event.xdata, event.ydata
-            ax = event.inaxes
+            #ax = event.inaxes
             if event.button == 1:
                 if self.line2 == None:  # Segment 1 completed
                     self.x.append(x)
@@ -299,13 +304,13 @@ class SegmentsInteractor(QObject):
 
         if self._ind > 0:
             if x_ < x[self._ind-1]:
-                dx = x[self._ind]-x[self._ind-1]
+                #dx = x[self._ind]-x[self._ind-1]
                 x[self._ind] = x[self._ind-1]
             else:
                 x[self._ind] = x_
         if self._ind < 3:
             if x_ > x[self._ind+1]:
-                dx = x[self._ind+1]-x[self._ind]
+                #dx = x[self._ind+1]-x[self._ind]
                 x[self._ind] = x[self._ind+1]
             else:
                 x[self._ind] = x_
@@ -339,3 +344,111 @@ class SegmentsInteractor(QObject):
     def updateMarkers(self):
         self.line.set_data(zip(*self.xy))
         
+# Functions for multiprocessing continuum fit and moment computation
+
+def residuals(p,x,data=None,eps=None):
+    #unpack parameters
+    v = p.valuesdict()
+    #m = v['m']
+    q = v['q']
+    # define model
+    #model = m*x+q
+    model = q
+    if data is None:
+        return model
+    else:
+        if eps is None:
+            return model-data 
+        else:
+            return (model-data)/eps
+
+def fitContinuum(p,m,w,f):
+
+    mf = np.isnan(f)
+    m[mf] = 0
+
+    if np.sum(m) > 5:
+        # Define parameters
+        fit_params = Parameters()
+        #fit_params.add('m',value=0)
+        fit_params.add('q',value=0)
+        out = minimize(residuals,fit_params,args=(w[m],),kws={'data':f[m]},method='Nelder')
+        pars = out.params
+    else:
+        pars = None
+        pass
+
+    
+    return p, pars
+
+
+def computeMoments(p,m,w,f):
+    """ compute moments on a spatial pixel """
+
+    mf = np.isnan(f)
+    m[mf] = 0
+    if np.sum(m) > 5:
+        c = 299792458. # m/s
+        #w0 = self.specCube.l0
+        dw = [] 
+        dw.append([w[1]-w[0]])
+        dw.append(list((w[2:]-w[:-2])*0.5))
+        dw.append([w[-1]-w[-2]])
+        dw = np.concatenate(dw)
+        w = w[m]
+        dw = dw[m]
+        Snu = f[m]
+        pos = Snu > 0
+        Slambda = c*Snu[pos]/(w[pos]*w[pos])*1.e6   # [Jy * Hz / um]
+        w  = w[pos]
+        dw = dw[pos]
+        M0 = np.sum(Slambda*dw) # [Jy Hz]  
+        M1 = np.sum(w*Slambda*dw)/M0 # [um]
+        M2 = np.sum((w-M1)*(w-M1)*Slambda*dw)/M0 # [um*um]
+            
+        M0 *= 1.e-26 # [W/m2]  (W/m2 = Jy*Hz*1.e-26)
+    else:
+        M0 = M1 = M2 = np.nan
+
+    return p, M0, M1, M2
+
+def multiComputeMoments(m,w,f,c,moments,points):
+
+    # To avoid forking error in MAC OS-X
+    try:
+        mp.set_start_method('spawn')
+    except RuntimeError:
+        pass
+        
+    with mp.Pool(processes=mp.cpu_count()) as pool:
+        res = [pool.apply_async(computeMoments, (p,m[:,p[1],p[0]],w,f[:,p[1],p[0]]-c[:,p[1],p[0]])) for p in points]
+        results = [r.get() for r in res]
+
+    for p, M0, M1, M2 in results:
+        i,j = p
+        moments[0][j,i] = M0
+        moments[1][j,i] = M1
+        moments[2][j,i] = M2
+            
+    return moments
+    
+
+def multiFitContinuum(m,w,f,c,c0,w0,points):
+
+    # To avoid forking error in MAC OS-X
+    try:
+        mp.set_start_method('spawn')
+    except RuntimeError:
+        pass
+        
+    with mp.Pool(processes=mp.cpu_count()) as pool:
+        res = [pool.apply_async(fitContinuum, (p,m[:,p[1],p[0]],w,f[:,p[1],p[0]])) for p in points]
+        results = [r.get() for r in res]
+
+    for p, pars in results:
+        if pars is not None:
+            i,j = p
+            c[:,j,i]  = residuals(pars, w)
+            c0[j,i] = residuals(pars, w0)
+            
+    return c, c0

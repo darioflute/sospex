@@ -15,7 +15,7 @@ from matplotlib.widgets import SpanSelector, PolygonSelector, RectangleSelector,
 #from matplotlib.path import Path
 
 from lmfit import Parameters, minimize
-import multiprocessing as mp
+#import multiprocessing as mp
 
 #import time
 
@@ -1063,6 +1063,8 @@ class GUI (QMainWindow):
 
     def onFitRect(self, eclick, erelease):
         'eclick and erelease are the press and release events'
+
+        from moments import multiFitContinuum, multiComputeMoments
         
         x1, y1 = eclick.xdata, eclick.ydata
         x2, y2 = erelease.xdata, erelease.ydata
@@ -1119,31 +1121,47 @@ class GUI (QMainWindow):
         i2 = np.argmin(np.abs(self.specCube.wave-xy[2][0]))
         i3 = np.argmin(np.abs(self.specCube.wave-xy[3][0]))
         
-        m,q  = self.guessContinuum(xy)
+        # get the interactive guess (for the moment I do not use it)
+        # m,q  = self.guessContinuum(xy)
         
+        # Update masks
         for p in points:
             i,j = p
-            # masks
+            self.Cmask[:,j,i] = 0
+            self.Mmask[:,j,i] = 0
             self.Cmask[i0:i1,j,i] = 1
             self.Cmask[i2:i3,j,i] = 1
             self.Mmask[i1:i2,j,i] = 1
-            self.fitContinuum(i,j,m,q)
-            self.computeMoments(i,j)
+            
+        # Fit continuum and compute moments
+        #for p in points:
+        #    i,j = p
+        #    self.fitContinuum(i,j,m,q)
+        #    self.computeMoments(i,j)
 
-        # # Pack data for multiprocessing
-        # data = [m,q,points]
-        
-        # # To avoid forking error in MAC OS-X
-        # try:
-        #     mp.set_start_method('spawn')
-        # except RuntimeError:
-        #     pass
+            
+        # Fit the continuum
+        f = self.specCube.flux
+        m = self.Cmask
+        w = self.specCube.wave
+        w0 = self.specCube.l0
+        c = self.continuum
+        c0 = self.C0
+        c,c0 = multiFitContinuum(self.Cmask,w,f,c,c0,w0,points)
+        self.continuum = c
+        self.C0 = c0
 
-        # # Create pool for multiprocessing
-        # with mp.Pool(processes=mp.cpu_count()) as pool:
-        #     res = [pool.apply_async(self.computeContMoments, (k,data)) for k in range(len(points))]
-        #     #results = [r.get() for r in res] # results not needed
-        
+        # Compute moments
+        m = self.Mmask
+        moments = [self.M0, self.M1, self.M2]
+        moments = multiComputeMoments(m,w,f,c,moments,points)
+        self.M0, self.M1, self.M2 = moments
+
+        # Compute velocity fields
+        c = 299792.458 # km/s
+        self.v = (self.M1/w0 -1. - self.specCube.redshift)* c # km/s
+        self.sv = np.sqrt(self.M2) * c/w0  # km/s
+
             
         # Refresh the plotted images
         bands = ['C0','M0','M1','M2','v','sv']
@@ -1152,23 +1170,26 @@ class GUI (QMainWindow):
             itab = self.bands.index(b)
             ic = self.ici[itab]
             ic.showImage(image=sb)
-            #ic.compute_initial_figure(image = sb, wcs = self.specCube.wcs, title=b)
+            if b == 'v' or b == 'sv': 
+                ic.image.format_cursor_data = lambda z: "{:.0f} km/s".format(float(z))
+            elif  b == 'M1':
+                ic.image.format_cursor_data = lambda z: "{:.4f} um".format(float(z))
+            elif  b == 'M2':
+                ic.image.format_cursor_data = lambda z: "{:.4f} um2".format(float(z))
+            elif  b == 'M0':
+                ic.image.format_cursor_data = lambda z: "{:.2e} W/m2".format(float(z))
+            else:
+                ic.image.format_cursor_data = lambda z: "{:.2e} Jy".format(float(z))
             ih = self.ihi[itab]
             ih.compute_initial_figure(image = sb)
-            ## Add apertures
-            #self.addApertures(ic)
-            ## Add contours
-            #self.addContours(ic)
 
         # Update continuum on pixel tab
         sc = self.sci[self.spectra.index('Pix')]
         ic = self.ici[0]
-        #print('xy aperture ',ic.photApertures[0].rect.get_xy())
         i,j = ic.photApertures[0].rect.get_xy()
         i = int(np.rint(i)); j = int(np.rint(j))
-        #print('cont ',np.nanmean(self.continuum[:,j,i]))
         sc.updateSpectrum(cont=self.continuum[:,j,i])
-
+        sc.fig.canvas.draw_idle()
 
     def computeContMoments(self,k,data):
         """ multiprocessing function """
@@ -1178,9 +1199,9 @@ class GUI (QMainWindow):
 
         print('ij', i, j)
         
-        self.Cmask[i0:i1,j,i] = 1
-        self.Cmask[i2:i3,j,i] = 1
-        self.Mmask[i1:i2,j,i] = 1
+        #self.Cmask[i0:i1,j,i] = 1
+        #self.Cmask[i2:i3,j,i] = 1
+        #self.Mmask[i1:i2,j,i] = 1
         self.fitContinuum(i,j,m,q)
         self.computeMoments(i,j)
 
@@ -2684,6 +2705,10 @@ class GUI (QMainWindow):
                     pass
                 #print('size of image is ',np.shape(image))
                 ic.compute_initial_figure(image=image,wcs=self.specCube.wcs,title=ima)
+                if ima == 'Exp':
+                    ic.image.format_cursor_data = lambda z: "{:.0f} s".format(float(z))
+                else:
+                    ic.image.format_cursor_data = lambda z: "{:.4f} Jy".format(float(z))
                 # Callback to propagate axes limit changes among images
                 ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
                 ih = self.ihi[self.bands.index(ima)]
