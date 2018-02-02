@@ -579,24 +579,28 @@ class GUI (QMainWindow):
 
             if istab == 1 and self.continuum is not None:
                 try:
-                    cont = self.continuum[:,yy[0],xx[0]]
+                    i=xx[0]; j = yy[0]                    
+                    cont = self.continuum[:,j,i]
+                    moments = [self.M0[j,i],self.M1[j,i],self.M2[j,i]]                
                 except:
                     cont = None
-                #print("M1 ",self.M1[yy[0],xx[0]])
-            else: cont = None
+                    moments = None
+            else:
+                cont = None
+                moments = None
             
             fluxAll = np.nansum(s.flux[:,yy,xx], axis=1)
             sc.spectrum.flux = fluxAll
             if s.instrument == 'GREAT':
-                sc.updateSpectrum(f=fluxAll, cont=cont)
+                sc.updateSpectrum(f=fluxAll, cont=cont, moments = moments)
             elif s.instrument == 'PACS':
                 expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
-                sc.updateSpectrum(f=fluxAll,exp=expAll, cont=cont)
+                sc.updateSpectrum(f=fluxAll,exp=expAll, cont=cont, moments = moments)
             elif s.instrument == 'FIFI-LS':
                 ufluxAll = np.nansum(s.uflux[:,yy,xx], axis=1)
                 expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
                 sc.spectrum.uflux = ufluxAll
-                sc.updateSpectrum(f=fluxAll,uf=ufluxAll,exp=expAll, cont=cont)
+                sc.updateSpectrum(f=fluxAll,uf=ufluxAll,exp=expAll, cont=cont, moments = moments)
         
             
     def onDraw(self,event):
@@ -893,7 +897,7 @@ class GUI (QMainWindow):
         self.vresizeAction = self.createAction(self.path0+'/icons/vresize.png','Resize image vertically','Ctrl+V',self.vresizeSpectrum)
         self.hresizeAction = self.createAction(self.path0+'/icons/hresize.png','Resize image horizontally','Ctrl+H',self.hresizeSpectrum)
         self.guessAction = self.createAction(self.path0+'/icons/guess.png','Draw two continuum segments around line','Ctrl+g',self.guessLine)
-        self.fitregionAction = self.createAction(self.path0+'/icons/fitregion.png','Fit baseline and compute momenta inside region','Ctrl+f',self.fitRegion)
+        self.fitregionAction = self.createAction(self.path0+'/icons/fitregion.png','Fit baseline and compute moments inside region','Ctrl+f',self.fitRegion)
         
         # Add buttons to the toolbar
 
@@ -904,7 +908,7 @@ class GUI (QMainWindow):
         self.tb.addAction(self.helpAction)
         self.tb.addAction(self.issueAction)
         self.tb.addWidget(self.apertureAction)        
-        self.tb.addWidget(self.fitAction)        
+        #self.tb.addWidget(self.fitAction)        
         self.tb.addAction(self.quitAction)
 
 
@@ -932,11 +936,11 @@ class GUI (QMainWindow):
 
         self.CS = SegmentsSelector(sc.axes,sc.fig, self.onContinuumSelect)
 
-        # Create momenta (0,1,2) and continuum (should be value of continuum at reference wavelength at given redshift)
+        # Create moments (0,1,2) and continuum (should be value of continuum at reference wavelength at given redshift)
         s = self.specCube
         self.continuum = np.full((s.nz,s.ny,s.nx), np.nan) # Fit of continuum
         self.Cmask = np.zeros((s.nz,s.ny,s.nx), dtype=bool) # Spectral cube mask (for fitting the continuum)
-        self.Mmask = np.zeros((s.nz,s.ny,s.nx), dtype=bool) # Spectral cube mask (for computing the momenta)
+        self.Mmask = np.zeros((s.nz,s.ny,s.nx), dtype=bool) # Spectral cube mask (for computing the moments)
         self.C0 = np.full((s.ny,s.nx), np.nan) # Continuum at ref. wavelength
         self.M0 = np.full((s.ny,s.nx), np.nan) # 0th moment
         self.M1 = np.full((s.ny,s.nx), np.nan) # 1st moment
@@ -2040,6 +2044,8 @@ class GUI (QMainWindow):
             self.specCube.x = self.specCube.x[bb[1][0]:bb[1][1]+1]
             self.specCube.y = self.specCube.y[bb[0][0]:bb[0][1]+1]
             self.specCube.exposure = self.specCube.exposure[:,bb[0][0]:bb[0][1]+1,bb[1][0]:bb[1][1]+1]
+        elif self.specCube.instrument == 'PACS':
+            self.specCube.exposure = self.specCube.exposure[:,bb[0][0]:bb[0][1]+1,bb[1][0]:bb[1][1]+1]
         # Create a grid of points
         nz,ny,nx = np.shape(self.specCube.flux)
         xi = np.arange(nx); yi = np.arange(ny)
@@ -2063,7 +2069,9 @@ class GUI (QMainWindow):
             self.specCube.exposure = self.specCube.exposure[xmin:xmax,:,:]
             self.specCube.atran = self.specCube.atran[xmin:xmax]
             self.specCube.response = self.specCube.response[xmin:xmax]
-       
+        if self.specCube.instrument == 'PACS':
+            self.specCube.exposure = self.specCube.exposure[xmin:xmax,:,:]
+
     def saveFits(self):
         """ Save the displayed image as a FITS file """
 
@@ -2374,6 +2382,24 @@ class GUI (QMainWindow):
                 header['NAXIS'] = (3,'Number of axis')
                 hdu.header.extend(header)
                 hdul = fits.HDUList([hdu])
+                hdul.writeto(outfile,overwrite=True) # clobber true  allows rewriting
+                hdul.close()
+            elif self.specCube.instrument == 'PACS':
+                """ Experimental """
+                header['OBJECT'] = (self.specCube.objname, 'Object Name')
+                c = 299792.458  # speed of light in km/s 
+                header['REDSHFTV'] = self.specCube.redshift * c
+                wave = [[w] for w in self.specCube.wave]
+                wwave = [[wave,[]],[]]
+                header['NAXIS'] = (3,'Number of axis')
+                # Primary header
+                hdu = fits.PrimaryHDU()
+                hdu.header.extend(header)
+                # Extensions
+                hdu1 = self.addExtension(self.specCube.flux,'image','Jy',header)
+                hdu2 = self.addExtension(self.specCube.exposure,'coverage',None,header)
+                hdu3 = self.addExtension(wwave,'wcs-tab','um',header)
+                hdul = fits.HDUList([hdu, hdu1])            
                 hdul.writeto(outfile,overwrite=True) # clobber true  allows rewriting
                 hdul.close()
             else:

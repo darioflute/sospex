@@ -6,7 +6,7 @@ from matplotlib.artist import Artist
 import multiprocessing as mp
 #from lmfit.models import LinearModel
 from lmfit import Parameters, minimize
-
+from scipy.signal import medfilt
 
 
 class Guess(object):
@@ -371,7 +371,7 @@ def fitContinuum(p,m,w,f):
         # Define parameters
         fit_params = Parameters()
         #fit_params.add('m',value=0)
-        fit_params.add('q',value=0)
+        fit_params.add('q',value=0, min=0.)
         out = minimize(residuals,fit_params,args=(w[m],),kws={'data':f[m]},method='Nelder')
         pars = out.params
     else:
@@ -381,35 +381,48 @@ def fitContinuum(p,m,w,f):
     
     return p, pars
 
+def running_mean(x, N):
+    cumsum = numpy.cumsum(numpy.insert(x, 0, 0)) 
+    return (cumsum[N:] - cumsum[:-N]) / float(N)
 
-def computeMoments(p,m,w,f):
+def computeMoments(p,m,w,dw,f):
     """ compute moments on a spatial pixel """
 
     mf = np.isnan(f)
     m[mf] = 0
+
+    # compute the error on f
     if np.sum(m) > 5:
-        c = 299792458. # m/s
-        #w0 = self.specCube.l0
-        dw = [] 
-        dw.append([w[1]-w[0]])
-        dw.append(list((w[2:]-w[:-2])*0.5))
-        dw.append([w[-1]-w[-2]])
-        dw = np.concatenate(dw)
+        f = f[m]
         w = w[m]
         dw = dw[m]
-        Snu = f[m]
-        pos = Snu > 0
-        Slambda = c*Snu[pos]/(w[pos]*w[pos])*1.e6   # [Jy * Hz / um]
-        w  = w[pos]
-        dw = dw[pos]
-        M0 = np.sum(Slambda*dw) # [Jy Hz]  
-        M1 = np.sum(w*Slambda*dw)/M0 # [um]
-        M2 = np.sum((w-M1)*(w-M1)*Slambda*dw)/M0 # [um*um]
+        
+        sf = medfilt(f,5)
+        df = f-sf
+        sigma = np.std(df)
+        ms = f > 3*sigma
+    
+        #print('sigma is ',sigma, np.sum(ms))
+    
+        if np.sum(ms) > 5:
+            c = 299792458. # m/s
+            w = w[ms]
+            dw = dw[ms]
+            Snu = f[ms]
+            pos = Snu > 0
+            Slambda = c*Snu[pos]/(w[pos]*w[pos])*1.e6   # [Jy * Hz / um]
+            w  = w[pos]
+            dw = dw[pos]
+            M0 = np.sum(Slambda*dw) # [Jy Hz]  
+            M1 = np.sum(w*Slambda*dw)/M0 # [um]
+            M2 = np.sum((w-M1)*(w-M1)*Slambda*dw)/M0 # [um*um]
             
-        M0 *= 1.e-26 # [W/m2]  (W/m2 = Jy*Hz*1.e-26)
+            M0 *= 1.e-26 # [W/m2]  (W/m2 = Jy*Hz*1.e-26)
+        else:
+            M0 = M1 = M2 = np.nan
     else:
         M0 = M1 = M2 = np.nan
-
+            
     return p, M0, M1, M2
 
 def multiComputeMoments(m,w,f,c,moments,points):
@@ -419,9 +432,16 @@ def multiComputeMoments(m,w,f,c,moments,points):
         mp.set_start_method('spawn')
     except RuntimeError:
         pass
-        
+
+    # Compute dw
+    dw = [] 
+    dw.append([w[1]-w[0]])
+    dw.append(list((w[2:]-w[:-2])*0.5))
+    dw.append([w[-1]-w[-2]])
+    dw = np.concatenate(dw)
+
     with mp.Pool(processes=mp.cpu_count()) as pool:
-        res = [pool.apply_async(computeMoments, (p,m[:,p[1],p[0]],w,f[:,p[1],p[0]]-c[:,p[1],p[0]])) for p in points]
+        res = [pool.apply_async(computeMoments, (p,m[:,p[1],p[0]],w,dw,f[:,p[1],p[0]]-c[:,p[1],p[0]])) for p in points]
         results = [r.get() for r in res]
 
     for p, M0, M1, M2 in results:

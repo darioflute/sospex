@@ -5,6 +5,7 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT 
 from matplotlib.ticker import ScalarFormatter
 from matplotlib.font_manager import FontProperties
+from matplotlib.patches import FancyArrowPatch
 
 # Matplotlib parameters
 import matplotlib.pyplot as plt
@@ -372,8 +373,9 @@ class ImageHistoCanvas(MplCanvas):
         if d[ind] >= self.epsilon:
             ind = None
         # Check if ind is greater than self.levels
-        if ind >= np.size(levels):
-            ind = np.size(levels)-1
+        if ind is not None:
+            if ind >= np.size(levels):
+                ind = np.size(levels)-1
         return ind
 
     def key_press_callback(self, event):
@@ -630,12 +632,26 @@ class SpectrumCanvas(MplCanvas):
             lines = [self.fluxLayer,self.linesLayer]
             visibility = [self.displayFlux,self.displayLines]
         elif s.instrument == 'PACS':
+            try:
+                self.fig.delaxes(self.ax3)
+            except:
+                pass
+            self.ax3 = self.axes.twinx()
+            self.exposureLine = self.ax3.step(self.x, s.exposure, color='orange',label='Exp')
+            self.ax3.set_ylim([0.5,np.nanmax(s.exposure)*1.54])
+            self.exposureLayer, = self.exposureLine
+
             self.displayUFlux = False
             self.displayAtran = False
-            self.displayExposure = False # For the moment
-            lns = self.fluxLine + self.linesLine
-            lines = [self.fluxLayer,self.linesLayer]
-            visibility = [self.displayFlux,self.displayLines]
+            self.displayExposure = True
+            lns = self.fluxLine + self.exposureLine + self.linesLine
+            lines = [self.fluxLayer, self.exposureLayer, self.linesLayer]
+            visibility = [self.displayFlux, self.displayExposure, self.displayLines]
+            # Add axes
+            if self.displayExposure:
+                self.ax3.get_yaxis().set_tick_params(labelright='on',right='on',direction='out',pad=5,colors='orange')
+            else:
+                self.ax3.get_yaxis().set_tick_params(labelright='off',right='off')
             
 
                 
@@ -762,9 +778,14 @@ class SpectrumCanvas(MplCanvas):
 
         
         
-    def updateSpectrum(self,f=None,uf=None,exp=None,cont=None):
+    def updateSpectrum(self,f=None,uf=None,exp=None,cont=None,moments=None):
 
         try:
+            try:
+                self.arrow1.remove()
+                self.arrow2.remove()
+            except:
+                pass
             if cont is not None:
                 self.spectrum.continuum = cont
                 self.contLine[0].set_ydata(cont)
@@ -786,6 +807,24 @@ class SpectrumCanvas(MplCanvas):
                 #ylim1 = maxf
                 self.axes.set_ylim(ylim0, maxf*1.1)
                 self.updateYlim()
+            if moments is not None:
+                # Update position, size, and dispersion from moments
+                x = moments[1]; y = np.nanmedian(cont)
+                c = 299792458. # m/s
+                # Amplitude of a Gaussian ...
+                dy = moments[0] * 1.e26 / np.sqrt(2.*np.pi*moments[2]) * x*x/c*1.e-6
+                #style = '-|>'
+                style = 'simple'
+                self.arrow1 = FancyArrowPatch((x,y),(x,y+dy),arrowstyle=style,mutation_scale=1.0)
+                self.axes.add_patch(self.arrow1)
+                #self.arrow1 = self.axes.arrow(x,y,dx,dy,width=0.001,head_width=0.01, head_length=0.002, fc='k', ec='k')
+                # FWHM of the distribution (assuming Gaussian)
+                y+= dy*0.5
+                dx = np.sqrt(2.*np.log(2))* np.sqrt(moments[2])
+                #self.arrow2 = self.axes.arrow(x,y,dx,dy,width=0.001,head_width=0.01, head_length=0.002, fc='k', ec='k')
+                self.arrow2 = FancyArrowPatch((x-dx,y),(x+dx,y),arrowstyle=style,mutation_scale=1.0)
+                self.axes.add_patch(self.arrow2)
+                
         except:
             pass
 
