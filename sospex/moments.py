@@ -6,7 +6,7 @@ from matplotlib.artist import Artist
 import multiprocessing as mp
 #from lmfit.models import LinearModel
 from lmfit import Parameters, minimize
-from scipy.signal import medfilt
+#from scipy.signal import medfilt
 
 
 class Guess(object):
@@ -397,9 +397,16 @@ def computeMoments(p,m,w,dw,f):
         w = w[m]
         dw = dw[m]
         
-        sf = medfilt(f,5)
-        df = f-sf
-        sigma = np.std(df)
+        #sf = medfilt(f,5)
+        #df = f-sf
+        # The dispersion is computed using the difference
+        # between two consecutive values. Assuming they have the
+        # same dispersion, the dispersion of the difference is
+        # sqrt(2) higher.
+        df = f[1:]-f[:-1]
+        med = np.median(df)
+        mad = np.median(np.abs(med))
+        sigma = mad/np.sqrt(2.)
         ms = f > 3*sigma
     
         #print('sigma is ',sigma, np.sum(ms))
