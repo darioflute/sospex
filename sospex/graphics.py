@@ -706,8 +706,8 @@ class SpectrumCanvas(MplCanvas):
         font = FontProperties(family='DejaVu Sans', size=12)
         xlim0,xlim1 = self.axes.get_xlim()
         ylim0,ylim1 = self.axes.get_ylim()
+        c = 299792458.0  # speed of light in m/s
         if self.xunit == 'THz':
-            c = 299792458.0  # speed of light in m/s
             xlim1,xlim0 = c/xlim0*1.e-6,c/xlim1*1.e-6
         dy = ylim1-ylim0
 
@@ -722,13 +722,10 @@ class SpectrumCanvas(MplCanvas):
                     y2 = y+0.2*dy
                 else:
                     y2 = y-0.2*dy
-                c = 299792.458  # speed of light in km/s
                 if self.xunit == 'um':
                     xline = wline
-                    #vline = (xline/(1+s.redshift)/s.l0-1.)*c
                 elif self.xunit == 'THz':
-                    xline = c/wline * 1.e-9
-                    #vline = (c/xline/(1+s.redshift)/s.l0*1.e-3-1.)*c
+                    xline = c/wline * 1.e-6
                 annotation = self.axes.annotate(nline, xy=(xline,y1),  xytext=(xline, y2), color='purple', alpha=0.4,
                                                 arrowprops=dict(edgecolor='purple',facecolor='y', arrowstyle='-',alpha=0.4,
                                                 connectionstyle="angle,angleA=0,angleB=90,rad=10"),
@@ -743,12 +740,8 @@ class SpectrumCanvas(MplCanvas):
         x1,x2 = self.xlimits
         c = 299792.458  # speed of light in km/s
         s = self.spectrum
-        #        if self.xunit == 'um':
         vx1 = (x1/(1+s.redshift)/s.l0-1.)*c
         vx2 = (x2/(1+s.redshift)/s.l0-1.)*c
-        #        elif self.xunit == 'THz':
-        #            vx1 = (c/x1/(1+s.redshift)/s.l0*1.e-3-1.)*c
-        #            vx2 = (c/x2/(1+s.redshift)/s.l0*1.e-3-1.)*c
         return (vx1,vx2)
             
 
@@ -810,19 +803,18 @@ class SpectrumCanvas(MplCanvas):
             if moments is not None:
                 # Update position, size, and dispersion from moments
                 x = moments[1]; y = np.nanmedian(cont)
-                c = 299792458. # m/s
-                # Amplitude of a Gaussian ...
-                dy = moments[0] * 1.e26 / np.sqrt(2.*np.pi*moments[2]) * x*x/c*1.e-6
-                #style = '-|>'
-                style = 'simple'
-                self.arrow1 = FancyArrowPatch((x,y),(x,y+dy),arrowstyle=style,mutation_scale=1.0)
-                self.axes.add_patch(self.arrow1)
-                #self.arrow1 = self.axes.arrow(x,y,dx,dy,width=0.001,head_width=0.01, head_length=0.002, fc='k', ec='k')
                 # FWHM of the distribution (assuming Gaussian)
-                y+= dy*0.5
                 dx = np.sqrt(2.*np.log(2))* np.sqrt(moments[2])
-                #self.arrow2 = self.axes.arrow(x,y,dx,dy,width=0.001,head_width=0.01, head_length=0.002, fc='k', ec='k')
-                self.arrow2 = FancyArrowPatch((x-dx,y),(x+dx,y),arrowstyle=style,mutation_scale=1.0)
+                # Amplitude of a Gaussian ...
+                c = 299792458. # m/s
+                A = moments[0] * 1.e26 / np.sqrt(2.*np.pi*moments[2]) * x*x/c*1.e-6
+                style = 'wedge'
+                if self.xunit == 'THz':
+                    dx = (c*dx)/(x*x-dx*dx) * 1.e-6
+                    x = c/x * 1.e-6
+                self.arrow1 = FancyArrowPatch((x,y),(x,y+A),arrowstyle=style,mutation_scale=1.0)
+                self.axes.add_patch(self.arrow1)
+                self.arrow2 = FancyArrowPatch((x-dx,y+0.5*A),(x+dx,y+0.5*A),arrowstyle=style,mutation_scale=1.0)
                 self.axes.add_patch(self.arrow2)
                 
         except:
@@ -859,7 +851,6 @@ class SpectrumCanvas(MplCanvas):
 
         # Clean previous region
         try:
-            #print("previous shade removed")
             self.region.remove()
         except:
             pass
@@ -972,8 +963,10 @@ class SpectrumCanvas(MplCanvas):
                         pass
                     self.drawSpectrum()
                     self.fig.canvas.draw_idle()
+                    if self.guess is not None:
+                        self.guess.switchUnits()
+                    
                 else:
-                    #print(text, event.mouseevent.xdata)
                     self.dragged = event.artist
                     self.pick_pos = event.mouseevent.xdata
                 

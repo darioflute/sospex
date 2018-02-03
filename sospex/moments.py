@@ -154,8 +154,7 @@ class SegmentsSelector:
 
 class SegmentsInteractor(QObject):
     """
-    An continuum editor.
-    
+    A continuum editor.
     """
     
     showverts = True
@@ -173,9 +172,6 @@ class SegmentsInteractor(QObject):
         
         x, y = zip(*verts)
         self.xy = [(i,j) for (i,j) in zip(x,y)]
-        #lines = [[(x[0],y[0]),(x[1],y[1])],[(x[2],y[2]),(x[3],y[3])]]
-        #self.lc = mc.LineCollection(lines, colors = 'g', linewidths=2)
-        #self.ax.add_collection(self.lc)
         self.line1 = Line2D(x[:2],y[:2],color=color,linewidth=2, animated = True)
         self.line2 = Line2D(x[2:],y[2:],color=color,linewidth=2, animated = True)
 
@@ -304,13 +300,11 @@ class SegmentsInteractor(QObject):
 
         if self._ind > 0:
             if x_ < x[self._ind-1]:
-                #dx = x[self._ind]-x[self._ind-1]
                 x[self._ind] = x[self._ind-1]
             else:
                 x[self._ind] = x_
         if self._ind < 3:
             if x_ > x[self._ind+1]:
-                #dx = x[self._ind+1]-x[self._ind]
                 x[self._ind] = x[self._ind+1]
             else:
                 x[self._ind] = x_
@@ -324,12 +318,8 @@ class SegmentsInteractor(QObject):
             y[i] = y[self._ind]+m*(x[i]-x[self._ind])
             self.xy[i] = (x[i],y[i])
 
-        # Update lines
-        self.line1.set_data(zip(*self.xy[:2]))
-        self.line2.set_data(zip(*self.xy[2:]))
-        
-        # Update markers
-        self.updateMarkers()
+        # Update segments and markers
+        self.updateLinesMarkers()
 
         self.canvas.restore_region(self.background)
         self.ax.draw_artist(self.line1)
@@ -341,8 +331,35 @@ class SegmentsInteractor(QObject):
         # Notify callback
         self.modSignal.emit('continuum guess modified')
 
-    def updateMarkers(self):
+    def updateLinesMarkers(self):
+        self.line1.set_data(zip(*self.xy[:2]))
+        self.line2.set_data(zip(*self.xy[2:]))
         self.line.set_data(zip(*self.xy))
+
+
+    def switchUnits(self):
+        """ Redraw segments in new units """
+        
+        # Rebuild line collection
+        x,y = zip(*self.xy)
+        x = np.asarray(x)
+        y = np.asarray(y)
+
+        c = 299792458.0  # speed of light in m/s
+        x = c/x * 1.e-6  # um to THz or viceversa
+        for i in range(4):
+            self.xy[i] = (x[i],y[i])
+
+        # Update segments and markers
+        self.updateLinesMarkers()
+
+        self.canvas.restore_region(self.background)
+        self.ax.draw_artist(self.line1)
+        self.ax.draw_artist(self.line2)
+        self.ax.draw_artist(self.line)
+        self.canvas.update()
+        self.canvas.flush_events()
+        
         
 # Functions for multiprocessing continuum fit and moment computation
 

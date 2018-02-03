@@ -1012,11 +1012,9 @@ class GUI (QMainWindow):
         istab = self.stabs.currentIndex()
         sc = self.sci[istab]
         SI = SegmentsInteractor(sc.axes, verts)
-        sc.guess = SI
-        #cidapm=
         SI.modSignal.connect(self.onModifiedGuess)
-        #cidapr=
         SI.mySignal.connect(self.onRemoveContinuum)
+        sc.guess = SI
 
 
     def onModifiedGuess(self):
@@ -1110,23 +1108,26 @@ class GUI (QMainWindow):
 
         # Values
         sc = self.sci[self.spectra.index('Pix')]
-        # guess values for the continuum
+        # guess values for the continuum in wavelength
         xy = sc.guess.xy
-        #print('xy',xy)
-        # Wavelength, Flux
-        # Reference Wavelength, Redshift
+        xg,yg = zip(*xy)
+        xg = np.array(xg); yg = np.array(yg)
+        if sc.xunit == 'THz':
+            c = 299792458.0  # speed of light in m/s
+            xg = c/xg * 1.e-6  # THz to um
+            
         
         # Run the fit and computation of moments for the selected points
         # This part will be parallelized in the future
 
         # Compute i0,i1,i2,i3 from xy
-        i0 = np.argmin(np.abs(self.specCube.wave-xy[0][0]))
-        i1 = np.argmin(np.abs(self.specCube.wave-xy[1][0]))
-        i2 = np.argmin(np.abs(self.specCube.wave-xy[2][0]))
-        i3 = np.argmin(np.abs(self.specCube.wave-xy[3][0]))
+        i0 = np.argmin(np.abs(self.specCube.wave-xg[0]))
+        i1 = np.argmin(np.abs(self.specCube.wave-xg[1]))
+        i2 = np.argmin(np.abs(self.specCube.wave-xg[2]))
+        i3 = np.argmin(np.abs(self.specCube.wave-xg[3]))
         
         # get the interactive guess (for the moment I do not use it)
-        # m,q  = self.guessContinuum(xy)
+        # m,q  = self.guessContinuum(xg,yg)
         
         # Update masks
         for p in points:
@@ -1137,13 +1138,6 @@ class GUI (QMainWindow):
             self.Cmask[i2:i3,j,i] = 1
             self.Mmask[i1:i2,j,i] = 1
             
-        # Fit continuum and compute moments
-        #for p in points:
-        #    i,j = p
-        #    self.fitContinuum(i,j,m,q)
-        #    self.computeMoments(i,j)
-
-            
         # Fit the continuum
         f = self.specCube.flux
         m = self.Cmask
@@ -1151,7 +1145,7 @@ class GUI (QMainWindow):
         w0 = self.specCube.l0
         c = self.continuum
         c0 = self.C0
-        c,c0 = multiFitContinuum(self.Cmask,w,f,c,c0,w0,points)
+        c,c0 = multiFitContinuum(m,w,f,c,c0,w0,points)
         self.continuum = c
         self.C0 = c0
 
@@ -1192,119 +1186,17 @@ class GUI (QMainWindow):
         ic = self.ici[0]
         i,j = ic.photApertures[0].rect.get_xy()
         i = int(np.rint(i)); j = int(np.rint(j))
-        sc.updateSpectrum(cont=self.continuum[:,j,i])
+        moments = [self.M0[j,i],self.M1[j,i],self.M2[j,i]]
+        sc.updateSpectrum(cont=self.continuum[:,j,i], moments=moments)
         sc.fig.canvas.draw_idle()
 
-    def computeContMoments(self,k,data):
-        """ multiprocessing function """
-
-        m,q,points = data
-        i,j = points[k]
-
-        print('ij', i, j)
         
-        #self.Cmask[i0:i1,j,i] = 1
-        #self.Cmask[i2:i3,j,i] = 1
-        #self.Mmask[i1:i2,j,i] = 1
-        self.fitContinuum(i,j,m,q)
-        self.computeMoments(i,j)
-
-        return i,j
-
-        
-    def guessContinuum(self,xy):
+    def guessContinuum(self,xg,yg):
         """ Compute slope and intercept of the continuum interactive guess """
 
-        xy0,xy1,xy2,xy3 = xy
-        slope = (xy3[1]-xy0[1])/(xy3[0]-xy0[0])
-        intcpt = xy0[1]-slope*xy0[0]
+        slope = (yg[3]-yg[0])/(xg[3]-xg[0])
+        intcpt = yg[0]-slope*xg[0]
         return slope,intcpt
-
-    def residuals(self,p,x,data=None,eps=None):
-        #unpack parameters
-        v = p.valuesdict()
-        #m = v['m']
-        q = v['q']
-        # define model
-        #model = m*x+q
-        model = q
-        if data is None:
-            return model
-        else:
-            if eps is None:
-                return model-data 
-            else:
-                return (model-data)/eps
-
-    
-    def fitContinuum(self,i,j,slope,q):
-        """ Fit the continuum on a spatial pixel """
-
-                
-        f = self.specCube.flux[:,j,i]
-        mnan = np.isnan(f)
-        self.Cmask[mnan,j,i] = 0
-        self.Mmask[mnan,j,i] = 0
-        m = self.Cmask[:,j,i]
-
-        if np.sum(m) > 5:
-            w = self.specCube.wave
-            w0 = self.specCube.l0
-            # Define parameters
-            fit_params = Parameters()
-            fit_params.add('m',value=slope)#,min=-200,max=200)
-            fit_params.add('q',value=q)#,min=0.0,max=10)
-            out = minimize(self.residuals,fit_params,args=(w[m],),kws={'data':f[m]},method='Nelder')
-            c  = self.residuals(out.params, w)
-            c0 = self.residuals(out.params, w0)
-            self.continuum[:,j,i] = c
-            self.C0[j,i] = c0
-        else:
-            pass
-#            c0 = np.nan
-#            c = np.full(len(m), np.nan)
-#        return c,c0
-        
-    def computeMoments(self,i,j):
-        """ compute M0 on a spatial pixel """
-
-        m = self.Mmask[:,j,i]
-
-        if np.sum(m) > 5:
-            c = 299792458. # m/s
-            w0 = self.specCube.l0
-            w = self.specCube.wave
-            f = self.specCube.flux
-            dw = [] 
-            dw.append([w[1]-w[0]])
-            dw.append(list((w[2:]-w[:-2])*0.5))
-            dw.append([w[-1]-w[-2]])
-            dw = np.concatenate(dw)
-            w = w[m]
-            dw = dw[m]
-            Snu = f[m,j,i]-self.continuum[m,j,i] # Flux continuum subtracted
-            pos = Snu > 0
-            Slambda = c*Snu[pos]/(w[pos]*w[pos])*1.e6   # [Jy * Hz / um]
-            w  = w[pos]
-            dw = dw[pos]
-            # Should I conserve only positive values ?
-            M0 = np.sum(Slambda*dw) # [Jy Hz]  
-            M1 = np.sum(w*Slambda*dw)/M0 # [um]
-            M2 = np.sum((w-M1)*(w-M1)*Slambda*dw)/M0 # [um*um]
-            
-            M0 *= 1.e-26 # [W/m2]  (W/m2 = Jy*Hz*1.e-26)
-            v = (M1-w0) * c/w0 *1.e-3 # km/s
-            sv = np.sqrt(M2) * c/w0 * 1.e-3 # km/s
-            self.M0[j,i] = M0
-            self.M1[j,i] = M1
-            self.M2[j,i] = M2
-            cz = 299792.458 * self.specCube.redshift
-            self.v[j,i] = v - cz
-            self.sv[j,i] = sv
-        else:
-            #M0 = M1 = M2 = v = sv = np.nan
-            pass
-
 
         
     def createAction(self,icon,text,shortcut,action):
