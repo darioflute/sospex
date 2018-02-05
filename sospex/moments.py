@@ -398,9 +398,6 @@ def fitContinuum(p,m,w,f):
     
     return p, pars
 
-def running_mean(x, N):
-    cumsum = numpy.cumsum(numpy.insert(x, 0, 0)) 
-    return (cumsum[N:] - cumsum[:-N]) / float(N)
 
 def computeMoments(p,m,w,dw,f):
     """ compute moments on a spatial pixel """

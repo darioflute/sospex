@@ -21,7 +21,8 @@ from matplotlib.text import Text
 from matplotlib.widgets import SpanSelector
 
 from astropy.wcs.utils import proj_plane_pixel_scales as pixscales
-
+from astropy.coordinates import SkyCoord
+from astropy import units as u
 
 from PyQt5.QtWidgets import (QVBoxLayout, QSizePolicy, QInputDialog, QDialog, QListWidget,QListWidgetItem,QPushButton)
 from PyQt5.QtGui import QIcon
@@ -141,7 +142,6 @@ class ImageCanvas(MplCanvas):
             self.axes.set_xlabel('R.A.')
             self.axes.set_ylabel('Dec')
 
-            #self.axes.format_coord = lambda x, y: "{:8.4f} um  {:10.4f} Jy".format(x,y)
             # Colorbar
             self.cbaxes = self.fig.add_axes([0.9,0.1,0.02,0.85])
             # Add title
@@ -153,8 +153,6 @@ class ImageCanvas(MplCanvas):
             self.showImage(image)
             self.changed = False
 
-            # Cursor data format
-            #self.image.format_cursor_data = lambda z: "{:.4f} Jy".format(z)
 
             
             # Add ellipse centered on source
@@ -189,6 +187,21 @@ class ImageCanvas(MplCanvas):
             cmax = vmed0+5*d0
 
         self.image.set_clim([cmin,cmax])
+
+        # Cursor data format
+        def format_coord(x,y):
+            """ Redefine how to show the coordinates """
+            pixel = np.array([[x, y]], np.float_)
+            world = self.wcs.wcs_pix2world(pixel, 1)                    
+            xx = world[0][0]
+            yy = world[0][1]
+            " Transform coordinates in string "
+            radec = SkyCoord(xx*u.deg, yy*u.deg, frame='icrs')
+            xx = radec.ra.to_string(u.hour,sep=':',precision=1)
+            yy = radec.dec.to_string(sep=':',precision=0)
+            return '{:s} {:s} ({:4.0f},{:4.0f})'.format(xx,yy,x,y)
+                
+        self.axes.format_coord = format_coord
 
 
     def updateScale(self,val):

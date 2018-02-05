@@ -10,32 +10,26 @@ from PyQt5.QtCore import Qt, QSize, QTimer, QThread, QObject, pyqtSignal
 
 import matplotlib
 matplotlib.use('Qt5Agg')
-from matplotlib.widgets import SpanSelector, PolygonSelector, RectangleSelector, EllipseSelector#, LassoSelector
-#from matplotlib.patches import Ellipse, Rectangle, Circle, Polygon
-#from matplotlib.path import Path
-
-from lmfit import Parameters, minimize
-#import multiprocessing as mp
-
-#import time
+from matplotlib.widgets import SpanSelector, PolygonSelector, RectangleSelector, EllipseSelector
 
 import warnings
 # To avoid excessive warning messages
 warnings.filterwarnings('ignore')
 
 # Local imports
-#from sospex.graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
-#from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
-#from sospex.specobj import specCube, Spectrum, ExtSpectrum
-#from sospex.cloud import cloudImage
+from sospex.moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments
+from sospex.graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
+from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
+from sospex.specobj import specCube, Spectrum, ExtSpectrum
+from sospex.cloud import cloudImage
 
-from graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
-from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
-from specobj import specCube,Spectrum, ExtSpectrum
-from cloud import cloudImage
+#from moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments
+#from graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
+#from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
+#from specobj import specCube,Spectrum, ExtSpectrum
+#from cloud import cloudImage
 
 class UpdateTabs(QObject):
-#    from sospex.cloud import cloudImage
     newImage = pyqtSignal([cloudImage])
 
 class DownloadThread(QThread):
@@ -55,7 +49,6 @@ class DownloadThread(QThread):
         self.parent = parent
 
     def run(self):
-#        from sospex.cloud import cloudImage
 
         downloadedImage = cloudImage(self.lon,self.lat,self.xsize,self.ysize,self.band)
         if downloadedImage.data is not None:
@@ -230,8 +223,6 @@ class GUI (QMainWindow):
         
 
     def addSpectrum(self,b):
-        #from sospex.graphics import SpectrumCanvas
-        #from graphics import SpectrumCanvas
         ''' Add a tab with an image '''
         t = QWidget()
         t.layout = QVBoxLayout(t)
@@ -274,8 +265,6 @@ class GUI (QMainWindow):
         return t,sc,scid1,scid2,scid3,scid4
 
     def addImage(self,b):
-        #from sospex.graphics import ImageCanvas, ImageHistoCanvas
-        #from graphics import ImageCanvas, ImageHistoCanvas
         ''' Add a tab with an image '''
         t = QWidget()
         t.layout = QVBoxLayout(t)
@@ -916,7 +905,6 @@ class GUI (QMainWindow):
 
     def guessLine(self):
         """ Create a first guess for fitting """
-        from moments import SegmentsSelector
 
         # Similar to defining a region. A Gaussian+offset is defined with two points,
         # limits of the continuum. Other two points define the Gaussian (top and 1-sigma).
@@ -1007,7 +995,6 @@ class GUI (QMainWindow):
 
 
     def onContinuumSelect(self, verts):
-        from moments import SegmentsInteractor
         
         istab = self.stabs.currentIndex()
         sc = self.sci[istab]
@@ -1021,12 +1008,6 @@ class GUI (QMainWindow):
         pass
         #print('modified guess')    
         
-    def onLassoSelect(self,verts):
-        """ Generate a guess structure based on the lasso selection """
-        #path = Path(verts)
-        #print('Select the guess')
-        #self.disactiveSelectors()
-        #self.LS = None
         
     def fitRegion(self):
         """ Fit the guess over a square region """
@@ -1066,7 +1047,6 @@ class GUI (QMainWindow):
     def onFitRect(self, eclick, erelease):
         'eclick and erelease are the press and release events'
 
-        from moments import multiFitContinuum, multiComputeMoments
         
         x1, y1 = eclick.xdata, eclick.ydata
         x2, y2 = erelease.xdata, erelease.ydata
@@ -1310,7 +1290,6 @@ class GUI (QMainWindow):
 
     
     def onPolySelect(self, verts):
-        #from sospex.apertures import PolygonInteractor
 
         self.disactiveSelectors()
         # 1 vertices in RA,Dec coords
@@ -1336,8 +1315,6 @@ class GUI (QMainWindow):
 
     def drawNewSpectrum(self, n):        
         """ Add tab with the flux inside the aperture """
-
-        #from sospex.specobj import Spectrum
 
         apname = "{:d}".format(n)
         self.spectra.append(apname)
@@ -1647,7 +1624,6 @@ class GUI (QMainWindow):
             self.msgbox.exec_()
         else:
             # Download the local fits
-#            from sospex.cloud import cloudImage
             downloadedImage = cloudImage(lon,lat,xsize,ysize,band)
             if downloadedImage.data is not None:
                 self.newImageTab(downloadedImage)
@@ -1756,7 +1732,6 @@ class GUI (QMainWindow):
         """
         Upload existing spectrum
         """
-        #from sospex.specobj import Spectrum
         
         fd = QFileDialog()
         fd.setNameFilters(["Fits Files (*.fits)","All Files (*)"])
@@ -1777,7 +1752,6 @@ class GUI (QMainWindow):
 
     def addApertures(self, ic):
         """ Add apertures already defined on new image """
-        #from sospex.apertures import 
 
         ic0 = self.ici[0]
         for aper in ic0.photApertures:
@@ -2177,7 +2151,7 @@ class GUI (QMainWindow):
                 else:
                     delimiter = ','
                 if self.specCube.instrument == 'FIFI-LS':
-                    uf = sc.spectrum.flux
+                    uf = sc.spectrum.uflux
                     e  = sc.spectrum.exposure
                     a  = self.specCube.atran
                     # Normal ASCII file
@@ -2515,7 +2489,6 @@ class GUI (QMainWindow):
     def newFile(self):
         """ Display a new image """
 
-        #from sospex.specobj import specCube, Spectrum
 
         fd = QFileDialog()
         fd.setNameFilters(["Fits Files (*.fits)","All Files (*)"])
@@ -2624,9 +2597,9 @@ class GUI (QMainWindow):
                 #print('size of image is ',np.shape(image))
                 ic.compute_initial_figure(image=image,wcs=self.specCube.wcs,title=ima)
                 if ima == 'Exp':
-                    ic.image.format_cursor_data = lambda z: "{:.0f} s".format(float(z))
+                    ic.image.format_cursor_data = lambda z: "{:10.0f} s".format(float(z))
                 else:
-                    ic.image.format_cursor_data = lambda z: "{:.4f} Jy".format(float(z))
+                    ic.image.format_cursor_data = lambda z: "{:10.4f} Jy".format(float(z))
                 # Callback to propagate axes limit changes among images
                 ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
                 ih = self.ihi[self.bands.index(ima)]
@@ -2822,36 +2795,6 @@ class GUI (QMainWindow):
             self.cutcube = 'off'
             sc.tmpRegion.remove()
             sc.fig.canvas.draw_idle()
-        # elif self.continuum == 'one' or self.continuum == 'two':
-        #     print('continuum is ', self.continuum)
-        #     istab = self.stabs.currentIndex()
-        #     sc = self.sci[istab]
-        #     if sc.xunit == 'THz':
-        #         c = 299792458.0  # speed of light in m/s
-        #         xmin, xmax = c/xmax*1.e-6, c/xmin*1.e-6
-        #     sc.shadeRegion([xmin,xmax],'lightcoral')
-        #     sc.fig.canvas.draw_idle()
-        #     indmin, indmax = np.searchsorted(self.specCube.wave, (xmin, xmax))
-        #     indmax = min(len(self.specCube.wave) - 1, indmax)
-        #     print('indmin, indmax', indmin,indmax)
-        #     if self.continuum == 'one':
-        #         self.continuum = 'two'
-        #         self.contpts = [indmin, indmax]
-        #     elif self.continuum == 'two':
-        #         self.contpts.extend([indmin,indmax])
-        #         # order the list
-        #         self.contpts.sort()
-        #         xpts = self.specCube.wave[self.contpts]
-        #         #yc = np.nanmax(sc.spectrum.flux[xpts[1]:xpts[2]])
-        #         continuum = sc.spectrum.flux[xpts[0]:xpts[1]]
-        #         continuum.append(sc.spectrum.flux[xpts[2]:xpts[3]])
-        #         #offset = np.nanmedian(continuum)
-        #         # build the guess structure and display the curve
-        #         #self.guess = Guess(self.contpts,xpts,yc,offset)
-        #         # span inactive
-        #         sc.span.active = False
-        #         self.continuum = 'off'
-        #         self.contpts = None
             
             
     def doZoomAll(self, event):
@@ -3033,8 +2976,8 @@ class GUI (QMainWindow):
         sc.updateYlim()
         
         
-if __name__ == '__main__':
-#def main():
+#if __name__ == '__main__':
+def main():
     #QApplication.setStyle('Fusion')
     app = QApplication(sys.argv)
     gui = GUI()
@@ -3055,6 +2998,6 @@ if __name__ == '__main__':
     # Add an icon for the application
     app.setWindowIcon(QIcon(gui.path0+'/icons/sospex.png'))
     app.setApplicationName('SOSPEX')
-    app.setApplicationVersion('0.16-beta')
+    app.setApplicationVersion('0.17-beta')
     sys.exit(app.exec_())
     #splash.finish(gui)
