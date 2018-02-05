@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8" />
-<title>save</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
+<title>moments</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
 
 <style type="text/css">
@@ -11775,7 +11775,7 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p><a href="contours.html">Previous</a> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="moments.html">Next</a>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="tutorials.html">Tutorials</a> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="Help.html">Help</a></p>
+<p><a href="save.html">Previous</a> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="tutorials.html">Next</a>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="tutorials.html">Tutorials</a> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="Help.html">Help</a></p>
 
 </div>
 </div>
@@ -11784,7 +11784,7 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="Save-images-and-spectra">Save images and spectra<a class="anchor-link" href="#Save-images-and-spectra">&#182;</a></h2>
+<h2 id="Fit-Continuum-and-Compute-Moments">Fit Continuum and Compute Moments<a class="anchor-link" href="#Fit-Continuum-and-Compute-Moments">&#182;</a></h2>
 </div>
 </div>
 </div>
@@ -11800,8 +11800,12 @@ div#notebook {
 </thead>
 <tbody>
 <tr>
-<td style="text-align:center"><img src="../icons/download.png" alt="Save" style="width: 20px;"/></td>
-<td style="text-align:left">Save images/spectra in different formats</td>
+<td style="text-align:center"><img src="../icons/guess.png" alt="Guess" style="width: 20px;"/></td>
+<td style="text-align:left">Guess level of the continuum</td>
+</tr>
+<tr>
+<td style="text-align:center"><img src="../icons/fitregion.png" alt="Fit" style="width: 20px;"/></td>
+<td style="text-align:left">Select a region to fit continuum, compute moments</td>
 </tr>
 </tbody>
 </table>
@@ -11813,10 +11817,12 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h3 id="Save-images">Save images<a class="anchor-link" href="#Save-images">&#182;</a></h3><p>By clicking the "save" icon under the image panel, a navigator window pops up to allow the user to save the image in a variety of different formats.</p>
-<p>In particular, by selecting a "*.fits" extension, the image is saved in FITS format with a minimal header including the astrometry, the object name, and the instrument used. If the image is retrieved from an archive, the archive name is conserved in the header as "instrument".</p>
-<p>The image can be otherwise saved without the astrometry information as a png, jpg, or pdf file by adding to the name
-the relative extensions "*.png", "*.jpg", or "*.pdf".</p>
+<h3 id="Guess-level-of-the-continuum">Guess level of the continuum<a class="anchor-link" href="#Guess-level-of-the-continuum">&#182;</a></h3><p>Once clicked on the icon, click and drag to trace the continuum on the right and the left of the line.
+The traced guessed continuum will appear on the image. 
+At this point, it is possible to select a point and drag it around to change the region or the height of
+the point.
+By clicking 'd' one can delete the guess.
+To restart with another guess (and deleting the previously computed moments), reclick on the icon.</p>
 
 </div>
 </div>
@@ -11825,15 +11831,8 @@ the relative extensions "*.png", "*.jpg", or "*.pdf".</p>
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h3 id="Save-spectra">Save spectra<a class="anchor-link" href="#Save-spectra">&#182;</a></h3><p>Under the spectral panel, the same "save" icon is available to save the displayed spectra in a variety of formats.</p>
-<p>By choosing the "*.fits" extension, a FITS file is saved which contains in the header details of the observation
-and extensions corresponding to the wavelength, flux and, in the case of FIFI-LS, also the uncorrected flux, exposure, and atmospheric transmission.</p>
-<p>If the spectral tab corresponds to a given aperture, the details of the aperture used are saved in the header.</p>
-<p>The same data can be saved in simple ASCII or CSV formats by using the extensions "*.txt" and "*.csv".
-In this case, the first lines will contain some header information (including eventually the aperture used)
-with a "#" at the beginning of each line.</p>
-<p>Finally, the image itself can be save as  png, jpg, or pdf file by using a name with the relative extension ("*.png",
-"*.jpg", or "*.pdf").</p>
+<h3 id="Fit-continuum-and-compute-moments">Fit continuum and compute moments<a class="anchor-link" href="#Fit-continuum-and-compute-moments">&#182;</a></h3><p>After clicking the icon, select by clicking and dragging the mouse the rectangular area on the image where to fit the continuum and compute the moments.
+Once the guess is visible on the Pixel spectrum, it is possible to select another area and redo the fit.</p>
 
 </div>
 </div>
