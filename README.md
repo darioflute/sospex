@@ -20,6 +20,9 @@ To install the code in your computer, you need first to install the anaconda
 python (https://www.continuum.io/downloads).
 You will have to use the Python 3.x distribution.
 
+To run fits, you will have to install also the *lmfit* package:
+
+conda install -c astropy lmfit
 
 At this point you can install sospex:
 
