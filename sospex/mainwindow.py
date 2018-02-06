@@ -17,17 +17,17 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # Local imports
-#from sospex.moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments
-#from sospex.graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
-#from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
-#from sospex.specobj import specCube, Spectrum, ExtSpectrum
-#from sospex.cloud import cloudImage
+from sospex.moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, msgBox1
+from sospex.graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
+from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
+from sospex.specobj import specCube, Spectrum, ExtSpectrum
+from sospex.cloud import cloudImage
 
-from moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, msgBox1
-from graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
-from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
-from specobj import specCube,Spectrum, ExtSpectrum
-from cloud import cloudImage
+#from moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, msgBox1
+#from graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
+#from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
+#from specobj import specCube,Spectrum, ExtSpectrum
+#from cloud import cloudImage
 
 class UpdateTabs(QObject):
     newImage = pyqtSignal([cloudImage])
@@ -3033,8 +3033,8 @@ class GUI (QMainWindow):
         sc.updateYlim()
         
         
-if __name__ == '__main__':
-#def main():
+#if __name__ == '__main__':
+def main():
     #QApplication.setStyle('Fusion')
     app = QApplication(sys.argv)
     gui = GUI()
