@@ -19,17 +19,17 @@ class specCube(object):
             origin = header['ORIGIN']
             if origin == 'GILDAS Consortium':
                 self.instrument = 'GREAT'
+
         try:
             self.obsdate = header['DATE-OBS']
         except:
             self.obsdate = header['DATE']
 
-
         if self.instrument == 'FIFI-LS':        
             self.wcs = WCS(header).celestial
-            #self.crpix3 = header['CRPIX3']
-            #self.crval3 = header['CRVAL3']
-            #self.cdelt3 = header['CDELT3']
+            self.crpix3 = header['CRPIX3']
+            self.crval3 = header['CRVAL3']
+            self.cdelt3 = header['CDELT3']
             self.objname = header['OBJ_NAME']
             self.filegpid = header['FILEGPID']
             self.baryshift = header['BARYSHFT']
@@ -87,10 +87,15 @@ class specCube(object):
             self.flux = hdl['image'].data
             self.exposure = hdl['coverage'].data
             wave = hdl['wcs-tab'].data
-            self.wave = np.concatenate(wave[0][0])
+            nwave = len(np.shape(wave['wavelen']))
+            if nwave == 3:
+                self.wave = np.concatenate(wave['wavelen'][0])
+            else:
+                self.wave = np.concatenate(wave['wavelen'])
             self.l0 = np.nanmedian(self.wave)
             self.n = len(self.wave)
             header = hdl['IMAGE'].header
+            self.header = header
             hdu = fits.PrimaryHDU(self.flux)
             hdu.header
             hdu.header['CRPIX1']=header['CRPIX1']
@@ -103,6 +108,10 @@ class specCube(object):
             hdu.header['CTYPE2']=header['CTYPE2']
             self.wcs = WCS(hdu.header).celestial
             self.pixscale,ypixscale = proj_plane_pixel_scales(self.wcs)*3600. # Pixel scale in arcsec
+            self.crpix3 = 1
+            w = self.wave
+            self.crval3 = w[0]
+            self.cdelt3 = np.median(w[1:]-w[:-1])
         else:
             print('This is not a standard spectral cube')
 

@@ -17,17 +17,17 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # Local imports
-from sospex.moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments
-from sospex.graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
-from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
-from sospex.specobj import specCube, Spectrum, ExtSpectrum
-from sospex.cloud import cloudImage
+#from sospex.moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments
+#from sospex.graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
+#from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
+#from sospex.specobj import specCube, Spectrum, ExtSpectrum
+#from sospex.cloud import cloudImage
 
-#from moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments
-#from graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
-#from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
-#from specobj import specCube,Spectrum, ExtSpectrum
-#from cloud import cloudImage
+from moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments
+from graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
+from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
+from specobj import specCube,Spectrum, ExtSpectrum
+from cloud import cloudImage
 
 class UpdateTabs(QObject):
     newImage = pyqtSignal([cloudImage])
@@ -184,8 +184,17 @@ class GUI (QMainWindow):
         help = bar.addMenu("Help")
         about = QAction('About', self, shortcut='Ctrl+a',triggered=self.about)
         help.addAction(about)
-        tutorials = QAction('Tutorials', self, shortcut='Ctrl+T',triggered=self.onHelp)
+        tutorials = QAction('Tutorials', self, shortcut='Ctrl+h',triggered=self.onHelp)
         help.addAction(tutorials)
+        issues = QAction('Issues', self, shortcut='Ctrl+i',triggered=self.onIssue)
+        help.addAction(issues)
+
+        save = bar.addMenu("Save")
+        savecube = QAction('Save cropped cube', self, shortcut='Ctrl+k',triggered=self.cropCube)
+        save.addAction(savecube)
+        savelcube = QAction('Save cube w/o continuum', self, shortcut='Ctrl+l',triggered=self.savelCube)
+        save.addAction(savelcube)
+        
 
         bar.setNativeMenuBar(False)
 
@@ -1117,7 +1126,8 @@ class GUI (QMainWindow):
             self.Cmask[i0:i1,j,i] = 1
             self.Cmask[i2:i3,j,i] = 1
             self.Mmask[i1:i2,j,i] = 1
-            
+
+        # This part should be threaded in the future to avoid locking the window
         # Fit the continuum
         f = self.specCube.flux
         m = self.Cmask
@@ -2173,20 +2183,40 @@ class GUI (QMainWindow):
                 self.sb.showMessage(message, 2000)
                 print(message)
 
-    def saveCube(self):
+    
+    def savelCube(self):
+        """ Save a cube after subtracting the continuum """
+
+        if self.continuum is not None:
+            self.saveCube(cont=True)
+        else:
+            message = "No continuum has been fit to the cube"
+            self.sb.showMessage(message, 2000)
+            print(message)
+            
+
+        
+    def saveCube(self, cont=False):
         """ Save a cut/cropped cube """ # TODO
         from astropy.io import fits
         
+
         # Dialog to save file
         fd = QFileDialog()
         fd.setNameFilters(["Fits Files (*.fits)","All Files (*)"])
         fd.setOptions(QFileDialog.DontUseNativeDialog)
         fd.setViewMode(QFileDialog.List)
 
+            
         if (fd.exec()):
             fileName = fd.selectedFiles()
             #print(fileName[0])
             outfile = fileName[0]
+
+            if cont and self.continuum is not None:
+                flux = self.specCube.flux - self.continuum
+            else:
+                flux = self.specCube.flux
 
             #print('Saving the cube with z size: ',self.specCube.n)
             # Reusable header
@@ -2197,6 +2227,7 @@ class GUI (QMainWindow):
             header['CDELT3'] = (self.specCube.cdelt3,'Increment')
             header['NAXIS3'] = (self.specCube.n,'3rd dimension')
             header['INSTRUME'] = (self.specCube.instrument, 'Instrument')
+            header['DATE-OBS'] = (self.specCube.obsdate, 'Date of the observation')
             
             if self.specCube.instrument == 'FIFI-LS':
                 header['CUNIT3'] = ('um','Wavelength unit')
@@ -2216,11 +2247,16 @@ class GUI (QMainWindow):
                 # Primary header
                 hdu = fits.PrimaryHDU()
                 hdu.header.extend(header)
-                
+
+                if cont and self.continuum is not None:
+                    uflux = self.specCube.uflux - self.continuum
+                else:
+                    uflux = self.specCube.uflux
+
                 # Extensions
-                hdu1 = self.addExtension(self.specCube.flux,'FLUX','Jy',header)
+                hdu1 = self.addExtension(flux,'FLUX','Jy',header)
                 hdu2 = self.addExtension(self.specCube.eflux,'ERROR','Jy',header)
-                hdu3 = self.addExtension(self.specCube.uflux,'UNCORRECTED_FLUX','Jy',header)
+                hdu3 = self.addExtension(uflux,'UNCORRECTED_FLUX','Jy',header)
                 hdu4 = self.addExtension(self.specCube.euflux,'UNCORRECTED_ERROR','Jy',header)
                 hdu5 = self.addExtension(self.specCube.wave,'WAVELENGTH','um',None)
                 hdu6 = self.addExtension(self.specCube.x,'X',None,None)
@@ -2230,7 +2266,7 @@ class GUI (QMainWindow):
                 hdu10 = self.addExtension(self.specCube.exposure,'EXPOSURE_MAP',None,header)
                 hdul = fits.HDUList([hdu, hdu1, hdu2, hdu3, hdu4, hdu5, hdu6, hdu7, hdu8, hdu9, hdu10])            
                 #hdul.info()    
-                hdul.writeto(outfile,overwrite=True) # clobber true  allows rewriting
+                hdul.writeto(outfile,overwrite=True) 
                 hdul.close()
             elif self.specCube.instrument == 'GREAT':
                 header['OBJECT'] = (self.specCube.objname, 'Object Name')
@@ -2242,31 +2278,39 @@ class GUI (QMainWindow):
                 eta_mb =0.67
                 calib = 971.
                 factor = calib*eta_fss*eta_mb
-                temperature = self.specCube.flux / factor  # Transform flux into temperature
+                temperature = flux / factor  # Transform flux into temperature
                 # Primary header
                 hdu = fits.PrimaryHDU(temperature)
                 header['NAXIS'] = (3,'Number of axis')
                 hdu.header.extend(header)
                 hdul = fits.HDUList([hdu])
-                hdul.writeto(outfile,overwrite=True) # clobber true  allows rewriting
+                hdul.writeto(outfile,overwrite=True) 
                 hdul.close()
             elif self.specCube.instrument == 'PACS':
                 """ Experimental """
+                header['NAXIS'] = (3,'Number of axis')
                 header['OBJECT'] = (self.specCube.objname, 'Object Name')
                 c = 299792.458  # speed of light in km/s 
                 header['REDSHFTV'] = self.specCube.redshift * c
-                wave = [[w] for w in self.specCube.wave]
-                wwave = [[wave,[]],[]]
-                header['NAXIS'] = (3,'Number of axis')
                 # Primary header
                 hdu = fits.PrimaryHDU()
                 hdu.header.extend(header)
                 # Extensions
-                hdu1 = self.addExtension(self.specCube.flux,'image','Jy',header)
+                hdu1 = self.addExtension(flux,'image','Jy',header)
                 hdu2 = self.addExtension(self.specCube.exposure,'coverage',None,header)
-                hdu3 = self.addExtension(wwave,'wcs-tab','um',header)
-                hdul = fits.HDUList([hdu, hdu1])            
-                hdul.writeto(outfile,overwrite=True) # clobber true  allows rewriting
+                # Writing the wavelength table
+                wave = [np.array([[x] for x in self.specCube.wave])]
+                layer=np.array([np.arange(len(self.specCube.wave))])
+                n = str(len(self.specCube.wave))
+                col1 = fits.Column(name='wavelen', format=n+'D', array=wave)
+                col2 = fits.Column(name='layer',format = n+'J', array=layer)
+                coldefs = fits.ColDefs([col1, col2])
+                hdw = fits.BinTableHDU.from_columns(coldefs)
+                hdw.header['EXTNAME'] = 'wcs-tab'
+                hdw.header.extend(header)
+                #hdu3 = self.addExtension(wwave,'wcs-tab','um',None)
+                hdul = fits.HDUList([hdu, hdu1, hdu2, hdw])            
+                hdul.writeto(outfile,overwrite=True) 
                 hdul.close()
             else:
                 pass    
@@ -2498,7 +2542,7 @@ class GUI (QMainWindow):
 
         if (fd.exec()):
             fileName= fd.selectedFiles()
-            #print(fileName[0])
+            print('Reading file ',fileName[0])
             # Read the spectral cube
             # A more robust step to skip bad files should be added
             try:
@@ -2976,8 +3020,8 @@ class GUI (QMainWindow):
         sc.updateYlim()
         
         
-#if __name__ == '__main__':
-def main():
+if __name__ == '__main__':
+#def main():
     #QApplication.setStyle('Fusion')
     app = QApplication(sys.argv)
     gui = GUI()
