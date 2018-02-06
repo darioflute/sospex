@@ -784,7 +784,7 @@ class SpectrumCanvas(MplCanvas):
 
         
         
-    def updateSpectrum(self,f=None,uf=None,exp=None,cont=None,moments=None):
+    def updateSpectrum(self,f=None,uf=None,exp=None,cont=None,moments=None,noise=None):
 
         try:
             try:
@@ -792,10 +792,17 @@ class SpectrumCanvas(MplCanvas):
                 self.arrow2.remove()
             except:
                 pass
+            try:
+                self.arrow3.remove()
+            except:
+                pass
             if cont is not None:
                 self.spectrum.continuum = cont
                 self.contLine[0].set_ydata(cont)
                 self.axes.draw_artist(self.contLine[0])
+            
+                
+                    
             if uf is not None:
                 self.ufluxLine[0].set_ydata(uf)
                 self.ax4.draw_artist(self.ufluxLine[0])
@@ -829,7 +836,10 @@ class SpectrumCanvas(MplCanvas):
                 self.axes.add_patch(self.arrow1)
                 self.arrow2 = FancyArrowPatch((x-dx,y+0.5*A),(x+dx,y+0.5*A),arrowstyle=style,mutation_scale=1.0)
                 self.axes.add_patch(self.arrow2)
-                
+                if noise is not None:
+                    self.arrow3 = FancyArrowPatch((x-1.5*dx,y+5*noise),(x+1.5*dx,y+5*noise),arrowstyle=style,mutation_scale=1.0,linestyle='dotted')
+                    self.axes.add_patch(self.arrow3)
+                    
         except:
             pass
 

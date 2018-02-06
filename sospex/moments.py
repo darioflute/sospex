@@ -1,7 +1,9 @@
 import numpy as np
 from PyQt5.QtCore import pyqtSignal,QObject
+from PyQt5.QtWidgets import QDialog, QMessageBox
 from matplotlib.lines import Line2D
 from matplotlib.artist import Artist
+
 #from matplotlib import collections  as mc
 import multiprocessing as mp
 #from lmfit.models import LinearModel
@@ -37,7 +39,7 @@ class Guess(object):
 
 class SegmentsSelector:
 
-    def __init__(self, ax, fig, callback, color='skyblue'):
+    def __init__(self, ax, fig, callback, color='#7ec0ee',degree=0):
 
         self.x = []
         self.y = []
@@ -47,6 +49,7 @@ class SegmentsSelector:
         self.fig = fig
         self.ax = ax
         self.callback = callback
+        self.degree = degree
 
         self.__ID1 = self.fig.canvas.mpl_connect('motion_notify_event', self.__motion_notify_callback)
         self.__ID2 = self.fig.canvas.mpl_connect('button_press_event', self.__button_press_callback)
@@ -59,9 +62,14 @@ class SegmentsSelector:
             if (event.button == None or event.button == 1):
                 if self.line1 != None: # Move line around
                     if self.line2 == None:
+                        if self.degree == 0: self.y[0]=y
                         self.line1.set_data([self.x[0], x],
                                             [self.y[0], y])
                     else:
+                        if self.degree == 0:
+                            self.y=[y,y,y,y]
+                            self.line1.set_data([self.x[0], self.x[1]],
+                                                [self.y[0], self.y[1]])
                         self.line2.set_data([self.x[2], x],
                                             [self.y[2], y])
                     self.fig.canvas.draw_idle()
@@ -75,30 +83,28 @@ class SegmentsSelector:
                 if self.line2 == None:  # Segment 1 completed
                     self.x.append(x)
                     self.y.append(y)
+                    if self.degree == 0:
+                        self.y[-2]=self.y[-1]
                     self.line1.set_data([self.x[0], self.x[1]],
                                         [self.y[0], self.y[1]])
-                    #self.line1 = Line2D([self.x[0], self.x[1]],
-                    #                    [self.y[0], self.y[1]],
-                    #                    marker='o',
-                    #                    color=self.color)
                     self.fig.canvas.draw_idle()
                     self.fig.canvas.mpl_disconnect(self.__ID1)
                     self.line2 = 'start'
                 else:
                     self.x.append(x)
                     self.y.append(y)
-                    # Adjust to the same slope between first and last point
-                    m = (self.y[3]-self.y[0])/(self.x[3]-self.x[0])
+                    if self.degree == 0:
+                        self.y[-1]=self.y[-2]
+                        m = 0.
+                    else:
+                        # Adjust to the same slope between first and last point
+                        m = (self.y[3]-self.y[0])/(self.x[3]-self.x[0])
                     for i in range(4):
                         self.y[i] = self.y[0]+m*(self.x[i]-self.x[0])
                     self.line1.set_data([self.x[0], self.x[1]],
                                         [self.y[0], self.y[1]])
                     self.line2.set_data([self.x[2], self.x[3]],
                                         [self.y[2], self.y[3]])
-                    #self.line2 = Line2D([self.x[2], self.x[3]],
-                    #                    [self.y[2], self.y[3]],
-                    #                    marker='o',
-                    #                    color=self.color)
                     self.fig.canvas.draw_idle()
                     self.xy = [(i,j) for (i,j) in zip(self.x,self.y)]
                     # Disconnect
@@ -130,6 +136,10 @@ class SegmentsSelector:
                         # add a segment
                         self.fig.canvas.draw_idle()
                 else:
+                    if self.degree == 0:
+                        self.y = [y,y]
+                        self.line1.set_data([self.x[0], self.x[1]],
+                                            [self.y[0], self.y[1]])
                     self.line2 = Line2D([x, x],
                                         [y, y],
                                         marker='o',
@@ -168,10 +178,12 @@ class SegmentsInteractor(QObject):
 
         self.ax = ax
         self.type = 'Continuum'
-        color = 'skyblue'
+        #        color = 'skyblue'
+        color = '#7ec0ee'
         
         x, y = zip(*verts)
         self.xy = [(i,j) for (i,j) in zip(x,y)]
+        self.computeSlope()
         self.line1 = Line2D(x[:2],y[:2],color=color,linewidth=2, animated = True)
         self.line2 = Line2D(x[2:],y[2:],color=color,linewidth=2, animated = True)
 
@@ -184,6 +196,13 @@ class SegmentsInteractor(QObject):
         self.cid = self.line1.add_callback(self.si_changed)
         self._ind = None  # the active vert
         self.connect()
+
+    def computeSlope(self):
+
+        xg,yg = zip(*self.xy)
+        xg = np.array(xg); yg = np.array(yg)
+        self.slope = (yg[3]-yg[0])/(xg[3]-xg[0])
+        self.intcpt = yg[0]-self.slope*xg[0]
 
 
     def connect(self):
@@ -360,17 +379,34 @@ class SegmentsInteractor(QObject):
         self.canvas.update()
         self.canvas.flush_events()
         
+# Dialogs
+
+class msgBox1(QDialog):
+    def __init__(self,parent=None):
+        super().__init__(parent)
+
+        msgBox = QMessageBox()
+        msgBox.setText('Choose degree of polynomial:')
+        #msgBox.addButton(QPushButton('0'), QMessageBox.ActionRole)
+        #msgBox.addButton(QPushButton('1'), QMessageBox.ActionRole)
+        msgBox.addButton('zero', QMessageBox.ActionRole)
+        msgBox.addButton('one', QMessageBox.ActionRole)
+        self.result = msgBox.exec()
+        
+
         
 # Functions for multiprocessing continuum fit and moment computation
 
 def residuals(p,x,data=None,eps=None):
     #unpack parameters
     v = p.valuesdict()
-    #m = v['m']
     q = v['q']
     # define model
-    #model = m*x+q
-    model = q
+    try:
+        m = v['m']
+        model = m*x+q
+    except:
+        model = q
     if data is None:
         return model
     else:
@@ -379,7 +415,7 @@ def residuals(p,x,data=None,eps=None):
         else:
             return (model-data)/eps
 
-def fitContinuum(p,m,w,f):
+def fitContinuum(p,slope,intcp,posCont,m,w,f):
 
     mf = np.isnan(f)
     m[mf] = 0
@@ -387,8 +423,12 @@ def fitContinuum(p,m,w,f):
     if np.sum(m) > 5:
         # Define parameters
         fit_params = Parameters()
-        #fit_params.add('m',value=0)
-        fit_params.add('q',value=0, min=0.)
+        if slope != 0:
+            fit_params.add('m',value=slope)
+        if posCont:
+            fit_params.add('q',value=intcp, min=0.)
+        else:
+            fit_params.add('q',value=intcp)
         out = minimize(residuals,fit_params,args=(w[m],),kws={'data':f[m]},method='Nelder')
         pars = out.params
     else:
@@ -421,9 +461,8 @@ def computeMoments(p,m,w,dw,f):
         med = np.median(df)
         mad = np.median(np.abs(med))
         sigma = mad/np.sqrt(2.)
-        ms = f > 3*sigma
+        ms = f > 5*sigma
     
-        #print('sigma is ',sigma, np.sum(ms))
     
         if np.sum(ms) > 5:
             c = 299792458. # m/s
@@ -443,8 +482,9 @@ def computeMoments(p,m,w,dw,f):
             M0 = M1 = M2 = np.nan
     else:
         M0 = M1 = M2 = np.nan
+        sigma = np.nan
             
-    return p, M0, M1, M2
+    return p, M0, M1, M2, sigma
 
 def multiComputeMoments(m,w,f,c,moments,points):
 
@@ -465,16 +505,20 @@ def multiComputeMoments(m,w,f,c,moments,points):
         res = [pool.apply_async(computeMoments, (p,m[:,p[1],p[0]],w,dw,f[:,p[1],p[0]]-c[:,p[1],p[0]])) for p in points]
         results = [r.get() for r in res]
 
-    for p, M0, M1, M2 in results:
+    n3,n2,n1 = np.shape(moments)
+    noise = np.zeros((n2,n1))
+        
+    for p, M0, M1, M2, sigma in results:
         i,j = p
         moments[0][j,i] = M0
         moments[1][j,i] = M1
         moments[2][j,i] = M2
+        noise[j,i] = sigma
             
-    return moments
+    return moments, noise
     
 
-def multiFitContinuum(m,w,f,c,c0,w0,points):
+def multiFitContinuum(m,w,f,c,c0,w0,points,slope,intcp,posCont):
 
     # To avoid forking error in MAC OS-X
     try:
@@ -483,7 +527,7 @@ def multiFitContinuum(m,w,f,c,c0,w0,points):
         pass
         
     with mp.Pool(processes=mp.cpu_count()) as pool:
-        res = [pool.apply_async(fitContinuum, (p,m[:,p[1],p[0]],w,f[:,p[1],p[0]])) for p in points]
+        res = [pool.apply_async(fitContinuum, (p,slope,intcp,posCont,m[:,p[1],p[0]],w,f[:,p[1],p[0]])) for p in points]
         results = [r.get() for r in res]
 
     for p, pars in results:

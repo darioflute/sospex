@@ -4,7 +4,7 @@ import numpy as np
 from PyQt5.QtWidgets import (QApplication, QWidget, QMainWindow, QTabWidget, QTabBar,QHBoxLayout,
                              QVBoxLayout, QSizePolicy, QStatusBar, QSplitter,
                              QToolBar, QAction, QFileDialog,  QTableView, QComboBox, QAbstractItemView,
-                             QMessageBox, QInputDialog, QDialog, QLabel)
+                             QMessageBox, QInputDialog, QDialog, QLabel, QPushButton)
 from PyQt5.QtGui import QIcon, QStandardItem, QStandardItemModel, QPixmap, QMovie
 from PyQt5.QtCore import Qt, QSize, QTimer, QThread, QObject, pyqtSignal
 
@@ -23,7 +23,7 @@ warnings.filterwarnings('ignore')
 #from sospex.specobj import specCube, Spectrum, ExtSpectrum
 #from sospex.cloud import cloudImage
 
-from moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments
+from moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, msgBox1
 from graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
 from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
 from specobj import specCube,Spectrum, ExtSpectrum
@@ -579,26 +579,29 @@ class GUI (QMainWindow):
                 try:
                     i=xx[0]; j = yy[0]                    
                     cont = self.continuum[:,j,i]
-                    moments = [self.M0[j,i],self.M1[j,i],self.M2[j,i]]                
+                    moments = [self.M0[j,i],self.M1[j,i],self.M2[j,i]]
+                    noise = self.noise[j,i]
                 except:
                     cont = None
                     moments = None
+                    noise = None
             else:
                 cont = None
                 moments = None
+                noise = None
             
             fluxAll = np.nansum(s.flux[:,yy,xx], axis=1)
             sc.spectrum.flux = fluxAll
             if s.instrument == 'GREAT':
-                sc.updateSpectrum(f=fluxAll, cont=cont, moments = moments)
+                sc.updateSpectrum(f=fluxAll, cont=cont, moments = moments, noise = noise)
             elif s.instrument == 'PACS':
                 expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
-                sc.updateSpectrum(f=fluxAll,exp=expAll, cont=cont, moments = moments)
+                sc.updateSpectrum(f=fluxAll,exp=expAll, cont=cont, moments = moments, noise=noise)
             elif s.instrument == 'FIFI-LS':
                 ufluxAll = np.nansum(s.uflux[:,yy,xx], axis=1)
                 expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
                 sc.spectrum.uflux = ufluxAll
-                sc.updateSpectrum(f=fluxAll,uf=ufluxAll,exp=expAll, cont=cont, moments = moments)
+                sc.updateSpectrum(f=fluxAll,uf=ufluxAll,exp=expAll, cont=cont, moments = moments, noise=noise)
         
             
     def onDraw(self,event):
@@ -909,9 +912,7 @@ class GUI (QMainWindow):
         #self.tb.addWidget(self.fitAction)        
         self.tb.addAction(self.quitAction)
 
-
-
-
+            
     def guessLine(self):
         """ Create a first guess for fitting """
 
@@ -921,17 +922,37 @@ class GUI (QMainWindow):
 
         # Change to pixel tab
         istab = self.spectra.index('Pix')
-        self.stabs.setCurrentIndex(istab)
+        if self.stabs.currentIndex() != istab:
+            self.stabs.setCurrentIndex(istab)
         sc = self.sci[istab]
-        #istab = self.stabs.currentIndex()
-        #sc = self.sci[istab]
+
+        
+        # Launch message box to ask about degree of polynomial and border constraint on continuum
+        degree = msgBox1()
+        if degree.result == 0:
+            degreePoly = 0
+            """ Ask for continuum boundary """
+            flags = QMessageBox.Yes | QMessageBox.No
+            question = "Do you want the continuum to be always positive ?"
+            response = QMessageBox.question(self, "Question", question, flags,QMessageBox.Yes)            
+            if response == QMessageBox.Yes:
+                self.positiveContinuum = True
+            elif response == QMessageBox.No:
+                self.positiveContinuum = False
+            else:
+                pass
+        else:
+            degreePoly = 1
+            self.positiveContinuum = False
+        
 
         self.sb.showMessage("Drag the mouse over the spectrum to select two continuum regions ", 2000)        
 
         if sc.guess is not None:
             self.onRemoveContinuum('segments deleted')
 
-        self.CS = SegmentsSelector(sc.axes,sc.fig, self.onContinuumSelect)
+        #print('degree poly is', degreePoly)
+        self.CS = SegmentsSelector(sc.axes,sc.fig, self.onContinuumSelect,degree=degreePoly)
 
         # Create moments (0,1,2) and continuum (should be value of continuum at reference wavelength at given redshift)
         s = self.specCube
@@ -1107,17 +1128,13 @@ class GUI (QMainWindow):
             
         
         # Run the fit and computation of moments for the selected points
-        # This part will be parallelized in the future
 
         # Compute i0,i1,i2,i3 from xy
         i0 = np.argmin(np.abs(self.specCube.wave-xg[0]))
         i1 = np.argmin(np.abs(self.specCube.wave-xg[1]))
         i2 = np.argmin(np.abs(self.specCube.wave-xg[2]))
         i3 = np.argmin(np.abs(self.specCube.wave-xg[3]))
-        
-        # get the interactive guess (for the moment I do not use it)
-        # m,q  = self.guessContinuum(xg,yg)
-        
+                
         # Update masks
         for p in points:
             i,j = p
@@ -1135,14 +1152,17 @@ class GUI (QMainWindow):
         w0 = self.specCube.l0
         c = self.continuum
         c0 = self.C0
-        c,c0 = multiFitContinuum(m,w,f,c,c0,w0,points)
+        intcp = sc.guess.intcpt
+        slope = sc.guess.slope
+
+        c,c0 = multiFitContinuum(m,w,f,c,c0,w0,points,slope,intcp,self.positiveContinuum)
         self.continuum = c
         self.C0 = c0
 
         # Compute moments
         m = self.Mmask
         moments = [self.M0, self.M1, self.M2]
-        moments = multiComputeMoments(m,w,f,c,moments,points)
+        moments, self.noise = multiComputeMoments(m,w,f,c,moments,points)
         self.M0, self.M1, self.M2 = moments
 
         # Compute velocity fields
@@ -1177,17 +1197,10 @@ class GUI (QMainWindow):
         i,j = ic.photApertures[0].rect.get_xy()
         i = int(np.rint(i)); j = int(np.rint(j))
         moments = [self.M0[j,i],self.M1[j,i],self.M2[j,i]]
-        sc.updateSpectrum(cont=self.continuum[:,j,i], moments=moments)
+        sc.updateSpectrum(cont=self.continuum[:,j,i], moments=moments, noise=self.noise[j,i])
         sc.fig.canvas.draw_idle()
 
         
-    def guessContinuum(self,xg,yg):
-        """ Compute slope and intercept of the continuum interactive guess """
-
-        slope = (yg[3]-yg[0])/(xg[3]-xg[0])
-        intcpt = yg[0]-slope*xg[0]
-        return slope,intcpt
-
         
     def createAction(self,icon,text,shortcut,action):
         act = QAction(QIcon(icon),text, self)
@@ -1898,7 +1911,7 @@ class GUI (QMainWindow):
                 self.sb.showMessage("Cropping the cube ", 2000)
                 self.cropCube2D(center,size)
                 self.saveCube()
-            elif QMessageBox.No:
+            elif response == QMessageBox.No:
                 self.sb.showMessage("Cropping aborted ", 2000)
             else:
                 pass
@@ -3042,6 +3055,6 @@ if __name__ == '__main__':
     # Add an icon for the application
     app.setWindowIcon(QIcon(gui.path0+'/icons/sospex.png'))
     app.setApplicationName('SOSPEX')
-    app.setApplicationVersion('0.17-beta')
+    app.setApplicationVersion('0.18-beta')
     sys.exit(app.exec_())
     #splash.finish(gui)
