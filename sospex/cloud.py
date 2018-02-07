@@ -182,9 +182,15 @@ class cloudImage(object):
                 elif naxis > 2:
                     self.data = hdulist['PRIMARY'].data[0,0,:,:]
                 else:
-                    print('This is not an image')
-                    
+                    print('This is not an image')                    
                 hdulist.close()
+
+                try:
+                    instrument = header['INSTRUME']
+                    self.source = instrument
+                except:
+                    self.source = 'unknown'
+                
                 #print(header)
                 self.wcs = WCS(header).celestial
                 print('wcs is ',self.wcs)

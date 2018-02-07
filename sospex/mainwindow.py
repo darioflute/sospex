@@ -17,17 +17,17 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # Local imports
-from sospex.moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, msgBox1
-from sospex.graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
-from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
-from sospex.specobj import specCube, Spectrum, ExtSpectrum
-from sospex.cloud import cloudImage
+#from sospex.moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, msgBox1
+#from sospex.graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
+#from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
+#from sospex.specobj import specCube, Spectrum, ExtSpectrum
+#from sospex.cloud import cloudImage
 
-#from moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, msgBox1
-#from graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
-#from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
-#from specobj import specCube,Spectrum, ExtSpectrum
-#from cloud import cloudImage
+from moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, msgBox1
+from graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
+from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
+from specobj import specCube,Spectrum, ExtSpectrum
+from cloud import cloudImage
 
 class UpdateTabs(QObject):
     newImage = pyqtSignal([cloudImage])
@@ -930,7 +930,7 @@ class GUI (QMainWindow):
         # Launch message box to ask about degree of polynomial and border constraint on continuum
         degree = msgBox1()
         if degree.result == 0:
-            degreePoly = 0
+            self.zeroDeg = True
             """ Ask for continuum boundary """
             flags = QMessageBox.Yes | QMessageBox.No
             question = "Do you want the continuum to be always positive ?"
@@ -942,7 +942,7 @@ class GUI (QMainWindow):
             else:
                 pass
         else:
-            degreePoly = 1
+            self.zeroDeg = False
             self.positiveContinuum = False
         
 
@@ -951,8 +951,7 @@ class GUI (QMainWindow):
         if sc.guess is not None:
             self.onRemoveContinuum('segments deleted')
 
-        #print('degree poly is', degreePoly)
-        self.CS = SegmentsSelector(sc.axes,sc.fig, self.onContinuumSelect,degree=degreePoly)
+        self.CS = SegmentsSelector(sc.axes,sc.fig, self.onContinuumSelect,zD=self.zeroDeg)
 
         # Create moments (0,1,2) and continuum (should be value of continuum at reference wavelength at given redshift)
         s = self.specCube
@@ -1028,7 +1027,7 @@ class GUI (QMainWindow):
         
         istab = self.stabs.currentIndex()
         sc = self.sci[istab]
-        SI = SegmentsInteractor(sc.axes, verts)
+        SI = SegmentsInteractor(sc.axes, verts, self.zeroDeg)
         SI.modSignal.connect(self.onModifiedGuess)
         SI.mySignal.connect(self.onRemoveContinuum)
         sc.guess = SI
@@ -1737,6 +1736,7 @@ class GUI (QMainWindow):
 
             # Check the 
             filename, file_extension = os.path.splitext(outfile)
+            basename = os.path.basename(filename)
             
             # Primary header
             image = downloadedImage.data
@@ -1744,6 +1744,7 @@ class GUI (QMainWindow):
             header = wcs.to_header()
             header.remove('WCSAXES')
             header['OBJECT'] = (self.specCube.objname, 'Object Name')
+            header['INSTRUME'] = (basename, 'Instrument')
             hdu = fits.PrimaryHDU(image)
             hdu.header.extend(header)
             hdul = fits.HDUList([hdu])
@@ -3033,8 +3034,8 @@ class GUI (QMainWindow):
         sc.updateYlim()
         
         
-#if __name__ == '__main__':
-def main():
+if __name__ == '__main__':
+#def main():
     #QApplication.setStyle('Fusion')
     app = QApplication(sys.argv)
     gui = GUI()

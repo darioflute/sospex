@@ -39,7 +39,7 @@ class Guess(object):
 
 class SegmentsSelector:
 
-    def __init__(self, ax, fig, callback, color='#7ec0ee',degree=0):
+    def __init__(self, ax, fig, callback, color='#7ec0ee', zD = True):
 
         self.x = []
         self.y = []
@@ -49,7 +49,7 @@ class SegmentsSelector:
         self.fig = fig
         self.ax = ax
         self.callback = callback
-        self.degree = degree
+        self.zeroDeg = zD
 
         self.__ID1 = self.fig.canvas.mpl_connect('motion_notify_event', self.__motion_notify_callback)
         self.__ID2 = self.fig.canvas.mpl_connect('button_press_event', self.__button_press_callback)
@@ -62,11 +62,11 @@ class SegmentsSelector:
             if (event.button == None or event.button == 1):
                 if self.line1 != None: # Move line around
                     if self.line2 == None:
-                        if self.degree == 0: self.y[0]=y
+                        if self.zeroDeg: self.y[0]=y
                         self.line1.set_data([self.x[0], x],
                                             [self.y[0], y])
                     else:
-                        if self.degree == 0:
+                        if self.zeroDeg:
                             self.y=[y,y,y,y]
                             self.line1.set_data([self.x[0], self.x[1]],
                                                 [self.y[0], self.y[1]])
@@ -83,7 +83,7 @@ class SegmentsSelector:
                 if self.line2 == None:  # Segment 1 completed
                     self.x.append(x)
                     self.y.append(y)
-                    if self.degree == 0:
+                    if self.zeroDeg:
                         self.y[-2]=self.y[-1]
                     self.line1.set_data([self.x[0], self.x[1]],
                                         [self.y[0], self.y[1]])
@@ -93,7 +93,7 @@ class SegmentsSelector:
                 else:
                     self.x.append(x)
                     self.y.append(y)
-                    if self.degree == 0:
+                    if self.zeroDeg:
                         self.y[-1]=self.y[-2]
                         m = 0.
                     else:
@@ -136,7 +136,7 @@ class SegmentsSelector:
                         # add a segment
                         self.fig.canvas.draw_idle()
                 else:
-                    if self.degree == 0:
+                    if self.zeroDeg:
                         self.y = [y,y]
                         self.line1.set_data([self.x[0], self.x[1]],
                                             [self.y[0], self.y[1]])
@@ -172,7 +172,7 @@ class SegmentsInteractor(QObject):
     mySignal = pyqtSignal(str)
     modSignal = pyqtSignal(str)
 
-    def __init__(self, ax, verts):
+    def __init__(self, ax, verts, zeroDeg=True):
         super().__init__()
 
 
@@ -180,7 +180,8 @@ class SegmentsInteractor(QObject):
         self.type = 'Continuum'
         #        color = 'skyblue'
         color = '#7ec0ee'
-        
+
+        self.zeroDeg = zeroDeg
         x, y = zip(*verts)
         self.xy = [(i,j) for (i,j) in zip(x,y)]
         self.computeSlope()
@@ -201,7 +202,10 @@ class SegmentsInteractor(QObject):
 
         xg,yg = zip(*self.xy)
         xg = np.array(xg); yg = np.array(yg)
-        self.slope = (yg[3]-yg[0])/(xg[3]-xg[0])
+        if self.zeroDeg:
+            self.slope = 0
+        else:
+            self.slope = (yg[3]-yg[0])/(xg[3]-xg[0])
         self.intcpt = yg[0]-self.slope*xg[0]
 
 
@@ -328,10 +332,14 @@ class SegmentsInteractor(QObject):
             else:
                 x[self._ind] = x_
         
-        if self._ind < 2:
-            m = (y[3]-y[self._ind])/(x[3]-x[self._ind])
+        if self.zeroDeg:
+            m = 0
         else:
-            m = (y[self._ind]-y[0])/(x[self._ind]-x[0])
+            if self._ind < 2:
+                m = (y[3]-y[self._ind])/(x[3]-x[self._ind])
+            else:
+                m = (y[self._ind]-y[0])/(x[self._ind]-x[0])
+
     
         for i in range(4):
             y[i] = y[self._ind]+m*(x[i]-x[self._ind])
