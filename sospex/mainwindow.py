@@ -1749,6 +1749,7 @@ class GUI (QMainWindow):
         
         # Dialog to save file
         fd = QFileDialog()
+        fd.setLabelText(QFileDialog.Accept, "Save as")
         fd.setNameFilters(["Fits Files (*.fits)","All Files (*)"])
         fd.setOptions(QFileDialog.DontUseNativeDialog)
         fd.setViewMode(QFileDialog.List)
@@ -1782,6 +1783,7 @@ class GUI (QMainWindow):
         """
         
         fd = QFileDialog()
+        fd.setLabelText(QFileDialog.Accept, "Import")
         fd.setNameFilters(["Fits Files (*.fits)","All Files (*)"])
         fd.setOptions(QFileDialog.DontUseNativeDialog)
         fd.setViewMode(QFileDialog.List)
@@ -1993,6 +1995,7 @@ class GUI (QMainWindow):
         
         # Dialog to save file
         fd = QFileDialog()
+        fd.setLabelText(QFileDialog.Accept, "Save as")
         fd.setNameFilters(["Fits Files (*.fits)","PNG Files (*.png)",
                            "JPG Files (*.jpg)","PDF Files (*.pdf)","All Files (*)"])
         fd.setOptions(QFileDialog.DontUseNativeDialog)
@@ -2041,6 +2044,7 @@ class GUI (QMainWindow):
         
         # Dialog to save file
         fd = QFileDialog()
+        fd.setLabelText(QFileDialog.Accept, "Save as")
         fd.setNameFilters(["Fits Files (*.fits)","PNG Files (*.png)","JPG Files (*.jpg)",
                            "PDF Files (*.pdf)","ASCII Files (*.txt)", "CSV Files (*.csv)","All Files (*)"])
         fd.setOptions(QFileDialog.DontUseNativeDialog)
@@ -2241,6 +2245,7 @@ class GUI (QMainWindow):
 
         # Dialog to save file
         fd = QFileDialog()
+        fd.setLabelText(QFileDialog.Accept, "Save as")
         fd.setNameFilters(["Fits Files (*.fits)","All Files (*)"])
         fd.setOptions(QFileDialog.DontUseNativeDialog)
         fd.setViewMode(QFileDialog.List)
@@ -2375,11 +2380,19 @@ class GUI (QMainWindow):
 
     def maskCube(self):
         """ Mask a slice of the cube """
-        self.sb.showMessage("Select a polygonal region to mask", 2000)
+        self.sb.showMessage("Draw the region to mask", 2000)
 
         # Start a Lasso Selector to define a polygon aperture
+        self.itabs.setCurrentIndex(0)
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
+
+        if ic.toolbar._active == 'ZOOM':
+            ic.toolbar.zoom()  # turn off zoom
+            x = ic.axes.get_xlim()
+            y = ic.axes.get_ylim()
+            self.zoomlimits = [x,y]
+
         self.LS = LassoSelector(ic.axes, onselect=self.onMask)
 
     def onMask(self, verts):
@@ -2415,18 +2428,23 @@ class GUI (QMainWindow):
             ic0 = self.ici[0]
             ih0 = self.ihi[0]
             ic0.showImage(image)
-            ic0.fig.canvas.draw_idle()
+            #ic0.fig.canvas.draw_idle()
             clim = ic0.image.get_clim()
+            ih0.axes.cla()
             ih0.compute_initial_figure(image=image,xmin=clim[0],xmax=clim[1])
             # Add apertures
-            self.addApertures(ic0)
+            #self.addApertures(ic0)
             # Add contours
-            self.addContours(ic0) 
+            #self.addContours(ic0) 
         elif QMessageBox.No:
             pass
 
         
         poly.remove()
+        x,y = self.zoomlimits
+        ic.axes.set_xlim(x)
+        ic.axes.set_ylim(y)
+        #ic.changed = True
         ic.fig.canvas.draw_idle()
 
         
@@ -2626,6 +2644,7 @@ class GUI (QMainWindow):
 
 
         fd = QFileDialog()
+        fd.setLabelText(QFileDialog.Accept, "Import")
         fd.setNameFilters(["Fits Files (*.fits)","All Files (*)"])
         fd.setOptions(QFileDialog.DontUseNativeDialog)
         fd.setViewMode(QFileDialog.List)

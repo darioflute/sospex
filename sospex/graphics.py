@@ -173,6 +173,7 @@ class ImageCanvas(MplCanvas):
     def showImage(self, image):
         
         self.oimage = image.copy()
+        self.axes.cla()
         self.image = self.axes.imshow(image, origin='lower',cmap=self.colorMap+self.colorMapDirection,interpolation='none')
         self.fig.colorbar(self.image, cax=self.cbaxes)
         # Intensity limits
