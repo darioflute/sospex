@@ -244,12 +244,13 @@ class ImageHistoCanvas(MplCanvas):
             self.nh = len(ima)
             ima = np.sort(ima)
             s = np.size(ima)
+            smin = int(s*0.005)
             smax = min(int(s*0.9995),s-1)
             nbins=256
-            n, self.bins, patches = self.axes.hist(ima, bins=nbins, range=(np.nanmin(ima), ima[smax]), fc='k', ec='k')
+
 
             self.median = np.median(ima)
-            self.sdev   = np.std(ima-self.median)
+            self.sdev   = np.std(ima[smin:smax])
             self.min    = np.min(ima)
             self.max    = np.max(ima)
             self.epsilon = self.sdev/3.
@@ -259,11 +260,24 @@ class ImageHistoCanvas(MplCanvas):
                 xmin = ima[int(s*0.01)]
             if xmax == None:
                 xmax = ima[int(s*0.99)-1]
+
+            # Avoid excessively lower flux
+            if xmin < (self.median - 3 * self.sdev):
+                xmin = self.median - 3 * self.sdev
+                
+
+            hmin = ima[smin]
+            hmax = ima[smax]
+            if (hmax - self.median) > 10 *self.sdev:
+                hmax = self.median+10*self.sdev
+            n, self.bins, patches = self.axes.hist(ima, bins=nbins, range=(hmin,hmax), fc='k', ec='k')
+            
             if np.isfinite(xmin) and np.isfinite(xmax):
                 self.onSelect(xmin,xmax)
             else:
                 print('Problems with the image')
 
+            
             # Initialize contour level vertical lines
             self.lev = []
             self.levels = []
@@ -271,9 +285,16 @@ class ImageHistoCanvas(MplCanvas):
 
             # Draw grid (median, median+n*sigma)
             x = self.median
-            while x < self.max:
-                self.axes.axvline(x=x,color='black',alpha=0.5)
-                x += self.sdev
+            for i in range(10):
+                if x < self.max:
+                    self.axes.axvline(x=x,color='black',alpha=0.5)
+                    x += self.sdev                
+            x = self.median-self.sdev
+            for i in range(3):
+                if x > self.min:
+                    self.axes.axvline(x=x,color='black',alpha=0.5)
+                    x -= self.sdev                
+                    
 
             # Activate focus
             self.setFocusPolicy(Qt.ClickFocus)
@@ -311,6 +332,7 @@ class ImageHistoCanvas(MplCanvas):
         indmin, indmax = np.searchsorted(self.bins, (xmin, xmax))
         indmax = min(len(self.bins) - 1, indmax)
         self.limits = [self.bins[indmin],self.bins[indmax]]
+        print('limits are: ', self.limits)
         try:
             self.shade.remove()
         except:

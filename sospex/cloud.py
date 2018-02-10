@@ -5,6 +5,8 @@ from astropy import units as u
 from astropy.coordinates import SkyCoord
 from astropy.utils.data import download_file
 from astropy.wcs import WCS
+from reproject import reproject_interp
+
 import numpy as np
 from html.parser import HTMLParser
 from PyQt5.QtWidgets import QFileDialog
@@ -174,6 +176,7 @@ class cloudImage(object):
             try:           
                 print('opening ',image_file)
                 hdulist = fits.open(image_file)
+                hdu = hdulist['PRIMARY']
                 hdulist.info()
                 header = hdulist['PRIMARY'].header
                 naxis = header['NAXIS']
@@ -182,8 +185,8 @@ class cloudImage(object):
                 elif naxis > 2:
                     self.data = hdulist['PRIMARY'].data[0,0,:,:]
                 else:
-                    print('This is not an image')                    
-                hdulist.close()
+                    print('This is not an image')
+
 
                 try:
                     instrument = header['INSTRUME']
@@ -193,7 +196,6 @@ class cloudImage(object):
                 
                 #print(header)
                 self.wcs = WCS(header).celestial
-                print('wcs is ',self.wcs)
                 # Check if coordinates are inside the image
                 #print('data shape is',np.shape(self.data))
                 x,y = self.wcs.all_world2pix(self.lon,self.lat,1)
@@ -202,10 +204,45 @@ class cloudImage(object):
                 print('nx,ny ',nx,ny)
                 if x >= 0 and x< nx and y >= 0 and y  <= ny:
                     print('Source inside the FITS image')
+                    # Check if N aligned with y, if not reproject image
+                    try:
+                        h1 = self.wcs.to_header()
+                        pc11=h1["PC1_1"]
+                        pc12=h1["PC1_2"]
+                        pc21=h1["PC2_1"]
+                        pc22=h1["PC2_2"]
+                        print(pc11,pc12,pc21,pc22)
+                        pc1 = -np.hypot(pc11,pc12)
+                        print(pc1)
+                        pc2 = np.hypot(pc21,pc22)
+                        rota = np.arctan(pc21/pc22)
+                        print('rotation angle: ',rota*180/np.pi)
+                        if h1["CRVAL2"] < 0:
+                            pc2=-pc2
+                        print(pc2)
+                        h1.update(pc1_1=pc1,pc1_2=0.0,pc2_1=0.0,pc2_2=pc2,orientat=0.)
+                        h1['NAXIS']=2
+                        n1 = nx*np.sin(rota)+ny*np.cos(rota)
+                        n2 = nx*np.cos(rota)+ny*np.sin(rota)
+                        h1['NAXIS1']= n1
+                        h1['NAXIS2']= n2
+                        crpix1=header['CRPIX1']
+                        crpix2=header['CRPIX2']
+                        h1['crpix1'] = crpix1+(nx-n1)/2.
+                        h1['crpix2'] = crpix2+(ny-n2)/2.
+                        print(h1)
+                        self.wcs = WCS(h1)
+                        print(self.wcs)
+                        array, footprint = reproject_interp(hdu, h1)
+                        print(np.shape(array))
+                        self.data= array
+                    except:
+                        print('No rotation matrix available')
                 else:
                     self.data = None
                     self.wcs = None
                     print('Coordinates out of the selected FITS image')
+                hdulist.close()
             except:
                 self.data = None
                 self.wcs = None

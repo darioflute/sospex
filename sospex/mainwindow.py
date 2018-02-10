@@ -10,7 +10,8 @@ from PyQt5.QtCore import Qt, QSize, QTimer, QThread, QObject, pyqtSignal
 
 import matplotlib
 matplotlib.use('Qt5Agg')
-from matplotlib.widgets import SpanSelector, PolygonSelector, RectangleSelector, EllipseSelector
+from matplotlib.widgets import SpanSelector, PolygonSelector, RectangleSelector, EllipseSelector, LassoSelector
+from matplotlib.patches import Polygon
 
 import warnings
 # To avoid excessive warning messages
@@ -244,7 +245,6 @@ class GUI (QMainWindow):
         # Add actions to toolbar
         toolbar.addAction(self.sliceAction)
         toolbar.addAction(self.cutAction)
-        #toolbar.addAction(self.maskAction)
         toolbar.addAction(self.specAction)
         toolbar.addAction(self.guessAction)
         toolbar.addSeparator()
@@ -295,6 +295,7 @@ class GUI (QMainWindow):
         toolbar.addAction(self.cloudAction)
         toolbar.addAction(self.fitsAction)
         toolbar.addAction(self.fitregionAction)
+        toolbar.addAction(self.maskAction)
         toolbar.addSeparator()
         #toolbar.addWidget(self.apertureAction)        
 
@@ -890,7 +891,7 @@ class GUI (QMainWindow):
         self.cutAction = self.createAction(self.path0+'/icons/cut.png','Cut part of the cube','Ctrl+k',self.cutCube)
         self.cropAction = self.createAction(self.path0+'/icons/crop.png','Crop the cube','Ctrl+K',self.cropCube)
         self.sliceAction = self.createAction(self.path0+'/icons/slice.png','Select a slice of the cube','Ctrl+K',self.sliceCube)
-        self.maskAction =  self.createAction(self.path0+'/icons/mask.png','Mask a slice of the cube','Ctrl+m',self.maskCube)
+        self.maskAction =  self.createAction(self.path0+'/icons/mask.png','Mask a region','Ctrl+m',self.maskCube)
         self.cloudAction = self.createAction(self.path0+'/icons/cloud.png','Download image from cloud','Ctrl+D',self.selectDownloadImage)
         self.fitsAction =  self.createAction(self.path0+'/icons/download.png','Save the image as a FITS/PNG/JPG/PDF file','Ctrl+S',self.saveFits)
         self.specAction = self.createAction(self.path0+'/icons/download.png','Save the spectrum as a ASCII/FITS/PNG/JPG/PDF file','Ctrl+S',self.saveSpectrum)
@@ -967,9 +968,15 @@ class GUI (QMainWindow):
 
         # Open tabs if they do not exist
         newbands = ['C0','M0','M1','M2','v','sv']
-        for new in newbands:
+        sbands = [self.C0, self.M0, self.M1, self.M2,self.v,self.sv]
+        for new,sb in zip(newbands,sbands):
             if new not in self.bands:
                 self.addBand(new)
+            else:
+                itab = self.bands.index(new)
+                self.removeTab(itab)
+                self.addBand(new)
+
         
     def addBand(self, band):
         # Add a band and display it in a new tab
@@ -1018,15 +1025,30 @@ class GUI (QMainWindow):
         y = ic0.axes.get_ylim()
         ra,dec = ic0.wcs.all_pix2world(x,y,1)
         x,y = ic.wcs.all_world2pix(ra,dec,1)            
-        ic.axes.set_xlim(x)
-        ic.axes.set_ylim(y)
-        ic.changed = True
+        #ic.axes.set_xlim(x)
+        #ic.axes.set_ylim(y)
+        #ic.changed = True
 
 
     def onContinuumSelect(self, verts):
+
+
+
         
         istab = self.stabs.currentIndex()
         sc = self.sci[istab]
+
+        # Order the x coordinates of the verts
+        x, y = zip(*verts)
+        x = np.array(x); y = np.array(y)
+        # Order increasing if wavelength, decreasing if frequency
+        idx = np.argsort(x)
+        if sc.xunit == 'THz':
+            idx = idx[::-1]
+        x = x[idx]
+        y = y[idx]
+        verts = [(i,j) for (i,j) in zip(x,y)]
+
         SI = SegmentsInteractor(sc.axes, verts, self.zeroDeg)
         SI.modSignal.connect(self.onModifiedGuess)
         SI.mySignal.connect(self.onRemoveContinuum)
@@ -1484,8 +1506,8 @@ class GUI (QMainWindow):
             self.ES.set_active(False)
         if self.PS is not None:
             self.PS.set_active(False)
-        #if self.LS is not None:
-        #    self.LS.set_active(False)
+        if self.LS is not None:
+            self.LS.set_active(False)
 
     def chooseFitOption(self, i):
         """ Choosing a fit option """
@@ -1696,6 +1718,8 @@ class GUI (QMainWindow):
 
             ic.compute_initial_figure(image=image,wcs=wcs,title=band)
             ih.compute_initial_figure(image=image)
+
+            # Check rotation angle
             
             # Align with spectral cube
             ic0 = self.ici[0]
@@ -2064,8 +2088,8 @@ class GUI (QMainWindow):
                         hdu.header['RA'] = (world[0][0], 'RA of aperture center')
                         hdu.header['DEC'] = (world[0][1], 'Dec of aperture center')
                         hdu.header['ANGLE'] = (aper.ellipse.angle, 'Angle of elliptical aperture [degs]')
-                        hdu.header['MAJAX'] = (aper.ellipse.width*ic.pixscale, 'Major axis of elliptical aperture [arcsec]')
-                        hdu.header['MINAX'] = (aper.ellipse.height*ic.pixscale, 'Minor axis of elliptical aperture [arcsec]')
+                        hdu.header['MAJAX'] = (aper.ellipse.width*ic.pixscale*0.5, 'Major semi-axis of elliptical aperture [arcsec]')
+                        hdu.header['MINAX'] = (aper.ellipse.height*ic.pixscale*0.5, 'Minor semi-axis of elliptical aperture [arcsec]')
                     elif aper.type == 'Circle':
                         x0,y0 = aper.ellipse.center
                         pixel = np.array([[x0, y0]], np.float_)
@@ -2073,7 +2097,7 @@ class GUI (QMainWindow):
                         hdu.header['APERTURE']=('Circle','Type of photometric aperture')
                         hdu.header['RA'] = (world[0][0]/15., 'RA of aperture center [hours]')
                         hdu.header['DEC'] = (world[0][1], 'Dec of aperture center [degs]')
-                        hdu.header['RADIUS'] = (aper.ellipse.height*ic.pixscale, 'Radius of circular aperture [arcsec]')
+                        hdu.header['RADIUS'] = (aper.ellipse.height*ic.pixscale*0.5, 'Radius of circular aperture [arcsec]')
                     elif aper.type == 'Square':
                         x0,y0 = aper.xy[0]
                         pixel = np.array([[x0, y0]], np.float_)
@@ -2351,8 +2375,61 @@ class GUI (QMainWindow):
 
     def maskCube(self):
         """ Mask a slice of the cube """
-        self.sb.showMessage("Drag your mouse over the spectrum to mask part of the cube or click over to unmask", 2000)
+        self.sb.showMessage("Select a polygonal region to mask", 2000)
 
+        # Start a Lasso Selector to define a polygon aperture
+        itab = self.itabs.currentIndex()
+        ic = self.ici[itab]
+        self.LS = LassoSelector(ic.axes, onselect=self.onMask)
+
+    def onMask(self, verts):
+        """ Uses the vertices of the mask to mask the cube (and moments) """
+
+        s= self.specCube
+        poly = Polygon(list(verts), fill=False, closed=True, color='lime')
+        self.disactiveSelectors()
+        
+        itab = self.itabs.currentIndex()
+        ic = self.ici[itab]
+        ih = self.ihi[itab]
+        ic.axes.add_patch(poly)
+        
+        path = poly.get_path()
+        transform = poly.get_patch_transform()
+        npath = transform.transform_path(path)
+        inpoints = s.points[npath.contains_points(s.points)]
+        xx,yy = inpoints.T
+
+        """ Ask to mask points """
+        flags = QMessageBox.Yes 
+        flags |= QMessageBox.No
+        question = "Do you want to mask the data inside the curve ?"
+        response = QMessageBox.question(self, "Question",
+                                        question,
+                                        flags)            
+        if response == QMessageBox.Yes:
+            self.sb.showMessage("Masking data ", 2000)
+            self.specCube.flux[:,yy,xx] = np.nan
+            """ update flux images (pix and all) """
+            image = np.nanmedian(self.specCube.flux, axis=0)
+            ic0 = self.ici[0]
+            ih0 = self.ihi[0]
+            ic0.showImage(image)
+            ic0.fig.canvas.draw_idle()
+            clim = ic0.image.get_clim()
+            ih0.compute_initial_figure(image=image,xmin=clim[0],xmax=clim[1])
+            # Add apertures
+            self.addApertures(ic0)
+            # Add contours
+            self.addContours(ic0) 
+        elif QMessageBox.No:
+            pass
+
+        
+        poly.remove()
+        ic.fig.canvas.draw_idle()
+
+        
     def computeZeroMoment(self):
         
         c = 299792458. # m/s
@@ -2663,6 +2740,7 @@ class GUI (QMainWindow):
                 ih = self.ihi[self.bands.index(ima)]
                 clim = ic.image.get_clim()
                 ih.compute_initial_figure(image=image,xmin=clim[0],xmax=clim[1])
+                # temporary ...
                 x = ic.axes.get_xlim()
                 y = ic.axes.get_ylim()
                 self.zoomlimits = [x,y]
