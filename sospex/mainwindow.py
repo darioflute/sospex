@@ -1045,8 +1045,6 @@ class GUI (QMainWindow):
 
     def onContinuumSelect(self, verts):
 
-
-
         
         istab = self.stabs.currentIndex()
         sc = self.sci[istab]
@@ -2399,7 +2397,14 @@ class GUI (QMainWindow):
         self.stabs.setCurrentIndex(istab)
         sc = self.sci[istab]
         sc.span.active=True
-
+        ## toggle off continuum
+        try:
+            SI = sc.guess
+            SI.showverts = False
+            SI.line.set_visible(SI.showverts)
+        except:
+            pass
+        
     def maskCube(self):
         """ Mask a slice of the cube """
         self.sb.showMessage("Draw the region to mask", 2000)
@@ -2907,6 +2912,13 @@ class GUI (QMainWindow):
             sc.shadeSpectrum()
             sc.fig.canvas.draw_idle()
             sc.span.active = False
+            # Toggle on the continuum
+            try:
+                SI = sc.guess
+                SI.showverts = True
+                SI.line.set_visible(SI.showverts)
+            except:
+                pass
 
             # Update images (flux, uflux, coverage)
             if self.specCube.instrument == 'GREAT':

@@ -168,7 +168,7 @@ class SegmentsInteractor(QObject):
     """
     
     showverts = True
-    epsilon = 10  # max pixel distance to count as a vertex hit
+    epsilon = 5  # max pixel distance to count as a vertex hit
     mySignal = pyqtSignal(str)
     modSignal = pyqtSignal(str)
 
@@ -254,11 +254,15 @@ class SegmentsInteractor(QObject):
     def get_ind_under_point(self, event):
         'get the index of the point if within epsilon tolerance'
 
-        x, y = zip(*self.xy)
-        d = np.hypot(x - event.xdata, y - event.ydata)
+        # Distance is computed in pixels on the screen
+        xy = self.ax.transData.transform(self.xy)
+        x, y = zip(*xy)
+        x = np.array(x); y = np.array(y)
+        d = np.hypot(x - event.x, y - event.y)
         indseq, = np.nonzero(d == d.min())
         ind = indseq[0]
 
+        print('distance is ',d[ind])
         if d[ind] >= self.epsilon:
             ind = None
 
