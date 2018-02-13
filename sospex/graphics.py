@@ -333,7 +333,7 @@ class ImageHistoCanvas(MplCanvas):
         indmin, indmax = np.searchsorted(self.bins, (xmin, xmax))
         indmax = min(len(self.bins) - 1, indmax)
         self.limits = [self.bins[indmin],self.bins[indmax]]
-        print('limits are: ', self.limits)
+        #print('limits are: ', self.limits)
         try:
             self.shade.remove()
         except:

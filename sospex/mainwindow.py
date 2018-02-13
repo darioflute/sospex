@@ -4,7 +4,7 @@ import numpy as np
 from PyQt5.QtWidgets import (QApplication, QWidget, QMainWindow, QTabWidget, QTabBar,QHBoxLayout,
                              QVBoxLayout, QSizePolicy, QStatusBar, QSplitter,
                              QToolBar, QAction, QFileDialog,  QTableView, QComboBox, QAbstractItemView,
-                             QMessageBox, QInputDialog, QDialog, QLabel, QPushButton)
+                             QMessageBox, QInputDialog, QDialog, QLabel)
 from PyQt5.QtGui import QIcon, QStandardItem, QStandardItemModel, QPixmap, QMovie
 from PyQt5.QtCore import Qt, QSize, QTimer, QThread, QObject, pyqtSignal
 
@@ -174,28 +174,39 @@ class GUI (QMainWindow):
         self.wbox.show()
         
     def createMenu(self):
+        """ Menu with all the actions (more complete than the icons)"""
 
+        """ TODO: Add controls to act only if cube is present !!! """
+        
         bar = self.menuBar()
         file = bar.addMenu("File")
-        quit = QAction("Quit",self,shortcut='Ctrl+q',triggered=self.fileQuit)
-        file.addAction(quit)
-        new = QAction("New",self,shortcut='Ctrl+n',triggered=self.newFile)
-        file.addAction(new)
+        file.addAction(QAction("Quit",self,shortcut='Ctrl+q',triggered=self.fileQuit))
+        file.addAction(QAction("Open cube",self,shortcut='Ctrl+n',triggered=self.newFile))
+        file.addAction(QAction("Import image",self,shortcut='Ctrl+n',triggered=self.selectDownloadImage))
 
         help = bar.addMenu("Help")
-        about = QAction('About', self, shortcut='Ctrl+a',triggered=self.about)
-        help.addAction(about)
-        tutorials = QAction('Tutorials', self, shortcut='Ctrl+h',triggered=self.onHelp)
-        help.addAction(tutorials)
-        issues = QAction('Issues', self, shortcut='Ctrl+i',triggered=self.onIssue)
-        help.addAction(issues)
+        help.addAction(QAction('About', self, shortcut='Ctrl+a',triggered=self.about))
+        help.addAction(QAction('Tutorials', self, shortcut='Ctrl+h',triggered=self.onHelp))
+        help.addAction(QAction('Issues', self, shortcut='Ctrl+i',triggered=self.onIssue))
 
         save = bar.addMenu("Save")
-        savecube = QAction('Save cropped cube', self, shortcut='Ctrl+k',triggered=self.cropCube)
-        save.addAction(savecube)
-        savelcube = QAction('Save cube w/o continuum', self, shortcut='Ctrl+l',triggered=self.savelCube)
-        save.addAction(savelcube)
-        
+        cube = save.addMenu("Cube")
+        cube.addAction(QAction('Cut', self, shortcut='',triggered=self.cutCube))
+        cube.addAction(QAction('Cropped', self, shortcut='',triggered=self.cropCube))
+        cube.addAction(QAction('Continuum subtracted', self, shortcut='',triggered=self.savelCube))
+        save.addAction(QAction('Image', self, shortcut='',triggered=self.saveFits))
+        save.addAction(QAction('Spectrum', self, shortcut='',triggered=self.saveSpectrum))
+
+        fit = bar.addMenu("Fit")
+        continuum = fit.addMenu("Continuum")
+        continuum.addAction(QAction('Define guess',self,shortcut='',triggered=self.guessLine))
+        continuum.addAction(QAction('All cube',self,shortcut='',triggered=self.fitCont))
+        continuum.addAction(QAction('Inside region',self,shortcut='',triggered=self.fitCont))
+        moments = fit.addMenu("Moments")
+        moments.addAction(QAction('Define slice',self,shortcut='',triggered=self.sliceCube))
+        moments.addAction(QAction('All cube',self,shortcut='',triggered=self.computeMoments))
+        moments.addAction(QAction('Inside region',self,shortcut='',triggered=self.computeMoments))
+        fit.addAction(QAction('Recompute C0, v, sv',self,shortcut='',triggered=self.computeVelocities))
 
         bar.setNativeMenuBar(False)
 
@@ -243,10 +254,10 @@ class GUI (QMainWindow):
         # Toolbar
         toolbar = QToolBar()
         # Add actions to toolbar
-        toolbar.addAction(self.sliceAction)
         toolbar.addAction(self.cutAction)
         toolbar.addAction(self.specAction)
         toolbar.addAction(self.guessAction)
+        toolbar.addAction(self.sliceAction)
         toolbar.addSeparator()
         toolbar.addSeparator()
         toolbar.addAction(self.hresizeAction)
@@ -270,7 +281,7 @@ class GUI (QMainWindow):
         scid2=sc.mpl_connect('scroll_event',self.onWheel2)
         scid3=sc.mpl_connect('key_press_event',self.onKeyPress2)
         scid4=sc.mpl_connect('key_release_event',self.onKeyRelease2)
-        self.shiftIsHeld = False
+        self.ctrlIsHeld = False
         return t,sc,scid1,scid2,scid3,scid4
 
     def addImage(self,b):
@@ -294,7 +305,9 @@ class GUI (QMainWindow):
         toolbar.addAction(self.cropAction)
         toolbar.addAction(self.cloudAction)
         toolbar.addAction(self.fitsAction)
-        toolbar.addAction(self.fitregionAction)
+        #toolbar.addAction(self.fitregionAction)
+        toolbar.addAction(self.fitContAction)
+        toolbar.addAction(self.compMomAction)
         toolbar.addAction(self.maskAction)
         toolbar.addSeparator()
         #toolbar.addWidget(self.apertureAction)        
@@ -771,45 +784,44 @@ class GUI (QMainWindow):
     def onKeyPress2(self,event):
         #print(event.key)        
         if event.key == 'control':
-            self.shiftIsHeld = True
+            self.ctrlIsHeld = True
 
     def onKeyRelease2(self,event):
         if event.key == 'control':
-            self.shiftIsHeld = False
+            self.ctrlIsHeld = False
 
             
     def onWheel2(self,event):
         """ Wheel moves right/left the slice defined on spectrum """
 
-        sc = self.sci[self.spectra.index('All')]
-        #print('shift: ',self.shiftIsHeld)
-        if self.shiftIsHeld:
-            if sc.regionlimits is not None:
-                eb = event.button
-                xmin,xmax = sc.regionlimits
-                dx = (xmax-xmin) * 0.5
-                
-                # Increment region limits
-                if eb == 'up':
-                    xmin += dx
-                    xmax += dx
-                elif eb == 'down':
-                    xmin -= dx
-                    xmax -= dx
-                else:
-                    pass        
-                # redraw images
-                self.slice = 'on'
-                if sc.xunit == 'THz':
-                    c = 299792458.0  # speed of light in m/s
-                    xmin, xmax = c/xmax*1.e-6, c/xmin*1.e-6  # Transform in THz as expected by onSelect
-                self.onSelect(xmin,xmax)
+        itab = self.stabs.currentIndex()
+        sc = self.sci[itab]
+        if self.ctrlIsHeld:
+            if itab == self.spectra.index('Pix'):
+                if sc.regionlimits is not None:
+                    eb = event.button
+                    xmin,xmax = sc.regionlimits
+                    dx = (xmax-xmin) * 0.5
+                    
+                    # Increment region limits
+                    if eb == 'up':
+                        xmin += dx
+                        xmax += dx
+                    elif eb == 'down':
+                        xmin -= dx
+                        xmax -= dx
+                    else:
+                        pass        
+                    # redraw images
+                    self.slice = 'on'
+                    if sc.xunit == 'THz':
+                        c = 299792458.0  # speed of light in m/s
+                        xmin, xmax = c/xmax*1.e-6, c/xmin*1.e-6  # Transform in THz as expected by onSelect
+                    self.onSelect(xmin,xmax)        
         else:
             if event.inaxes:
                 # zoom/unzoom 
                 eb = event.button
-                itab = self.itabs.currentIndex()
-                sc = self.sci[itab]
                 curr_xlim = sc.axes.get_xlim()
                 curr_ylim = sc.axes.get_ylim()
                 curr_x0 = (curr_xlim[0]+curr_xlim[1])*0.5
@@ -818,7 +830,6 @@ class GUI (QMainWindow):
                     factor=0.9
                 elif eb == 'down':
                     factor=1.1
-                #print('zooming by a factor ',factor)
                 new_width = (curr_xlim[1]-curr_xlim[0])*factor*0.5
                 new_height= (curr_ylim[1]-curr_ylim[0])*factor*0.5
                 sc.xlimits = (curr_x0-new_width,curr_x0+new_width)
@@ -891,14 +902,16 @@ class GUI (QMainWindow):
         self.cutAction = self.createAction(self.path0+'/icons/cut.png','Cut part of the cube','Ctrl+k',self.cutCube)
         self.cropAction = self.createAction(self.path0+'/icons/crop.png','Crop the cube','Ctrl+K',self.cropCube)
         self.sliceAction = self.createAction(self.path0+'/icons/slice.png','Select a slice of the cube','Ctrl+K',self.sliceCube)
-        self.maskAction =  self.createAction(self.path0+'/icons/mask.png','Mask a region','Ctrl+m',self.maskCube)
+        self.maskAction =  self.createAction(self.path0+'/icons/eraser.png','Erase a region','',self.maskCube)
         self.cloudAction = self.createAction(self.path0+'/icons/cloud.png','Download image from cloud','Ctrl+D',self.selectDownloadImage)
         self.fitsAction =  self.createAction(self.path0+'/icons/download.png','Save the image as a FITS/PNG/JPG/PDF file','Ctrl+S',self.saveFits)
         self.specAction = self.createAction(self.path0+'/icons/download.png','Save the spectrum as a ASCII/FITS/PNG/JPG/PDF file','Ctrl+S',self.saveSpectrum)
 
         self.vresizeAction = self.createAction(self.path0+'/icons/vresize.png','Resize image vertically','Ctrl+V',self.vresizeSpectrum)
         self.hresizeAction = self.createAction(self.path0+'/icons/hresize.png','Resize image horizontally','Ctrl+H',self.hresizeSpectrum)
-        self.guessAction = self.createAction(self.path0+'/icons/guess.png','Draw two continuum segments around line','Ctrl+g',self.guessLine)
+        self.guessAction = self.createAction(self.path0+'/icons/guessCont.png','Draw two continuum segments around line','Ctrl+g',self.guessLine)
+        self.fitContAction =self.createAction(self.path0+'/icons/fitCont.png','Fit continuum','Ctrl+g',self.fitCont)
+        self.compMomAction = self.createAction(self.path0+'/icons/computeMoments.png','Compute moments','Ctrl+g',self.computeMoments)
         self.fitregionAction = self.createAction(self.path0+'/icons/fitregion.png','Fit baseline and compute moments inside region','Ctrl+f',self.fitRegion)
         
         # Add buttons to the toolbar
@@ -1059,6 +1072,15 @@ class GUI (QMainWindow):
         pass
         #print('modified guess')    
         
+    def fitCont(self):
+        """ Future """
+        pass
+
+    def computeMoments(self):
+        pass
+
+    def computeVelocities(self):
+        pass
         
     def fitRegion(self):
         """ Fit the guess over a square region """
@@ -2373,7 +2395,7 @@ class GUI (QMainWindow):
         """ Cut part of the cube """
         self.sb.showMessage("Define slice of the cube ", 1000)
         self.slice = 'on'
-        istab = self.spectra.index('All')
+        istab = self.spectra.index('Pix')
         self.stabs.setCurrentIndex(istab)
         sc = self.sci[istab]
         sc.span.active=True
@@ -2393,7 +2415,8 @@ class GUI (QMainWindow):
             y = ic.axes.get_ylim()
             self.zoomlimits = [x,y]
 
-        self.LS = LassoSelector(ic.axes, onselect=self.onMask)
+        #self.LS = LassoSelector(ic.axes, onselect=self.onMask)
+        self.LS = PolygonSelector(ic.axes, onselect=self.onMask)
 
     def onMask(self, verts):
         """ Uses the vertices of the mask to mask the cube (and moments) """
@@ -2404,7 +2427,7 @@ class GUI (QMainWindow):
         
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
-        ih = self.ihi[itab]
+        #ih = self.ihi[itab]
         ic.axes.add_patch(poly)
         
         path = poly.get_path()
@@ -2831,6 +2854,9 @@ class GUI (QMainWindow):
             sc.compute_initial_spectrum(spectrum=spec)
             self.specZoomlimits = [sc.xlimits,sc.ylimits]
             sc.cid = sc.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomSpec)
+            sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
+                                   rectprops=dict(alpha=0.5, facecolor='LightSalmon'))
+            sc.span.active = False
 
             
             # Re-initiate variables
@@ -2858,15 +2884,13 @@ class GUI (QMainWindow):
         if self.slice == 'on':
             # Find indices of the shaded region
             #print('xmin, xmax ',xmin,xmax)
-            sc = self.sci[self.spectra.index('All')]
+            sc = self.sci[self.spectra.index('Pix')]
             if sc.xunit == 'THz':
                 c = 299792458.0  # speed of light in m/s
                 xmin, xmax = c/xmax*1.e-6, c/xmin*1.e-6
 
-            #print('xmin, xmax ',xmin,xmax)
             indmin, indmax = np.searchsorted(self.specCube.wave, (xmin, xmax))
             indmax = min(len(self.specCube.wave) - 1, indmax)
-            #print('indmin, indmax', indmin,indmax)
             sc.regionlimits = [xmin,xmax]
 
 
@@ -2879,7 +2903,7 @@ class GUI (QMainWindow):
                     ic.changed = True
             self.contours = 'off'
 
-            # Draw region on spectrum (All) and hide span selector
+            # Draw region on spectrum and hide span selector
             sc.shadeSpectrum()
             sc.fig.canvas.draw_idle()
             sc.span.active = False
