@@ -1,6 +1,6 @@
 import numpy as np
 from PyQt5.QtCore import pyqtSignal,QObject
-from PyQt5.QtWidgets import QDialog, QMessageBox
+from PyQt5.QtWidgets import QDialog, QMessageBox, QPushButton, QGroupBox, QHBoxLayout, QVBoxLayout, QGridLayout, QWidget, QRadioButton, QButtonGroup
 from matplotlib.lines import Line2D
 from matplotlib.artist import Artist
 
@@ -406,6 +406,69 @@ class msgBox1(QDialog):
         self.result = msgBox.exec()
         
 
+class ContParams(QDialog):
+    """ Dialog window to define parameters of the continuum fit """
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.function = self.createGroup('Function',['Constant','Slope'])
+        self.boundary = self.createGroup('Boundary',['None','Positive'])
+        self.kernel   = self.createGroup('Kernel',['1 pixel','5 pixels','9 pixels'])
+
+        hgroup = QGroupBox()
+        hbox = QHBoxLayout()
+        self.button1 = QPushButton("OK")
+        self.button1.clicked.connect(self.OK)
+        self.button2 = QPushButton("Cancel")
+        self.button2.clicked.connect(self.Cancel)
+        hbox.addWidget(self.button1) 
+        hbox.addWidget(self.button2)
+        hgroup.setLayout(hbox)
+        
+        grid = QGridLayout()
+        grid.addWidget(self.function,0,0)
+        grid.addWidget(self.boundary,1,0)
+        grid.addWidget(self.kernel,2,0)
+        grid.addWidget(hgroup, 3, 0)
+        self.setLayout(grid)
+        self.setWindowTitle('Continuum parameters')
+        self.resize(400,300)
+
+    def createGroup(self, title, items):    
+        """ creates a group of radio buttons  """
+        group = QGroupBox(title)
+        group.buttons = QButtonGroup()
+        vbox = QVBoxLayout()
+        buttons = []
+        i = 0
+        for item in items:
+            buttons.append(QRadioButton(item))
+            group.buttons.addButton(buttons[-1], i)
+            vbox.addWidget(buttons[-1])
+            i += 1
+        vbox.addStretch(1)
+        # Set 1st option as default
+        buttons[0].setChecked(True)
+        group.setLayout(vbox)
+        return group
+
+
+    def OK(self):
+        self.done(1)
+
+    def save(self):
+        function  = self.function.buttons.checkedButton().text()
+        boundary  = self.boundary.buttons.checkedButton().text()
+        kernel    = self.kernel.buttons.checkedButton().text()
+        return function, boundary, kernel
+            
+    def Cancel(self):
+        self.done(0)
+
+        
+        
+        
         
 # Functions for multiprocessing continuum fit and moment computation
 

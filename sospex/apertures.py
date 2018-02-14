@@ -51,7 +51,7 @@ class PixelInteractor(QObject):
         self.type = 'Pixel'
         height = width
         self.ax = ax
-        self.angle  = 0.
+        self.angle  = angle
         self.width  = width
         self.height = width
         self.rect = Rectangle(corner,width,height,edgecolor='Lime',facecolor='none',angle=angle,fill=False,animated=True)
@@ -78,9 +78,10 @@ class PixelInteractor(QObject):
         w0 = self.rect.get_width()
         h0 = self.rect.get_height()
         x0,y0 = self.rect.get_xy()
+        angle0 = self.rect.angle
 
-        x = [x0+0.5*w0]
-        y = [y0+0.5*h0]
+        x = [x0+w0/np.sqrt(2.)*np.sin((45.-angle0)*np.pi/180.)]
+        y = [y0+w0/np.sqrt(2.)*np.cos((45.-angle0)*np.pi/180.)]
 
         self.xy = [(x,y)]
         return x, y

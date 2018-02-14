@@ -24,7 +24,7 @@ warnings.filterwarnings('ignore')
 #from sospex.specobj import specCube, Spectrum, ExtSpectrum
 #from sospex.cloud import cloudImage
 
-from moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, msgBox1
+from moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, msgBox1, ContParams
 from graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
 from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
 from specobj import specCube,Spectrum, ExtSpectrum
@@ -182,7 +182,7 @@ class GUI (QMainWindow):
         file = bar.addMenu("File")
         file.addAction(QAction("Quit",self,shortcut='Ctrl+q',triggered=self.fileQuit))
         file.addAction(QAction("Open cube",self,shortcut='Ctrl+n',triggered=self.newFile))
-        file.addAction(QAction("Import image",self,shortcut='Ctrl+n',triggered=self.selectDownloadImage))
+        file.addAction(QAction("Import image",self,shortcut='Ctrl+d',triggered=self.selectDownloadImage))
 
         help = bar.addMenu("Help")
         help.addAction(QAction('About', self, shortcut='Ctrl+a',triggered=self.about))
@@ -603,17 +603,27 @@ class GUI (QMainWindow):
                 cont = None
                 moments = None
                 noise = None
-            
-            fluxAll = np.nansum(s.flux[:,yy,xx], axis=1)
+
+            if istab == 1:
+                fluxAll = np.nanmean(s.flux[:,yy,xx], axis=1)
+            else:
+                fluxAll = np.nansum(s.flux[:,yy,xx], axis=1)
             sc.spectrum.flux = fluxAll
             if s.instrument == 'GREAT':
                 sc.updateSpectrum(f=fluxAll, cont=cont, moments = moments, noise = noise)
             elif s.instrument == 'PACS':
-                expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
+                if istab == 1:
+                    expAll = np.nanmean(s.exposure[:,yy,xx], axis=1)
+                else:
+                    expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
                 sc.updateSpectrum(f=fluxAll,exp=expAll, cont=cont, moments = moments, noise=noise)
             elif s.instrument == 'FIFI-LS':
-                ufluxAll = np.nansum(s.uflux[:,yy,xx], axis=1)
-                expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
+                if istab == 1:
+                    ufluxAll = np.nanmean(s.uflux[:,yy,xx], axis=1)
+                    expAll = np.nanmean(s.exposure[:,yy,xx], axis=1)
+                else:
+                    ufluxAll = np.nansum(s.uflux[:,yy,xx], axis=1)
+                    expAll = np.nansum(s.exposure[:,yy,xx], axis=1)                    
                 sc.spectrum.uflux = ufluxAll
                 sc.updateSpectrum(f=fluxAll,uf=ufluxAll,exp=expAll, cont=cont, moments = moments, noise=noise)
         
@@ -940,24 +950,58 @@ class GUI (QMainWindow):
             self.stabs.setCurrentIndex(istab)
         sc = self.sci[istab]
 
+        ic0 = self.ici[0]
+        ap0 = ic0.photApertures[0]
+
+        w0 = ic0.pixscale
         
-        # Launch message box to ask about degree of polynomial and border constraint on continuum
-        degree = msgBox1()
-        if degree.result == 0:
-            self.zeroDeg = True
-            """ Ask for continuum boundary """
-            flags = QMessageBox.Yes | QMessageBox.No
-            question = "Do you want the continuum to be always positive ?"
-            response = QMessageBox.question(self, "Question", question, flags,QMessageBox.Yes)            
-            if response == QMessageBox.Yes:
-                self.positiveContinuum = True
-            elif response == QMessageBox.No:
+        self.CP = ContParams()
+        if self.CP.exec_() == QDialog.Accepted:
+            function,boundary,kernel = self.CP.save()
+            if function == 'Constant':
+                self.zeroDeg = True
+            else:
+                self.zeroDeg = False
+            if boundary == 'None':
                 self.positiveContinuum = False
             else:
-                pass
+                self.positiveContinuum = True
+            if kernel == '1 pixel':
+                self.kernel = 1
+                theta = 0.
+            elif kernel == '5 pixels':
+                self.kernel = 5
+                w0 *= np.sqrt(2.) 
+                theta = 45.
+            elif kernel == '9 pixels':
+                self.kernel = 9
+                w0 *= 2.
+                theta = 0.
+            else:
+                self.kernel = 1
+                theta = 0.
         else:
-            self.zeroDeg = False
-            self.positiveContinuum = False
+            return
+
+
+        
+        # # Launch message box to ask about degree of polynomial and border constraint on continuum
+        # degree = msgBox1()
+        # if degree.result == 0:
+        #     self.zeroDeg = True
+        #     """ Ask for continuum boundary """
+        #     flags = QMessageBox.Yes | QMessageBox.No
+        #     question = "Do you want the continuum to be always positive ?"
+        #     response = QMessageBox.question(self, "Question", question, flags,QMessageBox.Yes)            
+        #     if response == QMessageBox.Yes:
+        #         self.positiveContinuum = True
+        #     elif response == QMessageBox.No:
+        #         self.positiveContinuum = False
+        #     else:
+        #         pass
+        # else:
+        #     self.zeroDeg = False
+        #     self.positiveContinuum = False
         
 
         self.sb.showMessage("Drag the mouse over the spectrum to select two continuum regions ", 2000)        
@@ -989,6 +1033,22 @@ class GUI (QMainWindow):
                 itab = self.bands.index(new)
                 self.removeTab(itab)
                 self.addBand(new)
+
+        # Update the pixel marker with new kernel
+        for ic in self.ici:
+            w = w0/ic.pixscale;
+            pixel = ic.photApertures[0]
+            x,y = pixel.rect.get_xy()
+            theta_ = pixel.rect.angle
+            w_  = pixel.rect.get_width()
+            xc = x + w_/np.sqrt(2.) * np.sin((45.-theta_)*np.pi/180.)
+            yc = y + w_/np.sqrt(2.) * np.cos((45.-theta_)*np.pi/180.)
+            pixel.rect.set_width(w)
+            pixel.rect.set_height(w)
+            pixel.rect.angle = theta
+            x = xc - w/np.sqrt(2.) * np.sin((45.-theta)*np.pi/180.)
+            y = yc - w/np.sqrt(2.) * np.cos((45.-theta)*np.pi/180.)
+            pixel.rect.set_xy((x,y))
 
         
     def addBand(self, band):
@@ -2456,14 +2516,9 @@ class GUI (QMainWindow):
             ic0 = self.ici[0]
             ih0 = self.ihi[0]
             ic0.showImage(image)
-            #ic0.fig.canvas.draw_idle()
             clim = ic0.image.get_clim()
             ih0.axes.cla()
             ih0.compute_initial_figure(image=image,xmin=clim[0],xmax=clim[1])
-            # Add apertures
-            #self.addApertures(ic0)
-            # Add contours
-            #self.addContours(ic0) 
         elif QMessageBox.No:
             pass
 
