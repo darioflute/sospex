@@ -399,8 +399,6 @@ class msgBox1(QDialog):
 
         msgBox = QMessageBox()
         msgBox.setText('Choose degree of polynomial:')
-        #msgBox.addButton(QPushButton('0'), QMessageBox.ActionRole)
-        #msgBox.addButton(QPushButton('1'), QMessageBox.ActionRole)
         msgBox.addButton('zero', QMessageBox.ActionRole)
         msgBox.addButton('one', QMessageBox.ActionRole)
         self.result = msgBox.exec()
@@ -490,11 +488,14 @@ def residuals(p,x,data=None,eps=None):
         else:
             return (model-data)/eps
 
-def fitContinuum(p,slope,intcp,posCont,m,w,f):
+def fitContinuum(p,slope,intcp,posCont,m,w,ff):
 
+    
+    # Take the mean for each wavelength
+    f = np.nanmean(ff,axis=1)
     mf = np.isnan(f)
     m[mf] = 0
-
+    
     if np.sum(m) > 5:
         # Define parameters
         fit_params = Parameters()
@@ -593,22 +594,38 @@ def multiComputeMoments(m,w,f,c,moments,points):
     return moments, noise
     
 
-def multiFitContinuum(m,w,f,c,c0,w0,points,slope,intcp,posCont):
+def multiFitContinuum(m,w,f,c,c0,w0,points,slope,intcp,posCont,kernel):
 
     # To avoid forking error in MAC OS-X
     try:
         mp.set_start_method('spawn')
     except RuntimeError:
         pass
+
+    if kernel == 1:
+        ik = np.array([0])
+        jk = np.array([0])
+    elif kernel == 5:
+        ik = np.array([-1,0,0,0,1])
+        jk = np.array([0,-1,0,1,0])
+    elif kernel == 9:
+        ik = np.array([-1,-1,-1,0,0,0,1,1,1])
+        jk = np.array([-1,0,1,-1,0,1,-1,0,1])
+    else:
+        print ('unsupported kernel, use one pixel only')
+        ik = np.array([0])
+        jk = np.array([0])
+
+        
         
     with mp.Pool(processes=mp.cpu_count()) as pool:
-        res = [pool.apply_async(fitContinuum, (p,slope,intcp,posCont,m[:,p[1],p[0]],w,f[:,p[1],p[0]])) for p in points]
+        res = [pool.apply_async(fitContinuum, (p,slope,intcp,posCont,m[:,p[1],p[0]],w,f[:,p[1]+ik,p[0]+jk])) for p in points]
         results = [r.get() for r in res]
 
     for p, pars in results:
         if pars is not None:
             i,j = p
-            c[:,j,i]  = residuals(pars, w)
-            c0[j,i] = residuals(pars, w0)
+            c[:,j,i] = residuals(pars, w)
+            c0[j,i]  = residuals(pars, w0)
             
     return c, c0

@@ -29,6 +29,139 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt, QSize, pyqtSignal
 from PyQt5.QtTest import QTest
 
+
+def ds9cmap():
+    """ Adding DS9 colormap. Adapted from http://nbviewer.jupyter.org/gist/adonath/c9a97d2f2d964ae7b9eb"""
+
+    from matplotlib.cm import register_cmap, cmap_d
+
+    ds9b = {'red': lambda v : 4 * v - 1, 
+            'green': lambda v : 4 * v - 2,
+            'blue': lambda v : np.select([v < 0.25, v < 0.5, v < 0.75, v <= 1],
+                                         [4 * v, -4 * v + 2, 0, 4 * v - 3])}
+    ds9b_r = {'red': lambda v : (4 * v - 1)[::-1], 
+            'green': lambda v : (4 * v - 2)[::-1],
+            'blue': lambda v : np.select([v < 0.25, v < 0.5, v < 0.75, v <= 1],
+                                         [4 * v, -4 * v + 2, 0, 4 * v - 3][::-1])}
+    
+    # Note that this definition slightly differs from ds9cool, but make more sense to me...
+    ds9cool = {'red': lambda v : 2 * v - 1, 
+               'green': lambda v : 2 * v - 0.5,
+               'blue': lambda v : 2 * v}
+    ds9cool_r = {'red': lambda v : (2 * v - 1)[::-1], 
+               'green': lambda v : (2 * v - 0.5)[::-1],
+                 'blue': lambda v : (2 * v)[::-1]}
+    
+    ds9a = {'red': lambda v : np.interp(v, [0, 0.25, 0.5, 1],
+                                        [0, 0, 1, 1]),
+            'green': lambda v : np.interp(v, [0, 0.25, 0.5, 0.77, 1],
+                                          [0, 1, 0, 0, 1]),
+            'blue': lambda v : np.interp(v, [0, 0.125, 0.5, 0.64, 0.77, 1],
+                                         [0, 0, 1, 0.5, 0, 0])}
+    ds9a_r = {'red': lambda v : np.interp(v, [0, 0.25, 0.5, 1],
+                                        [0, 0, 1, 1])[::-1],
+            'green': lambda v : np.interp(v, [0, 0.25, 0.5, 0.77, 1],
+                                          [0, 1, 0, 0, 1])[::-1],
+            'blue': lambda v : np.interp(v, [0, 0.125, 0.5, 0.64, 0.77, 1],
+                                         [0, 0, 1, 0.5, 0, 0])[::-1]}
+    
+    ds9i8 = {'red': lambda v : np.where(v < 0.5, 0, 1), 
+             'green': lambda v : np.select([v < 1/8., v < 0.25, v < 3/8., v < 0.5,
+                                            v < 5/8., v < 0.75, v < 7/8., v <= 1],
+                                           [0, 1, 0, 1, 0, 1, 0, 1]),
+             'blue': lambda v : np.select([v < 1/8., v < 0.25, v < 3/8., v < 0.5,
+                                           v < 5/8., v < 0.75, v < 7/8., v <= 1],
+                                          [0, 0, 1, 1, 0, 0, 1, 1])}
+    
+    ds9i8_r = {'red': lambda v : np.where(v > 0.5, 0, 1), 
+             'green': lambda v : np.select([v < 1/8., v < 0.25, v < 3/8., v < 0.5,
+                                            v < 5/8., v < 0.75, v < 7/8., v <= 1],
+                                           [0, 1, 0, 1, 0, 1, 0, 1][::-1]),
+             'blue': lambda v : np.select([v < 1/8., v < 0.25, v < 3/8., v < 0.5,
+                                           v < 5/8., v < 0.75, v < 7/8., v <= 1],
+                                          [0, 0, 1, 1, 0, 0, 1, 1][::-1])}
+    
+    ds9aips0 = {'red': lambda v : np.select([v < 1/9., v < 2/9., v < 3/9., v < 4/9., v < 5/9.,
+                                             v < 6/9., v < 7/9., v < 8/9., v <= 1],
+                                            [0.196, 0.475, 0, 0.373, 0, 0, 1, 1, 1]), 
+                'green': lambda v : np.select([v < 1/9., v < 2/9., v < 3/9., v < 4/9., v < 5/9.,
+                                               v < 6/9., v < 7/9., v < 8/9., v <= 1],
+                                              [0.196, 0, 0, 0.655, 0.596, 0.965, 1, 0.694, 0]),
+                'blue': lambda v : np.select([v < 1/9., v < 2/9., v < 3/9., v < 4/9., v < 5/9.,
+                                              v < 6/9., v < 7/9., v < 8/9., v <= 1],
+                                             [0.196, 0.608, 0.785, 0.925, 0, 0, 0, 0, 0])}
+    
+    ds9aips0_r = {'red': lambda v : np.select([v < 1/9., v < 2/9., v < 3/9., v < 4/9., v < 5/9.,
+                                             v < 6/9., v < 7/9., v < 8/9., v <= 1],
+                                            [0.196, 0.475, 0, 0.373, 0, 0, 1, 1, 1][::-1]), 
+                'green': lambda v : np.select([v < 1/9., v < 2/9., v < 3/9., v < 4/9., v < 5/9.,
+                                               v < 6/9., v < 7/9., v < 8/9., v <= 1],
+                                              [0.196, 0, 0, 0.655, 0.596, 0.965, 1, 0.694, 0][::-1]),
+                'blue': lambda v : np.select([v < 1/9., v < 2/9., v < 3/9., v < 4/9., v < 5/9.,
+                                              v < 6/9., v < 7/9., v < 8/9., v <= 1],
+                                             [0.196, 0.608, 0.785, 0.925, 0, 0, 0, 0, 0][::-1])}
+
+    ds9rainbow = {'red': lambda v : np.interp(v, [0, 0.2, 0.6, 0.8, 1], [1, 0, 0, 1, 1]),
+                  'green': lambda v : np.interp(v, [0, 0.2, 0.4, 0.8, 1], [0, 0, 1, 1, 0]),
+                  'blue': lambda v : np.interp(v, [0, 0.4, 0.6, 1], [1, 1, 0, 0])}
+    
+    ds9rainbow_r = {'red': lambda v : np.interp(v, [0, 0.2, 0.6, 0.8, 1], [1, 0, 0, 1, 1])[::-1],
+                  'green': lambda v : np.interp(v, [0, 0.2, 0.4, 0.8, 1], [0, 0, 1, 1, 0])[::-1],
+                  'blue': lambda v : np.interp(v, [0, 0.4, 0.6, 1], [1, 1, 0, 0])[::-1]}
+
+    # This definition seems a bit strange...
+    ds9he = {'red': lambda v : np.interp(v, [0, 0.015, 0.25, 0.5, 1],
+                                         [0, 0.5, 0.5, 0.75, 1]),
+             'green': lambda v : np.interp(v, [0, 0.065, 0.125, 0.25, 0.5, 1],
+                                           [0, 0, 0.5, 0.75, 0.81, 1]),
+             'blue': lambda v : np.interp(v, [0, 0.015, 0.03, 0.065, 0.25, 1],
+                                          [0, 0.125, 0.375, 0.625, 0.25, 1])}
+    
+    ds9heat = {'red': lambda v : np.interp(v, [0, 0.34, 1], [0, 1, 1]),
+               'green': lambda v : np.interp(v, [0, 1], [0, 1]),
+               'blue': lambda v : np.interp(v, [0, 0.65, 0.98, 1], [0, 0, 1, 1])}
+    
+    ds9he_r = {'red': lambda v : np.interp(v, [0, 0.015, 0.25, 0.5, 1],
+                                         [0, 0.5, 0.5, 0.75, 1])[::-1],
+             'green': lambda v : np.interp(v, [0, 0.065, 0.125, 0.25, 0.5, 1],
+                                           [0, 0, 0.5, 0.75, 0.81, 1])[::-1],
+             'blue': lambda v : np.interp(v, [0, 0.015, 0.03, 0.065, 0.25, 1],
+                                          [0, 0.125, 0.375, 0.625, 0.25, 1])[::-1]}
+    
+    ds9heat_r = {'red': lambda v : np.interp(v, [0, 0.34, 1], [0, 1, 1])[::-1],
+               'green': lambda v : np.interp(v, [0, 1], [0, 1])[::-1],
+               'blue': lambda v : np.interp(v, [0, 0.65, 0.98, 1], [0, 0, 1, 1])[::-1]}
+    
+
+    # Set aliases, where colormap exists in matplotlib
+    cmap_d['ds9bb'] = cmap_d['afmhot']
+    cmap_d['ds9grey'] = cmap_d['gray']
+    cmap_d['ds9bb_r'] = cmap_d['afmhot_r']
+    cmap_d['ds9grey_r'] = cmap_d['gray_r']
+    
+    # Register all other colormaps
+    register_cmap('ds9b', data=ds9b)
+    register_cmap('ds9cool', data=ds9cool)
+    register_cmap('ds9a', data=ds9a)
+    register_cmap('ds9i8', data=ds9i8)
+    register_cmap('ds9aips0', data=ds9aips0)
+    register_cmap('ds9rainbow', data=ds9rainbow)
+    register_cmap('ds9he', data=ds9he)
+    register_cmap('ds9heat', data=ds9heat)
+
+    # Register reverse colormaps
+    register_cmap('ds9b_r', data=ds9b_r)
+    register_cmap('ds9cool_r', data=ds9cool_r)
+    register_cmap('ds9a_r', data=ds9a_r)
+    register_cmap('ds9i8_r', data=ds9i8_r)
+    register_cmap('ds9aips0_r', data=ds9aips0_r)
+    register_cmap('ds9rainbow_r', data=ds9rainbow_r)
+    register_cmap('ds9he_r', data=ds9he_r)
+    register_cmap('ds9heat_r', data=ds9heat_r)
+
+
+    
+
 class NavigationToolbar(NavigationToolbar2QT):
     def __init__(self,canvas,parent):
         # Select only a few buttons
@@ -823,9 +956,6 @@ class SpectrumCanvas(MplCanvas):
                 self.spectrum.continuum = cont
                 self.contLine[0].set_ydata(cont)
                 self.axes.draw_artist(self.contLine[0])
-            
-                
-                    
             if uf is not None:
                 self.ufluxLine[0].set_ydata(uf)
                 self.ax4.draw_artist(self.ufluxLine[0])

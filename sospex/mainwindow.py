@@ -10,7 +10,7 @@ from PyQt5.QtCore import Qt, QSize, QTimer, QThread, QObject, pyqtSignal
 
 import matplotlib
 matplotlib.use('Qt5Agg')
-from matplotlib.widgets import SpanSelector, PolygonSelector, RectangleSelector, EllipseSelector, LassoSelector
+from matplotlib.widgets import SpanSelector, PolygonSelector, RectangleSelector, EllipseSelector
 from matplotlib.patches import Polygon
 
 import warnings
@@ -18,14 +18,14 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # Local imports
-#from sospex.moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, msgBox1
-#from sospex.graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
+#from sospex.moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, ContParams
+#from sospex.graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog, ds9map
 #from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
 #from sospex.specobj import specCube, Spectrum, ExtSpectrum
 #from sospex.cloud import cloudImage
 
-from moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, msgBox1, ContParams
-from graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog
+from moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, ContParams
+from graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog, ds9cmap
 from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
 from specobj import specCube,Spectrum, ExtSpectrum
 from cloud import cloudImage
@@ -105,6 +105,7 @@ class GUI (QMainWindow):
         self.setAttribute(Qt.WA_DeleteOnClose)
 
         # Default color map for images
+        ds9cmap()
         self.colorMap = 'gist_heat'
         self.colorMapDirection = '_r'
         
@@ -199,13 +200,13 @@ class GUI (QMainWindow):
 
         fit = bar.addMenu("Fit")
         continuum = fit.addMenu("Continuum")
-        continuum.addAction(QAction('Define guess',self,shortcut='',triggered=self.guessLine))
-        continuum.addAction(QAction('All cube',self,shortcut='',triggered=self.fitCont))
-        continuum.addAction(QAction('Inside region',self,shortcut='',triggered=self.fitCont))
+        continuum.addAction(QAction('Define guess',self,shortcut='',triggered=self.guessContinuum))
+        continuum.addAction(QAction('All cube',self,shortcut='',triggered=self.fitContAll))
+        continuum.addAction(QAction('Inside region',self,shortcut='',triggered=self.fitContRegion))
         moments = fit.addMenu("Moments")
         moments.addAction(QAction('Define slice',self,shortcut='',triggered=self.sliceCube))
-        moments.addAction(QAction('All cube',self,shortcut='',triggered=self.computeMoments))
-        moments.addAction(QAction('Inside region',self,shortcut='',triggered=self.computeMoments))
+        moments.addAction(QAction('All cube',self,shortcut='',triggered=self.computeMomentsAll))
+        moments.addAction(QAction('Inside region',self,shortcut='',triggered=self.computeRegion))
         fit.addAction(QAction('Recompute C0, v, sv',self,shortcut='',triggered=self.computeVelocities))
 
         bar.setNativeMenuBar(False)
@@ -363,7 +364,7 @@ class GUI (QMainWindow):
         
     def removeSpecTab(self, stab):
         #print('Removing spectral tab no ',stab)
-        if stab > 0:
+        if stab > 1:
             # Once the tab is removed, also the relative aperture should be removed
             itab = self.itabs.currentIndex()
             ic0 = self.ici[itab]
@@ -406,7 +407,7 @@ class GUI (QMainWindow):
         self.scid4.remove(c4)
         spec = None
         # Rename aperture tabs
-        if len(self.stabs)> 1:
+        if len(self.stabs)> 2:
             for i in range(1,len(self.stabs)):
                 apname = "{:d}".format(i-1)
                 self.stabs.setTabText(i,apname)
@@ -590,11 +591,16 @@ class GUI (QMainWindow):
             #npoints = np.size(xx)
 
             if istab == 1 and self.continuum is not None:
+                xc=np.median(xx); yc = np.median(yy)
+                i = int(np.rint(xc)); j = int(np.rint(yc))
                 try:
-                    i=xx[0]; j = yy[0]                    
                     cont = self.continuum[:,j,i]
-                    moments = [self.M0[j,i],self.M1[j,i],self.M2[j,i]]
-                    noise = self.noise[j,i]
+                    try:
+                        moments = [self.M0[j,i],self.M1[j,i],self.M2[j,i]]
+                        noise = self.noise[j,i]
+                    except:
+                        moments = None
+                        noise = None
                 except:
                     cont = None
                     moments = None
@@ -919,9 +925,9 @@ class GUI (QMainWindow):
 
         self.vresizeAction = self.createAction(self.path0+'/icons/vresize.png','Resize image vertically','Ctrl+V',self.vresizeSpectrum)
         self.hresizeAction = self.createAction(self.path0+'/icons/hresize.png','Resize image horizontally','Ctrl+H',self.hresizeSpectrum)
-        self.guessAction = self.createAction(self.path0+'/icons/guessCont.png','Draw two continuum segments around line','Ctrl+g',self.guessLine)
+        self.guessAction = self.createAction(self.path0+'/icons/guessCont.png','Draw two continuum segments around line','Ctrl+g',self.guessContinuum)
         self.fitContAction =self.createAction(self.path0+'/icons/fitCont.png','Fit continuum','Ctrl+g',self.fitCont)
-        self.compMomAction = self.createAction(self.path0+'/icons/computeMoments.png','Compute moments','Ctrl+g',self.computeMoments)
+        self.compMomAction = self.createAction(self.path0+'/icons/computeMoments.png','Compute moments','Ctrl+g',self.chooseComputeMoments)
         self.fitregionAction = self.createAction(self.path0+'/icons/fitregion.png','Fit baseline and compute moments inside region','Ctrl+f',self.fitRegion)
         
         # Add buttons to the toolbar
@@ -937,12 +943,8 @@ class GUI (QMainWindow):
         self.tb.addAction(self.quitAction)
 
             
-    def guessLine(self):
-        """ Create a first guess for fitting """
-
-        # Similar to defining a region. A Gaussian+offset is defined with two points,
-        # limits of the continuum. Other two points define the Gaussian (top and 1-sigma).
-        # i: adds a Gaussian component
+    def guessContinuum(self):
+        """ Create a first guess for fitting the continuum """
 
         # Change to pixel tab
         istab = self.spectra.index('Pix')
@@ -950,11 +952,10 @@ class GUI (QMainWindow):
             self.stabs.setCurrentIndex(istab)
         sc = self.sci[istab]
 
+        # Dialog to select continuum fit paramenters
         ic0 = self.ici[0]
-        ap0 = ic0.photApertures[0]
-
+        #ap0 = ic0.photApertures[0]
         w0 = ic0.pixscale
-        
         self.CP = ContParams()
         if self.CP.exec_() == QDialog.Accepted:
             function,boundary,kernel = self.CP.save()
@@ -971,11 +972,11 @@ class GUI (QMainWindow):
                 theta = 0.
             elif kernel == '5 pixels':
                 self.kernel = 5
-                w0 *= np.sqrt(2.) 
+                w0 *= np.sqrt(2.)*1.5 
                 theta = 45.
             elif kernel == '9 pixels':
                 self.kernel = 9
-                w0 *= 2.
+                w0 *= 2.5
                 theta = 0.
             else:
                 self.kernel = 1
@@ -983,49 +984,39 @@ class GUI (QMainWindow):
         else:
             return
 
-
-        
-        # # Launch message box to ask about degree of polynomial and border constraint on continuum
-        # degree = msgBox1()
-        # if degree.result == 0:
-        #     self.zeroDeg = True
-        #     """ Ask for continuum boundary """
-        #     flags = QMessageBox.Yes | QMessageBox.No
-        #     question = "Do you want the continuum to be always positive ?"
-        #     response = QMessageBox.question(self, "Question", question, flags,QMessageBox.Yes)            
-        #     if response == QMessageBox.Yes:
-        #         self.positiveContinuum = True
-        #     elif response == QMessageBox.No:
-        #         self.positiveContinuum = False
-        #     else:
-        #         pass
-        # else:
-        #     self.zeroDeg = False
-        #     self.positiveContinuum = False
-        
-
+        # Help on status bar
         self.sb.showMessage("Drag the mouse over the spectrum to select two continuum regions ", 2000)        
 
+        # Delete previous guess and select new one
         if sc.guess is not None:
             self.onRemoveContinuum('segments deleted')
 
         self.CS = SegmentsSelector(sc.axes,sc.fig, self.onContinuumSelect,zD=self.zeroDeg)
 
-        # Create moments (0,1,2) and continuum (should be value of continuum at reference wavelength at given redshift)
+        # Clear previous continuum estimate and open new tab
         s = self.specCube
         self.continuum = np.full((s.nz,s.ny,s.nx), np.nan) # Fit of continuum
         self.Cmask = np.zeros((s.nz,s.ny,s.nx), dtype=bool) # Spectral cube mask (for fitting the continuum)
-        self.Mmask = np.zeros((s.nz,s.ny,s.nx), dtype=bool) # Spectral cube mask (for computing the moments)
         self.C0 = np.full((s.ny,s.nx), np.nan) # Continuum at ref. wavelength
-        self.M0 = np.full((s.ny,s.nx), np.nan) # 0th moment
-        self.M1 = np.full((s.ny,s.nx), np.nan) # 1st moment
-        self.M2 = np.full((s.ny,s.nx), np.nan) # 2nd moment
-        self.v = np.full((s.ny,s.nx), np.nan) # velocity field
-        self.sv = np.full((s.ny,s.nx), np.nan) # vel. disp. field
+        
+        
+        # Create moments (0,1,2) and continuum (should be value of continuum at reference wavelength at given redshift)
+        # s = self.specCube
+        # self.continuum = np.full((s.nz,s.ny,s.nx), np.nan) # Fit of continuum
+        # self.Cmask = np.zeros((s.nz,s.ny,s.nx), dtype=bool) # Spectral cube mask (for fitting the continuum)
+        # self.Mmask = np.zeros((s.nz,s.ny,s.nx), dtype=bool) # Spectral cube mask (for computing the moments)
+        # self.C0 = np.full((s.ny,s.nx), np.nan) # Continuum at ref. wavelength
+        # self.M0 = np.full((s.ny,s.nx), np.nan) # 0th moment
+        # self.M1 = np.full((s.ny,s.nx), np.nan) # 1st moment
+        # self.M2 = np.full((s.ny,s.nx), np.nan) # 2nd moment
+        # self.v = np.full((s.ny,s.nx), np.nan) # velocity field
+        #self.sv = np.full((s.ny,s.nx), np.nan) # vel. disp. field
 
         # Open tabs if they do not exist
-        newbands = ['C0','M0','M1','M2','v','sv']
-        sbands = [self.C0, self.M0, self.M1, self.M2,self.v,self.sv]
+        #newbands = ['C0','M0','M1','M2','v','sv']
+        #sbands = [self.C0, self.M0, self.M1, self.M2,self.v,self.sv]
+        newbands = ['C0']
+        sbands = [self.C0]
         for new,sb in zip(newbands,sbands):
             if new not in self.bands:
                 self.addBand(new)
@@ -1098,13 +1089,9 @@ class GUI (QMainWindow):
         y = ic0.axes.get_ylim()
         ra,dec = ic0.wcs.all_pix2world(x,y,1)
         x,y = ic.wcs.all_world2pix(ra,dec,1)            
-        #ic.axes.set_xlim(x)
-        #ic.axes.set_ylim(y)
-        #ic.changed = True
 
 
     def onContinuumSelect(self, verts):
-
         
         istab = self.stabs.currentIndex()
         sc = self.sci[istab]
@@ -1131,14 +1118,79 @@ class GUI (QMainWindow):
         #print('modified guess')    
         
     def fitCont(self):
-        """ Future """
-        pass
+        """ Options to fit the continuum """
 
-    def computeMoments(self):
-        pass
+        # Dialog to choose between fitting the entire cube or only a region of it
+        msgBox = QMessageBox()
+        msgBox.setText('Fit the cube or only a region:')
+        msgBox.addButton('All', QMessageBox.ActionRole)
+        msgBox.addButton('Region', QMessageBox.ActionRole)
+        self.result = msgBox.exec()
 
+        if self.result == 0:
+            self.fitContAll()
+        else:
+            self.fitRegion()
+
+    def chooseComputeMoments(self):
+        """ Options to compute the moments """
+
+        if self.continuum is not None:
+        
+            # Dialog to choose between fitting the entire cube or only a region of it
+            msgBox = QMessageBox()
+            msgBox.setText('Compute the moments over the entire cube or only a region:')
+            msgBox.addButton('All', QMessageBox.ActionRole)
+            msgBox.addButton('Region', QMessageBox.ActionRole)
+            self.result = msgBox.exec()
+
+            if self.result == 0:
+                self.computeMomentsAll()
+            else:
+                self.computeRegion()
+
+        else:
+            message = 'First fit the continuum'
+            self.sb.showMessage(message, 4000)
+            
+            
     def computeVelocities(self):
-        pass
+        """ Compute velocity and vel. dispersion from the moments """
+
+        if self.M0 is not None:
+            # Update tabs
+            newbands = ['v','sv']
+            sbands = [self.v,self.sv]
+            for new,sb in zip(newbands,sbands):
+                if new not in self.bands:
+                    self.addBand(new)
+                else:
+                    itab = self.bands.index(new)
+                    self.removeTab(itab)
+                    self.addBand(new)
+            # Compute velocity fields
+            c = 299792.458 # km/s
+            w0 = self.specCube.l0
+            z = self.specCube.redshift
+            self.v = (self.M1/w0 -1. - z)* c # km/s
+            self.sv = np.sqrt(self.M2) * c/w0  # km/s
+            
+            # Refresh the plotted images
+            bands = ['v','sv']
+            sbands = [self.v,self.sv]
+            for b,sb in zip(bands,sbands):
+                itab = self.bands.index(b)
+                ic = self.ici[itab]
+                ic.showImage(image=sb)
+                ic.image.format_cursor_data = lambda z: "{:.0f} km/s".format(float(z))
+                ih = self.ihi[itab]
+                ih.compute_initial_figure(image = sb)
+
+        else:
+            message = 'First compute the moments'
+            self.sb.showMessage(message, 4000)
+            
+                
         
     def fitRegion(self):
         """ Fit the guess over a square region """
@@ -1155,7 +1207,7 @@ class GUI (QMainWindow):
             pixel.showverts = False
             pixel.line.set_visible(pixel.showverts)
             # 1) Define region
-            self.RS = RectangleSelector(ic.axes, self.onFitRect,
+            self.RS = RectangleSelector(ic.axes, self.fitContRegion,
                                         drawtype='box', useblit=False,
                                         button=[1, 3],  # don't use middle button
                                         minspanx=5, minspany=5,
@@ -1167,17 +1219,50 @@ class GUI (QMainWindow):
             self.RS.set_visible(True)
             #self.RS.state.add('center')
 
+
+    def computeRegion(self):
+        """ Fit the guess over a square region """
+
+        # 0) Check if guess is defined
+        sc = self.sci[1]
+        if sc.regionlimits is None:
+            self.sb.showMessage("Please, define the region to compute the moments ", 4000)
+        else:
+            # 0) Toggle pixel marker
+            itab = self.itabs.currentIndex()
+            ic = self.ici[itab]
+            pixel = ic.photApertures[0]
+            pixel.showverts = False
+            pixel.line.set_visible(pixel.showverts)
+            # 1) Define region
+            self.RS = RectangleSelector(ic.axes, self.computeMomentsRegion,
+                                        drawtype='box', useblit=False,
+                                        button=[1, 3],  # don't use middle button
+                                        minspanx=5, minspany=5,
+                                        spancoords='pixels',
+                                        rectprops = dict(facecolor='g', edgecolor = 'g',alpha=0.8, fill=False),
+                                        lineprops = dict(color='g', linestyle='-',linewidth = 2, alpha=0.8),
+                                        interactive=False)
+            self.RS.to_draw.set_visible(False)
+            self.RS.set_visible(True)
+
             
-        # 2) Fit baseline based on guess
-        
-        # 2) Create 4 tabs (location, scale, dispersion, offset)
-        # 3) Run fit on pixels inside region
-        # 4) Display fits on 4 planes
+
+    def fitContRegion(self, eclick, erelease):
+        """ Fit the continuum in a selected region """
+
+        # Select points in the region
+        points = self.onFitRect(eclick,erelease)
+
+        # Create the mask for the continuum
+        self.continuumMask(points)
+
+        # Execute the fit
+        self.fitContinuum(points)
         
 
     def onFitRect(self, eclick, erelease):
-        'eclick and erelease are the press and release events'
-
+        """ eclick and erelease are the press and release events """
         
         x1, y1 = eclick.xdata, eclick.ydata
         x2, y2 = erelease.xdata, erelease.ydata
@@ -1217,6 +1302,31 @@ class GUI (QMainWindow):
         xi,yi = np.meshgrid(xi,yi)
         points = np.array([np.ravel(xi),np.ravel(yi)]).transpose()
 
+        return points
+
+
+    def fitContAll(self):
+        """ Fit continuum all over the cube """
+
+        # Define region (excluding frame of 1 pixel)
+        nx = self.specCube.nx
+        ny = self.specCube.ny
+        xi = np.arange(1,nx-1)
+        yi = np.arange(1,ny-1)
+        xi,yi = np.meshgrid(xi,yi)
+        points = np.array([np.ravel(xi),np.ravel(yi)]).transpose()
+
+        # Continuum mask
+        self.continuumMask(points)
+
+        # Fit
+        self.fitContinuum(points)
+        
+        
+    
+
+    def continuumMask(self, points):
+
         # Values
         sc = self.sci[self.spectra.index('Pix')]
         # guess values for the continuum in wavelength
@@ -1227,7 +1337,6 @@ class GUI (QMainWindow):
             c = 299792458.0  # speed of light in m/s
             xg = c/xg * 1.e-6  # THz to um
             
-        
         # Run the fit and computation of moments for the selected points
 
         # Compute i0,i1,i2,i3 from xy
@@ -1240,12 +1349,14 @@ class GUI (QMainWindow):
         for p in points:
             i,j = p
             self.Cmask[:,j,i] = 0
-            self.Mmask[:,j,i] = 0
             self.Cmask[i0:i1,j,i] = 1
             self.Cmask[i2:i3,j,i] = 1
-            self.Mmask[i1:i2,j,i] = 1
 
-        # This part should be threaded in the future to avoid locking the window
+    
+    
+    def fitContinuum(self, points):
+        """ Fit the continuum on a selected set of points """
+
         # Fit the continuum
         f = self.specCube.flux
         m = self.Cmask
@@ -1253,35 +1364,121 @@ class GUI (QMainWindow):
         w0 = self.specCube.l0
         c = self.continuum
         c0 = self.C0
+        sc = self.sci[self.spectra.index('Pix')]
         intcp = sc.guess.intcpt
         slope = sc.guess.slope
 
-        c,c0 = multiFitContinuum(m,w,f,c,c0,w0,points,slope,intcp,self.positiveContinuum)
+        c,c0 = multiFitContinuum(m,w,f,c,c0,w0,points,slope,intcp,self.positiveContinuum, self.kernel)
         self.continuum = c
+        print('max continuum is ',np.nanmax(self.continuum))
         self.C0 = c0
+            
+        # Refresh the plotted image
+        itab = self.bands.index('C0')
+        ic = self.ici[itab]
+        ic.showImage(image=self.C0)
+        ic.image.format_cursor_data = lambda z: "{:.2e} Jy".format(float(z))        
+        ih = self.ihi[itab]
+        ih.compute_initial_figure(image = self.C0)
 
+        # Update continuum on pixel tab
+        sc = self.sci[self.spectra.index('Pix')]
+        ic = self.ici[0]
+        xc,yc = ic.photApertures[0].xy[0]  # marker coordinates (center of rectangle)
+        i = int(np.rint(xc)); j = int(np.rint(yc))
+        sc.updateSpectrum(cont=self.continuum[:,j,i])
+        sc.fig.canvas.draw_idle()
+
+    def computeMomentsAll(self):
+        """ Compute moments all over the cube """
+
+        # Define region (whole image)
+        nx = self.specCube.nx
+        ny = self.specCube.ny
+        xi = np.arange(nx)
+        yi = np.arange(ny)
+        xi,yi = np.meshgrid(xi,yi)
+        points = np.array([np.ravel(xi),np.ravel(yi)]).transpose()
+
+        # Define moments
+        self.defineMoments()
+
+        # Compute moments
+        self.computeMoments(points)
+
+
+    def defineMoments(self):
+        """ Define mask, moments, and velocities """
+
+        # In the case they are not already defined ...
+        if self.M0 is None:
+            s = self.specCube
+            self.Mmask = np.zeros((s.nz,s.ny,s.nx), dtype=bool) # Spectral cube mask (for computing the moments)
+            self.M0 = np.full((s.ny,s.nx), np.nan) # 0th moment
+            self.M1 = np.full((s.ny,s.nx), np.nan) # 1st moment
+            self.M2 = np.full((s.ny,s.nx), np.nan) # 2nd moment
+            self.v = np.full((s.ny,s.nx), np.nan) # velocity field
+            self.sv = np.full((s.ny,s.nx), np.nan) # vel. disp. field
+
+            # Create/update moment tabs
+            newbands = ['M0','M1','M2']
+            sbands = [self.M0, self.M1, self.M2]
+            for new,sb in zip(newbands,sbands):
+                if new not in self.bands:
+                    self.addBand(new)
+                else:
+                    itab = self.bands.index(new)
+                    self.removeTab(itab)
+                    self.addBand(new)
+
+            
+        
+    def computeMomentsRegion(self, eclick, erelease):
+        """ Compute moments in a defined region """
+
+        # Select points in the region
+        points = self.onFitRect(eclick,erelease)
+
+        # Define moments
+        self.defineMoments()
+        
+        # Compute moments
+        self.computeMoments(points)
+
+        
+        
+    def computeMoments(self, points):
+        """ compute moments and velocities """
+
+
+        # Update moments mask (from shaded region on Pix tab)
+        sc = self.sci[self.spectra.index('Pix')]
+        x0,x1 = sc.regionlimits
+        i0 = np.argmin(np.abs(self.specCube.wave-x0))
+        i1 = np.argmin(np.abs(self.specCube.wave-x1))
+        for p in points:
+            i,j = p
+            self.Mmask[:,j,i] = 0
+            self.Mmask[i0:i1,j,i] = 1
+        
         # Compute moments
         m = self.Mmask
         moments = [self.M0, self.M1, self.M2]
+        f = self.specCube.flux
+        w = self.specCube.wave
+        c = self.continuum
         moments, self.noise = multiComputeMoments(m,w,f,c,moments,points)
         self.M0, self.M1, self.M2 = moments
 
-        # Compute velocity fields
-        c = 299792.458 # km/s
-        self.v = (self.M1/w0 -1. - self.specCube.redshift)* c # km/s
-        self.sv = np.sqrt(self.M2) * c/w0  # km/s
-
             
         # Refresh the plotted images
-        bands = ['C0','M0','M1','M2','v','sv']
-        sbands = [self.C0, self.M0, self.M1, self.M2,self.v,self.sv]
+        bands = ['M0','M1','M2']
+        sbands = [self.M0, self.M1, self.M2]
         for b,sb in zip(bands,sbands):
             itab = self.bands.index(b)
             ic = self.ici[itab]
             ic.showImage(image=sb)
-            if b == 'v' or b == 'sv': 
-                ic.image.format_cursor_data = lambda z: "{:.0f} km/s".format(float(z))
-            elif  b == 'M1':
+            if  b == 'M1':
                 ic.image.format_cursor_data = lambda z: "{:.4f} um".format(float(z))
             elif  b == 'M2':
                 ic.image.format_cursor_data = lambda z: "{:.4f} um2".format(float(z))
@@ -1292,15 +1489,17 @@ class GUI (QMainWindow):
             ih = self.ihi[itab]
             ih.compute_initial_figure(image = sb)
 
-        # Update continuum on pixel tab
+        # Update moments on pixel tab
         sc = self.sci[self.spectra.index('Pix')]
         ic = self.ici[0]
-        i,j = ic.photApertures[0].rect.get_xy()
-        i = int(np.rint(i)); j = int(np.rint(j))
+        xc,yc = ic.photApertures[0].xy[0]
+        i = int(np.rint(xc)); j = int(np.rint(yc))
         moments = [self.M0[j,i],self.M1[j,i],self.M2[j,i]]
         sc.updateSpectrum(cont=self.continuum[:,j,i], moments=moments, noise=self.noise[j,i])
         sc.fig.canvas.draw_idle()
 
+        # Compute Velocities
+        self.computeVelocities()
         
         
     def createAction(self,icon,text,shortcut,action):
@@ -2925,6 +3124,10 @@ class GUI (QMainWindow):
             self.slice = 'off'
             self.cutcube = 'off'
             self.continuum = None
+            self.M0 = None
+            self.M1 = None
+            self.M2 = None
+            self.C0 = None            
             # Selectors
             self.PS = None
             self.ES = None
@@ -3136,7 +3339,16 @@ class GUI (QMainWindow):
     def changeColorMap(self):
         """ Change a color map for the images """
 
-        self.CMlist = ['gist_heat','gist_earth','gist_gray','afmhot','inferno','ocean','plasma']
+        # check DS9 colormaps in http://nbviewer.jupyter.org/gist/adonath/c9a97d2f2d964ae7b9eb
+
+        # stretching and normalization are treated at: http://docs.astropy.org/en/stable/visualization/normalization.html
+        # normalization as 'sqrt' for instance ... norm = simple_norm(image,'sqrt') with astropy.visualization
+        # Great adaption: https://github.com/glue-viz/ds9norm
+
+        # In the colormap dialog I should add a list of possible stretches (sqrt, log , ...)
+        
+        self.CMlist = ['gist_heat','gist_earth','gist_gray','afmhot','inferno','ocean','plasma','seismic',
+                       'ds9bb','ds9a','ds9b','ds9cool','ds9i8','ds9aips0','ds9rainbow','ds9he','ds9heat']
         self.selectCM = cmDialog(self.CMlist, self.colorMap)
         self.selectCM.list.currentRowChanged.connect(self.updateColorMap)
         self.selectCM.dirSignal.connect(self.reverseColorMap)
