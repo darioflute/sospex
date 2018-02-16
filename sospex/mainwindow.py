@@ -108,6 +108,7 @@ class GUI (QMainWindow):
         ds9cmap()
         self.colorMap = 'gist_heat'
         self.colorMapDirection = '_r'
+        self.stretchMap = 'linear'
         
         # Get the path of the package
         self.path0, file0 = os.path.split(__file__)
@@ -3349,12 +3350,25 @@ class GUI (QMainWindow):
         
         self.CMlist = ['gist_heat','gist_earth','gist_gray','afmhot','inferno','ocean','plasma','seismic',
                        'ds9bb','ds9a','ds9b','ds9cool','ds9i8','ds9aips0','ds9rainbow','ds9he','ds9heat']
-        self.selectCM = cmDialog(self.CMlist, self.colorMap)
+        self.STlist = ['linear','sqrt','square','log','pow','sinh','asinh']
+        self.selectCM = cmDialog(self.CMlist,self.STlist, self.colorMap, self.stretchMap)
         self.selectCM.list.currentRowChanged.connect(self.updateColorMap)
+        self.selectCM.slist.currentRowChanged.connect(self.updateStretchMap)
         self.selectCM.dirSignal.connect(self.reverseColorMap)
         self.selectCM.exec_()
+
+    def updateStretchMap(self, newRow):
+        """ Update the stretch of the color map """
         
-    def updateColorMap(self,newRow):
+        newStretch = self.STlist[newRow]
+        if newStretch != self.stretchMap:
+            self.stretchMap = newStretch
+            for ic in self.ici:
+                ic.stretch = self.stretchMap
+                ic.showImage(ic.oimage)
+                ic.fig.canvas.draw_idle()
+        
+    def updateColorMap(self, newRow):
         """ Update the color map of the image tabs """
         
         newCM = self.CMlist[newRow]

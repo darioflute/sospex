@@ -17,6 +17,8 @@ rcParams['legend.numpoints']=1
 
 from matplotlib.lines import Line2D
 from matplotlib.text import Text
+from matplotlib.colors import Normalize
+import matplotlib.cbook as cbook
 
 from matplotlib.widgets import SpanSelector
 
@@ -24,10 +26,13 @@ from astropy.wcs.utils import proj_plane_pixel_scales as pixscales
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 
-from PyQt5.QtWidgets import (QVBoxLayout, QSizePolicy, QInputDialog, QDialog, QListWidget,QListWidgetItem,QPushButton)
+from PyQt5.QtWidgets import (QVBoxLayout, QSizePolicy, QInputDialog, QDialog, QListWidget,QListWidgetItem,QPushButton,QLabel)
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt, QSize, pyqtSignal
 from PyQt5.QtTest import QTest
+
+from astropy.visualization import (MinMaxInterval, LinearStretch, SqrtStretch, SquaredStretch, SinhStretch,AsinhStretch,
+                                   LogStretch, HistEqStretch, ImageNormalize, CompositeTransform, ContrastBiasStretch)
 
 
 def ds9cmap():
@@ -159,8 +164,77 @@ def ds9cmap():
     register_cmap('ds9he_r', data=ds9he_r)
     register_cmap('ds9heat_r', data=ds9heat_r)
 
+class ReNormalize(Normalize):
+    """ 
+    A Normalize class which combines stretching and scaling
+    """
+    def __init__(self, scale = 'linear', bias = 0.5, contrast = 1.0, vmid = None, vmin = None, vmax = None, clip = False):
 
-    
+        if vmax is not None and vmin is not None:
+            if vmax < vmin:
+                raise Exception("vmax should be lower than vmin")
+
+        # Call original initalization routine
+        Normalize.__init__(self, vmin=vmin, vmax=vmax, clip=clip)
+        
+        # Save parameters
+        self.scale = scale
+        self.bias = bias
+        self.contrast = contrast
+
+    def __call__(self, value, clip = None):
+
+        if clip is None:
+            clip = self.clip
+
+            
+        if cbook.iterable(value):
+            vtype = 'array'
+            val = np.ma.asarray(value).astype(np.float)
+        else:
+            vtype = 'scalar'
+            val = np.ma.array([value]).astype(np.float)
+
+        self.autoscale_None(val)
+        vmin, vmax = self.vmin, self.vmax
+        if vmin > vmax:
+            raise ValueError("minvalue must be less than or equal to maxvalue")
+        elif vmin == vmax:
+            return 0.0 * val
+        else:
+            if clip:
+                mask = np.ma.getmask(val)
+                val = np.ma.array(np.clip(val.filled(vmax), vmin, vmax), mask=mask)
+            normval = (val - vmin) / (vmax - vmin)
+            # Stretch the data
+            x = normval
+            #x = (normval - self.bias)*self.contrast + 0.5
+
+
+        if self.scale == 'linear':
+            y = x
+        elif self.scale == 'log':
+            a = 1000.
+            y = np.log(a*x+1.)/np.log(a)
+        elif self.scale == 'pow':
+            a = 1000.
+            y = (np.power(a,x)-1.)/a
+        elif self.scale == 'sqrt':
+            y = np.sqrt(x)
+        elif self.scale == 'square':
+            y = x * x
+        elif self.scale == 'asinh':
+            y = np.arcsinh(10. * x)/3.
+        elif self.scale == 'sinh':
+            y = np.sinh(3. * x)/10.
+        else:
+            raise Exception("Unknown scale ", self.scale)
+
+        if vtype == 'scalar':
+            y = y[0]
+
+        #print('y is ',y)
+        return y
 
 class NavigationToolbar(NavigationToolbar2QT):
     def __init__(self,canvas,parent):
@@ -184,12 +258,14 @@ class cmDialog(QDialog):
 
     dirSignal = pyqtSignal(str)
     
-    def __init__(self, cmlist, currentCM, parent=None):
+    def __init__(self, cmlist, stlist, currentCM, currentST, parent=None):
         super().__init__()
 
         path0, file0 = os.path.split(__file__)
         self.setWindowTitle('Color Map Selector')
         layout = QVBoxLayout()
+
+        label1 = QLabel("Color maps")
         self.list = QListWidget(self)
         self.cmlist = cmlist
         for cm in cmlist:
@@ -204,13 +280,23 @@ class cmDialog(QDialog):
         b1 = QPushButton("Reverse", self)
         b1.clicked.connect(self.reverse)
         
+        label2 = QLabel("Stretches")        
+        self.slist = QListWidget(self)
+        for st in stlist:
+            QListWidgetItem(QIcon(path0+"/icons/"+st+".png"),st,self.slist)
+        n = stlist.index(currentST)
+        self.slist.setCurrentRow(n)
+
         # Button with OK to close dialog
         b2 = QPushButton("OK",self)
         b2.clicked.connect(self.end)
 
         # Layout
+        layout.addWidget(label1)
         layout.addWidget(self.list)
         layout.addWidget(b1)
+        layout.addWidget(label2)
+        layout.addWidget(self.slist)
         layout.addWidget(b2)
         self.setLayout(layout)
 
@@ -283,6 +369,11 @@ class ImageCanvas(MplCanvas):
 
 
             # Show image
+            self.stretch = 'linear'
+            self.contrast = 1.
+            self.bias = 0.5
+            self.cmin = None
+            self.cmax = None
             self.showImage(image)
             self.changed = False
 
@@ -303,24 +394,55 @@ class ImageCanvas(MplCanvas):
             self.setFocus()
 
 
+    def stretchFunc(self, newStretch):
+
+        if newStretch == 'linear':
+            stretch = LinearStretch()
+        elif newStretch == 'sqrt':
+            stretch = SqrtStretch()
+        elif newStretch == 'square':
+            stretch = SquaredStretch()
+        elif newStretch == 'log':
+            stretch = LogStretch()
+        elif newStretch == 'sinh':
+            stretch = SinhStretch()
+        elif newStretch == 'asinh':
+            stretch = AsinhStretch()
+        else:
+            print('unknown stretch ...',newStretch)
+            stretch = LinearStretch()
+
+        return stretch
+
     def showImage(self, image):
         
         self.oimage = image.copy()
         self.axes.cla()
-        self.image = self.axes.imshow(image, origin='lower',cmap=self.colorMap+self.colorMapDirection,interpolation='none')
-        self.fig.colorbar(self.image, cax=self.cbaxes)
-        # Intensity limits
-        mask =  np.isfinite(image)
-        if np.sum(mask) == 0:
-            cmin=-10
-            cmax=+10
-        else:       
-            vmed0=np.nanmedian(image)
-            d0 = np.nanstd(image)
-            cmin = vmed0-2*d0
-            cmax = vmed0+5*d0
 
-        self.image.set_clim([cmin,cmax])
+        #norm = ImageNormalize(vmin=None, vmax=None, stretch=CompositeTransform(self.stretchFunc(self.stretch),ContrastBiasStretch(self.contrast,self.bias)))
+        #norm = ImageNormalize(vmin=None, vmax=None, stretch=ContrastBiasStretch(self.contrast,self.bias))
+        norm = ImageNormalize(vmin=None, vmax=None, stretch=self.stretchFunc(self.stretch))
+
+        #norm = ReNormalize(vmin = None, vmax = None , scale = self.stretch, bias = self.bias, contrast = self.contrast)
+        print('normalize ',norm)
+        self.image = self.axes.imshow(image, origin='lower',cmap=self.colorMap+self.colorMapDirection,interpolation='none',norm=norm)
+        self.fig.colorbar(self.image, cax=self.cbaxes)#,extend = 'both')
+
+        # Intensity limits
+        if self.cmin is None:
+            mask =  np.isfinite(image)
+            if np.sum(mask) == 0:
+                cmin=-10
+                cmax=+10
+            else:       
+                vmed0=np.nanmedian(image)
+                d0 = np.nanstd(image)
+                cmin = vmed0-2*d0
+                cmax = vmed0+5*d0
+            self.cmin = cmin
+            self.cmax = cmax
+
+        self.image.set_clim([self.cmin,self.cmax])
 
         # Cursor data format
         def format_coord(x,y):
@@ -342,6 +464,8 @@ class ImageCanvas(MplCanvas):
         _cmin = self.s_cmin.val
         _cmax = self.s_cmax.val
         self.image.set_clim([_cmin, _cmax])
+        self.cmin = _cmin
+        self.cmax = _cmax
         self.fig.canvas.draw_idle()
 
 
