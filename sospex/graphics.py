@@ -258,7 +258,7 @@ class cmDialog(QDialog):
 
     dirSignal = pyqtSignal(str)
     
-    def __init__(self, cmlist, stlist, currentCM, currentST, parent=None):
+    def __init__(self, cmlist, stlist, clist, currentCM, currentST, currentCC, parent=None):
         super().__init__()
 
         path0, file0 = os.path.split(__file__)
@@ -287,6 +287,13 @@ class cmDialog(QDialog):
         n = stlist.index(currentST)
         self.slist.setCurrentRow(n)
 
+        label3 = QLabel("Contour color")        
+        self.clist = QListWidget(self)
+        for col in clist:
+            QListWidgetItem(QIcon(path0+"/icons/"+col+".png"),col,self.clist)
+        n = clist.index(currentCC)
+        self.clist.setCurrentRow(n)
+
         # Button with OK to close dialog
         b2 = QPushButton("OK",self)
         b2.clicked.connect(self.end)
@@ -297,6 +304,8 @@ class cmDialog(QDialog):
         layout.addWidget(b1)
         layout.addWidget(label2)
         layout.addWidget(self.slist)
+        layout.addWidget(label3)
+        layout.addWidget(self.clist)
         layout.addWidget(b2)
         self.setLayout(layout)
 
@@ -366,7 +375,7 @@ class ImageCanvas(MplCanvas):
             # Add title
             if title != None:
                 self.fig.suptitle(title)
-
+                self.title = title
 
             # Show image
             self.stretch = 'linear'
@@ -487,6 +496,10 @@ class ImageHistoCanvas(MplCanvas):
         # Start a span selector
         self.span = SpanSelector(self.axes, self.onSelect, 'horizontal', useblit=True,
                                  rectprops=dict(alpha=0.5, facecolor='LightSalmon'),button=1)
+        # Initialize contour level vertical lines
+        self.lev = []
+        self.levels = []
+        self._ind = None
 
         
     def compute_initial_figure(self, image=None,xmin=None,xmax=None):
@@ -536,10 +549,6 @@ class ImageHistoCanvas(MplCanvas):
                 print('Problems with the image')
 
             
-            # Initialize contour level vertical lines
-            self.lev = []
-            self.levels = []
-            self._ind = None
 
             # Draw grid (median, median+n*sigma)
             x = self.median

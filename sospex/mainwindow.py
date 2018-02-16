@@ -78,13 +78,13 @@ class ContoursThread(QThread):
     def run(self):
         if self.n > 1000:
             self.n -= 1000
-            new = self.ic0.axes.contour(self.ic0.oimage, self.level, colors='cyan')
+            new = self.ic0.axes.contour(self.ic0.oimage, self.level, colors=self.colorContour)
             # Insert new contour in the contour collection
             #print("insert new contour")
             contours = self.ic0.contour.collections
             contours.insert(self.n,new.collections[0])
         else:
-            new = self.ic0.axes.contour(self.ic0.oimage, self.level, colors='cyan')
+            new = self.ic0.axes.contour(self.ic0.oimage, self.level, colors=self.colorContour)
             # Update the collection
             #print("update contour")
             self.ic0.contour.collections[self.n] = new.collections[0]
@@ -109,6 +109,7 @@ class GUI (QMainWindow):
         self.colorMap = 'gist_heat'
         self.colorMapDirection = '_r'
         self.stretchMap = 'linear'
+        self.colorContour = 'cyan'
         
         # Get the path of the package
         self.path0, file0 = os.path.split(__file__)
@@ -1381,7 +1382,8 @@ class GUI (QMainWindow):
         ic.image.format_cursor_data = lambda z: "{:.2e} Jy".format(float(z))        
         ih = self.ihi[itab]
         ih.compute_initial_figure(image = self.C0)
-
+        self.addContours(ic)
+        
         # Update continuum on pixel tab
         sc = self.sci[self.spectra.index('Pix')]
         ic = self.ici[0]
@@ -1489,7 +1491,8 @@ class GUI (QMainWindow):
                 ic.image.format_cursor_data = lambda z: "{:.2e} Jy".format(float(z))
             ih = self.ihi[itab]
             ih.compute_initial_figure(image = sb)
-
+            self.addContours(ic)
+            
         # Update moments on pixel tab
         sc = self.sci[self.spectra.index('Pix')]
         ic = self.ici[0]
@@ -2800,7 +2803,7 @@ class GUI (QMainWindow):
                     ih0 = ih
                     ic0 = ic_
             if ih0 is not None:
-                ic.contour = ic.axes.contour(ic0.oimage,ih0.levels, colors='cyan',transform=ic.axes.get_transform(ic0.wcs))
+                ic.contour = ic.axes.contour(ic0.oimage,ih0.levels, colors=self.colorContour,transform=ic.axes.get_transform(ic0.wcs))
                 ic.fig.canvas.draw_idle()
             else:
                 pass
@@ -2849,7 +2852,7 @@ class GUI (QMainWindow):
             mask = levels < ih0.max
             ih0.levels = list(levels[mask])
         #print('Contour levels are: ',ih0.levels)
-        ic0.contour = ic0.axes.contour(ic0.oimage,ih0.levels,colors='cyan')
+        ic0.contour = ic0.axes.contour(ic0.oimage,ih0.levels,colors=self.colorContour)
         ic0.fig.canvas.draw_idle()
         # Add levels to histogram
         ih0.drawLevels()
@@ -2860,7 +2863,7 @@ class GUI (QMainWindow):
         ici = self.ici.copy()
         ici.remove(ic0)
         for ic in ici:
-            ic.contour = ic.axes.contour(ic0.oimage,ih0.levels, colors='cyan',transform=ic.axes.get_transform(ic0.wcs))
+            ic.contour = ic.axes.contour(ic0.oimage,ih0.levels, colors=self.colorContour,transform=ic.axes.get_transform(ic0.wcs))
             ic.changed = True
 
     def onModifyContours(self, n):
@@ -2880,7 +2883,7 @@ class GUI (QMainWindow):
                 #contoursThread.updateOtherContours.connect(self.modifyOtherImagesContours)
                 #contoursThread.start()
                 n -= 1000
-                new = ic0.axes.contour(ic0.oimage, [ih0.levels[n]], colors='cyan')
+                new = ic0.axes.contour(ic0.oimage, [ih0.levels[n]], colors=self.colorContour)
                 # Insert new contour in the contour collection
                 contours = ic0.contour.collections
                 contours.insert(n,new.collections[0])
@@ -2895,7 +2898,7 @@ class GUI (QMainWindow):
                 #contoursThread = ContoursThread(ic0,ih0.levels[n], n, itab)
                 #contoursThread.updateOtherContours.connect(self.modifyOtherImagesContours)
                 #contoursThread.start()
-                new = ic0.axes.contour(ic0.oimage, [ih0.levels[n]], colors='cyan')
+                new = ic0.axes.contour(ic0.oimage, [ih0.levels[n]], colors=self.colorContour)
                 # Update the collection
                 ic0.contour.collections[n] = new.collections[0]
             self.modifyOtherImagesContours(itab)
@@ -2917,7 +2920,7 @@ class GUI (QMainWindow):
                     ic.contour = None
                 # Compute new contours
                 levels =  sorted(ih0.levels)   
-                ic.contour = ic.axes.contour(ic0.oimage, levels, colors='cyan',transform=ic.axes.get_transform(ic0.wcs))
+                ic.contour = ic.axes.contour(ic0.oimage, levels, colors=self.colorContour,transform=ic.axes.get_transform(ic0.wcs))
                 # Differ drawing until changing tab
                 ic.changed = True
             
@@ -3351,11 +3354,27 @@ class GUI (QMainWindow):
         self.CMlist = ['gist_heat','gist_earth','gist_gray','afmhot','inferno','ocean','plasma','seismic',
                        'ds9bb','ds9a','ds9b','ds9cool','ds9i8','ds9aips0','ds9rainbow','ds9he','ds9heat']
         self.STlist = ['linear','sqrt','square','log','pow','sinh','asinh']
-        self.selectCM = cmDialog(self.CMlist,self.STlist, self.colorMap, self.stretchMap)
+        self.CClist = ['cyan','lime','magenta','red','blue','purple','black','yellow','white']
+        self.selectCM = cmDialog(self.CMlist,self.STlist, self.CClist, self.colorMap, self.stretchMap, self.colorContour)
         self.selectCM.list.currentRowChanged.connect(self.updateColorMap)
         self.selectCM.slist.currentRowChanged.connect(self.updateStretchMap)
+        self.selectCM.clist.currentRowChanged.connect(self.updateColorContour)
         self.selectCM.dirSignal.connect(self.reverseColorMap)
         self.selectCM.exec_()
+
+    def updateColorContour(self, newRow):
+        """ Update the stretch of the color map """
+        
+        newColor = self.CClist[newRow]
+        if newColor != self.colorContour:
+            self.colorContour = newColor
+            for ic in self.ici:
+                contours = ic.contour.collections
+                for c in contours:
+                    c.set_color(self.colorContour)
+                ic.fig.canvas.draw_idle()
+                #self.addContours(ic)
+        
 
     def updateStretchMap(self, newRow):
         """ Update the stretch of the color map """
@@ -3367,7 +3386,8 @@ class GUI (QMainWindow):
                 ic.stretch = self.stretchMap
                 ic.showImage(ic.oimage)
                 ic.fig.canvas.draw_idle()
-        
+                self.addContours(ic)
+
     def updateColorMap(self, newRow):
         """ Update the color map of the image tabs """
         
@@ -3378,7 +3398,8 @@ class GUI (QMainWindow):
                 ic.colorMap = self.colorMap
                 ic.showImage(ic.oimage)
                 ic.fig.canvas.draw_idle()
-
+                self.addContours(ic)
+                
     def reverseColorMap(self, reverse):
         """ Reverse color map direction """
 
