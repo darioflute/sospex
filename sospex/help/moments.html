@@ -11800,12 +11800,20 @@ div#notebook {
 </thead>
 <tbody>
 <tr>
-<td style="text-align:center"><img src="../icons/guess.png" alt="Guess" style="width: 20px;"/></td>
-<td style="text-align:left">Guess level of the continuum</td>
+<td style="text-align:center"><img src="../icons/guess.png" alt="GuessCont" style="width: 20px;"/></td>
+<td style="text-align:left">Define intervals to fit the continuum and its guess level and slope</td>
 </tr>
 <tr>
-<td style="text-align:center"><img src="../icons/fitregion.png" alt="Fit" style="width: 20px;"/></td>
-<td style="text-align:left">Select a region to fit continuum, compute moments</td>
+<td style="text-align:center"><img src="../icons/slice.png" alt="DefineMoments" style="width: 20px;"/></td>
+<td style="text-align:left">Select the interval to compute moments</td>
+</tr>
+<tr>
+<td style="text-align:center"><img src="../icons/fitCont.png" alt="FitCont" style="width: 20px;"/></td>
+<td style="text-align:left">Fit the continuum</td>
+</tr>
+<tr>
+<td style="text-align:center"><img src="../icons/computeMoments.png" alt="ComputeMoments" style="width: 20px;"/></td>
+<td style="text-align:left">Compute the moments</td>
 </tr>
 </tbody>
 </table>
@@ -11817,11 +11825,10 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h3 id="Guess-level-of-the-continuum">Guess level of the continuum<a class="anchor-link" href="#Guess-level-of-the-continuum">&#182;</a></h3><p>Once clicked on the icon a dialog window will ask to select the degree of the polynomial to fit
-the continuum between 0 (constant line) and 1 (line with a slope not equal to 0.).
-In the case the costant line is selected, a further dialog will ask if the value of the continuum
-are supposed to be positive to fix a boundary condition to the fit.</p>
+<h3 id="Guess-the--level-of-the-continuum">Guess the  level of the continuum<a class="anchor-link" href="#Guess-the--level-of-the-continuum">&#182;</a></h3><p>Once clicked on the icon under the spectrum, a dialog window will ask to select the degree of the polynomial to fit
+the continuum, the boundary condition for fitting (continuum has to be positive or not), and the kernel used to compute the spectrum (1, 5, or 9 pixels around the position of each spatial pixel).</p>
 <p>At this point, click and drag to trace the continuum on the right and the left of the line.
+Try to avoid the brightest part of the line to have a better fit of the continuum.
 The traced guessed continuum will appear on the image. 
 It is possible to select a point and drag it around to change the region or the height of
 the point.
@@ -11835,8 +11842,53 @@ To restart with another guess (and deleting the previously computed moments), re
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h3 id="Fit-continuum-and-compute-moments">Fit continuum and compute moments<a class="anchor-link" href="#Fit-continuum-and-compute-moments">&#182;</a></h3><p>After clicking the icon, select by clicking and dragging the mouse the rectangular area on the image where to fit the continuum and compute the moments.
-Once the guess is visible on the Pixel spectrum, it is possible to select another area and redo the fit.</p>
+<h3 id="Fit-the-continuum">Fit the continuum<a class="anchor-link" href="#Fit-the-continuum">&#182;</a></h3><p>Under the image, click the icon to fit the continuum. A dialog will ask if the fit has to be done on the entire
+cube or limited to a selected region.
+If the second case is true, you can select a region on the image by click and dragging the mouse.
+Once the region is selected, the fit starts automatically and will show on the spectra the level of the continuum
+and on the image "C0" the continuum computed at the reference wavelength.</p>
+<p>I the reference wavelength changes, it is possible to recompute C0 by clicking in the menu: Fit--&gt;Recompute C0,v,sv.</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h3 id="Define-the-interval-to-compute-the-moments">Define the interval to compute the moments<a class="anchor-link" href="#Define-the-interval-to-compute-the-moments">&#182;</a></h3><p>Click the relative icon under the spectrum. The "PIX" tab will be automatically selected. By clicking and dragging the mouse, a region of the spectrum is shaded. This is the interval which will be considered for computing the moments.</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h3 id="The-moments">The moments<a class="anchor-link" href="#The-moments">&#182;</a></h3><p>These are the definitions used.</p>
+<p>Zeroth moment: $M_0 = \int F d\lambda$.</p>
+<p>First moment:  $M_1 = \int \frac{\lambda}{M_0} F d\lambda$</p>
+<p>Second moment:  $M_2 = \int \frac{(\lambda-M_1)^2}{M_0} F d\lambda$</p>
+<p>The zeroth moment (once the continuum emission is subtracted) gives
+information about the intensity of the line (or lines).</p>
+<p>The first moment gives information about the velocity field of the reference line:</p>
+<p>$v = (M_1-\lambda_0) c /\lambda_0$,</p>
+<p>where $\lambda_0$ is the reference wavelength:</p>
+<p>$\lambda_0 = \lambda_{line} (1+z)$.</p>
+<p>To obtain velocities relative to the mean velocity of the structure, one has to subtract $cz$.</p>
+<p>The second moment gives information about the velocity dispersion of the reference line:</p>
+<p>$\sigma_v = \sqrt{M_2} c /\lambda_0$.</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h3 id="Compute-the-moments">Compute the moments<a class="anchor-link" href="#Compute-the-moments">&#182;</a></h3><p>After clicking the icon, a dialog will ask to decide if computing moments on the entire cube or only in a selected region. If the line appears at different velocities in the map, it is advisable to compute the moments in regions by selecting different intervals.</p>
+<p>To select a region, click and drag the mouse over the rectangular area on the image where you want to compute the moments. Once the computation is done, a cross will appear over the "PIX" spectrum with location, amplitude, and 
+dispersion corresponding to the computed moments. Also the new images M0, M1, M2, v, and sv are created.</p>
 
 </div>
 </div>
