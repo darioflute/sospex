@@ -431,7 +431,6 @@ class ImageCanvas(MplCanvas):
         #norm = ImageNormalize(vmin=None, vmax=None, stretch=CompositeTransform(self.stretchFunc(self.stretch),ContrastBiasStretch(self.contrast,self.bias)))
         #norm = ImageNormalize(vmin=None, vmax=None, stretch=ContrastBiasStretch(self.contrast,self.bias))
         norm = ImageNormalize(vmin=None, vmax=None, stretch=self.stretchFunc(self.stretch))
-
         #norm = ReNormalize(vmin = None, vmax = None , scale = self.stretch, bias = self.bias, contrast = self.contrast)
         print('normalize ',norm)
         self.image = self.axes.imshow(image, origin='lower',cmap=self.colorMap+self.colorMapDirection,interpolation='none',norm=norm)
