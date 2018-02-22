@@ -2752,10 +2752,14 @@ class GUI (QMainWindow):
             self.sb.showMessage("Draw the region to mask", 2000)
             
             # Start a Selector to define a polygon aperture
-            self.itabs.setCurrentIndex(0)
+            #self.itabs.setCurrentIndex(0)
             itab = self.itabs.currentIndex()
+            band = self.bands[itab]
+            if band not in ['Flux','uFlux','Exp','C0','M0','M1','M2','M3','M4','v','sv']:
+                itab = 0
+                self.itabs.setCurrentIndex(itab)
+
             ic = self.ici[itab]
-            
             if ic.toolbar._active == 'ZOOM':
                 ic.toolbar.zoom()  # turn off zoom
                 x = ic.axes.get_xlim()
@@ -2780,6 +2784,8 @@ class GUI (QMainWindow):
         path = poly.get_path()
         transform = poly.get_patch_transform()
         npath = transform.transform_path(path)
+        # We could transform this path into another one with different astrometry here before checking the points inside
+        #print('path is ',npath)
         inpoints = s.points[npath.contains_points(s.points)]
         xx,yy = inpoints.T
 
