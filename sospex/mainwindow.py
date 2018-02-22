@@ -203,12 +203,12 @@ class GUI (QMainWindow):
         fit = bar.addMenu("Fit")
         continuum = fit.addMenu("Continuum")
         continuum.addAction(QAction('Define guess',self,shortcut='',triggered=self.guessContinuum))
-        continuum.addAction(QAction('All cube',self,shortcut='',triggered=self.fitContAll))
-        continuum.addAction(QAction('Inside region',self,shortcut='',triggered=self.fitContRegion))
+        continuum.addAction(QAction('Fit all cube',self,shortcut='',triggered=self.fitContAll))
+        continuum.addAction(QAction('Fit inside region',self,shortcut='',triggered=self.fitContRegion))
         moments = fit.addMenu("Moments")
         moments.addAction(QAction('Define slice',self,shortcut='',triggered=self.sliceCube))
-        moments.addAction(QAction('All cube',self,shortcut='',triggered=self.computeMomentsAll))
-        moments.addAction(QAction('Inside region',self,shortcut='',triggered=self.computeRegion))
+        moments.addAction(QAction('Compute all cube',self,shortcut='',triggered=self.computeMomentsAll))
+        moments.addAction(QAction('Compute inside region',self,shortcut='',triggered=self.computeRegion))
         fit.addAction(QAction('Recompute C0, v, sv',self,shortcut='',triggered=self.computeVelocities))
 
         bar.setNativeMenuBar(False)
@@ -361,8 +361,20 @@ class GUI (QMainWindow):
         self.icid3.remove(c3)
         ima = None
         his = None
+        # Put back to None the band
+        b = self.bands[itab]
+        if b == 'C0': self.C0 = None
+        elif b == 'M0': self.M0 = None
+        elif b == 'M1': self.M1 = None
+        elif b == 'M2': self.M2 = None
+        elif b == 'M3': self.M3 = None
+        elif b == 'M4': self.M4 = None
+        elif b == 'v' : self.v  = None
+        elif b == 'sv': self.sv = None
         # Remove band from band list
         del self.bands[itab]
+        
+        
         
     def removeSpecTab(self, stab):
         #print('Removing spectral tab no ',stab)
@@ -598,7 +610,7 @@ class GUI (QMainWindow):
                 try:
                     cont = self.continuum[:,j,i]
                     try:
-                        moments = [self.M0[j,i],self.M1[j,i],self.M2[j,i]]
+                        moments = [self.M0[j,i],self.M1[j,i],self.M2[j,i],self.M3[j,i],self.M4[j,i]]
                         noise = self.noise[j,i]
                     except:
                         moments = None
@@ -1001,22 +1013,8 @@ class GUI (QMainWindow):
         self.Cmask = np.zeros((s.nz,s.ny,s.nx), dtype=bool) # Spectral cube mask (for fitting the continuum)
         self.C0 = np.full((s.ny,s.nx), np.nan) # Continuum at ref. wavelength
         
-        
-        # Create moments (0,1,2) and continuum (should be value of continuum at reference wavelength at given redshift)
-        # s = self.specCube
-        # self.continuum = np.full((s.nz,s.ny,s.nx), np.nan) # Fit of continuum
-        # self.Cmask = np.zeros((s.nz,s.ny,s.nx), dtype=bool) # Spectral cube mask (for fitting the continuum)
-        # self.Mmask = np.zeros((s.nz,s.ny,s.nx), dtype=bool) # Spectral cube mask (for computing the moments)
-        # self.C0 = np.full((s.ny,s.nx), np.nan) # Continuum at ref. wavelength
-        # self.M0 = np.full((s.ny,s.nx), np.nan) # 0th moment
-        # self.M1 = np.full((s.ny,s.nx), np.nan) # 1st moment
-        # self.M2 = np.full((s.ny,s.nx), np.nan) # 2nd moment
-        # self.v = np.full((s.ny,s.nx), np.nan) # velocity field
-        #self.sv = np.full((s.ny,s.nx), np.nan) # vel. disp. field
 
         # Open tabs if they do not exist
-        #newbands = ['C0','M0','M1','M2','v','sv']
-        #sbands = [self.C0, self.M0, self.M1, self.M2,self.v,self.sv]
         newbands = ['C0']
         sbands = [self.C0]
         for new,sb in zip(newbands,sbands):
@@ -1065,6 +1063,10 @@ class GUI (QMainWindow):
             image = self.M1
         elif band == 'M2':
             image = self.M2
+        elif band == 'M3':
+            image = self.M3
+        elif band == 'M4':
+            image = self.M4
         elif band == 'C0':
             image = self.C0
         elif band == 'v':
@@ -1420,12 +1422,14 @@ class GUI (QMainWindow):
             self.M0 = np.full((s.ny,s.nx), np.nan) # 0th moment
             self.M1 = np.full((s.ny,s.nx), np.nan) # 1st moment
             self.M2 = np.full((s.ny,s.nx), np.nan) # 2nd moment
+            self.M3 = np.full((s.ny,s.nx), np.nan) # 3rd moment
+            self.M4 = np.full((s.ny,s.nx), np.nan) # 4th moment
             self.v = np.full((s.ny,s.nx), np.nan) # velocity field
             self.sv = np.full((s.ny,s.nx), np.nan) # vel. disp. field
 
             # Create/update moment tabs
-            newbands = ['M0','M1','M2']
-            sbands = [self.M0, self.M1, self.M2]
+            newbands = ['M0','M1','M2','M3','M4']
+            sbands = [self.M0, self.M1, self.M2, self.M3,self.M4]
             for new,sb in zip(newbands,sbands):
                 if new not in self.bands:
                     self.addBand(new)
@@ -1466,17 +1470,17 @@ class GUI (QMainWindow):
         
         # Compute moments
         m = self.Mmask
-        moments = [self.M0, self.M1, self.M2]
+        moments = [self.M0, self.M1, self.M2, self.M3, self.M4]
         f = self.specCube.flux
         w = self.specCube.wave
         c = self.continuum
         moments, self.noise = multiComputeMoments(m,w,f,c,moments,points)
-        self.M0, self.M1, self.M2 = moments
+        self.M0, self.M1, self.M2, self.M3, self.M4 = moments
 
             
         # Refresh the plotted images
-        bands = ['M0','M1','M2']
-        sbands = [self.M0, self.M1, self.M2]
+        bands = ['M0','M1','M2','M3','M4']
+        sbands = [self.M0, self.M1, self.M2,self.M3,self.M4]
         for b,sb in zip(bands,sbands):
             itab = self.bands.index(b)
             ic = self.ici[itab]
@@ -1488,17 +1492,19 @@ class GUI (QMainWindow):
             elif  b == 'M0':
                 ic.image.format_cursor_data = lambda z: "{:.2e} W/m2".format(float(z))
             else:
-                ic.image.format_cursor_data = lambda z: "{:.2e} Jy".format(float(z))
+                ic.image.format_cursor_data = lambda z: "{:.2e} ".format(float(z))
             ih = self.ihi[itab]
             ih.compute_initial_figure(image = sb)
+            ic.changed = True
             self.addContours(ic)
+
             
         # Update moments on pixel tab
         sc = self.sci[self.spectra.index('Pix')]
         ic = self.ici[0]
         xc,yc = ic.photApertures[0].xy[0]
         i = int(np.rint(xc)); j = int(np.rint(yc))
-        moments = [self.M0[j,i],self.M1[j,i],self.M2[j,i]]
+        moments = [self.M0[j,i],self.M1[j,i],self.M2[j,i],self.M3[j,i],self.M4[j,i]]
         sc.updateSpectrum(cont=self.continuum[:,j,i], moments=moments, noise=self.noise[j,i])
         sc.fig.canvas.draw_idle()
 
@@ -1785,13 +1791,21 @@ class GUI (QMainWindow):
         """ Disactive all selectors, in the case more than one is selected """
         if self.RS is not None:
             self.RS.set_active(False)
+            for artist in self.RS.artists:
+                artist.remove()
         if self.ES is not None:
             self.ES.set_active(False)
+            for artist in self.ES.artists:
+                artist.remove()
         if self.PS is not None:
             self.PS.set_active(False)
+            for artist in self.PS.artists:
+                artist.remove()
         if self.LS is not None:
             self.LS.set_active(False)
-
+            for artist in self.LS.artists:
+                artist.remove()
+            
     def chooseFitOption(self, i):
         """ Choosing a fit option """
 
@@ -2009,6 +2023,8 @@ class GUI (QMainWindow):
             x = ic0.axes.get_xlim()
             y = ic0.axes.get_ylim()
             ra,dec = ic0.wcs.all_pix2world(x,y,1)
+            #print('Limits in RA are: ',ra)
+            #print('Limits in Dec are: ',dec)
             x,y = ic.wcs.all_world2pix(ra,dec,1)            
             ic.axes.set_xlim(x)
             ic.axes.set_ylim(y)
@@ -2670,21 +2686,84 @@ class GUI (QMainWindow):
         
     def maskCube(self):
         """ Mask a slice of the cube """
-        self.sb.showMessage("Draw the region to mask", 2000)
 
-        # Start a Lasso Selector to define a polygon aperture
-        self.itabs.setCurrentIndex(0)
-        itab = self.itabs.currentIndex()
-        ic = self.ici[itab]
+        
+        #flags = QMessageBox.Yes 
+        #flags |= QMessageBox.No
+        #question = "Do you want to mask all data lower than the lowest contour level ?"
+        #response = QMessageBox.question(self, "Question",
+        #                                question,
+        #                                flags)
 
-        if ic.toolbar._active == 'ZOOM':
-            ic.toolbar.zoom()  # turn off zoom
-            x = ic.axes.get_xlim()
-            y = ic.axes.get_ylim()
-            self.zoomlimits = [x,y]
+        # Dialog to choose between masking with contour level or polygon
+        msgBox = QMessageBox()
+        msgBox.setText('Mask the region with:')
+        msgBox.addButton('lower than minimum contour', QMessageBox.ActionRole)
+        msgBox.addButton('inside a polygon', QMessageBox.ActionRole)
+        self.result = msgBox.exec()
 
-        #self.LS = LassoSelector(ic.axes, onselect=self.onMask)
-        self.LS = PolygonSelector(ic.axes, onselect=self.onMask)
+        if self.result == 0:
+            self.sb.showMessage("Masking data ", 2000)
+            # Find the tab with levels
+            itab = None
+            for ih in self.ihi:
+                if len(ih.lev) > 0:
+                    minlev = min(ih.levels)
+                    itab = self.ihi.index(ih)
+            if itab is not None:
+                band = self.bands[itab]
+                if band in ['Flux','uFlux','Exp','C0','M0','M1','M2','M3','M4','v','sv']:
+                    ic = self.ici[itab]
+                    mask2d = ic.oimage < minlev
+                    xi = np.arange(self.specCube.nx); yi = np.arange(self.specCube.ny)
+                    xx,yy = np.meshgrid(xi,yi)
+                    xx = xx[mask2d]
+                    yy = yy[mask2d]
+                    # Mask images and cubes
+                    self.specCube.flux[:,yy,xx] = np.nan
+                    """ update flux images (pix and all) """
+                    ic0 = self.ici[0]
+                    ih0 = self.ihi[0]
+                    image = ic0.oimage
+                    image[yy,xx] = np.nan
+                    cmin = ic0.cmin; cmax=ic0.cmax
+                    ic0.showImage(image)
+                    ic0.updateScale(cmin,cmax)
+                    self.addContours(ic0) 
+                    # mask C0, Mi, v, sv
+                    sbands = [self.C0, self.M0, self.M1, self.M2, self.M3, self.M4, self.v, self.sv]
+                    bands = ['C0','M0','M1','M2','M3','M4','v','sv']
+                    for b,sb in zip(bands,sbands):
+                        if sb is not None:
+                            itab = self.bands.index(b)
+                            sb[yy,xx] = np.nan
+                            ic = self.ici[itab]
+                            ih = self.ihi[itab]
+                            ic.showImage(sb)
+                            clim = ic.image.get_clim()
+                            ih.axes.cla()
+                            ih.compute_initial_figure(image=sb, xmin=clim[0],xmax=clim[1])
+                            self.addContours(ic)
+                else:
+                    self.sb.showMessage('Contours are considered only in cube or derivated images',4000)
+            else:
+                self.sb.showMessage("Please, define contours before masking ", 4000)                                
+        else:
+            self.sb.showMessage("Draw the region to mask", 2000)
+            
+            # Start a Selector to define a polygon aperture
+            self.itabs.setCurrentIndex(0)
+            itab = self.itabs.currentIndex()
+            ic = self.ici[itab]
+            
+            if ic.toolbar._active == 'ZOOM':
+                ic.toolbar.zoom()  # turn off zoom
+                x = ic.axes.get_xlim()
+                y = ic.axes.get_ylim()
+                self.zoomlimits = [x,y]
+
+            #self.LS = LassoSelector(ic.axes, onselect=self.onMask)
+            self.LS = PolygonSelector(ic.axes, onselect=self.onMask)
 
     def onMask(self, verts):
         """ Uses the vertices of the mask to mask the cube (and moments) """
@@ -2714,18 +2793,33 @@ class GUI (QMainWindow):
         if response == QMessageBox.Yes:
             self.sb.showMessage("Masking data ", 2000)
             self.specCube.flux[:,yy,xx] = np.nan
-            """ update flux images (pix and all) """
-            image = np.nanmedian(self.specCube.flux, axis=0)
+            """ update flux image """
             ic0 = self.ici[0]
             ih0 = self.ihi[0]
+            image = ic0.oimage
+            image[yy,xx] = np.nan
+            cmin = ic0.cmin; cmax=ic0.cmax
             ic0.showImage(image)
-            clim = ic0.image.get_clim()
-            ih0.axes.cla()
-            ih0.compute_initial_figure(image=image,xmin=clim[0],xmax=clim[1])
+            ic0.updateScale(cmin,cmax)
+            self.addContours(ic0)
+            # mask C0, Mi, v, sv
+            sbands = [self.C0, self.M0, self.M1, self.M2, self.M3, self.M4, self.v, self.sv]
+            bands = ['C0','M0','M1','M2','M3','M4','v','sv']
+            for b,sb in zip(bands,sbands):
+                if sb is not None:
+                    itab = self.bands.index(b)
+                    sb[yy,xx] = np.nan
+                    ic0 = self.ici[itab]
+                    ih = self.ihi[itab]
+                    ic0.showImage(sb)
+                    clim = ic0.image.get_clim()
+                    ih.axes.cla()
+                    ih.compute_initial_figure(image=sb, xmin=clim[0],xmax=clim[1])
+                    self.addContours(ic0)
+
         elif QMessageBox.No:
             pass
 
-        
         poly.remove()
         x,y = self.zoomlimits
         ic.axes.set_xlim(x)
@@ -2805,6 +2899,7 @@ class GUI (QMainWindow):
             if ih0 is not None:
                 ic.contour = ic.axes.contour(ic0.oimage,ih0.levels, colors=self.colorContour,transform=ic.axes.get_transform(ic0.wcs))
                 ic.fig.canvas.draw_idle()
+                ic.changed = False
             else:
                 pass
                 #print("No contours available")
@@ -2821,9 +2916,10 @@ class GUI (QMainWindow):
             self.contours = 'off'
             # Remove level lines in histogram 
             for ih in self.ihi:
-                if len(ih.levels) > 0:
+                if len(ih.lev) > 0:
+                    print('There are ',len(ih.lev),' contour levels')
                     ih.levSignal.disconnect()
-                ih.removeLevels()
+                    ih.removeLevels()
             # Remove contours
             for ic in self.ici:
                 if ic.contour is not None:
@@ -2917,9 +3013,10 @@ class GUI (QMainWindow):
                 # Remove previous contours
                 for coll in ic.contour.collections:
                     coll.remove()
-                    ic.contour = None
+                ic.contour = None
                 # Compute new contours
-                levels =  sorted(ih0.levels)   
+                levels =  sorted(ih0.levels)
+                #print('levels are ', levels)
                 ic.contour = ic.axes.contour(ic0.oimage, levels, colors=self.colorContour,transform=ic.axes.get_transform(ic0.wcs))
                 # Differ drawing until changing tab
                 ic.changed = True
@@ -3131,7 +3228,11 @@ class GUI (QMainWindow):
             self.M0 = None
             self.M1 = None
             self.M2 = None
-            self.C0 = None            
+            self.M3 = None
+            self.M4 = None
+            self.C0 = None
+            self.v  = None
+            self.sv = None
             # Selectors
             self.PS = None
             self.ES = None
@@ -3169,7 +3270,14 @@ class GUI (QMainWindow):
                     ic.contour = None
                     ic.changed = True
             self.contours = 'off'
+            # Remove contour lines in the histogram
+            for ih in self.ihi:
+                if len(ih.lev) > 0:
+                    print('There are ',len(ih.lev),len(ih.levels),' contour levels')
+                    ih.levSignal.disconnect()
+                    ih.removeLevels()
 
+        
             # Draw region on spectrum and hide span selector
             sc.shadeSpectrum()
             sc.fig.canvas.draw_idle()
@@ -3491,6 +3599,6 @@ if __name__ == '__main__':
     # Add an icon for the application
     app.setWindowIcon(QIcon(gui.path0+'/icons/sospex.png'))
     app.setApplicationName('SOSPEX')
-    app.setApplicationVersion('0.18-beta')
+    app.setApplicationVersion('0.19-beta')
     sys.exit(app.exec_())
     #splash.finish(gui)

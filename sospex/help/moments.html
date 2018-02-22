@@ -11869,6 +11869,9 @@ and on the image "C0" the continuum computed at the reference wavelength.</p>
 <p>Zeroth moment: $M_0 = \int F d\lambda$.</p>
 <p>First moment:  $M_1 = \int \frac{\lambda}{M_0} F d\lambda$</p>
 <p>Second moment:  $M_2 = \int \frac{(\lambda-M_1)^2}{M_0} F d\lambda$</p>
+<p>Third moment: $M_3 = \int \frac{(\lambda-M_1)^3}{M_0 \sigma^3} F d\lambda$</p>
+<p>Fourth moment: $M_4 = \int \frac{(\lambda-M_1)^4}{M_0 \sigma^4} F d\lambda - 3$</p>
+<p>with $sigma = \sqrt(M_2)$.</p>
 <p>The zeroth moment (once the continuum emission is subtracted) gives
 information about the intensity of the line (or lines).</p>
 <p>The first moment gives information about the velocity field of the reference line:</p>
@@ -11878,6 +11881,13 @@ information about the intensity of the line (or lines).</p>
 <p>To obtain velocities relative to the mean velocity of the structure, one has to subtract $cz$.</p>
 <p>The second moment gives information about the velocity dispersion of the reference line:</p>
 <p>$\sigma_v = \sqrt{M_2} c /\lambda_0$.</p>
+<p>The third moment, normalized skewness, tells if a distribution is slanted to the right (positive
+values) or the left (negative values).</p>
+<p>Finally, the fourth moment, kurtosis excess, tells if the distribution is platykurtic (more plate
+than the Gaussian) or leptokurtic (narrower than a Gaussian). The normalized kurtosis of a Gaussian is</p>
+<ol>
+<li>This is the reason that subtracting 3 we compute the kurtosis excess with respect to a Gaussian distribution.</li>
+</ol>
 
 </div>
 </div>

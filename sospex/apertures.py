@@ -33,7 +33,7 @@ class photoAperture(QObject):
 
 class PixelInteractor(QObject):
 
-    epsilon = 5
+    epsilon = 10
     showverts = True
     mySignal = pyqtSignal(str)
     modSignal = pyqtSignal(str)

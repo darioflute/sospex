@@ -432,7 +432,7 @@ class ImageCanvas(MplCanvas):
         #norm = ImageNormalize(vmin=None, vmax=None, stretch=ContrastBiasStretch(self.contrast,self.bias))
         norm = ImageNormalize(vmin=None, vmax=None, stretch=self.stretchFunc(self.stretch))
         #norm = ReNormalize(vmin = None, vmax = None , scale = self.stretch, bias = self.bias, contrast = self.contrast)
-        print('normalize ',norm)
+        #print('normalize ',norm)
         self.image = self.axes.imshow(image, origin='lower',cmap=self.colorMap+self.colorMapDirection,interpolation='none',norm=norm)
         self.fig.colorbar(self.image, cax=self.cbaxes)#,extend = 'both')
 
@@ -468,9 +468,16 @@ class ImageCanvas(MplCanvas):
         self.axes.format_coord = format_coord
 
 
-    def updateScale(self,val):
-        _cmin = self.s_cmin.val
-        _cmax = self.s_cmax.val
+    # def updateScale(self,val):
+    #     _cmin = self.s_cmin.val
+    #     _cmax = self.s_cmax.val
+    #     self.image.set_clim([_cmin, _cmax])
+    #     self.cmin = _cmin
+    #     self.cmax = _cmax
+    #     self.fig.canvas.draw_idle()
+    def updateScale(self,_cmin,_cmax):
+        #_cmin = self.s_cmin.val
+        #_cmax = self.s_cmax.val
         self.image.set_clim([_cmin, _cmax])
         self.cmin = _cmin
         self.cmax = _cmax
@@ -583,7 +590,7 @@ class ImageHistoCanvas(MplCanvas):
     def removeLevels(self):
         """ Delete levels and disconnect """
 
-        if len(self.levels) > 0:
+        if len(self.lev) > 0:
             for lev in self.lev:
                 lev.remove()
             self.lev = []

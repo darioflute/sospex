@@ -552,15 +552,17 @@ def computeMoments(p,m,w,dw,f):
             M0 = np.sum(Slambda*dw) # [Jy Hz]  
             M1 = np.sum(w*Slambda*dw)/M0 # [um]
             M2 = np.sum((w-M1)*(w-M1)*Slambda*dw)/M0 # [um*um]
-            
+            SD = np.sqrt(M2)
+            M3 = np.sum(np.power(w-M1,3)*Slambda*dw)/M0/np.power(SD,3)
+            M4 = np.sum(np.power(w-M1,4)*Slambda*dw)/M0/np.power(SD,4)-3. # Relative to Gaussian which is 3
             M0 *= 1.e-26 # [W/m2]  (W/m2 = Jy*Hz*1.e-26)
         else:
-            M0 = M1 = M2 = np.nan
+            M0 = M1 = M2 = M3 = M4 = np.nan
     else:
-        M0 = M1 = M2 = np.nan
+        M0 = M1 = M2 = M3 = M4 = np.nan
         sigma = np.nan
             
-    return p, M0, M1, M2, sigma
+    return p, M0, M1, M2, M3, M4, sigma
 
 def multiComputeMoments(m,w,f,c,moments,points):
 
@@ -584,11 +586,13 @@ def multiComputeMoments(m,w,f,c,moments,points):
     n3,n2,n1 = np.shape(moments)
     noise = np.zeros((n2,n1))
         
-    for p, M0, M1, M2, sigma in results:
+    for p, M0, M1, M2, M3, M4, sigma in results:
         i,j = p
         moments[0][j,i] = M0
         moments[1][j,i] = M1
         moments[2][j,i] = M2
+        moments[3][j,i] = M3
+        moments[4][j,i] = M4
         noise[j,i] = sigma
             
     return moments, noise

@@ -1,4 +1,5 @@
 import urllib, urllib.request
+import os
 from io import StringIO,BytesIO
 from astropy.io import ascii,fits
 from astropy import units as u
@@ -211,35 +212,36 @@ class cloudImage(object):
                         pc12=h1["PC1_2"]
                         pc21=h1["PC2_1"]
                         pc22=h1["PC2_2"]
-                        #print(pc11,pc12,pc21,pc22)
                         pc1 = -np.hypot(pc11,pc12)
-                        #print(pc1)
                         pc2 = np.hypot(pc21,pc22)
                         rota = np.arctan(pc21/pc22)
-                        #print('rotation angle: ',rota*180/np.pi)
-                        if h1["CRVAL2"] < 0:
-                            pc2=-pc2
-                        #print(pc2)
-                        h1.update(pc1_1=pc1,pc1_2=0.0,pc2_1=0.0,pc2_2=pc2,orientat=0.)
-                        h1['NAXIS']=2
-                        n1 = int(np.rint(nx*np.sin(rota)+ny*np.cos(rota)))
-                        n2 = int(np.rint(nx*np.cos(rota)+ny*np.sin(rota)))
-                        h1['NAXIS1']= n1
-                        h1['NAXIS2']= n2
-                        #print('n1,n2 ',n1,n2)
-                        crpix1=header['CRPIX1']
-                        crpix2=header['CRPIX2']
-                        h1['crpix1'] = crpix1+(nx-n1)/2.
-                        h1['crpix2'] = crpix2+(ny-n2)/2.
-                        #print(h1)
-                        self.wcs = WCS(h1)
-                        #print(self.wcs)
-                        print("Rotating the image ....")
-                        array, footprint = reproject_interp(hdu, h1)
-                        #print(np.shape(array))
-                        self.data= array
+                        if (np.abs(rota)*180./np.pi > 5.):
+                            if h1["CRVAL2"] < 0:
+                                pc2=-pc2
+                            h1.update(pc1_1=pc1,pc1_2=0.0,pc2_1=0.0,pc2_2=pc2,orientat=0.)
+                            h1['NAXIS']=2
+                            n1 = int(np.rint(nx*np.sin(rota)+ny*np.cos(rota)))
+                            n2 = int(np.rint(nx*np.cos(rota)+ny*np.sin(rota)))
+                            h1['NAXIS1']= n1
+                            h1['NAXIS2']= n2
+                            #print('n1,n2 ',n1,n2)
+                            crpix1=header['CRPIX1']
+                            crpix2=header['CRPIX2']
+                            h1['crpix1'] = crpix1+(n1-nx)/2.
+                            h1['crpix2'] = crpix2+(n2-ny)/2.
+                            #print(h1)
+                            self.wcs = WCS(h1)
+                            #print(self.wcs)
+                            print("Rotating the image ....")
+                            array, footprint = reproject_interp(hdu, h1)
+                            print(np.shape(array))
+                            self.data= array
+                            # Save the rotated image
+                            self.saveRotatedFits(image_file)
+                        else:
+                            print('The rotation angle is ',rota)                        
                     except:
-                        print('No rotation matrix available')
+                        print('No rotation needed')
                 else:
                     self.data = None
                     self.wcs = None
@@ -251,6 +253,46 @@ class cloudImage(object):
                 print('The selected  FITS is not a valid file')
 
 
+
+    def saveRotatedFits(self, name_orig):
+        """ Save the downloaded FITS image """
+
+        
+        filename, file_extension = os.path.splitext(name_orig)
+        #fileroot = os.path.basename(filename)
+        #print('file root is ', fileroot)
+
+        print('Saving ',filename+'_NE.fits')
+        
+        # Dialog to save file
+        fd = QFileDialog()
+        fd.setLabelText(QFileDialog.Accept, "Save as")
+        fd.setNameFilters(["Fits Files (*.fits)","All Files (*)"])
+        fd.setOptions(QFileDialog.DontUseNativeDialog)
+        fd.setViewMode(QFileDialog.List)
+        fd.selectFile(filename+'_NE.fits')
+        
+        if (fd.exec()):
+            fileName = fd.selectedFiles()
+            outfile = fileName[0]
+
+            # Check the 
+            filename, file_extension = os.path.splitext(outfile)
+            basename = os.path.basename(filename)
+            
+            # Primary header
+            image = self.data
+            wcs   = self.wcs
+            header = wcs.to_header()
+            header.remove('WCSAXES')
+            header['INSTRUME'] = (self.source, 'Instrument')
+            hdu = fits.PrimaryHDU(image)
+            hdu.header.extend(header)
+            hdul = fits.HDUList([hdu])
+            hdul.writeto(outfile,overwrite=True) # clobber true  allows rewriting
+            hdul.close()
+
+                
     def downloadWise(self,band):
         """ Download a Wise image """
 
