@@ -353,7 +353,7 @@ class ImageCanvas(MplCanvas):
 
             
     def compute_initial_figure(self, image=None, wcs=None, title=None):
-        if wcs == None:
+        if wcs is None:
             ''' initial definition when images are not yet read '''
             pass
         else:
@@ -383,7 +383,8 @@ class ImageCanvas(MplCanvas):
             self.bias = 0.5
             self.cmin = None
             self.cmax = None
-            self.showImage(image)
+            if image is not None:
+                self.showImage(image)
             self.changed = False
 
 

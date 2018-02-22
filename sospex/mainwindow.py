@@ -1015,15 +1015,23 @@ class GUI (QMainWindow):
         
 
         # Open tabs if they do not exist
-        newbands = ['C0']
-        sbands = [self.C0]
-        for new,sb in zip(newbands,sbands):
-            if new not in self.bands:
-                self.addBand(new)
-            else:
-                itab = self.bands.index(new)
-                self.removeTab(itab)
-                self.addBand(new)
+        if 'C0' not in self.bands:
+            self.addBand('C0')
+        else:
+            itab = self.bands.index('C0')
+            ic = self.ici[itab]
+            ic.showImage(self.C0)
+            ic.fig.canvas.draw_idle()
+            
+        # newbands = ['C0']
+        # sbands = [self.C0]
+        # for new,sb in zip(newbands,sbands):
+        #     if new not in self.bands:
+        #         self.addBand(new)
+        #     else:
+        #         itab = self.bands.index(new)
+        #         self.removeTab(itab)
+        #         self.addBand(new)
 
         # Update the pixel marker with new kernel
         for ic in self.ici:
@@ -1078,8 +1086,8 @@ class GUI (QMainWindow):
         # Callback to propagate axes limit changes among images
         ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
         ih = self.ihi[self.bands.index(band)]
-        clim = ic.image.get_clim()
-        ih.compute_initial_figure(image=None,xmin=clim[0],xmax=clim[1])
+        #clim = ic.image.get_clim()
+        ih.compute_initial_figure(image=None)#,xmin=clim[0],xmax=clim[1])
 
         # Add apertures
         self.addApertures(ic)
@@ -1093,7 +1101,8 @@ class GUI (QMainWindow):
         y = ic0.axes.get_ylim()
         ra,dec = ic0.wcs.all_pix2world(x,y,1)
         x,y = ic.wcs.all_world2pix(ra,dec,1)            
-
+        ic.axes.set_xlim(x)
+        ic.axes.set_ylim(y)
 
     def onContinuumSelect(self, verts):
         
@@ -1139,7 +1148,9 @@ class GUI (QMainWindow):
     def chooseComputeMoments(self):
         """ Options to compute the moments """
 
-        if self.continuum is not None:
+        cmask = np.isfinite(self.continuum)
+        cmask0 = np.sum(cmask)
+        if self.continuum is not None and cmask0 > 0:
         
             # Dialog to choose between fitting the entire cube or only a region of it
             msgBox = QMessageBox()
