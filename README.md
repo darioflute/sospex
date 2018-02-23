@@ -23,6 +23,7 @@ You will have to use the Python 3.x distribution.
 To run fits, you will have to install also the *lmfit* and *reproject* packages from the astropy channel:
 
 conda install -c astropy lmfit
+
 conda install -c astropy reproject
 
 At this point you can install sospex:
