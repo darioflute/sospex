@@ -3437,7 +3437,7 @@ class GUI (QMainWindow):
         
         self.CMlist = ['gist_heat','gist_earth','gist_gray','afmhot','inferno','ocean','plasma','seismic',
                        'ds9bb','ds9a','ds9b','ds9cool','ds9i8','ds9aips0','ds9rainbow','ds9he','ds9heat']
-        self.STlist = ['linear','sqrt','square','log','pow','sinh','asinh']
+        self.STlist = ['linear','sqrt','square','log','power','sinh','asinh']
         self.CClist = ['cyan','lime','magenta','red','blue','purple','black','yellow','white']
         self.selectCM = cmDialog(self.CMlist,self.STlist, self.CClist, self.colorMap, self.stretchMap, self.colorContour)
         self.selectCM.list.currentRowChanged.connect(self.updateColorMap)

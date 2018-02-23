@@ -33,8 +33,9 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt, QSize, pyqtSignal,QObject
 from PyQt5.QtTest import QTest
 
-from astropy.visualization import (MinMaxInterval, LinearStretch, SqrtStretch, SquaredStretch, SinhStretch,AsinhStretch,
-                                   LogStretch, HistEqStretch, ImageNormalize, CompositeTransform, ContrastBiasStretch)
+# https://het.as.utexas.edu/HET/Software/Astropy-1.0/_modules/astropy/visualization/stretch.html
+from astropy.visualization import (MinMaxInterval, LinearStretch, SqrtStretch, SquaredStretch, SinhStretch,AsinhStretch,BaseStretch,
+                                   LogStretch, HistEqStretch, ImageNormalize, CompositeTransform, ContrastBiasStretch, PowerStretch)
 
 
 def ds9cmap():
@@ -353,22 +354,11 @@ class MyNormalize(Normalize):
         return vmin + val * (vmax - vmin)
 
 
-class DraggableColorbar(Colorbar):
-
+class InteractiveColorbar(Colorbar):
+    """ A class to use the colorbar for defining bias and stretch """
     def __init__(self, ax, mappable, cmap=None, norm=None):
+        super().__init__(ax, mappable, cmap=cmap, norm=norm)
 
-        if norm is None:
-            norm = ImageNormalize(vmin=None, vmax=None, stretch='linear')
-            self.set_norm(norm)
-
-
-        # Call original initalization routine
-        #ColorbarBase.__init__(self, ax, mappable, cmap=cmap, norm=norm)
-        Colorbar.__init__(self, ax, mappable, cmap=cmap, norm=norm)
-
-        #self.set_cmap(cmap)
-        #self.set_norm(norm)
-        
         self.mappable = mappable
         self.press = None
         self.cycle = sorted([i for i in dir(plt.cm) if hasattr(getattr(plt.cm,i),'N')])
@@ -694,6 +684,8 @@ class ImageCanvas(MplCanvas):
             stretch = SinhStretch()
         elif newStretch == 'asinh':
             stretch = AsinhStretch()
+        elif newStretch == 'power':
+            stretch = PowerStretch(5)
         else:
             print('unknown stretch ...',newStretch)
             stretch = LinearStretch()
@@ -721,21 +713,21 @@ class ImageCanvas(MplCanvas):
             self.cmax = cmax
 
         
-        #norm = ImageNormalize(vmin=None, vmax=None, stretch=CompositeTransform(self.stretchFunc(self.stretch),ContrastBiasStretch(self.contrast,self.bias)))
+        norm = ImageNormalize(vmin=None, vmax=None, stretch=BaseStretch(CompositeTransform(self.stretchFunc(self.stretch),ContrastBiasStretch(self.contrast,self.bias))))
         #norm = ImageNormalize(vmin=None, vmax=None, stretch=ContrastBiasStretch(self.contrast,self.bias))
-        norm = ImageNormalize(vmin=None, vmax=None, stretch=self.stretchFunc(self.stretch))
+        #norm = ImageNormalize(vmin=None, vmax=None, stretch=self.stretchFunc(self.stretch))
         #norm = ReNormalize(vmin = None, vmax = None , scale = self.stretch, bias = self.bias, contrast = self.contrast)
         #print('normalize ',norm)
         self.image = self.axes.imshow(image, origin='lower',cmap=self.colorMap+self.colorMapDirection,interpolation='none',norm=norm)
         self.fig.colorbar(self.image, cax=self.cbaxes)#,extend = 'both')
-        #if self.cmin < 0:
-        #    vmid = 0
-        #else:
-        #    vmid = None
-        #norm = MyNormalize(vmin=self.cmin,vmid = vmid, vmax=self.cmax,stretch=self.stretch)
-        ##cbar = ColorbarBase(self.cbaxes, cmap=self.colorMap+self.colorMapDirection,norm=norm)#,extend = 'both')
-        ##cbar.set_norm(MyNormalize(vmin=self.cmin,vmax=self.cmax,stretch=self.stretch))
-        #cbar = DraggableColorbar(self.cbaxes,self.image,cmap=self.colorMap+self.colorMapDirection,norm=norm)
+        # if self.cmin < 0:
+        #     vmid = 0
+        # else:
+        #     vmid = None
+        # norm = MyNormalize(vmin=self.cmin,vmid = vmid, vmax=self.cmax,stretch=self.stretch)
+        # ##cbar = ColorbarBase(self.cbaxes, cmap=self.colorMap+self.colorMapDirection,norm=norm)#,extend = 'both')
+        # ##cbar.set_norm(MyNormalize(vmin=self.cmin,vmax=self.cmax,stretch=self.stretch))
+        # cbar = InteractiveColorbar(self.cbaxes,self.image,cmap=self.colorMap+self.colorMapDirection,norm=norm)
         #cbar.connect()
 
 
