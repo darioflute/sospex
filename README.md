@@ -20,15 +20,20 @@ To install the code in your computer, you need first to install the anaconda
 python (https://www.continuum.io/downloads).
 You will have to use the Python 3.x distribution.
 
-To run fits, you will have to install also the *lmfit* and *reproject* packages from the astropy channel:
+The packages *lmfit* and *reproject* have to be installed from the astropy channel:
 
 conda install -c astropy lmfit
 
 conda install -c astropy reproject
 
-At this point you can install sospex:
+Now you are ready to install sospex:
 
 conda install -c darioflute sospex
+
+If there is a new release, you will have only to update the package:
+
+conda update -c darioflute sospex
+
 
 ### How to start the program
 
