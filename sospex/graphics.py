@@ -627,7 +627,7 @@ class ImageHistoCanvas(MplCanvas):
         self.cid_motion = self.fig.canvas.mpl_connect('motion_notify_event', self.motion_notify_callback)
         self.cid_key = self.fig.canvas.mpl_connect('key_press_event', self.key_press_callback)
         self.fig.canvas.draw_idle()
-        #self.fig.canvas.setFocus()
+
 
     def disconnect(self):
         """ When no contours are present """
@@ -654,7 +654,7 @@ class ImageHistoCanvas(MplCanvas):
         if event.button != 1:
             return
         self._ind = self.get_ind_under_point(event)
-        #print('index of point ',self._ind)
+
 
     def button_release_callback(self, event):
         'whenever a mouse button is released'
@@ -724,7 +724,7 @@ class ImageHistoCanvas(MplCanvas):
                 del self.lev[ind]
                 del self.levels[ind]
                 # Emit signal to communicate it to images
-                self.levSignal.emit(-ind)
+                self.levSignal.emit(-1000-ind)
                 # If there are no more levels, show the span selector
                 if len(self.levels) == 0:
                     #self.span.set_visible(True)
@@ -742,7 +742,8 @@ class ImageHistoCanvas(MplCanvas):
             self.lev = [self.lev[i] for i in idx]
             self.levels = list(levels[idx])
             # Emit signal to communicate it to images (add 1000 to tell that this is a new level)
-            self.levSignal.emit(1000+idx[n])
+            n = self.levels.index(x)
+            self.levSignal.emit(1000+n)
 
         # Update image
         self.fig.canvas.draw_idle()

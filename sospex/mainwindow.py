@@ -1200,6 +1200,14 @@ class GUI (QMainWindow):
                 ic.image.format_cursor_data = lambda z: "{:.0f} km/s".format(float(z))
                 ih = self.ihi[itab]
                 ih.compute_initial_figure(image = sb)
+                ic.image.set_clim(ih.limits)
+                ic.changed = True
+
+            # Refresh current image (if a velocity)
+            itab = self.itabs.currentIndex()
+            if self.bands[itab] in bands:
+                ic = self.ici[itab]
+                ic.fig.canvas.draw_idle()
 
         else:
             message = 'First compute the moments'
@@ -1396,6 +1404,16 @@ class GUI (QMainWindow):
         ih = self.ihi[itab]
         ih.compute_initial_figure(image = self.C0)
         self.addContours(ic)
+        # Update limits of image
+        ic.image.set_clim(ih.limits)
+        ic.changed = True
+
+        # Refresh current image (if continuum)
+        #itab = self.itabs.currentIndex()
+        #if self.bands[itab] == 'C0':
+        #    ic = self.ici[itab]
+        #    ic.fig.canvas.draw_idle()
+        
         
         # Update continuum on pixel tab
         sc = self.sci[self.spectra.index('Pix')]
@@ -1438,6 +1456,10 @@ class GUI (QMainWindow):
             self.v = np.full((s.ny,s.nx), np.nan) # velocity field
             self.sv = np.full((s.ny,s.nx), np.nan) # vel. disp. field
 
+            # Current canvas
+            itab = self.itabs.currentIndex()
+            ic0 = self.ici[itab]
+
             # Create/update moment tabs
             newbands = ['M0','M1','M2','M3','M4']
             sbands = [self.M0, self.M1, self.M2, self.M3,self.M4]
@@ -1446,8 +1468,14 @@ class GUI (QMainWindow):
                     self.addBand(new)
                 else:
                     itab = self.bands.index(new)
-                    self.removeTab(itab)
-                    self.addBand(new)
+                    #self.removeTab(itab)
+                    #self.addBand(new)
+                    ic = self.ici[itab]
+                    ic.showImage(sb)
+                    if ic == ic0:
+                        ic.fig.canvas.draw_idle()
+                    else:
+                        ic.changed = True
 
             
         
@@ -1506,8 +1534,15 @@ class GUI (QMainWindow):
                 ic.image.format_cursor_data = lambda z: "{:.2e} ".format(float(z))
             ih = self.ihi[itab]
             ih.compute_initial_figure(image = sb)
-            ic.changed = True
             self.addContours(ic)
+            ic.image.set_clim(ih.limits)
+            ic.changed = True
+
+        # Refresh current image (if a moment)
+        itab = self.itabs.currentIndex()
+        if self.bands[itab] in bands:
+            ic = self.ici[itab]
+            ic.fig.canvas.draw_idle()
 
             
         # Update moments on pixel tab
@@ -2026,6 +2061,8 @@ class GUI (QMainWindow):
 
             ic.compute_initial_figure(image=image,wcs=wcs,title=band)
             ih.compute_initial_figure(image=image)
+            ic.image.set_clim(ih.limits)
+            ic.changed = True
 
             # Check rotation angle
             
@@ -2719,8 +2756,18 @@ class GUI (QMainWindow):
             itab = None
             for ih in self.ihi:
                 if len(ih.lev) > 0:
+                    # Identify minimum level
                     minlev = min(ih.levels)
                     itab = self.ihi.index(ih)
+                    # Remove lowest level contour
+                    ind = ih.levels.index(minlev)
+                    ih.lev[ind].remove()
+                    # Remove level from lists
+                    del ih.lev[ind]
+                    del ih.levels[ind]
+                    ih.fig.canvas.draw_idle()
+                    # Modify contours
+                    self.onModifyContours(-ind)
             if itab is not None:
                 band = self.bands[itab]
                 if band in ['Flux','uFlux','Exp','C0','M0','M1','M2','M3','M4','v','sv']:
@@ -2990,29 +3037,22 @@ class GUI (QMainWindow):
         ic0 = self.ici[itab]
         ih0 = self.ihi[itab]
         if ic0.contour is not None:
-            #nlev = len(ic0.contour.collections)
-            if n > 1000:
-                #contoursThread = ContoursThread(ic0,ih0.levels[n-1000], n, itab)
-                #contoursThread.updateOtherContours.connect(self.modifyOtherImagesContours)
-                #contoursThread.start()
+            if n >= 1000:
+                # Add a brand new level
                 n -= 1000
                 new = ic0.axes.contour(ic0.oimage, [ih0.levels[n]], colors=self.colorContour)
                 # Insert new contour in the contour collection
-                contours = ic0.contour.collections
-                contours.insert(n,new.collections[0])
-            elif n < 0:
+                ic0.contour.collections.insert(n, new.collections[0])                
+            elif n <= -1000:
+                n += 1000
                 # Remove contour from image
                 ic0.axes.collections.remove(ic0.contour.collections[n])
                 # Delete element from contour collection list
                 del ic0.contour.collections[n]
             else:
+                # Move level by removing contour and adding it at new level
                 ic0.axes.collections.remove(ic0.contour.collections[n])
-                ic0.fig.canvas.draw_idle()
-                #contoursThread = ContoursThread(ic0,ih0.levels[n], n, itab)
-                #contoursThread.updateOtherContours.connect(self.modifyOtherImagesContours)
-                #contoursThread.start()
                 new = ic0.axes.contour(ic0.oimage, [ih0.levels[n]], colors=self.colorContour)
-                # Update the collection
                 ic0.contour.collections[n] = new.collections[0]
             self.modifyOtherImagesContours(itab)
                 
@@ -3033,7 +3073,6 @@ class GUI (QMainWindow):
                 ic.contour = None
                 # Compute new contours
                 levels =  sorted(ih0.levels)
-                #print('levels are ', levels)
                 ic.contour = ic.axes.contour(ic0.oimage, levels, colors=self.colorContour,transform=ic.axes.get_transform(ic0.wcs))
                 # Differ drawing until changing tab
                 ic.changed = True

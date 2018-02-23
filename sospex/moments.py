@@ -572,6 +572,11 @@ def multiComputeMoments(m,w,f,c,moments,points):
     except RuntimeError:
         pass
 
+    # Define noise
+    n3,n2,n1 = np.shape(moments)
+    noise = np.zeros((n2,n1))
+
+    
     # Compute dw
     dw = [] 
     dw.append([w[1]-w[0]])
@@ -583,8 +588,6 @@ def multiComputeMoments(m,w,f,c,moments,points):
         res = [pool.apply_async(computeMoments, (p,m[:,p[1],p[0]],w,dw,f[:,p[1],p[0]]-c[:,p[1],p[0]])) for p in points]
         results = [r.get() for r in res]
 
-    n3,n2,n1 = np.shape(moments)
-    noise = np.zeros((n2,n1))
         
     for p, M0, M1, M2, M3, M4, sigma in results:
         i,j = p
