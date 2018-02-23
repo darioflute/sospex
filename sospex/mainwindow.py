@@ -10,7 +10,7 @@ from PyQt5.QtCore import Qt, QSize, QTimer, QThread, QObject, pyqtSignal
 
 import matplotlib
 matplotlib.use('Qt5Agg')
-from matplotlib.widgets import SpanSelector, PolygonSelector, RectangleSelector, EllipseSelector
+from matplotlib.widgets import SpanSelector, PolygonSelector, RectangleSelector, EllipseSelector#, LassoSelector
 from matplotlib.patches import Polygon
 
 import warnings
@@ -41,7 +41,6 @@ class DownloadThread(QThread):
 
     def __init__(self,lon,lat,xsize,ysize,band, parent = None):
         super().__init__(parent)
-        #super().__init__()
         self.lon = lon
         self.lat = lat
         self.xsize = xsize
@@ -61,35 +60,7 @@ class DownloadThread(QThread):
         self.sendMessage.emit(message)
         # Disconnect signal at the end of the thread
         self.updateTabs.newImage.disconnect()
-        
-# Does not work since calls for matplotlib threads
-class ContoursThread(QThread):
-    """ Thread to compute new contour and add it to the existing collection """
-
-    updateOtherContours = pyqtSignal([int])
-
-    def __init__(self, ic0, level, n, i0, parent=None):
-        super().__init__(parent)
-        self.ic0 = ic0
-        self.level = level
-        self.n = n
-        self.i0 = i0
-
-    def run(self):
-        if self.n > 1000:
-            self.n -= 1000
-            new = self.ic0.axes.contour(self.ic0.oimage, self.level, colors=self.colorContour)
-            # Insert new contour in the contour collection
-            #print("insert new contour")
-            contours = self.ic0.contour.collections
-            contours.insert(self.n,new.collections[0])
-        else:
-            new = self.ic0.axes.contour(self.ic0.oimage, self.level, colors=self.colorContour)
-            # Update the collection
-            #print("update contour")
-            self.ic0.contour.collections[self.n] = new.collections[0]
-        self.updateOtherContours.emit(self.i0)
-        
+                
         
 class GUI (QMainWindow):
  
@@ -169,8 +140,6 @@ class GUI (QMainWindow):
         pixmap = QPixmap(self.path0+'/icons/sospex.png')
         self.wbox.setIconPixmap(pixmap)
         self.wbox.setText("Welcome to SOSPEX")
-        #spath = "{:s}/icons/".format(self.path0)
-        #self.wbox.setInformativeText('SOFIA Spectrum Explorer\n\n * Click on <img src="'+spath+'open.png"> to load spectra\n\n'+\
         self.wbox.setInformativeText('SOFIA Spectrum Explorer\n\n * Click on folder icon to load spectra\n\n'+\
                                      '* Click on running men icon to exit\n\n'+\
                                      '* Click on question mark for further help')
@@ -478,35 +447,6 @@ class GUI (QMainWindow):
         """ Update spectrum when moving an aperture on the image """
 
         pass
-        
-        # itab = self.itabs.currentIndex()
-        # ic = self.ici[itab]
-
-        # if ic.toolbar._active == 'PAN':
-        #     return
-
-        # Grab aperture in the flux image to compute the new fluxes
-        # istab = self.stabs.currentIndex()
-        # if istab > 0:
-        #     sc = self.sci[istab]
-        #     s = self.specCube
-        #     # I should find a way to know if the aperture has changed
-        #     if itab != 0:
-        #         self.updateAperture()
-        #     aperture = self.ici[0].photApertures[istab-1].aperture
-        #     path = aperture.get_path()
-        #     transform = aperture.get_patch_transform()
-        #     npath = transform.transform_path(path)
-        #     inpoints = s.points[npath.contains_points(s.points)]
-        #     xx,yy = inpoints.T
-        
-        #     fluxAll = np.nansum(s.flux[:,yy,xx], axis=1)
-        #     if s.instrument == 'GREAT':
-        #         sc.updateSpectrum(fluxAll)
-        #     elif s.instrument == 'FIFI-LS':
-        #         ufluxAll = np.nansum(s.uflux[:,yy,xx], axis=1)
-        #         expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
-        #         sc.updateSpectrum(fluxAll,uf=ufluxAll,exp=expAll)
 
     def updateAperture(self):
 
@@ -2735,14 +2675,6 @@ class GUI (QMainWindow):
     def maskCube(self):
         """ Mask a slice of the cube """
 
-        
-        #flags = QMessageBox.Yes 
-        #flags |= QMessageBox.No
-        #question = "Do you want to mask all data lower than the lowest contour level ?"
-        #response = QMessageBox.question(self, "Question",
-        #                                question,
-        #                                flags)
-
         # Dialog to choose between masking with contour level or polygon
         msgBox = QMessageBox()
         msgBox.setText('Mask the region with:')
@@ -2781,7 +2713,7 @@ class GUI (QMainWindow):
                     self.specCube.flux[:,yy,xx] = np.nan
                     """ update flux images (pix and all) """
                     ic0 = self.ici[0]
-                    ih0 = self.ihi[0]
+                    #ih0 = self.ihi[0]
                     image = ic0.oimage
                     image[yy,xx] = np.nan
                     cmin = ic0.cmin; cmax=ic0.cmax
@@ -2810,7 +2742,6 @@ class GUI (QMainWindow):
             self.sb.showMessage("Draw the region to mask", 2000)
             
             # Start a Selector to define a polygon aperture
-            #self.itabs.setCurrentIndex(0)
             itab = self.itabs.currentIndex()
             band = self.bands[itab]
             if band not in ['Flux','uFlux','Exp','C0','M0','M1','M2','M3','M4','v','sv']:
@@ -2843,7 +2774,6 @@ class GUI (QMainWindow):
         transform = poly.get_patch_transform()
         npath = transform.transform_path(path)
         # We could transform this path into another one with different astrometry here before checking the points inside
-        #print('path is ',npath)
         inpoints = s.points[npath.contains_points(s.points)]
         xx,yy = inpoints.T
 
@@ -2859,7 +2789,7 @@ class GUI (QMainWindow):
             self.specCube.flux[:,yy,xx] = np.nan
             """ update flux image """
             ic0 = self.ici[0]
-            ih0 = self.ihi[0]
+            #ih0 = self.ihi[0]
             image = ic0.oimage
             image[yy,xx] = np.nan
             cmin = ic0.cmin; cmax=ic0.cmax
@@ -3275,7 +3205,7 @@ class GUI (QMainWindow):
             sc.span.active = False
 
             
-            # Re-initiate variables
+            # Re-initialize variables
             self.contours = 'off'
             self.blink = 'off'
             self.slice = 'off'
@@ -3295,19 +3225,12 @@ class GUI (QMainWindow):
             self.RS = None
             self.LS = None
 
-            # Add first aperture (size of a pixel)
-            #w=h=s.pixscale/2.
-            #x0 = np.abs(x[1]-x[0])/2.
-            #y0 = np.abs(y[1]-y[0])/2.
-            #self.newSelectedAperture(x0,y0,w,h,'square')
-
             
     def onSelect(self, xmin, xmax):
         """ Consider only a slice of the cube when computing the image """
 
         if self.slice == 'on':
             # Find indices of the shaded region
-            #print('xmin, xmax ',xmin,xmax)
             sc = self.sci[self.spectra.index('Pix')]
             if sc.xunit == 'THz':
                 c = 299792458.0  # speed of light in m/s
@@ -3423,7 +3346,6 @@ class GUI (QMainWindow):
 
     def zoomAll(self, itab):
 
-
         # Update total spectrum
         s = self.specCube
         spectrum = self.spectra.index('All')
@@ -3461,8 +3383,6 @@ class GUI (QMainWindow):
             ima.axes.set_ylim(y)
             ima.changed = True
             ima.cid = ima.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
-
-        #print('itab',itab,'band',band,'limits ',x,y)
 
         
         fluxAll = np.nansum(self.specCube.flux[:,y0:y1,x0:x1], axis=(1,2))
@@ -3532,12 +3452,13 @@ class GUI (QMainWindow):
         newColor = self.CClist[newRow]
         if newColor != self.colorContour:
             self.colorContour = newColor
-            for ic in self.ici:
-                contours = ic.contour.collections
-                for c in contours:
-                    c.set_color(self.colorContour)
-                ic.fig.canvas.draw_idle()
-                #self.addContours(ic)
+            if self.contours == 'on':
+                for ic in self.ici:
+                    contours = ic.contour.collections
+                    for c in contours:
+                        c.set_color(self.colorContour)
+                    ic.fig.canvas.draw_idle()
+                    #self.addContours(ic)
         
 
     def updateStretchMap(self, newRow):
