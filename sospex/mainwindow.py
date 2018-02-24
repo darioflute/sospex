@@ -19,7 +19,7 @@ warnings.filterwarnings('ignore')
 
 # Local imports
 from sospex.moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, ContParams
-from sospex.graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog, ds9map
+from sospex.graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog, ds9cmap
 from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
 from sospex.specobj import specCube, Spectrum, ExtSpectrum
 from sospex.cloud import cloudImage
