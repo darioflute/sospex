@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8" />
-<title>moments</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
+<title>erase</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
 
 <style type="text/css">
@@ -11775,7 +11775,7 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p><a href="save.html">Previous</a> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="erase.html">Next</a>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="tutorials.html">Tutorials</a> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="Help.html">Help</a></p>
+<p><a href="moments.html">Previous</a> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="tutorials.html">Next</a>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="tutorials.html">Tutorials</a> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="Help.html">Help</a></p>
 
 </div>
 </div>
@@ -11784,7 +11784,7 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="Fit-Continuum-and-Compute-Moments">Fit Continuum and Compute Moments<a class="anchor-link" href="#Fit-Continuum-and-Compute-Moments">&#182;</a></h2>
+<h2 id="Erase-parts-of-the-cube">Erase parts of the cube<a class="anchor-link" href="#Erase-parts-of-the-cube">&#182;</a></h2>
 </div>
 </div>
 </div>
@@ -11800,8 +11800,8 @@ div#notebook {
 </thead>
 <tbody>
 <tr>
-<td style="text-align:center"><img src="../icons/guessCont.png" alt="GuessCont" style="width: 20px;"/></td>
-<td style="text-align:left">Define intervals to fit the continuum and its guess level and slope</td>
+<td style="text-align:center"><img src="../icons/eraser.png" alt="Erase" style="width: 20px;"/></td>
+<td style="text-align:left">Erase part of the cube</td>
 </tr>
 </tbody>
 </table>
@@ -11813,143 +11813,17 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h3 id="Guess-the--level-of-the-continuum">Guess the  level of the continuum<a class="anchor-link" href="#Guess-the--level-of-the-continuum">&#182;</a></h3><p>Once clicked on the icon under the spectrum, a dialog window will ask to select the degree of the polynomial to fit
-the continuum, the boundary condition for fitting (continuum has to be positive or not), and the kernel used to compute the spectrum (1, 5, or 9 pixels around the position of each spatial pixel).</p>
-<p>At this point, click and drag to trace the continuum on the right and the left of the line.
-Try to avoid the brightest part of the line to have a better fit of the continuum.
-The traced guessed continuum will appear on the image. 
-It is possible to select a point and drag it around to change the region or the height of
-the point.
-By clicking 'd' one can delete the guess.
-To restart with another guess (and deleting the previously computed moments), reclick the icon.</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div>
-<div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<table>
-<thead><tr>
-<th style="text-align:center">Button</th>
-<th style="text-align:left">Function</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align:center"><img src="../icons/fitCont.png" alt="FitCont" style="width: 20px;"/></td>
-<td style="text-align:left">Fit the continuum</td>
-</tr>
-</tbody>
-</table>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div>
-<div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<h3 id="Fit-the-continuum">Fit the continuum<a class="anchor-link" href="#Fit-the-continuum">&#182;</a></h3><p>Under the image, click the icon to fit the continuum. A dialog will ask if the fit has to be done on the entire
-cube or limited to a selected region.
-If the second case is true, you can select a region on the image by click and dragging the mouse.
-Once the region is selected, the fit starts automatically and will show on the spectra the level of the continuum
-and on the image "C0" the continuum computed at the reference wavelength.</p>
-<p>I the reference wavelength changes, it is possible to recompute C0 by clicking in the menu: Fit--&gt;Recompute C0,v,sv.</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div>
-<div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<table>
-<thead><tr>
-<th style="text-align:center">Button</th>
-<th style="text-align:left">Function</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align:center"><img src="../icons/slice.png" alt="DefineMoments" style="width: 20px;"/></td>
-<td style="text-align:left">Select the interval to compute moments</td>
-</tr>
-</tbody>
-</table>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div>
-<div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<h3 id="Define-the-interval-to-compute-the-moments">Define the interval to compute the moments<a class="anchor-link" href="#Define-the-interval-to-compute-the-moments">&#182;</a></h3><p>Click the relative icon under the spectrum. The "PIX" tab will be automatically selected. By clicking and dragging the mouse, a region of the spectrum is shaded. This is the interval which will be considered for computing the moments.</p>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div>
-<div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<h3 id="The-moments">The moments<a class="anchor-link" href="#The-moments">&#182;</a></h3><p>These are the definitions used.</p>
-<p>Zeroth moment: $M_0 = \int F d\lambda$.</p>
-<p>First moment:  $M_1 = \int \frac{\lambda}{M_0} F d\lambda$</p>
-<p>Second moment:  $M_2 = \int \frac{(\lambda-M_1)^2}{M_0} F d\lambda$</p>
-<p>Third moment: $M_3 = \int \frac{(\lambda-M_1)^3}{M_0 \sigma^3} F d\lambda$</p>
-<p>Fourth moment: $M_4 = \int \frac{(\lambda-M_1)^4}{M_0 \sigma^4} F d\lambda - 3$</p>
-<p>with $\sigma = \sqrt{M_2}$.</p>
-<p>The zeroth moment (once the continuum emission is subtracted) gives
-information about the intensity of the line (or lines).</p>
-<p>The first moment gives information about the velocity field of the reference line:</p>
-<p>$v = (M_1-\lambda_0) c /\lambda_0$,</p>
-<p>where $\lambda_0$ is the reference wavelength:</p>
-<p>$\lambda_0 = \lambda_{line} (1+z)$.</p>
-<p>To obtain velocities relative to the mean velocity of the structure, one has to subtract $cz$.</p>
-<p>The second moment gives information about the velocity dispersion of the reference line:</p>
-<p>$\sigma_v = \sqrt{M_2} c /\lambda_0$.</p>
-<p>The third moment, normalized skewness, tells if a distribution is slanted to the right (positive
-values) or the left (negative values).</p>
-<p>Finally, the fourth moment, kurtosis excess, tells if the distribution is platykurtic (more plate
-than the Gaussian) or leptokurtic (narrower than a Gaussian). The normalized kurtosis of a Gaussian is</p>
+<p>It is possible to exclude part of the cube from the computation of continuum and moments in two different ways. After clicking the icon, a dialog asks to choose between:</p>
 <ol>
-<li>This is the reason that subtracting 3 we compute the kurtosis excess with respect to a Gaussian distribution.</li>
+<li><p>use the lowest level of the contours to mask the region outside the contour</p>
+</li>
+<li><p>define a polygon on the image to mask the part inside the polygon</p>
+</li>
 </ol>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div>
-<div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<table>
-<thead><tr>
-<th style="text-align:center">Button</th>
-<th style="text-align:left">Function</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align:center"><img src="../icons/computeMoments.png" alt="ComputeMoments" style="width: 20px;"/></td>
-<td style="text-align:left">Compute the moments</td>
-</tr>
-</tbody>
-</table>
-
-</div>
-</div>
-</div>
-<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
-</div>
-<div class="inner_cell">
-<div class="text_cell_render border-box-sizing rendered_html">
-<h3 id="Compute-the-moments">Compute the moments<a class="anchor-link" href="#Compute-the-moments">&#182;</a></h3><p>After clicking the icon, a dialog will ask to decide if computing moments on the entire cube or only in a selected region. If the line appears at different velocities in the map, it is advisable to compute the moments in regions by selecting different intervals.</p>
-<p>To select a region, click and drag the mouse over the rectangular area on the image where you want to compute the moments. Once the computation is done, a cross will appear over the "PIX" spectrum with location, amplitude, and 
-dispersion corresponding to the computed moments. Also the new images M0, M1, M2, v, and sv are created.</p>
+<p>To use the first option, contours have to be already defined on the image.</p>
+<p>In the second case, one can define a polygon by clicking on the vertices. Once the polygon
+is defined, another dialog will ask to erase the part inside the polygon or cancel the action.</p>
+<p>The masked part is put to NaN in the cube and in all the derived continuum and moments.</p>
 
 </div>
 </div>
