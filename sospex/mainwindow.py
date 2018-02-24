@@ -266,7 +266,7 @@ class GUI (QMainWindow):
         t.layout = QVBoxLayout(t)
         t.setSizePolicy(QSizePolicy.Ignored,QSizePolicy.Ignored) # Avoid expansion
         if b == 'sv':
-            self.itabs.addTab(t, u'\u03c3')  # unicode for sigma
+            self.itabs.addTab(t, u'\u03c3\u1d65')  # unicode for sigma
         elif b == 'Flux':
             self.itabs.addTab(t, u'F')  # unicode
         elif b == 'uFlux':
