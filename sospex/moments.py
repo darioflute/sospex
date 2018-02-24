@@ -37,9 +37,10 @@ class Guess(object):
             self.offlims = [None,None]
 
 
-class SegmentsSelector:
+class SegmentsSelector(QObject):
 
     def __init__(self, ax, fig, callback, color='#7ec0ee', zD = True):
+        super().__init__()
 
         self.x = []
         self.y = []
@@ -393,26 +394,28 @@ class SegmentsInteractor(QObject):
         
 # Dialogs
 
-class msgBox1(QDialog):
-    def __init__(self,parent=None):
-        super().__init__(parent)
-
-        msgBox = QMessageBox()
-        msgBox.setText('Choose degree of polynomial:')
-        msgBox.addButton('zero', QMessageBox.ActionRole)
-        msgBox.addButton('one', QMessageBox.ActionRole)
-        self.result = msgBox.exec()
-        
-
 class ContParams(QDialog):
     """ Dialog window to define parameters of the continuum fit """
     
-    def __init__(self, parent=None):
+    def __init__(self, k, parent=None):
         super().__init__(parent)
 
+        if k == 1:
+            self.k = 0
+        elif k == 5:
+            self.k = 1
+        elif k == 9:
+            self.k = 2
+        else:
+            self.k = 0
+            
+        self.setupUI()
+
+    def setupUI(self):
+        
         self.function = self.createGroup('Function',['Constant','Slope'])
         self.boundary = self.createGroup('Boundary',['None','Positive'])
-        self.kernel   = self.createGroup('Kernel',['1 pixel','5 pixels','9 pixels'])
+        self.kernel   = self.createGroup('Kernel',['1 pixel','5 pixels','9 pixels'],default=self.k)
 
         hgroup = QGroupBox()
         hbox = QHBoxLayout()
@@ -433,7 +436,7 @@ class ContParams(QDialog):
         self.setWindowTitle('Continuum parameters')
         self.resize(400,300)
 
-    def createGroup(self, title, items):    
+    def createGroup(self, title, items, default=0):    
         """ creates a group of radio buttons  """
         group = QGroupBox(title)
         group.buttons = QButtonGroup()
@@ -447,7 +450,7 @@ class ContParams(QDialog):
             i += 1
         vbox.addStretch(1)
         # Set 1st option as default
-        buttons[0].setChecked(True)
+        buttons[default].setChecked(True)
         group.setLayout(vbox)
         return group
 

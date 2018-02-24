@@ -81,6 +81,9 @@ class GUI (QMainWindow):
         self.colorMapDirection = '_r'
         self.stretchMap = 'linear'
         self.colorContour = 'cyan'
+
+        # Default kernel
+        self.kernel = 1
         
         # Get the path of the package
         self.path0, file0 = os.path.split(__file__)
@@ -209,6 +212,7 @@ class GUI (QMainWindow):
         self.icid1 = []
         self.icid2 = []
         self.icid3 = []
+        self.icid4 = []
 
         
         # Add widgets to panel
@@ -300,8 +304,9 @@ class GUI (QMainWindow):
         cid1=ic.mpl_connect('button_release_event', self.onDraw)
         cid2=ic.mpl_connect('scroll_event',self.onWheel)
         cid3=ic.mpl_connect('motion_notify_event', self.onMotion)
-
-        return t,ic,ih,cidh,cid1,cid2,cid3
+        cid4=ic.mpl_connect('button_press_event', self.onPress)
+        
+        return t,ic,ih,cidh,cid1,cid2,cid3,cid4
 
     def removeTab(self, itab):
         #print('Removing image tab no ',itab)
@@ -317,10 +322,12 @@ class GUI (QMainWindow):
         c1 = self.icid1[itab]
         c2 = self.icid2[itab]
         c3 = self.icid3[itab]
+        c4 = self.icid4[itab]
         his.mpl_disconnect(hcid)
         ima.mpl_disconnect(c1)
         ima.mpl_disconnect(c2)
         ima.mpl_disconnect(c3)
+        ima.mpl_disconnect(c4)
         self.tabi.remove(tab)
         self.ici.remove(ima)
         self.ihi.remove(his)
@@ -328,6 +335,7 @@ class GUI (QMainWindow):
         self.icid1.remove(c1)
         self.icid2.remove(c2)
         self.icid3.remove(c3)
+        self.icid4.remove(c4)
         ima = None
         his = None
         # Put back to None the band
@@ -443,10 +451,57 @@ class GUI (QMainWindow):
         
         webbrowser.open('https://github.com/darioflute/sospex/issues')
 
+    def onPress(self, event):
+        if event.inaxes:
+            self.press = event.x, event.y
+        else:
+            self.press = None
+            return
+
+        
     def onMotion(self, event):
         """ Update spectrum when moving an aperture on the image """
 
-        pass
+        if event.button == 3 and self.press is not None:
+            xpress,ypress = self.press
+            dx = event.x - xpress
+            dy = event.y - ypress
+            self.press = event.x, event.y
+
+            # Get current bias and contrast
+            itab = self.itabs.currentIndex()
+            #ic = self.ici[itab]
+            ih = self.ihi[itab]
+
+            cmin = ih.limits[0]
+            cmax = ih.limits[1]
+            #cmin = ic.cmin; cmax= ic.cmax
+            if np.abs(dx) >= np.abs(dy):
+                percent = 0.01
+                diff = (cmax-cmin)*percent*np.sign(dx)
+                cmin += diff
+                cmax += diff
+            else:
+                percent = 0.04
+                mid  = (cmin+cmax)*0.5
+                diff = np.abs(cmax-cmin)*0.5*(1.+percent*np.sign(dy))           
+                cmin = mid - diff
+                cmax = mid + diff
+
+            ih.onSelect(cmin,cmax)
+
+
+            #ic.image.set_clim([ic.cmin,ic.cmax])
+            #ic.fig.canvas.draw_idle()
+            #ic.bias += percent * np.sign(dy)
+            #if ic.bias > 1: ic.bias = 1
+            #elif ic.bias < 0: ic.bias = 0
+            #ic.contrast += percent * np.sign(dx)
+
+            # Update image norm
+            #print(ic.bias,ic.contrast)
+            #ic.updateNorm()
+            
 
     def updateAperture(self):
 
@@ -910,7 +965,8 @@ class GUI (QMainWindow):
         ic0 = self.ici[0]
         #ap0 = ic0.photApertures[0]
         w0 = ic0.pixscale
-        self.CP = ContParams()
+        self.CP = ContParams(self.kernel)
+
         if self.CP.exec_() == QDialog.Accepted:
             function,boundary,kernel = self.CP.save()
             if function == 'Constant':
@@ -962,6 +1018,7 @@ class GUI (QMainWindow):
             ic = self.ici[itab]
             ic.showImage(self.C0)
             ic.fig.canvas.draw_idle()
+
             
         # newbands = ['C0']
         # sbands = [self.C0]
@@ -988,14 +1045,18 @@ class GUI (QMainWindow):
             x = xc - w/np.sqrt(2.) * np.sin((45.-theta)*np.pi/180.)
             y = yc - w/np.sqrt(2.) * np.cos((45.-theta)*np.pi/180.)
             pixel.rect.set_xy((x,y))
-
+            ic.changed = True
+        
+        itab = self.itabs.currentIndex()
+        ic = self.ici[itab]
+        ic.fig.canvas.draw_idle()
         
     def addBand(self, band):
         # Add a band and display it in a new tab
 
         # Open tab and display the image
         self.bands.append(band)
-        t,ic,ih,h,c1,c2,c3 = self.addImage(band)
+        t,ic,ih,h,c1,c2,c3,c4 = self.addImage(band)
         self.tabi.append(t)
         self.ici.append(ic)
         self.ihi.append(ih)
@@ -1003,6 +1064,7 @@ class GUI (QMainWindow):
         self.icid1.append(c1)
         self.icid2.append(c2)
         self.icid3.append(c3)
+        self.icid4.append(c4)
 
         # image
         if band == 'M0':
@@ -1022,7 +1084,7 @@ class GUI (QMainWindow):
         elif band == 'sv':
             image = self.sv
         
-        ic.compute_initial_figure(image=image,wcs=self.specCube.wcs,title=band)
+        ic.compute_initial_figure(image=image,wcs=self.specCube.wcs,title=band,cMap=self.colorMap,cMapDir=self.colorMapDirection,stretch=self.stretchMap)
         # Callback to propagate axes limit changes among images
         ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
         ih = self.ihi[self.bands.index(band)]
@@ -1987,7 +2049,7 @@ class GUI (QMainWindow):
             self.sb.showMessage("Image downloaded", 2000)
             band = downloadedImage.source
             self.bands.append(band)
-            t,ic,ih,h,c1,c2,c3 = self.addImage(band)
+            t,ic,ih,h,c1,c2,c3,c4 = self.addImage(band)
             self.tabi.append(t)
             self.ici.append(ic)
             self.ihi.append(ih)
@@ -1995,11 +2057,12 @@ class GUI (QMainWindow):
             self.icid1.append(c1)
             self.icid2.append(c2)
             self.icid3.append(c3)
+            self.icid4.append(c4)
             
             image = downloadedImage.data
             wcs = downloadedImage.wcs
 
-            ic.compute_initial_figure(image=image,wcs=wcs,title=band)
+            ic.compute_initial_figure(image=image,wcs=wcs,title=band,cMap=self.colorMap,cMapDir=self.colorMapDirection,stretch=self.stretchMap)
             ih.compute_initial_figure(image=image)
             ic.image.set_clim(ih.limits)
             ic.changed = True
@@ -2699,7 +2762,7 @@ class GUI (QMainWindow):
                     del ih.levels[ind]
                     ih.fig.canvas.draw_idle()
                     # Modify contours
-                    self.onModifyContours(-ind)
+                    self.onModifyContours(-1000-ind)
             if itab is not None:
                 band = self.bands[itab]
                 if band in ['Flux','uFlux','Exp','C0','M0','M1','M2','M3','M4','v','sv']:
@@ -2729,11 +2792,11 @@ class GUI (QMainWindow):
                             sb[yy,xx] = np.nan
                             ic = self.ici[itab]
                             ih = self.ihi[itab]
-                            ic.showImage(sb)
                             clim = ic.image.get_clim()
+                            ic.showImage(sb)
+                            self.addContours(ic)
                             ih.axes.cla()
                             ih.compute_initial_figure(image=sb, xmin=clim[0],xmax=clim[1])
-                            self.addContours(ic)
                 else:
                     self.sb.showMessage('Contours are considered only in cube or derivated images',4000)
             else:
@@ -2794,8 +2857,8 @@ class GUI (QMainWindow):
             image[yy,xx] = np.nan
             cmin = ic0.cmin; cmax=ic0.cmax
             ic0.showImage(image)
-            ic0.updateScale(cmin,cmax)
             self.addContours(ic0)
+            ic0.updateScale(cmin,cmax)
             # mask C0, Mi, v, sv
             sbands = [self.C0, self.M0, self.M1, self.M2, self.M3, self.M4, self.v, self.sv]
             bands = ['C0','M0','M1','M2','M3','M4','v','sv']
@@ -2805,11 +2868,11 @@ class GUI (QMainWindow):
                     sb[yy,xx] = np.nan
                     ic0 = self.ici[itab]
                     ih = self.ihi[itab]
-                    ic0.showImage(sb)
                     clim = ic0.image.get_clim()
+                    ic0.showImage(sb)
+                    self.addContours(ic0)
                     ih.axes.cla()
                     ih.compute_initial_figure(image=sb, xmin=clim[0],xmax=clim[1])
-                    self.addContours(ic0)
 
         elif QMessageBox.No:
             pass
@@ -2848,7 +2911,7 @@ class GUI (QMainWindow):
         band = 'M0'
         # Open tab and display the image
         self.bands.append(band)
-        t,ic,ih,h,c1,c2,c3 = self.addImage(band)
+        t,ic,ih,h,c1,c2,c3,c4 = self.addImage(band)
         self.tabi.append(t)
         self.ici.append(ic)
         self.ihi.append(ih)
@@ -2856,8 +2919,9 @@ class GUI (QMainWindow):
         self.icid1.append(c1)
         self.icid2.append(c2)
         self.icid3.append(c3)
+        self.icid4.append(c4)
         
-        ic.compute_initial_figure(image=self.M0,wcs=self.specCube.wcs,title=band)
+        ic.compute_initial_figure(image=self.M0,wcs=self.specCube.wcs,title=band,cMap=self.colorMap,cMapDir=self.colorMapDirection,stretch=self.stretchMap)
         # Callback to propagate axes limit changes among images
         ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
         ih = self.ihi[self.bands.index(band)]
@@ -3054,6 +3118,7 @@ class GUI (QMainWindow):
             self.icid1 = []
             self.icid2 = []
             self.icid3 = []
+            self.icid4 = []
             self.stabi = []
             self.sci  = []
             self.scid1 = []
@@ -3077,7 +3142,7 @@ class GUI (QMainWindow):
             #print ("bands are ", self.bands)
             self.photoApertures = []
             for b in self.bands:
-                t,ic,ih,h,c1,c2,c3 = self.addImage(b)
+                t,ic,ih,h,c1,c2,c3,c4 = self.addImage(b)
                 self.tabi.append(t)
                 self.ici.append(ic)
                 self.ihi.append(ih)
@@ -3085,6 +3150,7 @@ class GUI (QMainWindow):
                 self.icid1.append(c1)
                 self.icid2.append(c2)
                 self.icid3.append(c3)
+                self.icid4.append(c4)
             # Make tab 'Flux' unclosable
             self.itabs.tabBar().setTabButton(0,QTabBar.LeftSide,None)
             self.itabs.tabBar().setTabButton(0,QTabBar.RightSide,None)
@@ -3118,7 +3184,7 @@ class GUI (QMainWindow):
                 else:
                     pass
                 #print('size of image is ',np.shape(image))
-                ic.compute_initial_figure(image=image,wcs=self.specCube.wcs,title=ima)
+                ic.compute_initial_figure(image=image,wcs=self.specCube.wcs,title=ima,cMap=self.colorMap,cMapDir=self.colorMapDirection,stretch=self.stretchMap)
                 if ima == 'Exp':
                     ic.image.format_cursor_data = lambda z: "{:10.0f} s".format(float(z))
                 else:
@@ -3472,7 +3538,15 @@ class GUI (QMainWindow):
                 ic.showImage(ic.oimage)
                 ic.fig.canvas.draw_idle()
                 self.addContours(ic)
+                ic.changed = True
 
+
+        itab  = self.itabs.currentIndex()
+        ic = self.ici[itab]
+        ic.fig.canvas.draw_idle()
+        ic.changed = False
+
+                
     def updateColorMap(self, newRow):
         """ Update the color map of the image tabs """
         
@@ -3482,8 +3556,13 @@ class GUI (QMainWindow):
             for ic in self.ici:
                 ic.colorMap = self.colorMap
                 ic.showImage(ic.oimage)
-                ic.fig.canvas.draw_idle()
                 self.addContours(ic)
+                ic.changed = True
+
+            itab  = self.itabs.currentIndex()
+            ic = self.ici[itab]
+            ic.fig.canvas.draw_idle()
+            ic.changed = False
                 
     def reverseColorMap(self, reverse):
         """ Reverse color map direction """
@@ -3496,8 +3575,15 @@ class GUI (QMainWindow):
         for ic in self.ici:
             ic.colorMapDirection = self.colorMapDirection
             ic.showImage(ic.oimage)
-            ic.fig.canvas.draw_idle()
+            self.addContours(ic)
+            ic.changed = True
 
+        itab  = self.itabs.currentIndex()
+        ic = self.ici[itab]
+        ic.fig.canvas.draw_idle()
+        ic.changed = False
+        
+            
             
     def onSTabChange(self, stab):
         #print('Spectral tab changed to ', stab)
