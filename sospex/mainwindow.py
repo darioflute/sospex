@@ -265,7 +265,28 @@ class GUI (QMainWindow):
         t = QWidget()
         t.layout = QVBoxLayout(t)
         t.setSizePolicy(QSizePolicy.Ignored,QSizePolicy.Ignored) # Avoid expansion
-        self.itabs.addTab(t, b)
+        if b == 'sv':
+            self.itabs.addTab(t, u'\u03c3')  # unicode for sigma
+        elif b == 'Flux':
+            self.itabs.addTab(t, u'F')  # unicode
+        elif b == 'uFlux':
+            self.itabs.addTab(t, u'F\u1d64\u2099')  # unicode
+        elif b == 'Exp':
+            self.itabs.addTab(t, u'E')  # unicode
+        elif b == 'C0':
+            self.itabs.addTab(t, u'C\u2080')  # unicode
+        elif b == 'M0':
+            self.itabs.addTab(t, u'M\u2080')  # unicode
+        elif b == 'M1':
+            self.itabs.addTab(t, u'M\u2081')  # unicode for sigma
+        elif b == 'M2':
+            self.itabs.addTab(t, u'M\u2082')  # unicode for sigma
+        elif b == 'M3':
+            self.itabs.addTab(t, u'M\u2083')  # unicode for sigma
+        elif b == 'M4':
+            self.itabs.addTab(t, u'M\u2084')  # unicode for sigma
+        else:
+            self.itabs.addTab(t, b)
         ic = ImageCanvas(t, width=11, height=10.5, dpi=100)
         ih = ImageHistoCanvas(t, width=11, height=0.5, dpi=100)
         ih.setVisible(False)
