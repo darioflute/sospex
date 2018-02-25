@@ -204,6 +204,8 @@ class cmDialog(QDialog):
         self.list = QListWidget(self)
         iconSize = QSize(144,10)
         self.list.setIconSize(iconSize)
+        self.list.setSizePolicy(QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding))
+        self.list.setMaximumSize(QSize(180,150))
         self.cmlist = cmlist
         for cm in cmlist:
             #item = QListWidgetItem(self.list)
@@ -222,6 +224,8 @@ class cmDialog(QDialog):
         
         label2 = QLabel("Stretches")        
         self.slist = QListWidget(self)
+        self.slist.setSizePolicy(QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding))
+        self.slist.setMaximumSize(QSize(180,150))
         for st in stlist:
             QListWidgetItem(QIcon(path0+"/icons/"+st+"_.png"),st,self.slist)
         n = stlist.index(currentST)
@@ -231,6 +235,8 @@ class cmDialog(QDialog):
         self.clist = QListWidget(self)
         iconSize = QSize(144,10)
         self.clist.setIconSize(iconSize)
+        self.clist.setSizePolicy(QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding))
+        self.clist.setMaximumSize(QSize(180,150))
         for col in clist:
             #QListWidgetItem(QIcon(path0+"/icons/"+col+".png"),col,self.clist)
             item = QListWidgetItem(QIcon(path0+"/icons/"+col+".png"),'',self.clist)
