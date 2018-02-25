@@ -23,6 +23,10 @@ spacing: 3px;
 padding: 1px 4px;
 border-radius: 4px;
 }
+QMenuBar::item::hover{
+background: red;
+}
+
 QMenuBar::item:selected { /* when selected using mouse or keyboard */
 background: #FFF6BA;
 }
@@ -92,9 +96,9 @@ min-width: 6ex;
 padding: 2px;
 }
 QTabBar::tab:selected, QTabBar::tab:hover {
-background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
-                        stop: 0 #fafafa, stop: 0.4 #f4f4f4,
-                        stop: 0.5 #e7e7e7, stop: 1.0 #fafafa);
+    background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+				stop: 0 #fafafa, stop: 0.4 #f4f4f4,
+				stop: 0.5 #e7e7e7, stop: 1.0 #fafafa);
 }
 QTabBar::tab:selected {
 border-color: #9B9B9B;
@@ -105,9 +109,9 @@ margin-top: 2px; /* make non-selected tabs look smaller */
 }
 /* make use of negative margins for overlapping tabs */
 QTabBar::tab:selected {
-/* expand/overlap to the left and right by 4px */
-margin-left: -4px;
-margin-right: -4px;
+    /* expand/overlap to the left and right by 4px */
+    margin-left: -4px;
+    margin-right: -4px;
 }
 QTabBar::tab:first:selected {
 margin-left: 0; /* the first selected tab has nothing to overlap with on the left */
@@ -166,4 +170,13 @@ QComboBox::down-arrow:on { /* shift the arrow when popup is open */
 QComboBox QAbstractItemView{
  	outline: none;
 	min-width: 120px;
+}
+QListWidget::item {
+    background-color: transparent;
+}
+QListWidget::item:selected {
+    border-style: solid; 
+    border-width:1px;
+    border-color:black; 
+    background-color: transparent;
 }

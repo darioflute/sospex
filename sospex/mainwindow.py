@@ -186,6 +186,12 @@ class GUI (QMainWindow):
         moments.addAction(QAction('Compute all cube',self,shortcut='',triggered=self.computeMomentsAll))
         moments.addAction(QAction('Compute inside region',self,shortcut='',triggered=self.computeRegion))
         tools.addAction(QAction('Recompute C0, v, sv',self,shortcut='',triggered=self.computeVelocities))
+        apertures = tools.addMenu("Select aperture")
+        apertures.addAction(QAction('Square',self,shortcut='',triggered=self.selectSquareAperture))
+        apertures.addAction(QAction('Rectangle',self,shortcut='',triggered=self.selectRectangleAperture))
+        apertures.addAction(QAction('Circle',self,shortcut='',triggered=self.selectCircleAperture))
+        apertures.addAction(QAction('Ellipse',self,shortcut='',triggered=self.selectEllipseAperture))
+        apertures.addAction(QAction('Polygon',self,shortcut='',triggered=self.selectPolygonAperture))
 
         # Help 
         help = bar.addMenu("Help")
@@ -1237,7 +1243,7 @@ class GUI (QMainWindow):
                 itab = self.bands.index(b)
                 ic = self.ici[itab]
                 ic.showImage(image=sb)
-                ic.image.format_cursor_data = lambda z: "{:.0f} km/s".format(float(z))
+                ic.image.format_cursor_data = lambda z: "{:.1f} km/s".format(float(z))
                 ih = self.ihi[itab]
                 ih.compute_initial_figure(image = sb)
                 ic.image.set_clim(ih.limits)
@@ -1932,7 +1938,40 @@ class GUI (QMainWindow):
             self.sb.showMessage("Start by opening a new image ", 1000)
             self.apertureAction.setCurrentIndex(0)
             return
-            
+
+        self.activateAperture()
+
+
+    def selectSquareAperture(self):
+        self.selAp = 'square'
+        self.sb.showMessage("You chose a "+self.selAp, 1000)
+        self.activateAperture()
+        
+    def selectRectangleAperture(self):
+        self.selAp = 'rectangle'
+        self.sb.showMessage("You chose a "+self.selAp, 1000)
+        self.activateAperture()
+
+    def selectCircleAperture(self):
+        self.selAp = 'circle'
+        self.sb.showMessage("You chose a "+self.selAp, 1000)
+        self.activateAperture()
+        
+    def selectEllipseAperture(self):
+        self.selAp = 'ellipse'
+        self.sb.showMessage("You chose an "+self.selAp, 1000)
+        self.activateAperture()
+        
+    def selectPolygonAperture(self):
+        self.selAp = 'polygon'
+        self.sb.showMessage("You chose a "+self.selAp, 1000)
+        self.activateAperture()
+
+        
+
+        
+    def activateAperture(self):
+
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
         if self.selAp == 'polygon':
@@ -2778,7 +2817,7 @@ class GUI (QMainWindow):
 
         # Dialog to choose between masking with contour level or polygon
         msgBox = QMessageBox()
-        msgBox.setText('Mask the region with:')
+        msgBox.setText('Mask the region')
         msgBox.addButton('lower than minimum contour', QMessageBox.ActionRole)
         msgBox.addButton('inside a polygon', QMessageBox.ActionRole)
         self.result = msgBox.exec()
@@ -3154,6 +3193,10 @@ class GUI (QMainWindow):
                 #print('all image tabs removed')
             except:
                 pass
+
+            # Update window title (to include object name)
+            self.setWindowTitle(self.title + " [ "+self.specCube.objname+" ]")
+
 
             # Initialize
             self.tabi = []
