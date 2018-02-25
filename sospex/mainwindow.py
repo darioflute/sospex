@@ -1185,19 +1185,25 @@ class GUI (QMainWindow):
         cmask = np.isfinite(self.continuum)
         cmask0 = np.sum(cmask)
         if self.continuum is not None and cmask0 > 0:
-        
-            # Dialog to choose between fitting the entire cube or only a region of it
-            msgBox = QMessageBox()
-            msgBox.setText('Compute the moments over the entire cube or only a region:')
-            msgBox.addButton('All', QMessageBox.ActionRole)
-            msgBox.addButton('Region', QMessageBox.ActionRole)
-            self.result = msgBox.exec()
+            sc = self.sci[self.spectra.index('Pix')]
 
-            if self.result == 0:
-                self.computeMomentsAll()
+            # Check if there is a region defined to compute moments
+            if sc.regionlimits is not None:
+
+                # Dialog to choose between fitting the entire cube or only a region of it
+                msgBox = QMessageBox()
+                msgBox.setText('Compute the moments over the entire cube or only a region:')
+                msgBox.addButton('All', QMessageBox.ActionRole)
+                msgBox.addButton('Region', QMessageBox.ActionRole)
+                self.result = msgBox.exec()
+                
+                if self.result == 0:
+                    self.computeMomentsAll()
+                else:
+                    self.computeRegion()
             else:
-                self.computeRegion()
-
+                message = 'First define a region where to compute the moments'
+                self.sb.showMessage(message, 4000)                    
         else:
             message = 'First fit the continuum'
             self.sb.showMessage(message, 4000)
