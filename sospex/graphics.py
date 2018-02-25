@@ -202,12 +202,17 @@ class cmDialog(QDialog):
 
         label1 = QLabel("Color maps")
         self.list = QListWidget(self)
+        iconSize = QSize(144,10)
+        self.list.setIconSize(iconSize)
         self.cmlist = cmlist
         for cm in cmlist:
             #item = QListWidgetItem(self.list)
             #item.setText(cm)
             #item.setIcon(QIcon(path0+"/icons/"+cm+".png"))
-            QListWidgetItem(QIcon(path0+"/icons/"+cm+".png"),cm,self.list)
+            item = QListWidgetItem(QIcon(path0+"/icons/"+cm+".png"),'',self.list)
+            #item.setSizeHint(iconSize)
+            #QListWidgetItem(QIcon(path0+"/icons/"+cm+".png"),cm,self.list)
+
             
         n = cmlist.index(currentCM)
         self.list.setCurrentRow(n)
@@ -224,8 +229,12 @@ class cmDialog(QDialog):
 
         label3 = QLabel("Contour color")        
         self.clist = QListWidget(self)
+        iconSize = QSize(144,10)
+        self.clist.setIconSize(iconSize)
         for col in clist:
-            QListWidgetItem(QIcon(path0+"/icons/"+col+".png"),col,self.clist)
+            #QListWidgetItem(QIcon(path0+"/icons/"+col+".png"),col,self.clist)
+            item = QListWidgetItem(QIcon(path0+"/icons/"+col+".png"),'',self.clist)
+            #item.setSizeHint(iconSize)
         n = clist.index(currentCC)
         self.clist.setCurrentRow(n)
 
@@ -355,7 +364,7 @@ class ImageCanvas(MplCanvas):
         elif newStretch == 'asinh':
             stretch = AsinhStretch()
         elif newStretch == 'power':
-            stretch = PowerStretch(5)
+            stretch = PowerStretch(np.e)
         else:
             print('unknown stretch ...',newStretch)
             stretch = LinearStretch()

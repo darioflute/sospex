@@ -152,37 +152,47 @@ class GUI (QMainWindow):
         """ Menu with all the actions (more complete than the icons)"""
 
         """ TODO: Add controls to act only if cube is present !!! """
-        
+
+        # File import/save
         bar = self.menuBar()
         file = bar.addMenu("File")
         file.addAction(QAction("Quit",self,shortcut='Ctrl+q',triggered=self.fileQuit))
         file.addAction(QAction("Open cube",self,shortcut='Ctrl+n',triggered=self.newFile))
         file.addAction(QAction("Import image",self,shortcut='Ctrl+d',triggered=self.selectDownloadImage))
+        cube = file.addMenu("Save cube")
+        cube.addAction(QAction('Cut', self, shortcut='',triggered=self.cutCube))
+        cube.addAction(QAction('Cropped', self, shortcut='',triggered=self.cropCube))
+        cube.addAction(QAction('Continuum subtracted', self, shortcut='',triggered=self.savelCube))
+        file.addAction(QAction('Save image', self, shortcut='',triggered=self.saveFits))
+        file.addAction(QAction('Save spectrum', self, shortcut='',triggered=self.saveSpectrum))
 
+        # Display
+        display = bar.addMenu("Display")
+        display.addAction(QAction('Show/hide histogram of image levels',self,shortcut='',triggered=self.changeVisibility))
+        display.addAction(QAction('Choose color map, stretch, contour colors',self,shortcut='',triggered=self.changeColorMap))
+   
+        # Tools
+        tools = bar.addMenu("Tools")
+        erase = tools.addMenu("Mask part of cube")
+        erase.addAction(QAction('Mask part lower than lowest contour level',self,shortcut='',triggered=self.maskCubeContour))
+        erase.addAction(QAction('Mask part inside a polygon',self,shortcut='',triggered=self.maskCubePolygon))
+        tools.addAction(QAction('Draw/Remove contours',self,shortcut='',triggered=self.overlapContours))
+        continuum = tools.addMenu("Fit continuum")
+        continuum.addAction(QAction('Define guess',self,shortcut='',triggered=self.guessContinuum))
+        continuum.addAction(QAction('Fit all cube',self,shortcut='',triggered=self.fitContAll))
+        continuum.addAction(QAction('Fit inside region',self,shortcut='',triggered=self.fitContRegion))
+        moments = tools.addMenu("Compute moments")
+        moments.addAction(QAction('Define slice',self,shortcut='',triggered=self.sliceCube))
+        moments.addAction(QAction('Compute all cube',self,shortcut='',triggered=self.computeMomentsAll))
+        moments.addAction(QAction('Compute inside region',self,shortcut='',triggered=self.computeRegion))
+        tools.addAction(QAction('Recompute C0, v, sv',self,shortcut='',triggered=self.computeVelocities))
+
+        # Help 
         help = bar.addMenu("Help")
         help.addAction(QAction('About', self, shortcut='Ctrl+a',triggered=self.about))
         help.addAction(QAction('Tutorials', self, shortcut='Ctrl+h',triggered=self.onHelp))
         help.addAction(QAction('Issues', self, shortcut='Ctrl+i',triggered=self.onIssue))
-
-        save = bar.addMenu("Save")
-        cube = save.addMenu("Cube")
-        cube.addAction(QAction('Cut', self, shortcut='',triggered=self.cutCube))
-        cube.addAction(QAction('Cropped', self, shortcut='',triggered=self.cropCube))
-        cube.addAction(QAction('Continuum subtracted', self, shortcut='',triggered=self.savelCube))
-        save.addAction(QAction('Image', self, shortcut='',triggered=self.saveFits))
-        save.addAction(QAction('Spectrum', self, shortcut='',triggered=self.saveSpectrum))
-
-        fit = bar.addMenu("Fit")
-        continuum = fit.addMenu("Continuum")
-        continuum.addAction(QAction('Define guess',self,shortcut='',triggered=self.guessContinuum))
-        continuum.addAction(QAction('Fit all cube',self,shortcut='',triggered=self.fitContAll))
-        continuum.addAction(QAction('Fit inside region',self,shortcut='',triggered=self.fitContRegion))
-        moments = fit.addMenu("Moments")
-        moments.addAction(QAction('Define slice',self,shortcut='',triggered=self.sliceCube))
-        moments.addAction(QAction('Compute all cube',self,shortcut='',triggered=self.computeMomentsAll))
-        moments.addAction(QAction('Compute inside region',self,shortcut='',triggered=self.computeRegion))
-        fit.addAction(QAction('Recompute C0, v, sv',self,shortcut='',triggered=self.computeVelocities))
-
+        
         bar.setNativeMenuBar(False)
 
     def about(self):
@@ -271,6 +281,7 @@ class GUI (QMainWindow):
             self.itabs.addTab(t, u'F')  # unicode
         elif b == 'uFlux':
             self.itabs.addTab(t, u'F\u1d64\u2099')  # unicode
+            #self.itabs.addTab(t, "F<sub>unc</sub>")  # markup
         elif b == 'Exp':
             self.itabs.addTab(t, u'E')  # unicode
         elif b == 'C0':
@@ -2765,82 +2776,89 @@ class GUI (QMainWindow):
         msgBox.addButton('lower than minimum contour', QMessageBox.ActionRole)
         msgBox.addButton('inside a polygon', QMessageBox.ActionRole)
         self.result = msgBox.exec()
-
-        if self.result == 0:
-            self.sb.showMessage("Masking data ", 2000)
-            # Find the tab with levels
-            itab = None
-            for ih in self.ihi:
-                if len(ih.lev) > 0:
-                    # Identify minimum level
-                    minlev = min(ih.levels)
-                    itab = self.ihi.index(ih)
-                    # Remove lowest level contour
-                    ind = ih.levels.index(minlev)
-                    ih.lev[ind].remove()
-                    # Remove level from lists
-                    del ih.lev[ind]
-                    del ih.levels[ind]
-                    ih.fig.canvas.draw_idle()
-                    # Modify contours
-                    self.onModifyContours(-1000-ind)
-            if itab is not None:
-                band = self.bands[itab]
-                if band in ['Flux','uFlux','Exp','C0','M0','M1','M2','M3','M4','v','sv']:
-                    ic = self.ici[itab]
-                    mask2d = ic.oimage < minlev
-                    xi = np.arange(self.specCube.nx); yi = np.arange(self.specCube.ny)
-                    xx,yy = np.meshgrid(xi,yi)
-                    xx = xx[mask2d]
-                    yy = yy[mask2d]
-                    # Mask images and cubes
-                    self.specCube.flux[:,yy,xx] = np.nan
-                    """ update flux images (pix and all) """
-                    ic0 = self.ici[0]
-                    #ih0 = self.ihi[0]
-                    image = ic0.oimage
-                    image[yy,xx] = np.nan
-                    cmin = ic0.cmin; cmax=ic0.cmax
-                    ic0.showImage(image)
-                    ic0.updateScale(cmin,cmax)
-                    self.addContours(ic0) 
-                    # mask C0, Mi, v, sv
-                    sbands = [self.C0, self.M0, self.M1, self.M2, self.M3, self.M4, self.v, self.sv]
-                    bands = ['C0','M0','M1','M2','M3','M4','v','sv']
-                    for b,sb in zip(bands,sbands):
-                        if sb is not None:
-                            itab = self.bands.index(b)
-                            sb[yy,xx] = np.nan
-                            ic = self.ici[itab]
-                            ih = self.ihi[itab]
-                            clim = ic.image.get_clim()
-                            ic.showImage(sb)
-                            self.addContours(ic)
-                            ih.axes.cla()
-                            ih.compute_initial_figure(image=sb, xmin=clim[0],xmax=clim[1])
-                else:
-                    self.sb.showMessage('Contours are considered only in cube or derivated images',4000)
-            else:
-                self.sb.showMessage("Please, define contours before masking ", 4000)                                
-        else:
-            self.sb.showMessage("Draw the region to mask", 2000)
             
-            # Start a Selector to define a polygon aperture
-            itab = self.itabs.currentIndex()
+        if self.result == 0:
+            self.maskCubeContour()
+        else:
+            self.maskCubePolygon()
+
+    def maskCubeContour(self):
+
+        self.sb.showMessage("Masking data ", 2000)
+        # Find the tab with levels
+        itab = None
+        for ih in self.ihi:
+            if len(ih.lev) > 0:
+                # Identify minimum level
+                minlev = min(ih.levels)
+                itab = self.ihi.index(ih)
+                # Remove lowest level contour
+                ind = ih.levels.index(minlev)
+                ih.lev[ind].remove()
+                # Remove level from lists
+                del ih.lev[ind]
+                del ih.levels[ind]
+                ih.fig.canvas.draw_idle()
+                # Modify contours
+                self.onModifyContours(-1000-ind)
+        if itab is not None:
             band = self.bands[itab]
-            if band not in ['Flux','uFlux','Exp','C0','M0','M1','M2','M3','M4','v','sv']:
-                itab = 0
-                self.itabs.setCurrentIndex(itab)
+            if band in ['Flux','uFlux','Exp','C0','M0','M1','M2','M3','M4','v','sv']:
+                ic = self.ici[itab]
+                mask2d = ic.oimage < minlev
+                xi = np.arange(self.specCube.nx); yi = np.arange(self.specCube.ny)
+                xx,yy = np.meshgrid(xi,yi)
+                xx = xx[mask2d]
+                yy = yy[mask2d]
+                # Mask images and cubes
+                self.specCube.flux[:,yy,xx] = np.nan
+                """ update flux images (pix and all) """
+                ic0 = self.ici[0]
+                #ih0 = self.ihi[0]
+                image = ic0.oimage
+                image[yy,xx] = np.nan
+                cmin = ic0.cmin; cmax=ic0.cmax
+                ic0.showImage(image)
+                ic0.updateScale(cmin,cmax)
+                self.addContours(ic0) 
+                # mask C0, Mi, v, sv
+                sbands = [self.C0, self.M0, self.M1, self.M2, self.M3, self.M4, self.v, self.sv]
+                bands = ['C0','M0','M1','M2','M3','M4','v','sv']
+                for b,sb in zip(bands,sbands):
+                    if sb is not None:
+                        itab = self.bands.index(b)
+                        sb[yy,xx] = np.nan
+                        ic = self.ici[itab]
+                        ih = self.ihi[itab]
+                        clim = ic.image.get_clim()
+                        ic.showImage(sb)
+                        self.addContours(ic)
+                        ih.axes.cla()
+                        ih.compute_initial_figure(image=sb, xmin=clim[0],xmax=clim[1])
+            else:
+                self.sb.showMessage('Contours are considered only in cube or derivated images',4000)
+        else:
+            self.sb.showMessage("Please, define contours before masking ", 4000)                                
 
-            ic = self.ici[itab]
-            if ic.toolbar._active == 'ZOOM':
-                ic.toolbar.zoom()  # turn off zoom
-                x = ic.axes.get_xlim()
-                y = ic.axes.get_ylim()
-                self.zoomlimits = [x,y]
-
-            #self.LS = LassoSelector(ic.axes, onselect=self.onMask)
-            self.LS = PolygonSelector(ic.axes, onselect=self.onMask)
+    def maskCubePolygon(self):
+        self.sb.showMessage("Draw the region to mask", 2000)
+        
+        # Start a Selector to define a polygon aperture
+        itab = self.itabs.currentIndex()
+        band = self.bands[itab]
+        if band not in ['Flux','uFlux','Exp','C0','M0','M1','M2','M3','M4','v','sv']:
+            itab = 0
+            self.itabs.setCurrentIndex(itab)
+            
+        ic = self.ici[itab]
+        if ic.toolbar._active == 'ZOOM':
+            ic.toolbar.zoom()  # turn off zoom
+            x = ic.axes.get_xlim()
+            y = ic.axes.get_ylim()
+            self.zoomlimits = [x,y]
+            
+        #self.LS = LassoSelector(ic.axes, onselect=self.onMask)
+        self.LS = PolygonSelector(ic.axes, onselect=self.onMask)
 
     def onMask(self, verts):
         """ Uses the vertices of the mask to mask the cube (and moments) """
@@ -3508,7 +3526,7 @@ class GUI (QMainWindow):
             for ih in self.ihi:
                 ih.setVisible(not state)
         except:
-            self.sb.showMessage("First choose a cube (press arrow) ", 1000)
+            self.sb.showMessage("First choose a cube ", 1000)
             
 
     def changeColorMap(self):
@@ -3521,18 +3539,23 @@ class GUI (QMainWindow):
         # Great adaption: https://github.com/glue-viz/ds9norm
 
         # In the colormap dialog I should add a list of possible stretches (sqrt, log , ...)
-        
-        self.CMlist = ['gist_heat','gist_earth','gist_gray','afmhot','inferno','ocean','plasma','seismic',
-                       'ds9bb','ds9a','ds9b','ds9cool','ds9i8','ds9aips0','ds9rainbow','ds9he','ds9heat']
-        self.STlist = ['linear','sqrt','square','log','power','sinh','asinh']
-        self.CClist = ['cyan','lime','magenta','red','blue','purple','black','yellow','white']
-        self.selectCM = cmDialog(self.CMlist,self.STlist, self.CClist, self.colorMap, self.stretchMap, self.colorContour)
-        self.selectCM.list.currentRowChanged.connect(self.updateColorMap)
-        self.selectCM.slist.currentRowChanged.connect(self.updateStretchMap)
-        self.selectCM.clist.currentRowChanged.connect(self.updateColorContour)
-        self.selectCM.dirSignal.connect(self.reverseColorMap)
-        self.selectCM.exec_()
 
+        if len(self.ihi) > 1:
+        
+            self.CMlist = ['gist_heat','afmhot','ds9heat','gist_earth','gist_gray','inferno','ocean','plasma','seismic',
+                           'ds9a','ds9b','ds9cool','ds9i8','ds9aips0','ds9rainbow','ds9he']
+            self.STlist = ['linear','sqrt','square','log','power','sinh','asinh']
+            self.CClist = ['cyan','lime','magenta','red','blue','purple','black','white','yellow']
+            self.selectCM = cmDialog(self.CMlist,self.STlist, self.CClist, self.colorMap, self.stretchMap, self.colorContour)
+            self.selectCM.list.currentRowChanged.connect(self.updateColorMap)
+            self.selectCM.slist.currentRowChanged.connect(self.updateStretchMap)
+            self.selectCM.clist.currentRowChanged.connect(self.updateColorContour)
+            self.selectCM.dirSignal.connect(self.reverseColorMap)
+            self.selectCM.exec_()
+
+        else:
+            self.sb.showMessage("First choose a cube ", 1000)            
+            
     def updateColorContour(self, newRow):
         """ Update the stretch of the color map """
         
