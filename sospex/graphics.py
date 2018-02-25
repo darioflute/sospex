@@ -205,7 +205,7 @@ class cmDialog(QDialog):
         iconSize = QSize(144,10)
         self.list.setIconSize(iconSize)
         self.list.setSizePolicy(QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding))
-        self.list.setMaximumSize(QSize(180,150))
+        self.list.setMaximumSize(QSize(160,150))
         self.cmlist = cmlist
         for cm in cmlist:
             #item = QListWidgetItem(self.list)
@@ -215,6 +215,26 @@ class cmDialog(QDialog):
             #item.setSizeHint(iconSize)
             #QListWidgetItem(QIcon(path0+"/icons/"+cm+".png"),cm,self.list)
 
+        # For some reason this does not work when in the stylesheet
+        stylesheet = "QListWidget::item {"\
+                     +"border-style: solid;"\
+                     +"border-width:1px;" \
+                     +"border-color:transparent;"\
+                     +"background-color: transparent;"\
+                     +"color: white;"\
+                     +"}"\
+                     +"QListWidget::item:selected {"\
+                     +"border-style: solid;" \
+                     +"border-width:1px;" \
+                     +"border-color:black;" \
+                     +"background-color: transparent;"\
+                     +"color: white;"\
+                     +"}"
+            
+        self.list.setStyleSheet(stylesheet)
+
+
+            
             
         n = cmlist.index(currentCM)
         self.list.setCurrentRow(n)
@@ -225,25 +245,28 @@ class cmDialog(QDialog):
         label2 = QLabel("Stretches")        
         self.slist = QListWidget(self)
         self.slist.setSizePolicy(QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding))
-        self.slist.setMaximumSize(QSize(180,150))
+        self.slist.setMaximumSize(QSize(160,150))
         for st in stlist:
             QListWidgetItem(QIcon(path0+"/icons/"+st+"_.png"),st,self.slist)
         n = stlist.index(currentST)
         self.slist.setCurrentRow(n)
 
+        #self.slist.setStyleSheet( stylesheet)
+        
         label3 = QLabel("Contour color")        
         self.clist = QListWidget(self)
         iconSize = QSize(144,10)
         self.clist.setIconSize(iconSize)
         self.clist.setSizePolicy(QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding))
-        self.clist.setMaximumSize(QSize(180,150))
+        self.clist.setMaximumSize(QSize(160,150))
         for col in clist:
             #QListWidgetItem(QIcon(path0+"/icons/"+col+".png"),col,self.clist)
             item = QListWidgetItem(QIcon(path0+"/icons/"+col+".png"),'',self.clist)
             #item.setSizeHint(iconSize)
         n = clist.index(currentCC)
         self.clist.setCurrentRow(n)
-
+        self.clist.setStyleSheet(stylesheet)
+        
         # Button with OK to close dialog
         b2 = QPushButton("OK",self)
         b2.clicked.connect(self.end)
@@ -326,8 +349,12 @@ class ImageCanvas(MplCanvas):
             self.cbaxes = self.fig.add_axes([0.9,0.1,0.02,0.85])
             # Add title
             if title != None:
-                self.fig.suptitle(title)
                 self.title = title
+                if title == 'uFlux':
+                    title = 'Flux$_{uncorrected}$'
+                elif title == 'Exp':
+                    title = 'Coverage map'
+                self.fig.suptitle(title)
 
             # Show image
             self.contrast = 1.
