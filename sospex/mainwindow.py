@@ -3195,7 +3195,7 @@ class GUI (QMainWindow):
                 pass
 
             # Update window title (to include object name)
-            self.setWindowTitle(self.title + " [ "+self.specCube.objname+" ]")
+            self.setWindowTitle(self.title + " [ "+self.specCube.objname+" - "+self.specCube.instrument+" ]")
 
 
             # Initialize
