@@ -1,6 +1,6 @@
 import numpy as np
 from PyQt5.QtCore import pyqtSignal,QObject
-from PyQt5.QtWidgets import QDialog, QMessageBox, QPushButton, QGroupBox, QHBoxLayout, QVBoxLayout, QGridLayout, QWidget, QRadioButton, QButtonGroup
+from PyQt5.QtWidgets import QDialog, QPushButton, QGroupBox, QHBoxLayout, QVBoxLayout, QGridLayout, QRadioButton, QButtonGroup
 from matplotlib.lines import Line2D
 from matplotlib.artist import Artist
 

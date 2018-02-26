@@ -1,5 +1,5 @@
 import numpy as np
-import numpy.ma as ma
+#import numpy.ma as ma
 import os
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -7,7 +7,7 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 from matplotlib.ticker import ScalarFormatter
 from matplotlib.font_manager import FontProperties
 from matplotlib.patches import FancyArrowPatch
-from matplotlib.colorbar import Colorbar
+#from matplotlib.colorbar import Colorbar
 
 # Matplotlib parameters
 import matplotlib.pyplot as plt
@@ -19,8 +19,8 @@ rcParams['legend.numpoints']=1
 
 from matplotlib.lines import Line2D
 from matplotlib.text import Text
-from matplotlib.colors import Normalize
-import matplotlib.cbook as cbook
+#from matplotlib.colors import Normalize
+#import matplotlib.cbook as cbook
 
 from matplotlib.widgets import SpanSelector
 
@@ -30,12 +30,12 @@ from astropy import units as u
 
 from PyQt5.QtWidgets import (QVBoxLayout, QSizePolicy, QInputDialog, QDialog, QListWidget,QListWidgetItem,QPushButton,QLabel)
 from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import Qt, QSize, pyqtSignal,QObject
+from PyQt5.QtCore import Qt, QSize, pyqtSignal
 from PyQt5.QtTest import QTest
 
 # https://het.as.utexas.edu/HET/Software/Astropy-1.0/_modules/astropy/visualization/stretch.html
-from astropy.visualization import (MinMaxInterval, LinearStretch, SqrtStretch, SquaredStretch, SinhStretch,AsinhStretch,BaseStretch,
-                                   LogStretch, HistEqStretch, ImageNormalize, CompositeTransform, ContrastBiasStretch, PowerStretch)
+from astropy.visualization import (LinearStretch, SqrtStretch, SquaredStretch, SinhStretch,AsinhStretch,
+                                   LogStretch, ImageNormalize, PowerStretch)
 
 
 def ds9cmap():
@@ -261,7 +261,8 @@ class cmDialog(QDialog):
         self.clist.setMaximumSize(QSize(160,150))
         for col in clist:
             #QListWidgetItem(QIcon(path0+"/icons/"+col+".png"),col,self.clist)
-            item = QListWidgetItem(QIcon(path0+"/icons/"+col+".png"),'',self.clist)
+            #item = 
+            QListWidgetItem(QIcon(path0+"/icons/"+col+".png"),'',self.clist)
             #item.setSizeHint(iconSize)
         n = clist.index(currentCC)
         self.clist.setCurrentRow(n)
@@ -351,7 +352,7 @@ class ImageCanvas(MplCanvas):
             if title != None:
                 self.title = title
                 if title == 'uFlux':
-                    title = 'Flux$_{uncorrected}$'
+                    title = 'Flux [no atm. corr.]'
                 elif title == 'Exp':
                     title = 'Coverage map'
                 self.fig.suptitle(title)

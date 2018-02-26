@@ -18,17 +18,17 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # Local imports
-#from sospex.moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, ContParams
-#from sospex.graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog, ds9cmap
-#from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
-#from sospex.specobj import specCube, Spectrum, ExtSpectrum
-#from sospex.cloud import cloudImage
+from sospex.moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, ContParams
+from sospex.graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog, ds9cmap
+from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
+from sospex.specobj import specCube, Spectrum, ExtSpectrum
+from sospex.cloud import cloudImage
 
-from moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, ContParams
-from graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog, ds9cmap
-from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
-from specobj import specCube,Spectrum, ExtSpectrum
-from cloud import cloudImage
+#from moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, ContParams
+#from graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog, ds9cmap
+#from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
+#from specobj import specCube,Spectrum, ExtSpectrum
+#from cloud import cloudImage
 
 class UpdateTabs(QObject):
     newImage = pyqtSignal([cloudImage])
@@ -286,7 +286,8 @@ class GUI (QMainWindow):
         elif b == 'Flux':
             self.itabs.addTab(t, u'F')  # unicode
         elif b == 'uFlux':
-            self.itabs.addTab(t, u'F\u1d64\u2099')  # unicode
+            self.itabs.addTab(t, u'F\u1d64')  # unicode
+            #self.itabs.addTab(t, u'F\u1d64\u2099')  # unicode (the n does not work on mac os-x)
             #self.itabs.addTab(t, "F<sub>unc</sub>")  # markup
         elif b == 'Exp':
             self.itabs.addTab(t, u'E')  # unicode
@@ -1173,45 +1174,54 @@ class GUI (QMainWindow):
     def fitCont(self):
         """ Options to fit the continuum """
 
-        # Dialog to choose between fitting the entire cube or only a region of it
-        msgBox = QMessageBox()
-        msgBox.setText('Fit the cube or only a region:')
-        msgBox.addButton('All', QMessageBox.ActionRole)
-        msgBox.addButton('Region', QMessageBox.ActionRole)
-        self.result = msgBox.exec()
+        if self.continuum is not None:
+            # Dialog to choose between fitting the entire cube or only a region of it
+            msgBox = QMessageBox()
+            msgBox.setText('Fit the cube or only a region:')
+            msgBox.addButton('All', QMessageBox.ActionRole)
+            msgBox.addButton('Region', QMessageBox.ActionRole)
+            self.result = msgBox.exec()
 
-        if self.result == 0:
-            self.fitContAll()
+            if self.result == 0:
+                self.fitContAll()
+            else:
+                self.fitRegion()
         else:
-            self.fitRegion()
+            message = 'First define a guess for the continuum'
+            self.sb.showMessage(message, 4000)
+
 
     def chooseComputeMoments(self):
         """ Options to compute the moments """
 
-        cmask = np.isfinite(self.continuum)
-        cmask0 = np.sum(cmask)
-        if self.continuum is not None and cmask0 > 0:
-            sc = self.sci[self.spectra.index('Pix')]
+        if self.continuum is not None:
+            cmask = np.isfinite(self.continuum)
+            cmask0 = np.sum(cmask)
+            if cmask0 > 0:
+                sc = self.sci[self.spectra.index('Pix')]
 
-            # Check if there is a region defined to compute moments
-            if sc.regionlimits is not None:
+                # Check if there is a region defined to compute moments
+                if sc.regionlimits is not None:
 
-                # Dialog to choose between fitting the entire cube or only a region of it
-                msgBox = QMessageBox()
-                msgBox.setText('Compute the moments over the entire cube or only a region:')
-                msgBox.addButton('All', QMessageBox.ActionRole)
-                msgBox.addButton('Region', QMessageBox.ActionRole)
-                self.result = msgBox.exec()
+                    # Dialog to choose between fitting the entire cube or only a region of it
+                    msgBox = QMessageBox()
+                    msgBox.setText('Compute the moments over the entire cube or only a region:')
+                    msgBox.addButton('All', QMessageBox.ActionRole)
+                    msgBox.addButton('Region', QMessageBox.ActionRole)
+                    self.result = msgBox.exec()
                 
-                if self.result == 0:
-                    self.computeMomentsAll()
+                    if self.result == 0:
+                        self.computeMomentsAll()
+                    else:
+                        self.computeRegion()
                 else:
-                    self.computeRegion()
+                    message = 'First define a region where to compute the moments'
+                    self.sb.showMessage(message, 4000)
             else:
-                message = 'First define a region where to compute the moments'
-                self.sb.showMessage(message, 4000)                    
+                message = 'First fit the continuum'
+                self.sb.showMessage(message, 4000)                
         else:
-            message = 'First fit the continuum'
+            message = 'First define a guess for the continuum'
             self.sb.showMessage(message, 4000)
             
             
@@ -3733,8 +3743,8 @@ class GUI (QMainWindow):
         sc.updateYlim()
         
         
-if __name__ == '__main__':
-#def main():
+#if __name__ == '__main__':
+def main():
     #QApplication.setStyle('Fusion')
     app = QApplication(sys.argv)
     gui = GUI()
@@ -3755,6 +3765,6 @@ if __name__ == '__main__':
     # Add an icon for the application
     app.setWindowIcon(QIcon(gui.path0+'/icons/sospex.png'))
     app.setApplicationName('SOSPEX')
-    app.setApplicationVersion('0.19-beta')
+    app.setApplicationVersion('0.20-beta')
     sys.exit(app.exec_())
     #splash.finish(gui)
