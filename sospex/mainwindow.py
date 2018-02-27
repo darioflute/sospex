@@ -1506,7 +1506,11 @@ class GUI (QMainWindow):
         intcp = sc.guess.intcpt
         slope = sc.guess.slope
 
-        c,c0 = multiFitContinuum(m,w,f,c,c0,w0,points,slope,intcp,self.positiveContinuum, self.kernel)
+        if self.specCube.instrument == 'FIFI-LS':
+            e = self.specCube.exposure
+            c,c0 = multiFitContinuum(m,w,f,c,c0,w0,points,slope,intcp,self.positiveContinuum, self.kernel,exp=e)
+        else:
+            c,c0 = multiFitContinuum(m,w,f,c,c0,w0,points,slope,intcp,self.positiveContinuum, self.kernel)
         self.continuum = c
         print('max continuum is ',np.nanmax(self.continuum))
         self.C0 = c0
@@ -3011,6 +3015,7 @@ class GUI (QMainWindow):
                                         question,
                                         flags)            
         if response == QMessageBox.Yes:
+            poly.remove()
             self.sb.showMessage("Masking data ", 2000)
             self.specCube.flux[:,yy,xx] = np.nan
             """ update flux image """
@@ -3036,12 +3041,11 @@ class GUI (QMainWindow):
                     self.addContours(ic0)
                     ih.axes.cla()
                     ih.compute_initial_figure(image=sb, xmin=clim[0],xmax=clim[1])
-                    ic.updateScale(clim[0],clim[1])
+                    ic0.updateScale(clim[0],clim[1])
 
         elif QMessageBox.No:
-            pass
+            poly.remove()
 
-        poly.remove()
         x,y = self.zoomlimits
         ic.axes.set_xlim(x)
         ic.axes.set_ylim(y)
@@ -3085,7 +3089,8 @@ class GUI (QMainWindow):
         self.icid3.append(c3)
         self.icid4.append(c4)
         
-        ic.compute_initial_figure(image=self.M0,wcs=self.specCube.wcs,title=band,cMap=self.colorMap,cMapDir=self.colorMapDirection,stretch=self.stretchMap)
+        ic.compute_initial_figure(image=self.M0,wcs=self.specCube.wcs,title=band,
+                                  cMap=self.colorMap,cMapDir=self.colorMapDirection,stretch=self.stretchMap)
         # Callback to propagate axes limit changes among images
         ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
         ih = self.ihi[self.bands.index(band)]
@@ -3119,7 +3124,8 @@ class GUI (QMainWindow):
                     ih0 = ih
                     ic0 = ic_
             if ih0 is not None:
-                ic.contour = ic.axes.contour(ic0.oimage,ih0.levels, colors=self.colorContour,transform=ic.axes.get_transform(ic0.wcs))
+                ic.contour = ic.axes.contour(ic0.oimage,ih0.levels, colors=self.colorContour,
+                                             transform=ic.axes.get_transform(ic0.wcs))
                 ic.fig.canvas.draw_idle()
                 ic.changed = False
             else:
@@ -3181,7 +3187,8 @@ class GUI (QMainWindow):
         ici = self.ici.copy()
         ici.remove(ic0)
         for ic in ici:
-            ic.contour = ic.axes.contour(ic0.oimage,ih0.levels, colors=self.colorContour,transform=ic.axes.get_transform(ic0.wcs))
+            ic.contour = ic.axes.contour(ic0.oimage,ih0.levels, colors=self.colorContour,
+                                         transform=ic.axes.get_transform(ic0.wcs))
             ic.changed = True
 
     def onModifyContours(self, n):
@@ -3231,7 +3238,8 @@ class GUI (QMainWindow):
                 ic.contour = None
                 # Compute new contours
                 levels =  sorted(ih0.levels)
-                ic.contour = ic.axes.contour(ic0.oimage, levels, colors=self.colorContour,transform=ic.axes.get_transform(ic0.wcs))
+                ic.contour = ic.axes.contour(ic0.oimage, levels, colors=self.colorContour,
+                                             transform=ic.axes.get_transform(ic0.wcs))
                 # Differ drawing until changing tab
                 ic.changed = True
             
@@ -3352,7 +3360,8 @@ class GUI (QMainWindow):
                 else:
                     pass
                 #print('size of image is ',np.shape(image))
-                ic.compute_initial_figure(image=image,wcs=self.specCube.wcs,title=ima,cMap=self.colorMap,cMapDir=self.colorMapDirection,stretch=self.stretchMap)
+                ic.compute_initial_figure(image=image,wcs=self.specCube.wcs,title=ima,cMap=self.colorMap,
+                                          cMapDir=self.colorMapDirection,stretch=self.stretchMap)
                 if ima == 'Exp':
                     ic.image.format_cursor_data = lambda z: "{:10.0f} s".format(float(z))
                 else:

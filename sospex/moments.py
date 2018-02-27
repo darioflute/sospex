@@ -491,14 +491,17 @@ def residuals(p,x,data=None,eps=None):
         else:
             return (model-data)/eps
 
-def fitContinuum(p,slope,intcp,posCont,m,w,ff):
+def fitContinuum(p,slope,intcp,posCont,m,w,ff,ee):
 
     
     # Take the mean for each wavelength
     f = np.nanmean(ff,axis=1)
     mf = np.isnan(f)
     m[mf] = 0
-    
+
+    if ee is not None:
+        e = 1./np.sqrt(np.nanmean(ee,axis=1))  # The error scale with the inverse of the sqrt of the exposure
+        
     if np.sum(m) > 5:
         # Define parameters
         fit_params = Parameters()
@@ -508,7 +511,10 @@ def fitContinuum(p,slope,intcp,posCont,m,w,ff):
             fit_params.add('q',value=intcp, min=0.)
         else:
             fit_params.add('q',value=intcp)
-        out = minimize(residuals,fit_params,args=(w[m],),kws={'data':f[m]},method='Nelder')
+        if ee is not None:
+            out = minimize(residuals,fit_params,args=(w[m],),kws={'data':f[m]},method='Nelder')
+        else:
+            out = minimize(residuals,fit_params,args=(w[m],),kws={'data':f[m],'eps':e[m]},method='Nelder')
         pars = out.params
     else:
         pars = None
@@ -609,7 +615,7 @@ def multiComputeMoments(m,w,f,c,moments,points):
     return moments, noise
     
 
-def multiFitContinuum(m,w,f,c,c0,w0,points,slope,intcp,posCont,kernel):
+def multiFitContinuum(m,w,f,c,c0,w0,points,slope,intcp,posCont,kernel,exp=None):
 
     # To avoid forking error in MAC OS-X
     try:
@@ -632,11 +638,17 @@ def multiFitContinuum(m,w,f,c,c0,w0,points,slope,intcp,posCont,kernel):
         jk = np.array([0])
 
         
-        
-    with mp.Pool(processes=mp.cpu_count()) as pool:
-        res = [pool.apply_async(fitContinuum, (p,slope,intcp,posCont,m[:,p[1],p[0]],w,f[:,p[1]+ik,p[0]+jk])) for p in points]
-        results = [r.get() for r in res]
-
+    if exp is None:
+        with mp.Pool(processes=mp.cpu_count()) as pool:
+            res = [pool.apply_async(fitContinuum, (p,slope,intcp,posCont,m[:,p[1],p[0]],w,
+                                                   f[:,p[1]+ik,p[0]+jk])) for p in points]
+            results = [r.get() for r in res]
+    else:
+        with mp.Pool(processes=mp.cpu_count()) as pool:
+            res = [pool.apply_async(fitContinuum, (p,slope,intcp,posCont,m[:,p[1],p[0]],w,
+                                                   f[:,p[1]+ik,p[0]+jk],exp[:,p[1]+ik,p[0]+jk])) for p in points]
+            results = [r.get() for r in res]
+            
     for p, pars in results:
         if pars is not None:
             i,j = p
