@@ -19,13 +19,13 @@ warnings.filterwarnings('ignore')
 
 # Local imports
 #from sospex.moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, ContParams
-#from sospex.graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog, ds9cmap
+#from sospex.graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog, ds9cmap,ScrollMessageBox
 #from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
 #from sospex.specobj import specCube, Spectrum, ExtSpectrum
 #from sospex.cloud import cloudImage
 
 from moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, ContParams
-from graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog, ds9cmap
+from graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog, ds9cmap, ScrollMessageBox
 from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
 from specobj import specCube,Spectrum, ExtSpectrum
 from cloud import cloudImage
@@ -168,12 +168,18 @@ class GUI (QMainWindow):
 
         # View
         view = bar.addMenu("View")
-        view.addAction(QAction('Image levels',self,shortcut='',checkable = True, triggered=self.changeVisibility))
+        self.menuHisto = QAction('Image levels',self,shortcut='',
+                                 checkable = True, triggered=self.changeVisibility)
+        view.addAction(self.menuHisto)
         view.addAction(QAction('Colors and stretch',self,shortcut='',triggered=self.changeColorMap))
+        view.addAction(QAction('Show header',self,shortcut='',triggered=self.showHeader))
         magnify = view.addMenu("Magnify image")
         magnify.addAction(QAction('+10%',self,shortcut='',triggered=self.zoomUp))
         magnify.addAction(QAction('-10%',self,shortcut='',triggered=self.zoomDown))
-        view.addAction(QAction('Contours',self,shortcut='',checkable=True,triggered=self.overlapContours))
+        self.menuContours = QAction('Contours',self,shortcut='',
+                                    checkable=True,triggered=self.overlapContours)
+        view.addAction(self.menuContours)
+        
         # Add slice cube
         # WCS info
         # Magnification (zoom 1/10 --> 10)
@@ -211,6 +217,48 @@ class GUI (QMainWindow):
         
         bar.setNativeMenuBar(False)
 
+    def showHeader(self):
+        """ Show header of the spectral cube """
+
+        try:
+            header = self.specCube.header
+            hv = header.values()
+            hk = header.keys()
+            hc = header.comments
+            h = []
+            cc = False
+            for k,v,c in zip(hk,hv,hc):
+                if k == 'HISTORY':
+                    pass
+                elif k == 'COMMENT':
+                    if cc:
+                        h.append('        {0:20}'.format(v)+''+c)
+                    else:
+                        h.append('\n        {0:20}'.format(v)+''+c)
+                        cc = True
+                else:
+                    if cc:
+                        h.append('\n')
+                        cc = False
+                    if isinstance(v, str):
+                        vs = v.rjust(20)
+                    else:
+                        vs = str(v)
+                        vs=vs.rjust(20)
+                    k = k.ljust(8)
+                    c = c.ljust(30)
+                    h.append('{k:8s} = {v:20s} {c:30s}'.format(k=k,v=vs,c=c))
+            
+            #message = '\n'.join(h)
+            #QMessageBox.about(self, "Header", message)
+            msgBox = ScrollMessageBox(h, None)
+            msgBox.setWindowTitle("Header")
+            msgBox.exec_()
+        except:
+            self.sb.showMessage("First load a spectral cube ", 1000)
+
+
+        
     def about(self):
         # Get path of the package
         file=open(self.path0+"/copyright.txt","r")
@@ -2997,15 +3045,8 @@ class GUI (QMainWindow):
         
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
-        #ih = self.ihi[itab]
         ic.axes.add_patch(poly)
         
-        path = poly.get_path()
-        transform = poly.get_patch_transform()
-        npath = transform.transform_path(path)
-        # We could transform this path into another one with different astrometry here before checking the points inside
-        inpoints = s.points[npath.contains_points(s.points)]
-        xx,yy = inpoints.T
 
         """ Ask to mask points """
         flags = QMessageBox.Yes 
@@ -3015,12 +3056,19 @@ class GUI (QMainWindow):
                                         question,
                                         flags)            
         if response == QMessageBox.Yes:
+
+            path = poly.get_path()
+            transform = poly.get_patch_transform()
+            npath = transform.transform_path(path)
+            # We could transform this path into another one with different astrometry here before checking the points inside
+            inpoints = s.points[npath.contains_points(s.points)]
+            xx,yy = inpoints.T
             poly.remove()
+            
             self.sb.showMessage("Masking data ", 2000)
             self.specCube.flux[:,yy,xx] = np.nan
             """ update flux image """
             ic0 = self.ici[0]
-            #ih0 = self.ihi[0]
             image = ic0.oimage
             image[yy,xx] = np.nan
             cmin = ic0.cmin; cmax=ic0.cmax
@@ -3038,19 +3086,18 @@ class GUI (QMainWindow):
                     ih = self.ihi[itab]
                     clim = ic0.image.get_clim()
                     ic0.showImage(sb)
-                    self.addContours(ic0)
                     ih.axes.cla()
                     ih.compute_initial_figure(image=sb, xmin=clim[0],xmax=clim[1])
+                    self.addContours(ic0)
                     ic0.updateScale(clim[0],clim[1])
 
+            x,y = self.zoomlimits
+            ic.axes.set_xlim(x)
+            ic.axes.set_ylim(y)
+            ic.fig.canvas.draw_idle()
         elif QMessageBox.No:
             poly.remove()
 
-        x,y = self.zoomlimits
-        ic.axes.set_xlim(x)
-        ic.axes.set_ylim(y)
-        #ic.changed = True
-        ic.fig.canvas.draw_idle()
 
         
     def computeZeroMoment(self):
@@ -3140,8 +3187,10 @@ class GUI (QMainWindow):
             self.sb.showMessage("Click again to remove contours", 2000)
             self.drawContours()
             self.contours = 'on'
+            self.menuContours.setChecked(True)
         else:
             self.contours = 'off'
+            self.menuContours.setChecked(False)
             # Remove level lines in histogram 
             for ih in self.ihi:
                 if len(ih.lev) > 0:
@@ -3663,6 +3712,7 @@ class GUI (QMainWindow):
             state = ih.isVisible()
             for ih in self.ihi:
                 ih.setVisible(not state)
+            self.menuHisto.setChecked(not state)
         except:
             self.sb.showMessage("First choose a cube ", 1000)
             

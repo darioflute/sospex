@@ -28,8 +28,9 @@ from astropy.wcs.utils import proj_plane_pixel_scales as pixscales
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 
-from PyQt5.QtWidgets import (QVBoxLayout, QSizePolicy, QInputDialog, QDialog, QListWidget,QListWidgetItem,QPushButton,QLabel)
-from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import (QVBoxLayout, QSizePolicy, QInputDialog, QDialog, QListWidget,
+                             QListWidgetItem,QPushButton,QLabel,QMessageBox,QScrollArea,QWidget)
+from PyQt5.QtGui import QIcon,QFont
 from PyQt5.QtCore import Qt, QSize, pyqtSignal
 from PyQt5.QtTest import QTest
 
@@ -37,6 +38,25 @@ from PyQt5.QtTest import QTest
 from astropy.visualization import (LinearStretch, SqrtStretch, SquaredStretch, SinhStretch,AsinhStretch,
                                    LogStretch, ImageNormalize, PowerStretch)
 
+class ScrollMessageBox(QMessageBox):
+   def __init__(self, l, *args, **kwargs):
+      super().__init__(*args, **kwargs)
+
+      font = QFont()
+      font.setFamily("Monaco")
+      font.setPointSize(10)
+      self.setWindowTitle("Header")
+      scroll = QScrollArea(self)
+      scroll.setWidgetResizable(True)
+      self.content = QWidget()
+      scroll.setWidget(self.content)
+      lay = QVBoxLayout(self.content)
+      for item in l:
+          label = QLabel(item, self)
+          label.setFont(font)
+          lay.addWidget(label)
+      self.layout().addWidget(scroll, 0, 0, 1, self.layout().columnCount())
+      self.setStyleSheet("QScrollArea{min-width:600 px; min-height: 400px}")
 
 def ds9cmap():
     """ Adding DS9 colormap. Adapted from http://nbviewer.jupyter.org/gist/adonath/c9a97d2f2d964ae7b9eb"""
@@ -197,7 +217,7 @@ class cmDialog(QDialog):
         super().__init__()
 
         path0, file0 = os.path.split(__file__)
-        self.setWindowTitle('Color Map Selector')
+        self.setWindowTitle('Colors & Stretch')
         layout = QVBoxLayout()
 
         label1 = QLabel("Color maps")
