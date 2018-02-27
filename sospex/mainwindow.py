@@ -18,17 +18,17 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # Local imports
-from sospex.moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, ContParams
-from sospex.graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog, ds9cmap
-from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
-from sospex.specobj import specCube, Spectrum, ExtSpectrum
-from sospex.cloud import cloudImage
+#from sospex.moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, ContParams
+#from sospex.graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog, ds9cmap
+#from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
+#from sospex.specobj import specCube, Spectrum, ExtSpectrum
+#from sospex.cloud import cloudImage
 
-#from moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, ContParams
-#from graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog, ds9cmap
-#from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
-#from specobj import specCube,Spectrum, ExtSpectrum
-#from cloud import cloudImage
+from moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, ContParams
+from graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog, ds9cmap
+from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
+from specobj import specCube,Spectrum, ExtSpectrum
+from cloud import cloudImage
 
 class UpdateTabs(QObject):
     newImage = pyqtSignal([cloudImage])
@@ -166,17 +166,26 @@ class GUI (QMainWindow):
         file.addAction(QAction('Save image', self, shortcut='',triggered=self.saveFits))
         file.addAction(QAction('Save spectrum', self, shortcut='',triggered=self.saveSpectrum))
 
-        # Display
-        display = bar.addMenu("Display")
-        display.addAction(QAction('Show/hide histogram of image levels',self,shortcut='',triggered=self.changeVisibility))
-        display.addAction(QAction('Choose color map, stretch, contour colors',self,shortcut='',triggered=self.changeColorMap))
-   
+        # View
+        view = bar.addMenu("View")
+        view.addAction(QAction('Image levels',self,shortcut='',checkable = True, triggered=self.changeVisibility))
+        view.addAction(QAction('Colors and stretch',self,shortcut='',triggered=self.changeColorMap))
+        magnify = view.addMenu("Magnify image")
+        magnify.addAction(QAction('+10%',self,shortcut='',triggered=self.zoomUp))
+        magnify.addAction(QAction('-10%',self,shortcut='',triggered=self.zoomDown))
+        view.addAction(QAction('Contours',self,shortcut='',checkable=True,triggered=self.overlapContours))
+        # Add slice cube
+        # WCS info
+        # Magnification (zoom 1/10 --> 10)
+        # Scale spectrum (X - Y)
+        # Add FITS header viewer (as in GAIA ...)
+        # Contours ?
+        
         # Tools
         tools = bar.addMenu("Tools")
         erase = tools.addMenu("Mask part of cube")
-        erase.addAction(QAction('Mask part lower than lowest contour level',self,shortcut='',triggered=self.maskCubeContour))
-        erase.addAction(QAction('Mask part inside a polygon',self,shortcut='',triggered=self.maskCubePolygon))
-        tools.addAction(QAction('Draw/Remove contours',self,shortcut='',triggered=self.overlapContours))
+        erase.addAction(QAction('.. lower than min contour level',self,shortcut='',triggered=self.maskCubeContour))
+        erase.addAction(QAction('.. inside a polygon',self,shortcut='',triggered=self.maskCubePolygon))
         continuum = tools.addMenu("Fit continuum")
         continuum.addAction(QAction('Define guess',self,shortcut='',triggered=self.guessContinuum))
         continuum.addAction(QAction('Fit all cube',self,shortcut='',triggered=self.fitContAll))
@@ -186,7 +195,7 @@ class GUI (QMainWindow):
         moments.addAction(QAction('Define slice',self,shortcut='',triggered=self.sliceCube))
         moments.addAction(QAction('Compute all cube',self,shortcut='',triggered=self.computeMomentsAll))
         moments.addAction(QAction('Compute inside region',self,shortcut='',triggered=self.computeRegion))
-        tools.addAction(QAction('Recompute C0, v, sv',self,shortcut='',triggered=self.computeVelocities))
+        tools.addAction(QAction(u'Recompute C\u2080, v, \u03c3\u1d65',self,shortcut='',triggered=self.computeVelocities))
         apertures = tools.addMenu("Select aperture")
         apertures.addAction(QAction('Square',self,shortcut='',triggered=self.selectSquareAperture))
         apertures.addAction(QAction('Rectangle',self,shortcut='',triggered=self.selectRectangleAperture))
@@ -748,6 +757,16 @@ class GUI (QMainWindow):
     def onWheel(self,event):
         ''' enable zoom with mouse wheel and propagate changes to other tabs '''
         eb = event.button
+        self.zoomImage(eb)
+
+    def zoomUp(self):
+        self.zoomImage('up')
+        
+    def zoomDown(self):
+        self.zoomImage('down')
+        
+    def zoomImage(self, eb):
+            
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
         curr_xlim = ic.axes.get_xlim()
@@ -758,7 +777,7 @@ class GUI (QMainWindow):
             factor=0.9
         elif eb == 'down':
             factor=1.1
-        #print('zooming by a factor ',factor)
+
         new_width = (curr_xlim[1]-curr_xlim[0])*factor*0.5
         new_height= (curr_ylim[1]-curr_ylim[0])*factor*0.5
         x = [curr_x0-new_width,curr_x0+new_width]
@@ -966,7 +985,7 @@ class GUI (QMainWindow):
         self.fitAction = self.createFitAction()
         self.cutAction = self.createAction(self.path0+'/icons/cut.png','Cut part of the cube','Ctrl+k',self.cutCube)
         self.cropAction = self.createAction(self.path0+'/icons/crop.png','Crop the cube','Ctrl+K',self.cropCube)
-        self.sliceAction = self.createAction(self.path0+'/icons/slice.png','Define a cube slice to display/cut cube/compute moments','Ctrl+K',self.sliceCube)
+        self.sliceAction = self.createAction(self.path0+'/icons/slice.png','Define a slice to compute moments and/or display','Ctrl+K',self.sliceCube)
         self.maskAction =  self.createAction(self.path0+'/icons/eraser.png','Erase a region','',self.maskCube)
         self.cloudAction = self.createAction(self.path0+'/icons/cloud.png','Download image from cloud','Ctrl+D',self.selectDownloadImage)
         self.fitsAction =  self.createAction(self.path0+'/icons/download.png','Save the image as a FITS/PNG/JPG/PDF file','Ctrl+S',self.saveFits)
@@ -1293,6 +1312,10 @@ class GUI (QMainWindow):
                 ih = self.ihi[itab]
                 ih.compute_initial_figure(image = sb)
                 ic.image.set_clim(ih.limits)
+                # Adopt same limits as flux image
+                ic0=self.ici[0]
+                ic.image.axes.set_xlim(ic0.image.axes.get_xlim())
+                ic.image.axes.set_ylim(ic0.image.axes.get_ylim())
                 ic.changed = True
 
             # Refresh current image (if a velocity)
@@ -1498,6 +1521,11 @@ class GUI (QMainWindow):
         self.addContours(ic)
         # Update limits of image
         ic.image.set_clim(ih.limits)
+        # Adopt same limits as flux image
+        ic0 = self.ici[0]
+        ic.image.axes.set_xlim(ic0.image.axes.get_xlim())
+        ic.image.axes.set_ylim(ic0.image.axes.get_ylim())
+        # Differ the change
         ic.changed = True
 
         # Refresh current image (if continuum)
@@ -1628,6 +1656,10 @@ class GUI (QMainWindow):
             ih.compute_initial_figure(image = sb)
             self.addContours(ic)
             ic.image.set_clim(ih.limits)
+            # Adopt same limits as flux image
+            ic0 = self.ici[0]
+            ic.image.axes.set_xlim(ic0.image.axes.get_xlim())
+            ic.image.axes.set_ylim(ic0.image.axes.get_ylim())
             ic.changed = True
 
         # Refresh current image (if a moment)
@@ -3781,8 +3813,8 @@ class GUI (QMainWindow):
         sc.updateYlim()
         
         
-#if __name__ == '__main__':
-def main():
+if __name__ == '__main__':
+#def main():
     #QApplication.setStyle('Fusion')
     app = QApplication(sys.argv)
     gui = GUI()
