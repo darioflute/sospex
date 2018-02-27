@@ -536,12 +536,17 @@ def computeMoments(p,m,w,dw,f):
         # between two consecutive values. Assuming they have the
         # same dispersion, the dispersion of the difference is
         # sqrt(2) higher.
+
+        pos = f[1:] > 0 # Consider only positive values
         df = f[1:]-f[:-1]
+        df = df[pos]
         med = np.median(df)
         mad = np.median(np.abs(med))
-        sigma = mad/np.sqrt(2.)
-        ms = f > 5*sigma
-    
+        sigma = 3 *  mad/np.sqrt(2.) # 3 sigma value
+        #ms = f > 3*sigma
+
+        # Consider only values greater than continuum
+        ms = f > 0
     
         if np.sum(ms) > 5:
             c = 299792458. # m/s

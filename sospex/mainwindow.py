@@ -181,6 +181,7 @@ class GUI (QMainWindow):
         continuum.addAction(QAction('Define guess',self,shortcut='',triggered=self.guessContinuum))
         continuum.addAction(QAction('Fit all cube',self,shortcut='',triggered=self.fitContAll))
         continuum.addAction(QAction('Fit inside region',self,shortcut='',triggered=self.fitContRegion))
+        continuum.addAction(QAction('Set continuum to zero ',self,shortcut='',triggered=self.setContinuumZero))        
         moments = tools.addMenu("Compute moments")
         moments.addAction(QAction('Define slice',self,shortcut='',triggered=self.sliceCube))
         moments.addAction(QAction('Compute all cube',self,shortcut='',triggered=self.computeMomentsAll))
@@ -965,7 +966,7 @@ class GUI (QMainWindow):
         self.fitAction = self.createFitAction()
         self.cutAction = self.createAction(self.path0+'/icons/cut.png','Cut part of the cube','Ctrl+k',self.cutCube)
         self.cropAction = self.createAction(self.path0+'/icons/crop.png','Crop the cube','Ctrl+K',self.cropCube)
-        self.sliceAction = self.createAction(self.path0+'/icons/slice.png','Select a slice of the cube','Ctrl+K',self.sliceCube)
+        self.sliceAction = self.createAction(self.path0+'/icons/slice.png','Define a cube slice to display/cut cube/compute moments','Ctrl+K',self.sliceCube)
         self.maskAction =  self.createAction(self.path0+'/icons/eraser.png','Erase a region','',self.maskCube)
         self.cloudAction = self.createAction(self.path0+'/icons/cloud.png','Download image from cloud','Ctrl+D',self.selectDownloadImage)
         self.fitsAction =  self.createAction(self.path0+'/icons/download.png','Save the image as a FITS/PNG/JPG/PDF file','Ctrl+S',self.saveFits)
@@ -990,7 +991,27 @@ class GUI (QMainWindow):
         #self.tb.addWidget(self.fitAction)        
         self.tb.addAction(self.quitAction)
 
-            
+
+    def openContinuumTab(self):
+        
+        # Clear previous continuum estimate and open new tab
+        s = self.specCube
+        self.continuum = np.full((s.nz,s.ny,s.nx), np.nan) # Fit of continuum
+        self.Cmask = np.zeros((s.nz,s.ny,s.nx), dtype=bool) # Spectral cube mask (for fitting the continuum)
+        self.C0 = np.full((s.ny,s.nx), np.nan) # Continuum at ref. wavelength
+        
+
+        # Open tabs if they do not exist
+        if 'C0' not in self.bands:
+            self.addBand('C0')
+        else:
+            itab = self.bands.index('C0')
+            ic = self.ici[itab]
+            ic.showImage(self.C0)
+            ic.fig.canvas.draw_idle()
+
+
+        
     def guessContinuum(self):
         """ Create a first guess for fitting the continuum """
 
@@ -1042,32 +1063,7 @@ class GUI (QMainWindow):
 
         self.CS = SegmentsSelector(sc.axes,sc.fig, self.onContinuumSelect,zD=self.zeroDeg)
 
-        # Clear previous continuum estimate and open new tab
-        s = self.specCube
-        self.continuum = np.full((s.nz,s.ny,s.nx), np.nan) # Fit of continuum
-        self.Cmask = np.zeros((s.nz,s.ny,s.nx), dtype=bool) # Spectral cube mask (for fitting the continuum)
-        self.C0 = np.full((s.ny,s.nx), np.nan) # Continuum at ref. wavelength
-        
-
-        # Open tabs if they do not exist
-        if 'C0' not in self.bands:
-            self.addBand('C0')
-        else:
-            itab = self.bands.index('C0')
-            ic = self.ici[itab]
-            ic.showImage(self.C0)
-            ic.fig.canvas.draw_idle()
-
-            
-        # newbands = ['C0']
-        # sbands = [self.C0]
-        # for new,sb in zip(newbands,sbands):
-        #     if new not in self.bands:
-        #         self.addBand(new)
-        #     else:
-        #         itab = self.bands.index(new)
-        #         self.removeTab(itab)
-        #         self.addBand(new)
+        self.openContinuumTab()
 
         # Update the pixel marker with new kernel
         for ic in self.ici:
@@ -1180,17 +1176,57 @@ class GUI (QMainWindow):
             msgBox.setText('Fit the cube or only a region:')
             msgBox.addButton('All', QMessageBox.ActionRole)
             msgBox.addButton('Region', QMessageBox.ActionRole)
+            msgBox.addButton('Set to zero', QMessageBox.ActionRole)
             self.result = msgBox.exec()
 
             if self.result == 0:
                 self.fitContAll()
-            else:
+            elif self.result == 1:
                 self.fitRegion()
+            else:
+                self.setContinuumZero()
         else:
-            message = 'First define a guess for the continuum'
-            self.sb.showMessage(message, 4000)
+            msgBox = QMessageBox()
+            msgBox.setText('Set continuum to zero ?')
+            msgBox.addButton('Yes', QMessageBox.ActionRole)
+            msgBox.addButton('No', QMessageBox.ActionRole)
+            self.result = msgBox.exec()
+
+            if self.result == 0:
+                self.setContinuumZero()
+            else:            
+                message = 'First define a guess for the continuum'
+                self.sb.showMessage(message, 4000)
 
 
+    def setContinuumZero(self):
+        """ Set continuum to zero """
+
+        self.openContinuumTab()        
+        self.continuum[:]=0.
+        self.C0[:]=0.
+
+        # Refresh the plotted image
+        itab = self.bands.index('C0')
+        ic = self.ici[itab]
+        ic.showImage(image=self.C0)
+        ic.image.format_cursor_data = lambda z: "{:.2e} Jy".format(float(z))        
+        ih = self.ihi[itab]
+        ih.compute_initial_figure(image = self.C0)
+        self.addContours(ic)
+        # Update limits of image
+        ic.image.set_clim(ih.limits)
+        ic.changed = True
+        
+        # Update continuum on pixel tab
+        sc = self.sci[self.spectra.index('Pix')]
+        ic = self.ici[0]
+        xc,yc = ic.photApertures[0].xy[0]  # marker coordinates (center of rectangle)
+        i = int(np.rint(xc)); j = int(np.rint(yc))
+        sc.updateSpectrum(cont=self.continuum[:,j,i])
+        sc.fig.canvas.draw_idle()
+
+        
     def chooseComputeMoments(self):
         """ Options to compute the moments """
 
@@ -2890,6 +2926,7 @@ class GUI (QMainWindow):
                         self.addContours(ic)
                         ih.axes.cla()
                         ih.compute_initial_figure(image=sb, xmin=clim[0],xmax=clim[1])
+                        ic.updateScale(clim[0],clim[1])
             else:
                 self.sb.showMessage('Contours are considered only in cube or derivated images',4000)
         else:
@@ -2967,6 +3004,7 @@ class GUI (QMainWindow):
                     self.addContours(ic0)
                     ih.axes.cla()
                     ih.compute_initial_figure(image=sb, xmin=clim[0],xmax=clim[1])
+                    ic.updateScale(clim[0],clim[1])
 
         elif QMessageBox.No:
             pass
@@ -3765,6 +3803,6 @@ def main():
     # Add an icon for the application
     app.setWindowIcon(QIcon(gui.path0+'/icons/sospex.png'))
     app.setApplicationName('SOSPEX')
-    app.setApplicationVersion('0.20-beta')
+    app.setApplicationVersion('0.21-beta')
     sys.exit(app.exec_())
     #splash.finish(gui)
