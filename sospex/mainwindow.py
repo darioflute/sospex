@@ -3542,6 +3542,7 @@ class GUI (QMainWindow):
                     ic.contour = None
                     ic.changed = True
             self.contours = 'off'
+            self.menuContours.setChecked(False)
             # Remove contour lines in the histogram
             for ih in self.ihi:
                 if len(ih.lev) > 0:
