@@ -1,4 +1,4 @@
-SOSPEX - version 0.21-beta
+SOSPEX - version 0.22-beta
 
 Copyright 2017 -  Dario Fadda.
 
