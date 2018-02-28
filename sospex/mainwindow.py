@@ -1240,8 +1240,8 @@ class GUI (QMainWindow):
         if self.continuum is not None:
             # Dialog to choose between fitting the entire cube or only a region of it
             msgBox = QMessageBox()
-            msgBox.setText('Fit the cube or only a region:')
-            msgBox.addButton('All', QMessageBox.ActionRole)
+            msgBox.setText('Fit the continuum:')
+            msgBox.addButton('All cube', QMessageBox.ActionRole)
             msgBox.addButton('Region', QMessageBox.ActionRole)
             msgBox.addButton('Set to zero', QMessageBox.ActionRole)
             self.result = msgBox.exec()
@@ -1308,8 +1308,8 @@ class GUI (QMainWindow):
 
                     # Dialog to choose between fitting the entire cube or only a region of it
                     msgBox = QMessageBox()
-                    msgBox.setText('Compute the moments over the entire cube or only a region:')
-                    msgBox.addButton('All', QMessageBox.ActionRole)
+                    msgBox.setText('Compute the moments over:')
+                    msgBox.addButton('All cube', QMessageBox.ActionRole)
                     msgBox.addButton('Region', QMessageBox.ActionRole)
                     self.result = msgBox.exec()
                 
@@ -3767,8 +3767,10 @@ class GUI (QMainWindow):
             self.stretchMap = newStretch
             for ic in self.ici:
                 ic.stretch = self.stretchMap
+                clim = ic.image.get_clim()
                 ic.showImage(ic.oimage)
-                ic.fig.canvas.draw_idle()
+                ic.image.set_clim(clim)
+                #ic.fig.canvas.draw_idle()
                 self.addContours(ic)
                 ic.changed = True
 
@@ -3787,7 +3789,9 @@ class GUI (QMainWindow):
             self.colorMap = newCM
             for ic in self.ici:
                 ic.colorMap = self.colorMap
+                clim = ic.image.get_clim()
                 ic.showImage(ic.oimage)
+                ic.image.set_clim(clim)
                 self.addContours(ic)
                 ic.changed = True
 
@@ -3806,7 +3810,9 @@ class GUI (QMainWindow):
 
         for ic in self.ici:
             ic.colorMapDirection = self.colorMapDirection
+            clim = ic.image.get_clim()
             ic.showImage(ic.oimage)
+            ic.image.set_clim(clim)
             self.addContours(ic)
             ic.changed = True
 
@@ -3890,7 +3896,7 @@ if __name__ == '__main__':
     screen_resolution = app.desktop().screenGeometry()
     width = screen_resolution.width()
     gui.setGeometry(width*0.025, 0, width*0.95, width*0.5)
-    gui.hsplitter.setSizes ([width*0.38,width*0.5])
+    gui.hsplitter.setSizes ([width*0.40,width*0.48])
     # Add an icon for the application
     app.setWindowIcon(QIcon(gui.path0+'/icons/sospex.png'))
     app.setApplicationName('SOSPEX')

@@ -375,6 +375,20 @@ class ImageCanvas(MplCanvas):
                     title = 'Flux [no atm. corr.]'
                 elif title == 'Exp':
                     title = 'Coverage map'
+                elif title == 'C0':
+                    title = 'C$_0$'
+                elif title == 'M0':
+                    title = 'M$_0$'
+                elif title == 'M1':
+                    title = 'M$_1$'
+                elif title == 'M2':
+                    title = 'M$_2$'
+                elif title == 'M3':
+                    title = 'M$_3$'
+                elif title == 'M4':
+                    title = 'M$_4$'
+                elif title == 'sv':
+                    title = '$\sigma_v$'
                 self.fig.suptitle(title)
 
             # Show image
