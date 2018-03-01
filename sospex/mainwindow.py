@@ -1470,7 +1470,6 @@ class GUI (QMainWindow):
 
         # Disactive the selector
         self.disactiveSelectors()
-        self.RS = None
 
         # Untoggle pixel marker
         itab = self.itabs.currentIndex()
@@ -1865,7 +1864,6 @@ class GUI (QMainWindow):
             ic.photApertureSignal.append(cidap)
             #cidapm=
             poly.modSignal.connect(self.onModifiedAperture)
-        self.PS = None
 
         self.drawNewSpectrum(n)
 
@@ -1948,7 +1946,6 @@ class GUI (QMainWindow):
         n = len(self.photoApertures)
         if selAp == 'square':
             self.disactiveSelectors()
-            self.RS = None
             # Define square
             data = [r0,d0,ws]
             self.photoApertures.append(photoAperture(n,'square',data))
@@ -1963,7 +1960,6 @@ class GUI (QMainWindow):
                 square.modSignal.connect(self.onModifiedAperture)
         elif selAp == 'rectangle':
             self.disactiveSelectors()
-            self.RS = None
             # Define rectangle
             data = [r0,d0,ws,hs]
             self.photoApertures.append(photoAperture(n,'rectangle',data))
@@ -1978,8 +1974,6 @@ class GUI (QMainWindow):
                 rectangle.modSignal.connect(self.onModifiedAperture)
         elif selAp == 'circle':
             self.disactiveSelectors()
-            self.ES = None
-            pass
             # Define circle
             data = [r0,d0,ws]
             self.photoApertures.append(photoAperture(n,'circle',data))
@@ -1994,7 +1988,6 @@ class GUI (QMainWindow):
                 circle.modSignal.connect(self.onModifiedAperture)
         elif selAp == 'ellipse':
             self.disactiveSelectors()
-            self.ES = None
             # Define ellipse
             data = [r0,d0,ws,hs]
             self.photoApertures.append(photoAperture(n,'ellipse',data))
@@ -2016,19 +2009,23 @@ class GUI (QMainWindow):
             self.RS.set_active(False)
             for artist in self.RS.artists:
                 artist.remove()
+            self.RS = None
         if self.ES is not None:
             self.ES.set_active(False)
             for artist in self.ES.artists:
                 artist.remove()
+            self.ES = None
         if self.PS is not None:
             self.PS.set_active(False)
             for artist in self.PS.artists:
                 artist.remove()
+            self.PS = None
         if self.LS is not None:
             self.LS.set_active(False)
             for artist in self.LS.artists:
                 artist.remove()
-            
+            self.LS = None
+
     def chooseFitOption(self, i):
         """ Choosing a fit option """
 
@@ -3880,8 +3877,8 @@ class GUI (QMainWindow):
         sc.updateYlim()
         
         
-#if __name__ == '__main__':
-def main():
+if __name__ == '__main__':
+#def main():
     #QApplication.setStyle('Fusion')
     app = QApplication(sys.argv)
     gui = GUI()
