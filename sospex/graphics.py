@@ -388,7 +388,11 @@ class ImageCanvas(MplCanvas):
                 elif title == 'M4':
                     title = 'M$_4$'
                 elif title == 'sv':
-                    title = '$\sigma_v$'
+                    title = '$\sigma_v$ [km/s]'
+                elif title == 'v':
+                   title = 'v [km/s]'
+                elif title == 'unknown':
+                   title = ''
                 self.fig.suptitle(title)
 
             # Show image

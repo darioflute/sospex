@@ -491,17 +491,12 @@ def residuals(p,x,data=None,eps=None):
         else:
             return (model-data)/eps
 
-def fitContinuum(p,slope,intcp,posCont,m,w,ff,ee):
-
-    
+def fitContinuum(p,slope,intcp,posCont,m,w,ff):
     # Take the mean for each wavelength
     f = np.nanmean(ff,axis=1)
     mf = np.isnan(f)
     m[mf] = 0
 
-    if ee is not None:
-        e = 1./np.sqrt(np.nanmean(ee,axis=1))  # The error scale with the inverse of the sqrt of the exposure
-        
     if np.sum(m) > 5:
         # Define parameters
         fit_params = Parameters()
@@ -511,15 +506,35 @@ def fitContinuum(p,slope,intcp,posCont,m,w,ff,ee):
             fit_params.add('q',value=intcp, min=0.)
         else:
             fit_params.add('q',value=intcp)
-        if ee is not None:
-            out = minimize(residuals,fit_params,args=(w[m],),kws={'data':f[m]},method='Nelder')
-        else:
-            out = minimize(residuals,fit_params,args=(w[m],),kws={'data':f[m],'eps':e[m]},method='Nelder')
+        out = minimize(residuals,fit_params,args=(w[m],),kws={'data':f[m]},method='Nelder')
         pars = out.params
     else:
         pars = None
         pass
+    
+    return p, pars
 
+def fiteContinuum(p,slope,intcp,posCont,m,w,ff,ee):
+    # Take the mean for each wavelength
+    f = np.nanmean(ff,axis=1)
+    mf = np.isnan(f)
+    m[mf] = 0
+
+    if np.sum(m) > 5:
+        # Define parameters
+        fit_params = Parameters()
+        if slope != 0:
+            fit_params.add('m',value=slope)
+        if posCont:
+            fit_params.add('q',value=intcp, min=0.)
+        else:
+            fit_params.add('q',value=intcp)
+        e = 1./np.sqrt(np.nanmean(ee,axis=1))  # The error scale with the inverse of the sqrt of the exposure
+        out = minimize(residuals,fit_params,args=(w[m],),kws={'data':f[m],'eps':e[m]},method='Nelder')
+        pars = out.params
+    else:
+        pars = None
+        pass
     
     return p, pars
 
@@ -637,6 +652,8 @@ def multiFitContinuum(m,w,f,c,c0,w0,points,slope,intcp,posCont,kernel,exp=None):
         ik = np.array([0])
         jk = np.array([0])
 
+    if exp is None:
+        print('exp is none')
         
     if exp is None:
         with mp.Pool(processes=mp.cpu_count()) as pool:
@@ -645,7 +662,7 @@ def multiFitContinuum(m,w,f,c,c0,w0,points,slope,intcp,posCont,kernel,exp=None):
             results = [r.get() for r in res]
     else:
         with mp.Pool(processes=mp.cpu_count()) as pool:
-            res = [pool.apply_async(fitContinuum, (p,slope,intcp,posCont,m[:,p[1],p[0]],w,
+            res = [pool.apply_async(fiteContinuum, (p,slope,intcp,posCont,m[:,p[1],p[0]],w,
                                                    f[:,p[1]+ik,p[0]+jk],exp[:,p[1]+ik,p[0]+jk])) for p in points]
             results = [r.get() for r in res]
             
