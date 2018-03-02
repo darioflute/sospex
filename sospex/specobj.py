@@ -51,7 +51,15 @@ class specCube(object):
             #self.vel = np.zeros(self.n)  # prepare array of velocities
             self.x = hdl['X'].data
             self.y = hdl['Y'].data
-            self.atran = hdl['TRANSMISSION'].data
+            #self.atran = hdl['TRANSMISSION'].data
+            try:
+                utran = hdl['UNSMOOTHED_TRANSMISSION'].data
+                w = utran[0,:]
+                t = utran[1,:]
+                self.atran = np.interp(self.wave,w,t)  # Interpolation at the resolution of the wavelength grid
+            except:
+                print('The unsmoothed transmission is not available')
+                self.atran = hdl['TRANSMISSION'].data   
             self.response = hdl['RESPONSE'].data
             self.exposure = hdl['EXPOSURE_MAP'].data
         elif self.instrument == 'GREAT':

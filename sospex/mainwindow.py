@@ -26,7 +26,8 @@ from sospex.specobj import specCube, Spectrum, ExtSpectrum
 from sospex.cloud import cloudImage
 
 #from moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, ContParams
-#from graphics import  NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas, cmDialog, ds9cmap, ScrollMessageBox
+#from graphics import  (NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas,
+#                       cmDialog, ds9cmap, ScrollMessageBox)
 #from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
 #from specobj import specCube,Spectrum, ExtSpectrum
 #from cloud import cloudImage
@@ -166,6 +167,9 @@ class GUI (QMainWindow):
         cube.addAction(QAction('Continuum subtracted', self, shortcut='',triggered=self.savelCube))
         file.addAction(QAction('Save image', self, shortcut='',triggered=self.saveFits))
         file.addAction(QAction('Save spectrum', self, shortcut='',triggered=self.saveSpectrum))
+        aperture = file.addMenu("Aperture I/O")
+        aperture.addAction(QAction('Export',self,shortcut='',triggered=self.exportAperture))
+        aperture.addAction(QAction('Import',self,shortcut='',triggered=self.importAperture))
 
         # View
         view = bar.addMenu("View")
@@ -1745,8 +1749,8 @@ class GUI (QMainWindow):
     def createApertureAction(self):
         """ Create combo box for choosing an aperture """
 
-        self.apertures = [['apertures','square','rectangle'],
-                     ['circle','ellipse','polygon']]
+        self.apertures = [['apertures','Square','Rectangle'],
+                     ['Circle','Ellipse','Polygon']]
 
         self.model = QStandardItemModel()
         for d in self.apertures:                
@@ -1851,6 +1855,9 @@ class GUI (QMainWindow):
         itab = self.itabs.currentIndex()
         ic0 = self.ici[itab]
         adverts = np.array([(ic0.wcs.all_pix2world(x,y,1)) for (x,y) in verts])
+        self.drawNewPolygonAperture(adverts)
+        
+    def drawNewPolygonAperture(self, adverts):
         # Save aperture with vertices in ra,dec coordinates
         n = len(self.photoApertures)
         self.photoApertures.append(photoAperture(n,'polygon',adverts))
@@ -1862,7 +1869,6 @@ class GUI (QMainWindow):
             ic.photApertures.append(poly)
             cidap=poly.mySignal.connect(self.onRemoveAperture)
             ic.photApertureSignal.append(cidap)
-            #cidapm=
             poly.modSignal.connect(self.onModifiedAperture)
 
         self.drawNewSpectrum(n)
@@ -1923,7 +1929,7 @@ class GUI (QMainWindow):
         x1, y1 = eclick.xdata, eclick.ydata
         x2, y2 = erelease.xdata, erelease.ydata
 
-        if self.selAp == 'square' or self.selAp == 'rectangle':
+        if self.selAp == 'Square' or self.selAp == 'Rectangle':
             x0=x1;y0=y1
             w  = np.abs(x2-x1)
             h  = np.abs(y2-y1)
@@ -1941,10 +1947,14 @@ class GUI (QMainWindow):
         ic0 = self.ici[itab]
         r0,d0 = ic0.wcs.all_pix2world(x0,y0,1)
         ws = w*ic0.pixscale; hs = h*ic0.pixscale
+        self.drawNewAperture(selAp,r0,d0,ws,hs,0.)
 
-        
+    def drawNewAperture(self, selAp, r0, d0, ws, hs, angle):
+        """ Draw new selected aperture """
+
         n = len(self.photoApertures)
-        if selAp == 'square':
+        #print('existing apertures: ',selAp,n,len(self.ici[0].photApertures))
+        if selAp == 'Square':
             self.disactiveSelectors()
             # Define square
             data = [r0,d0,ws]
@@ -1952,13 +1962,14 @@ class GUI (QMainWindow):
             for ic in self.ici:
                 x0,y0 = ic.wcs.all_world2pix(r0,d0,1)
                 w = ws/ic.pixscale; h = hs/ic.pixscale
-                square = RectangleInteractor(ic.axes, (x0,y0), w)
+                square = RectangleInteractor(ic.axes, (x0,y0), w,angle=angle)
+                #square.angle = angle
                 ic.photApertures.append(square)
                 cidap=square.mySignal.connect(self.onRemoveAperture)
                 ic.photApertureSignal.append(cidap)
                 #cidapm=
                 square.modSignal.connect(self.onModifiedAperture)
-        elif selAp == 'rectangle':
+        elif selAp == 'Rectangle':
             self.disactiveSelectors()
             # Define rectangle
             data = [r0,d0,ws,hs]
@@ -1966,13 +1977,14 @@ class GUI (QMainWindow):
             for ic in self.ici:
                 x0,y0 = ic.wcs.all_world2pix(r0,d0,1)
                 w = ws/ic.pixscale; h = hs/ic.pixscale
-                rectangle = RectangleInteractor(ic.axes, (x0,y0), w, h)
+                rectangle = RectangleInteractor(ic.axes, (x0,y0), w, h,angle=angle)
+                #rectangle.angle = angle
                 ic.photApertures.append(rectangle)
                 cidap=rectangle.mySignal.connect(self.onRemoveAperture)
                 ic.photApertureSignal.append(cidap)
                 #cidapm=
                 rectangle.modSignal.connect(self.onModifiedAperture)
-        elif selAp == 'circle':
+        elif selAp == 'Circle':
             self.disactiveSelectors()
             # Define circle
             data = [r0,d0,ws]
@@ -1986,7 +1998,7 @@ class GUI (QMainWindow):
                 ic.photApertureSignal.append(cidap)
                 #cidapm=
                 circle.modSignal.connect(self.onModifiedAperture)
-        elif selAp == 'ellipse':
+        elif selAp == 'Ellipse':
             self.disactiveSelectors()
             # Define ellipse
             data = [r0,d0,ws,hs]
@@ -1994,12 +2006,15 @@ class GUI (QMainWindow):
             for ic in self.ici:
                 x0,y0 = ic.wcs.all_world2pix(r0,d0,1)
                 w = ws/ic.pixscale; h = hs/ic.pixscale
-                ellipse = EllipseInteractor(ic.axes, (x0,y0), w, h)
+                ellipse = EllipseInteractor(ic.axes, (x0,y0), w, h,angle=angle)
+                #ellipse.angle = angle
                 ic.photApertures.append(ellipse)
                 cidap=ellipse.mySignal.connect(self.onRemoveAperture)
                 ic.photApertureSignal.append(cidap)
                 #cidapm=
                 ellipse.modSignal.connect(self.onModifiedAperture)
+
+        #print('existing apertures: ',len(self.photoApertures),len(self.ici[0].photApertures))
         self.drawNewSpectrum(n)
 
 
@@ -2055,7 +2070,7 @@ class GUI (QMainWindow):
         j = index.column()
 
         self.selAp = self.apertures[i][j]
-        if self.selAp == 'ellipse':
+        if self.selAp == 'Ellipse':
             self.sb.showMessage("You chose an "+self.selAp, 1000)
         elif self.selAp == 'apertures':
             self.sb.showMessage("Choose an aperture shape ", 1000)
@@ -2071,27 +2086,27 @@ class GUI (QMainWindow):
 
 
     def selectSquareAperture(self):
-        self.selAp = 'square'
+        self.selAp = 'Square'
         self.sb.showMessage("You chose a "+self.selAp, 1000)
         self.activateAperture()
         
     def selectRectangleAperture(self):
-        self.selAp = 'rectangle'
+        self.selAp = 'Rectangle'
         self.sb.showMessage("You chose a "+self.selAp, 1000)
         self.activateAperture()
 
     def selectCircleAperture(self):
-        self.selAp = 'circle'
+        self.selAp = 'Circle'
         self.sb.showMessage("You chose a "+self.selAp, 1000)
         self.activateAperture()
         
     def selectEllipseAperture(self):
-        self.selAp = 'ellipse'
+        self.selAp = 'Ellipse'
         self.sb.showMessage("You chose an "+self.selAp, 1000)
         self.activateAperture()
         
     def selectPolygonAperture(self):
-        self.selAp = 'polygon'
+        self.selAp = 'Polygon'
         self.sb.showMessage("You chose a "+self.selAp, 1000)
         self.activateAperture()
 
@@ -2102,10 +2117,11 @@ class GUI (QMainWindow):
 
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
-        if self.selAp == 'polygon':
+        print('aperture is ',self.selAp)
+        if self.selAp == 'Polygon':
             self.PS = PolygonSelector(ic.axes, self.onPolySelect, lineprops=dict(linestyle='-',color='g'),
                                       useblit=True,markerprops=dict(marker='o',mec='g'),vertex_select_radius=15)
-        elif self.selAp == 'rectangle':
+        elif self.selAp == 'Rectangle':
             self.RS = RectangleSelector(ic.axes, self.onRectSelect,
                                         drawtype='box', useblit=True,
                                         button=[1, 3],  # don't use middle button
@@ -2115,7 +2131,7 @@ class GUI (QMainWindow):
                                         lineprops = dict(color='g', linestyle='-',linewidth = 2, alpha=0.8),
                                         interactive=False)
             self.RS.state.add('center')
-        elif self.selAp == 'square':
+        elif self.selAp == 'Square':
             self.RS = RectangleSelector(ic.axes, self.onRectSelect,
                                         drawtype='box', useblit=True,
                                         button=[1, 3],  # don't use middle button
@@ -2126,7 +2142,7 @@ class GUI (QMainWindow):
                                         interactive=False)
             self.RS.state.add('square')
             self.RS.state.add('center')
-        elif self.selAp == 'ellipse':
+        elif self.selAp == 'Ellipse':
             self.ES = EllipseSelector(ic.axes, self.onRectSelect,
                                       drawtype='line', useblit=True,
                                       button=[1, 3],  # don't use middle button
@@ -2136,7 +2152,7 @@ class GUI (QMainWindow):
                                       lineprops = dict(color='g', linestyle='-',linewidth = 2, alpha=0.8),
                                       interactive=False)
             self.ES.state.add('center')
-        elif self.selAp == 'circle':
+        elif self.selAp == 'Circle':
             self.ES = EllipseSelector(ic.axes, self.onRectSelect,
                                       drawtype='line', useblit=True,
                                       button=[1, 3],  # don't use middle button
@@ -2391,7 +2407,7 @@ class GUI (QMainWindow):
                 rectangle = RectangleInteractor(ic.axes, (x0,y0),w0,h0,angle)
                 rectangle.type = aper.type
                 rectangle.showverts = aper.showverts
-                rectangle.rect.set_xy((x0,y0))
+                #rectangle.rect.set_xy((x0,y0))
                 rectangle.updateMarkers()
                 ic.photApertures.append(rectangle)
                 cidap=rectangle.mySignal.connect(self.onRemoveAperture)
@@ -2914,6 +2930,100 @@ class GUI (QMainWindow):
                 pass    
 
 
+    def exportAperture(self):
+        import json, io
+
+        # Check if tab with aperture is open
+        istab = self.stabs.currentIndex()
+        if istab > 1:
+            nap = istab-1
+            itab = self.itabs.currentIndex()
+            ic = self.ici[itab]
+            aperture = ic.photApertures[nap]
+            type = aperture.type
+            print('type is ', type)
+            if type == 'Polygon':
+                verts = aperture.poly.get_xy()
+                adverts = np.array([(ic.wcs.all_pix2world(x,y,1)) for (x,y) in verts])                
+                data = {
+                    'type': aperture.type,
+                    'verts': adverts.tolist()
+                }
+            elif (type == 'Square') | (type == 'Rectangle'):
+                x0,y0 = aperture.rect.get_xy()
+                r0,d0 = ic.wcs.all_pix2world(x0,y0,1)
+                data = {
+                    'type': aperture.type,
+                    'width': aperture.rect.get_width()*ic.pixscale,
+                    'height': aperture.rect.get_height()*ic.pixscale,
+                    'angle': aperture.rect.angle,
+                    'ra0': r0.tolist(),
+                    'dec0': d0.tolist()
+                }
+            elif  (type == 'Ellipse') | (type == 'Circle'):
+                x0,y0 = aperture.ellipse.center
+                r0,d0 = ic.wcs.all_pix2world(x0,y0,1)
+                data = {
+                    'type': aperture.type,
+                    'width':  aperture.ellipse.width*ic.pixscale,
+                    'height': aperture.ellipse.height*ic.pixscale,
+                    'angle':  aperture.ellipse.angle,
+                    'ra0': r0.tolist(),
+                    'dec0': d0.tolist()
+                }
+            else:
+                data = {}
+
+            with io.open(self.pathFile+'/sospex_ap'+str(nap)+'.json', mode='w') as f:
+                str_= json.dumps(data,indent=2,sort_keys=True,separators=(',',': '), ensure_ascii=False)
+                print(str_)
+                f.write(str_)
+            self.sb.showMessage("Aperture exported in file sospex_ap"+str(nap)+'.json', 3000)
+        else:
+            self.sb.showMessage("To export an aperture, select the tab with the desired aperture ", 3000)
+                        
+        
+
+    def importAperture(self):
+        import json
+
+        # Open a dialog
+        fd = QFileDialog()
+        fd.setLabelText(QFileDialog.Accept, "Import")
+        fd.setNameFilters(["Fits Files (sospex_ap*.json)","All Files (*)"])
+        fd.setOptions(QFileDialog.DontUseNativeDialog)
+        fd.setViewMode(QFileDialog.List)
+        fd.setFileMode(QFileDialog.ExistingFile)
+
+        if (fd.exec()):
+            filenames= fd.selectedFiles()
+            image_file = filenames[0]
+            print("Loading aperture from file: ", filenames[0])
+            with open(filenames[0],'r') as f:
+                #data = json.load(f, object_pairs_hook=OrderedDict, encoding='utf-8')
+                data = json.load(f)#, object_pairs_hook=OrderedDict)
+
+            itab = self.itabs.currentIndex()
+            ic = self.ici[itab]
+                            
+            # Decoding info and opening new tab
+            type = data['type']
+            if type == 'Polygon':
+                adverts = data['verts']
+                #verts = np.array([(ic.wcs.all_world2pix(r,d,1)) for (r,d) in adverts])       
+                self.drawNewPolygonAperture(adverts)
+            else:
+                r0 = data['ra0']
+                d0 = data['dec0']
+                w = data['width']
+                h = data['height']
+                angle = data['angle']
+                self.drawNewAperture(type,r0,d0,w,h,angle)
+        else:
+            self.sb.showMessage("To export an aperture, select the tab with the desired aperture ", 3000)
+            
+                
+                
     def addExtension(self,data, extname, unit, hdr):
         from astropy.io import fits
         hdu = fits.ImageHDU()
@@ -3305,6 +3415,8 @@ class GUI (QMainWindow):
         if (fd.exec()):
             fileName= fd.selectedFiles()
             print('Reading file ',fileName[0])
+            # Save the file path for future reference
+            self.pathFile, file = os.path.split(fileName[0])
             # Read the spectral cube
             # A more robust step to skip bad files should be added
             try:
@@ -3877,8 +3989,8 @@ class GUI (QMainWindow):
         sc.updateYlim()
         
         
-if __name__ == '__main__':
-#def main():
+#if __name__ == '__main__':
+def main():
     #QApplication.setStyle('Fusion')
     app = QApplication(sys.argv)
     gui = GUI()
@@ -3899,6 +4011,6 @@ if __name__ == '__main__':
     # Add an icon for the application
     app.setWindowIcon(QIcon(gui.path0+'/icons/sospex.png'))
     app.setApplicationName('SOSPEX')
-    app.setApplicationVersion('0.23-beta')
+    app.setApplicationVersion('0.24-beta')
     sys.exit(app.exec_())
     #splash.finish(gui)

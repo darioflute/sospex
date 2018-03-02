@@ -164,6 +164,7 @@ class cloudImage(object):
 
         # Open a dialog
         fd = QFileDialog()
+        fd.setLabelText(QFileDialog.Accept, "Import")
         fd.setNameFilters(["Fits Files (*.fits)","All Files (*)"])
         fd.setOptions(QFileDialog.DontUseNativeDialog)
         fd.setViewMode(QFileDialog.List)
