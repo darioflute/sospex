@@ -1098,7 +1098,7 @@ class SpectrumCanvas(MplCanvas):
 
         
         
-    def updateSpectrum(self,f=None,uf=None,exp=None,cont=None,moments=None,noise=None):
+    def updateSpectrum(self,f=None,uf=None,exp=None,cont=None,moments=None,noise=None,atran=None):
 
         try:
             try:
@@ -1110,6 +1110,9 @@ class SpectrumCanvas(MplCanvas):
                 self.arrow3.remove()
             except:
                 pass
+            if atran is not None:
+                self.atranLine[0].set_ydata(atran)
+                self.axes.draw_artist(self.atranLine[0])
             if cont is not None:
                 self.spectrum.continuum = cont
                 self.contLine[0].set_ydata(cont)

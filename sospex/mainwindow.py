@@ -18,19 +18,19 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # Local imports
-from sospex.moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, ContParams
-from sospex.graphics import (NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas,
-                             cmDialog, ds9cmap, ScrollMessageBox)
-from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
-from sospex.specobj import specCube, Spectrum, ExtSpectrum
-from sospex.cloud import cloudImage
+#from sospex.moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, ContParams
+#from sospex.graphics import (NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas,
+#                             cmDialog, ds9cmap, ScrollMessageBox)
+#from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
+#from sospex.specobj import specCube, Spectrum, ExtSpectrum
+#from sospex.cloud import cloudImage
 
-#from moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, ContParams
-#from graphics import  (NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas,
-#                       cmDialog, ds9cmap, ScrollMessageBox)
-#from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
-#from specobj import specCube,Spectrum, ExtSpectrum
-#from cloud import cloudImage
+from moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, ContParams
+from graphics import  (NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas,
+                       cmDialog, ds9cmap, ScrollMessageBox)
+from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
+from specobj import specCube,Spectrum, ExtSpectrum
+from cloud import cloudImage
 
 class UpdateTabs(QObject):
     newImage = pyqtSignal([cloudImage])
@@ -194,6 +194,9 @@ class GUI (QMainWindow):
         
         # Tools
         tools = bar.addMenu("Tools")
+        flux = tools.addMenu("Recompute flux")
+        flux.addAction(QAction('.. with median atm. transmission',self,shortcut='',triggered=self.fluxMedianAT))        
+        flux.addAction(QAction('.. with new atm. transmission',self,shortcut='',triggered=self.fluxNewAT))        
         erase = tools.addMenu("Mask part of cube")
         erase.addAction(QAction('.. lower than min contour level',self,shortcut='',triggered=self.maskCubeContour))
         erase.addAction(QAction('.. inside a polygon',self,shortcut='',triggered=self.maskCubePolygon))
@@ -1756,7 +1759,7 @@ class GUI (QMainWindow):
         for d in self.apertures:                
             row = []
             for text in d:
-                item = QStandardItem(QIcon(self.path0+'/icons/'+text+'.png'),"")
+                item = QStandardItem(QIcon(self.path0+'/icons/'+text.lower()+'.png'),"")
                 item.setTextAlignment(Qt.AlignCenter)
                 if text != 'apertures':
                     item.setToolTip("Choose a "+text)
@@ -3399,7 +3402,42 @@ class GUI (QMainWindow):
                                              transform=ic.axes.get_transform(ic0.wcs))
                 # Differ drawing until changing tab
                 ic.changed = True
-            
+
+
+    # Redefine flux for FIFI-LS cubes
+    def fluxMedianAT(self):
+        try:
+            # Check if FIFI-LS cube
+            if self.specCube.instrument == 'FIFI-LS':
+                # substitute flux with uncorrected flux divided by the median atmospheric transmission
+                at = self.specCube.atran
+                atmed = np.nanmedian(at)
+                atran = self.specCube.atran*0.+atmed
+                #self.specCube.atran[:] = atmed
+                self.specCube.flux = self.specCube.uflux/atmed
+                # Redraw the spectrum
+                for sc in self.sci:
+                    sc.updateSpectrum(atran=atran)
+                # tab with total flux
+                self.doZoomAll('new AT')
+                # tabs with apertures
+                self.onModifiedAperture('new AT')
+            else:
+                self.sb.showMessage("This operation is possible with FIFI-LS cubes only", 2000)    
+        except:
+            self.sb.showMessage("First choose a cube ", 1000)
+        
+    def fluxNewAT(self):
+        try:
+            # Check if FIFI-LS cube
+            if self.specCube.instrument == 'FIFI-LS':
+                # This should ask for new values of water vapor, download a new AT curve and apply it to the uflux
+                pass
+            else:
+                self.sb.showMessage("This operation is possible with FIFI-LS cubes only", 2000)    
+        except:
+            self.sb.showMessage("First choose a cube ", 1000)
+        
         
     def newFile(self):
         """ Display a new image """
@@ -3989,8 +4027,8 @@ class GUI (QMainWindow):
         sc.updateYlim()
         
         
-#if __name__ == '__main__':
-def main():
+if __name__ == '__main__':
+#def main():
     #QApplication.setStyle('Fusion')
     app = QApplication(sys.argv)
     gui = GUI()
