@@ -31,7 +31,10 @@ class specCube(object):
             self.crval3 = header['CRVAL3']
             self.cdelt3 = header['CDELT3']
             self.objname = header['OBJ_NAME']
-            self.filegpid = header['FILEGPID']
+            try:
+                self.filegpid = header['FILEGPID']
+            except:
+                self.filegpid = 'Unknown'
             self.baryshift = header['BARYSHFT']
             self.pixscale = header['PIXSCAL']
             self.resolution = header['RESOLUN']
