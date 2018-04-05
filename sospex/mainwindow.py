@@ -199,7 +199,8 @@ class GUI (QMainWindow):
         flux.addAction(QAction('.. with new atm. transmission',self,shortcut='',triggered=self.fluxNewAT))        
         erase = tools.addMenu("Mask part of cube")
         erase.addAction(QAction('.. lower than min contour level',self,shortcut='',triggered=self.maskCubeContour))
-        erase.addAction(QAction('.. inside a polygon',self,shortcut='',triggered=self.maskCubePolygon))
+        erase.addAction(QAction('.. inside a polygon',self,shortcut='',triggered=self.maskCubeInsidePolygon))
+        erase.addAction(QAction('.. outside a polygon',self,shortcut='',triggered=self.maskCubeOutsidePolygon))
         continuum = tools.addMenu("Fit continuum")
         continuum.addAction(QAction('Define guess',self,shortcut='',triggered=self.guessContinuum))
         continuum.addAction(QAction('Fit all cube',self,shortcut='',triggered=self.fitContAll))
@@ -3127,7 +3128,7 @@ class GUI (QMainWindow):
         else:
             self.sb.showMessage("Please, define contours before masking ", 4000)                                
 
-    def maskCubePolygon(self):
+    def maskCubeInsidePolygon(self):
         self.sb.showMessage("Draw the region to mask", 2000)
         
         # Start a Selector to define a polygon aperture
@@ -3145,9 +3146,37 @@ class GUI (QMainWindow):
             self.zoomlimits = [x,y]
             
         #self.LS = LassoSelector(ic.axes, onselect=self.onMask)
-        self.LS = PolygonSelector(ic.axes, onselect=self.onMask)
+        self.LS = PolygonSelector(ic.axes, onselect=self.insideMask)
 
-    def onMask(self, verts):
+    def maskCubeOutsidePolygon(self):
+        self.sb.showMessage("Draw the region to mask", 2000)
+        
+        # Start a Selector to define a polygon aperture
+        itab = self.itabs.currentIndex()
+        band = self.bands[itab]
+        if band not in ['Flux','uFlux','Exp','C0','M0','M1','M2','M3','M4','v','sv']:
+            itab = 0
+            self.itabs.setCurrentIndex(itab)
+            
+        ic = self.ici[itab]
+        if ic.toolbar._active == 'ZOOM':
+            ic.toolbar.zoom()  # turn off zoom
+            x = ic.axes.get_xlim()
+            y = ic.axes.get_ylim()
+            self.zoomlimits = [x,y]
+            
+        #self.LS = LassoSelector(ic.axes, onselect=self.onMask)
+        self.LS = PolygonSelector(ic.axes, onselect=self.outsideMask)
+
+    
+
+    def insideMask(self,verts):
+        self.onMask(verts,True)
+
+    def outsideMask(self, verts):
+        self.onMask(verts,False)
+
+    def onMask(self, verts, inside = True):
         """ Uses the vertices of the mask to mask the cube (and moments) """
 
         s= self.specCube
@@ -3172,7 +3201,11 @@ class GUI (QMainWindow):
             transform = poly.get_patch_transform()
             npath = transform.transform_path(path)
             # We could transform this path into another one with different astrometry here before checking the points inside
-            inpoints = s.points[npath.contains_points(s.points)]
+            insidePts = npath.contains_points(s.points)
+            if inside:
+                inpoints = s.points[insidePts]
+            else:
+                inpoints = s.points[~insidePts]
             xx,yy = inpoints.T
             poly.remove()
             
@@ -3186,6 +3219,16 @@ class GUI (QMainWindow):
             ic0.showImage(image)
             self.addContours(ic0)
             ic0.updateScale(cmin,cmax)
+            if self.specCube.instrument == 'FIFI-LS':
+                self.specCube.uflux[:,yy,xx] = np.nan
+                ic0 = self.ici[1]
+                image = ic0.oimage
+                image[yy,xx] = np.nan
+                cmin = ic0.cmin; cmax=ic0.cmax
+                ic0.showImage(image)
+                self.addContours(ic0)
+                ic0.updateScale(cmin,cmax)
+
             # mask C0, Mi, v, sv
             sbands = [self.C0, self.M0, self.M1, self.M2, self.M3, self.M4, self.v, self.sv]
             bands = ['C0','M0','M1','M2','M3','M4','v','sv']
