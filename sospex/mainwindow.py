@@ -181,9 +181,14 @@ class GUI (QMainWindow):
         magnify = view.addMenu("Magnify image")
         magnify.addAction(QAction('+10%',self,shortcut='',triggered=self.zoomUp))
         magnify.addAction(QAction('-10%',self,shortcut='',triggered=self.zoomDown))
-        self.menuContours = QAction('Contours',self,shortcut='',
-                                    checkable=True,triggered=self.overlapContours)
-        view.addAction(self.menuContours)
+        contours = view.addMenu("Contours")
+        # Checkable is for checking if contour is 'on', valid only for
+        # one set of contours. In the future, more than one contour will be available
+        contours.addAction(QAction('Add contour',self,shortcut='',
+                                    checkable=True,triggered=self.overlapContours))
+        contours.addAction(QAction('Clear contours',self,shortcut='',
+                                    checkable=True,triggered=self.overlapContours))
+        #view.addAction(self.menuContours)
         
         # Add slice cube
         # WCS info
@@ -3341,10 +3346,10 @@ class GUI (QMainWindow):
             self.sb.showMessage("Click again to remove contours", 2000)
             self.drawContours()
             self.contours = 'on'
-            self.menuContours.setChecked(True)
+            #self.menuContours.setChecked(True)
         else:
             self.contours = 'off'
-            self.menuContours.setChecked(False)
+            #self.menuContours.setChecked(False)
             # Remove level lines in histogram 
             for ih in self.ihi:
                 if len(ih.lev) > 0:
@@ -3732,7 +3737,7 @@ class GUI (QMainWindow):
                     ic.contour = None
                     ic.changed = True
             self.contours = 'off'
-            self.menuContours.setChecked(False)
+            #self.menuContours.setChecked(False)
             # Remove contour lines in the histogram
             for ih in self.ihi:
                 if len(ih.lev) > 0:
