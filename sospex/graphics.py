@@ -628,7 +628,7 @@ class ImageHistoCanvas(MplCanvas):
         except:
             pass
         self.limSignal.emit('limits changed')
-        self.shade = self.axes.axvspan(self.limits[0],self.limits[1],facecolor='Lavender',alpha=0.5,linewidth=0)
+        self.shade = self.axes.axvspan(self.limits[0],self.limits[1],facecolor='Lavender',alpha=0.5,linewidth=0,zorder=1)
         # Redefine limits
         x1,x2 = self.axes.get_xlim()
         x2 = self.limits[1] + 5 * self.sdev
@@ -870,10 +870,10 @@ class SpectrumCanvas(MplCanvas):
                 self.xr = self.x / (1+s.baryshift)
 
              
-        self.fluxLine = self.axes.step(self.x,s.flux,color='blue',label='Flux')
+        self.fluxLine = self.axes.step(self.x,s.flux,color='blue',label='Flux',zorder=10)
         self.fluxLayer, = self.fluxLine
 
-        self.contLine = self.axes.plot(self.x, s.continuum, color='skyblue',label='Cont')
+        self.contLine = self.axes.plot(self.x, s.continuum, color='skyblue',label='Cont',zorder=9)
         self.contLayer, = self.contLine
 
         # Define limits or adjust to previous limits
@@ -894,7 +894,7 @@ class SpectrumCanvas(MplCanvas):
 
 
         # Fake line to have the lines in the legend
-        self.linesLine = self.axes.plot([0,0.1],[0,0],color='purple',alpha=0.4,label='Lines')
+        self.linesLine = self.axes.plot([0,0.1],[0,0],color='purple',alpha=0.4,label='Lines',zorder=11)
         self.linesLayer, = self.linesLine
 
 
@@ -919,14 +919,14 @@ class SpectrumCanvas(MplCanvas):
             self.ax4 = self.axes.twinx()
             self.ax2.set_ylim([0.01,1.1])
             self.ax4.tick_params(labelright='off',right='off')
-            self.atranLine = self.ax2.step(self.xr, s.atran,color='red',label='Atm')
-            self.exposureLine = self.ax3.step(self.x, s.exposure, color='orange',label='Exp')
+            self.atranLine = self.ax2.step(self.xr, s.atran,color='red',label='Atm',zorder=12)
+            self.exposureLine = self.ax3.step(self.x, s.exposure, color='orange',label='Exp',zorder=13)
             ymax = np.nanmax(s.flux); ymin = np.nanmin(s.flux)
             yumax = np.nanmax(s.uflux); yumin = np.nanmin(s.uflux)
             if yumax > ymax: ymax=yumax
             if yumin < ymin: ymin=yumin
             self.ax3.set_ylim([0.5,np.nanmax(s.exposure)*1.54])
-            self.ufluxLine = self.ax4.step(self.xr,s.uflux,color='green',label='Uflux')
+            self.ufluxLine = self.ax4.step(self.xr,s.uflux,color='green',label='Uflux',zorder=14)
             self.ax4.set_ylim(self.axes.get_ylim())
             #self.ax1.set_title(spectrum.objname+" ["+spectrum.filegpid+"] @ "+spectrum.obsdate)
             self.ufluxLayer, = self.ufluxLine
@@ -964,7 +964,7 @@ class SpectrumCanvas(MplCanvas):
             except:
                 pass
             self.ax3 = self.axes.twinx()
-            self.exposureLine = self.ax3.step(self.x, s.exposure, color='orange',label='Exp')
+            self.exposureLine = self.ax3.step(self.x, s.exposure, color='orange',label='Exp',zorder=7)
             self.ax3.set_ylim([0.5,np.nanmax(s.exposure)*1.54])
             self.exposureLayer, = self.exposureLine
 
@@ -1177,10 +1177,34 @@ class SpectrumCanvas(MplCanvas):
             xmax = c/wmin * 1.e-6
             xmin = c/wmax * 1.e-6
 
+
+        # Select axes to appear in the background
+        ax = self.axes
+        zord = self.axes.get_zorder()
+        try:
+           zord2 = self.ax2.get_zorder()
+           if zord2 < zord:
+              zord = zord2
+              ax = self.ax2
+        except:
+           pass
+        try:
+            zord3 = self.ax3.get_zorder()
+            if zord3 < zord:
+               zord = zord3
+               ax = self.ax3
+        except:
+           pass
+        try:
+           zord4 = self.ax4.get_zorder()
+           if zord4 < zord:
+               ax = self.ax4
+        except:
+           pass
         if color == 'Lavender':
-            self.region = self.axes.axvspan(xmin,xmax,facecolor=color,alpha=0.5,linewidth=0)
+            self.region = ax.axvspan(xmin,xmax,facecolor=color,alpha=1,linewidth=0,zorder=1)
         else:
-            self.tmpRegion = self.axes.axvspan(xmin,xmax,facecolor=color,alpha=0.5,linewidth=0)
+            self.tmpRegion = ax.axvspan(xmin,xmax,facecolor=color,alpha=1,linewidth=0,zorder=1)
         
                 
     def shadeSpectrum(self):
