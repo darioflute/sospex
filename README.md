@@ -17,6 +17,7 @@ The code has been developed on Mac OS-X 10.11.6 (El Capitan) and Ubuntu Linux (1
 ### Current version
 
 The current version released on anaconda is: 0.25.beta 
+
 Release date:  April 23, 2018
 
 ### How to install the program
