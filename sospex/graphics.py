@@ -628,7 +628,7 @@ class ImageHistoCanvas(MplCanvas):
         except:
             pass
         self.limSignal.emit('limits changed')
-        self.shade = self.axes.axvspan(self.limits[0],self.limits[1],facecolor='Lavender',alpha=0.5,linewidth=0,zorder=1)
+        self.shade = self.axes.axvspan(self.limits[0],self.limits[1],facecolor='Lavender',alpha=0.5,linewidth=0)
         # Redefine limits
         x1,x2 = self.axes.get_xlim()
         x2 = self.limits[1] + 5 * self.sdev

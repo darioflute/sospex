@@ -3784,9 +3784,10 @@ class GUI (QMainWindow):
                 ic.axes.set_ylim(y)
                 ic.changed = True
                 # Update histogram
-                clim = ic.image.get_clim()
+                #clim = ic.image.get_clim()
                 ih.axes.clear()
-                ih.compute_initial_figure(image=image,xmin=clim[0],xmax=clim[1])
+                #ih.compute_initial_figure(image=image,xmin=clim[0],xmax=clim[1])
+                ih.compute_initial_figure(image=image)
                 ih.fig.canvas.draw_idle()
             self.slice = 'off'
         elif self.cutcube == 'on':
