@@ -870,7 +870,8 @@ class SpectrumCanvas(MplCanvas):
                 self.xr = self.x / (1+s.baryshift)
 
              
-        self.fluxLine = self.axes.step(self.x,s.flux,color='blue',label='Flux',zorder=10)
+        #self.fluxLine = self.axes.step(self.x,s.flux,color='blue',label='Flux',zorder=10)
+        self.fluxLine = self.axes.step(self.x,s.flux,color='blue',label='F',zorder=10)
         self.fluxLayer, = self.fluxLine
 
         self.contLine = self.axes.plot(self.x, s.continuum, color='skyblue',label='Cont',zorder=9)
@@ -919,14 +920,16 @@ class SpectrumCanvas(MplCanvas):
             self.ax4 = self.axes.twinx()
             self.ax2.set_ylim([0.01,1.1])
             self.ax4.tick_params(labelright='off',right='off')
-            self.atranLine = self.ax2.step(self.xr, s.atran,color='red',label='Atm',zorder=12)
+            #self.atranLine = self.ax2.step(self.xr, s.atran,color='red',label='Atm',zorder=12)
+            self.atranLine = self.ax2.step(self.xr, s.atran,color='red',label='AtmTr',zorder=12)
             self.exposureLine = self.ax3.step(self.x, s.exposure, color='orange',label='Exp',zorder=13)
             ymax = np.nanmax(s.flux); ymin = np.nanmin(s.flux)
             yumax = np.nanmax(s.uflux); yumin = np.nanmin(s.uflux)
             if yumax > ymax: ymax=yumax
             if yumin < ymin: ymin=yumin
             self.ax3.set_ylim([0.5,np.nanmax(s.exposure)*1.54])
-            self.ufluxLine = self.ax4.step(self.xr,s.uflux,color='green',label='Uflux',zorder=14)
+            #self.ufluxLine = self.ax4.step(self.xr,s.uflux,color='green',label='Uflux',zorder=14)
+            self.ufluxLine = self.ax4.step(self.xr,s.uflux,color='green',label='F$_{no AT}$',zorder=14)
             self.ax4.set_ylim(self.axes.get_ylim())
             #self.ax1.set_title(spectrum.objname+" ["+spectrum.filegpid+"] @ "+spectrum.obsdate)
             self.ufluxLayer, = self.ufluxLine
@@ -1257,7 +1260,7 @@ class SpectrumCanvas(MplCanvas):
                     txt.set_text('AtmTr')
                 elif label == 'Uflux':
                     self.displayUFlux = True
-                    txt.set_text('F$_{no-AT}$')
+                    txt.set_text('F$_{no AT}$')
                 elif label == 'Flux':
                     self.displayFlux = True
                     txt.set_text('F')
