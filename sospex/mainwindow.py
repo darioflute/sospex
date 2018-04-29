@@ -181,6 +181,14 @@ class GUI (QMainWindow):
         magnify = view.addMenu("Magnify image")
         magnify.addAction(QAction('+10%',self,shortcut='',triggered=self.zoomUp))
         magnify.addAction(QAction('-10%',self,shortcut='',triggered=self.zoomDown))
+        kernel = view.addMenu("Choose kernel for spectrum")
+        self.kernel1 = QAction('1 pixel',self,shortcut='',checkable=True,triggered=self.kernel1pixel)
+        self.kernel5 = QAction('5 pixels',self,shortcut='',checkable=True,triggered=self.kernel5pixel)
+        self.kernel9 = QAction('9 pixels',self,shortcut='',checkable=True,triggered=self.kernel9pixel)
+        kernel.addAction(self.kernel1)
+        kernel.addAction(self.kernel5)
+        kernel.addAction(self.kernel9)
+        self.kernel1.setChecked(True)
         contours = view.addMenu("Contours")
         # Checkable is for checking if contour is 'on', valid only for
         # one set of contours. In the future, more than one contour will be available
@@ -730,7 +738,7 @@ class GUI (QMainWindow):
                 moments = None
                 noise = None
 
-            if istab == 1:
+            if istab == 1: # case of pixel (with different kernels)
                 fluxAll = np.nanmean(s.flux[:,yy,xx], axis=1)
             else:
                 fluxAll = np.nansum(s.flux[:,yy,xx], axis=1)
@@ -1092,7 +1100,80 @@ class GUI (QMainWindow):
             ic.fig.canvas.draw_idle()
 
 
+    def kernel1pixel(self):
+        # Set kernel to 1 pixel
+        self.setKernel(1)
+
+    def kernel5pixel(self):
+        # Set kernel to 1 pixel
+        self.setKernel(5)
+
+    def kernel9pixel(self):
+        # Set kernel to 1 pixel
+        self.setKernel(9)
+
+    def setKernel(self, size):
+        # Set the kernel to compute the spectrum in the Pixel tab (and the continuum)
+
+        # Change to pixel tab
+        istab = self.spectra.index('Pix')
+        if self.stabs.currentIndex() != istab:
+            self.stabs.setCurrentIndex(istab)
+        sc = self.sci[istab]
+
+        # Get the reference scale
+        ic0 = self.ici[0]
+        w0 = ic0.pixscale
+
+        k1=False
+        k5=False
+        k9=False
         
+        if size == 1:
+            self.kernel = 1
+            theta = 0
+            k1 = True
+        elif size == 5:
+            self.kernel = 5
+            theta = 45
+            w0 *= np.sqrt(2.)*1.5
+            k5 = True
+        elif size == 9:
+            self.kernel = 9
+            w0 *= 2.5
+            theta = 0.
+            k9 = True
+        else:
+            self.kernel = 1
+            theta = 0.
+            k1 = True
+
+        self.kernel1.setChecked(k1)
+        self.kernel5.setChecked(k5)
+        self.kernel9.setChecked(k9)
+        
+            
+        # Update the pixel marker with new kernel
+        for ic in self.ici:
+            w = w0/ic.pixscale;
+            pixel = ic.photApertures[0]
+            x,y = pixel.rect.get_xy()
+            theta_ = pixel.rect.angle
+            w_  = pixel.rect.get_width()
+            xc = x + w_/np.sqrt(2.) * np.sin((45.-theta_)*np.pi/180.)
+            yc = y + w_/np.sqrt(2.) * np.cos((45.-theta_)*np.pi/180.)
+            pixel.rect.set_width(w)
+            pixel.rect.set_height(w)
+            pixel.rect.angle = theta
+            x = xc - w/np.sqrt(2.) * np.sin((45.-theta)*np.pi/180.)
+            y = yc - w/np.sqrt(2.) * np.cos((45.-theta)*np.pi/180.)
+            pixel.rect.set_xy((x,y))
+            ic.changed = True
+
+        itab = self.itabs.currentIndex()
+        ic = self.ici[itab]
+        ic.fig.canvas.draw_idle()
+            
     def guessContinuum(self):
         """ Create a first guess for fitting the continuum """
 
@@ -1118,20 +1199,28 @@ class GUI (QMainWindow):
                 self.positiveContinuum = False
             else:
                 self.positiveContinuum = True
+            k1=k5=k9=False
             if kernel == '1 pixel':
                 self.kernel = 1
                 theta = 0.
+                k1= True
             elif kernel == '5 pixels':
                 self.kernel = 5
                 w0 *= np.sqrt(2.)*1.5 
                 theta = 45.
+                k5 = True
             elif kernel == '9 pixels':
                 self.kernel = 9
                 w0 *= 2.5
                 theta = 0.
+                k9 = True
             else:
                 self.kernel = 1
                 theta = 0.
+                k1 = True
+            self.kernel1.setChecked(k1)
+            self.kernel5.setChecked(k5)
+            self.kernel9.setChecked(k9)
         else:
             return
 
