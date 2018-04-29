@@ -6,7 +6,7 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT 
 from matplotlib.ticker import ScalarFormatter
 from matplotlib.font_manager import FontProperties
-from matplotlib.patches import FancyArrowPatch
+from matplotlib.patches import Polygon,FancyArrowPatch
 #from matplotlib.colorbar import Colorbar
 
 # Matplotlib parameters
@@ -1104,12 +1104,13 @@ class SpectrumCanvas(MplCanvas):
             try:
                 self.arrow1.remove()
                 self.arrow2.remove()
+                self.gauss.remove()
             except:
                 pass
-            try:
-                self.arrow3.remove()
-            except:
-                pass
+            #try:
+            #    self.arrow3.remove()
+            #except:
+            #    pass
             if atran is not None:
                 self.atranLine[0].set_ydata(atran)
                 self.axes.draw_artist(self.atranLine[0])
@@ -1146,13 +1147,22 @@ class SpectrumCanvas(MplCanvas):
                 if self.xunit == 'THz':
                     dx = (c*dx)/(x*x-dx*dx) * 1.e-6
                     x = c/x * 1.e-6
-                self.arrow1 = FancyArrowPatch((x,y),(x,y+A),arrowstyle=style,mutation_scale=1.0)
+                #verts = np.array([(x_,g_) for (x_,g_) in zip(xx,gauss)])
+                self.arrow1 = FancyArrowPatch((x,y),(x,y+A),arrowstyle=style,mutation_scale=1.0,color='skyblue')
                 self.axes.add_patch(self.arrow1)
-                self.arrow2 = FancyArrowPatch((x-dx,y+0.5*A),(x+dx,y+0.5*A),arrowstyle=style,mutation_scale=1.0)
+                self.arrow2 = FancyArrowPatch((x-dx,y+0.5*A),(x+dx,y+0.5*A),arrowstyle=style,mutation_scale=1.0,color='skyblue')
                 self.axes.add_patch(self.arrow2)
-                if noise is not None:
-                    self.arrow3 = FancyArrowPatch((x-1.5*dx,y+5*noise),(x+1.5*dx,y+5*noise),arrowstyle=style,mutation_scale=1.0,linestyle='dotted')
-                    self.axes.add_patch(self.arrow3)
+                # Gauss patch
+                sig = dx / (np.sqrt(2.*np.log(2)))
+                xx = np.arange(x-4*sig,x+4*sig,dx/10.)    
+                gauss = y + A * np.exp(-(xx-x)**2/(2*sig*sig))
+                verts = list(zip(xx,gauss))
+                self.gauss = Polygon(verts, fill=False, closed=False,color='skyblue')
+                self.axes.add_patch(self.gauss)
+                
+                #if noise is not None:
+                #    self.arrow3 = FancyArrowPatch((x-1.5*dx,y+5*noise),(x+1.5*dx,y+5*noise),arrowstyle=style,mutation_scale=1.0,linestyle='dotted')
+                #    self.axes.add_patch(self.arrow3)
                     
         except:
             pass
@@ -1244,13 +1254,13 @@ class SpectrumCanvas(MplCanvas):
                     self.displayAtran = True
                     self.ax2.get_yaxis().set_tick_params(labelright='on',right='on')            
                     self.ax2.get_yaxis().set_tick_params(which='both', direction='out',colors='red')
-                    txt.set_text('Atm')
+                    txt.set_text('AtmTr')
                 elif label == 'Uflux':
                     self.displayUFlux = True
-                    txt.set_text('Uflux')
+                    txt.set_text('F$_{no-AT}$')
                 elif label == 'Flux':
                     self.displayFlux = True
-                    txt.set_text('Flux')
+                    txt.set_text('F')
                 elif label == 'Lines':
                     self.displayLines = True
                     txt.set_text('Lines')

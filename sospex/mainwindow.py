@@ -18,19 +18,19 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # Local imports
-from sospex.moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, ContParams
-from sospex.graphics import (NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas,
-                             cmDialog, ds9cmap, ScrollMessageBox)
-from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
-from sospex.specobj import specCube, Spectrum, ExtSpectrum
-from sospex.cloud import cloudImage
+#from sospex.moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, ContParams
+#from sospex.graphics import (NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas,
+#                             cmDialog, ds9cmap, ScrollMessageBox)
+#from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
+#from sospex.specobj import specCube, Spectrum, ExtSpectrum
+#from sospex.cloud import cloudImage
 
-#from moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, ContParams
-#from graphics import  (NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas,
-#                       cmDialog, ds9cmap, ScrollMessageBox)
-#from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
-#from specobj import specCube,Spectrum, ExtSpectrum
-#from cloud import cloudImage
+from moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, ContParams
+from graphics import  (NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas,
+                       cmDialog, ds9cmap, ScrollMessageBox)
+from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
+from specobj import specCube,Spectrum, ExtSpectrum
+from cloud import cloudImage
 
 class UpdateTabs(QObject):
     newImage = pyqtSignal([cloudImage])
@@ -1258,27 +1258,32 @@ class GUI (QMainWindow):
             msgBox.addButton('All cube', QMessageBox.ActionRole)
             msgBox.addButton('Region', QMessageBox.ActionRole)
             msgBox.addButton('Set to zero', QMessageBox.ActionRole)
+            msgBox.addButton('Cancel', QMessageBox.ActionRole)
             self.result = msgBox.exec()
 
             if self.result == 0:
                 self.fitContAll()
             elif self.result == 1:
                 self.fitRegion()
-            else:
+            elif self.result == 2:
                 self.setContinuumZero()
+            else:
+                pass
         else:
             msgBox = QMessageBox()
             msgBox.setText('Set continuum to zero ?')
             msgBox.addButton('Yes', QMessageBox.ActionRole)
             msgBox.addButton('No', QMessageBox.ActionRole)
+            msgBox.addButton('Cancel', QMessageBox.ActionRole)
             self.result = msgBox.exec()
 
             if self.result == 0:
                 self.setContinuumZero()
-            else:            
+            elif self.result == 1:            
                 message = 'First define a guess for the continuum'
                 self.sb.showMessage(message, 4000)
-
+            else:
+                pass
 
     def setContinuumZero(self):
         """ Set continuum to zero """
@@ -1325,12 +1330,15 @@ class GUI (QMainWindow):
                     msgBox.setText('Compute the moments over:')
                     msgBox.addButton('All cube', QMessageBox.ActionRole)
                     msgBox.addButton('Region', QMessageBox.ActionRole)
+                    msgBox.addButton('Cancel', QMessageBox.ActionRole)
                     self.result = msgBox.exec()
                 
                     if self.result == 0:
                         self.computeMomentsAll()
-                    else:
+                    elif self.result == 1:
                         self.computeRegion()
+                    else:
+                        pass
                 else:
                     message = 'First define a region where to compute the moments'
                     self.sb.showMessage(message, 4000)
@@ -3067,13 +3075,19 @@ class GUI (QMainWindow):
         msgBox.setText('Mask the region')
         msgBox.addButton('lower than minimum contour', QMessageBox.ActionRole)
         msgBox.addButton('inside a polygon', QMessageBox.ActionRole)
+        msgBox.addButton('outside a polygon', QMessageBox.ActionRole)
+        msgBox.addButton('cancel', QMessageBox.ActionRole)
         self.result = msgBox.exec()
             
         if self.result == 0:
             self.maskCubeContour()
+        elif self.result == 1:
+            self.maskCubeInsidePolygon()
+        elif self.result == 2:
+            self.maskCubeOutsidePolygon()
         else:
-            self.maskCubePolygon()
-
+            pass
+            
     def maskCubeContour(self):
 
         self.sb.showMessage("Masking data ", 2000)
@@ -3196,7 +3210,10 @@ class GUI (QMainWindow):
         """ Ask to mask points """
         flags = QMessageBox.Yes 
         flags |= QMessageBox.No
-        question = "Do you want to mask the data inside the curve ?"
+        if inside:
+            question = "Do you want to mask the data inside the polygon ?"
+        else:
+            question = "Do you want to mask the data outside the polygon ?"
         response = QMessageBox.question(self, "Question",
                                         question,
                                         flags)            
@@ -4076,8 +4093,8 @@ class GUI (QMainWindow):
         sc.updateYlim()
         
         
-#if __name__ == '__main__':
-def main():
+if __name__ == '__main__':
+#def main():
     #QApplication.setStyle('Fusion')
     app = QApplication(sys.argv)
     gui = GUI()
