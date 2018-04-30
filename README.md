@@ -25,7 +25,8 @@ Release date:  April 30, 2018
 
 To install the code in your computer, you need first to install the anaconda
 python (https://www.continuum.io/downloads).
-You will have to use the Python 3.x distribution.
+
+**You will have to use the Python 3.x distribution.**
 
 The packages *lmfit* and *reproject* have to be installed from the astropy channel:
 
