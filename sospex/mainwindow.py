@@ -755,6 +755,7 @@ class GUI (QMainWindow):
                 if istab == 1:
                     ufluxAll = np.nanmean(s.uflux[:,yy,xx], axis=1)
                     expAll = np.nanmean(s.exposure[:,yy,xx], axis=1)
+                    #print('modified flux ',np.size(xx))
                 else:
                     ufluxAll = np.nansum(s.uflux[:,yy,xx], axis=1)
                     expAll = np.nansum(s.exposure[:,yy,xx], axis=1)                    
@@ -1140,7 +1141,7 @@ class GUI (QMainWindow):
             k5 = True
         elif size == 9:
             self.kernel = 9
-            w0 *= 2.5
+            w0 *= 2.6
             theta = 0.
             k9 = True
         else:
@@ -1173,6 +1174,9 @@ class GUI (QMainWindow):
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
         ic.fig.canvas.draw_idle()
+
+        # Compute the new aperture flux
+        self.onModifiedAperture(itab)
             
     def guessContinuum(self):
         """ Create a first guess for fitting the continuum """
@@ -1211,7 +1215,7 @@ class GUI (QMainWindow):
                 k5 = True
             elif kernel == '9 pixels':
                 self.kernel = 9
-                w0 *= 2.5
+                w0 *= 2.6
                 theta = 0.
                 k9 = True
             else:
