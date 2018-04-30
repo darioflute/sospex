@@ -1166,11 +1166,12 @@ class SpectrumCanvas(MplCanvas):
                 self.axes.draw_artist(self.fluxLine[0])
                 ylim0,ylim1 = self.axes.get_ylim()
                 maxf = np.nanmax(f)
+                minf = np.nanmin(f)
                 if uf is not None:
                     umaxf = np.nanmax(uf)
                     if umaxf > maxf: maxf = umaxf
-                self.axes.set_ylim(ylim0, maxf*1.1)
-                self.ylimits = (ylim0,maxf*1.1)
+                self.axes.set_ylim(minf, maxf*1.1)
+                self.ylimits = (minf,maxf*1.1)
                 self.updateYlim(f=f)
             if moments is not None:
                 # Update position, size, and dispersion from moments
