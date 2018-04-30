@@ -1044,7 +1044,8 @@ class SpectrumCanvas(MplCanvas):
             wline = self.Lines[line][1]*(1.+s.redshift)
             if (wline > xlim0 and wline < xlim1):
                 wdiff = abs(s.wave - wline)
-                y = s.flux[(wdiff == wdiff.min())]
+                imin = np.argmin(wdiff)
+                y = s.flux[imin]
                 y1 = y
                 if (ylim1-(y+0.2*dy)) > ((y-0.2*dy)-ylim0):
                     y2 = y+0.2*dy
@@ -1084,33 +1085,36 @@ class SpectrumCanvas(MplCanvas):
         self.vaxes.set_xlim(vlim)
         self.fig.canvas.draw_idle()
 
-    def updateYlim(self):
+    def updateYlim(self,f=None):
         """ update ylimits """
 
         # Grab new limits and update flux and 
         ylims = self.ylimits
         self.axes.set_ylim(ylims)
+        s = self.spectrum            
         if self.instrument == 'FIFI-LS':
             self.ax4.set_ylim(ylims)
-            s = self.spectrum            
             self.ax3.set_ylim([0.5,np.nanmax(s.exposure)*1.54])
             self.ax2.set_ylim([0.01,1.1])
 
- 
         # Adjust line labels if they exist
         try:
            ylim0,ylim1 = ylims
            dy = np.abs(ylim0-ylim1)
            for a in self.annotations:
               xl,yl = a.xy
-              xt,yt = a.xytext
+              xt,yt = a.get_position()
               # Check unit (wavelength/frequency)
               if self.xunit == 'um':
-                 xline = wline
+                 xline = xl
               elif self.xunit == 'THz':
-                 xline = c/wline * 1.e-6
+                 xline = c/xl * 1.e-6
               wdiff = abs(s.wave - xline)
-              y = s.flux[(wdiff == wdiff.min())]
+              imin = np.argmin(wdiff)
+              if f is None:
+                 y = s.flux[imin]
+              else:
+                 y = f[imin]
               y1 = y
               if (ylim1-(y+0.2*dy)) > ((y-0.2*dy)-ylim0):
                  y2 = y+0.2*dy
@@ -1121,9 +1125,10 @@ class SpectrumCanvas(MplCanvas):
               if y2 > ylim1:
                  y2 = ylim1-dy/20.
               a.xy = (xl,y1)
-              a.xytext = (xl,y2)
+              a.set_position((xl,y2))
         except:
            pass
+
         
         self.fig.canvas.draw_idle()
 
@@ -1166,7 +1171,7 @@ class SpectrumCanvas(MplCanvas):
                     if umaxf > maxf: maxf = umaxf
                 self.axes.set_ylim(ylim0, maxf*1.1)
                 self.ylimits = (ylim0,maxf*1.1)
-                self.updateYlim()
+                self.updateYlim(f=f)
             if moments is not None:
                 # Update position, size, and dispersion from moments
                 x = moments[1]; y = np.nanmedian(cont)
