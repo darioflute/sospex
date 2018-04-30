@@ -761,7 +761,6 @@ class GUI (QMainWindow):
                     expAll = np.nansum(s.exposure[:,yy,xx], axis=1)                    
                 sc.spectrum.uflux = ufluxAll
                 sc.updateSpectrum(f=fluxAll,uf=ufluxAll,exp=expAll, cont=cont, moments = moments, noise=noise)
-        
             
     def onDraw(self,event):
         
@@ -3987,14 +3986,14 @@ class GUI (QMainWindow):
         
         fluxAll = np.nansum(self.specCube.flux[:,y0:y1,x0:x1], axis=(1,2))
         if s.instrument == 'GREAT':
-            sc.updateSpectrum(fluxAll)
+            sc.updateSpectrum(f=fluxAll)
         elif s.instrument == 'PACS':
             expAll = np.nansum(s.exposure[:,y0:y1,x0:x1], axis=(1,2))
-            sc.updateSpectrum(fluxAll,exp=expAll)            
+            sc.updateSpectrum(f=fluxAll,exp=expAll)            
         elif self.specCube.instrument == 'FIFI-LS':
             ufluxAll = np.nansum(s.uflux[:,y0:y1,x0:x1], axis=(1,2))
             expAll = np.nansum(s.exposure[:,y0:y1,x0:x1], axis=(1,2))
-            sc.updateSpectrum(fluxAll,uf=ufluxAll,exp=expAll)
+            sc.updateSpectrum(f=fluxAll,uf=ufluxAll,exp=expAll)
             
             
     def doZoomSpec(self,event):

@@ -920,7 +920,6 @@ class SpectrumCanvas(MplCanvas):
             self.ax4 = self.axes.twinx()
             self.ax2.set_ylim([0.01,1.1])
             self.ax4.tick_params(labelright='off',right='off')
-            #self.atranLine = self.ax2.step(self.xr, s.atran,color='red',label='Atm',zorder=12)
             self.atranLine = self.ax2.step(self.xr, s.atran,color='red',label='AtmTr',zorder=12)
             self.exposureLine = self.ax3.step(self.x, s.exposure, color='orange',label='Exp',zorder=13)
             ymax = np.nanmax(s.flux); ymin = np.nanmin(s.flux)
@@ -928,8 +927,7 @@ class SpectrumCanvas(MplCanvas):
             if yumax > ymax: ymax=yumax
             if yumin < ymin: ymin=yumin
             self.ax3.set_ylim([0.5,np.nanmax(s.exposure)*1.54])
-            #self.ufluxLine = self.ax4.step(self.xr,s.uflux,color='green',label='Uflux',zorder=14)
-            self.ufluxLine = self.ax4.step(self.xr,s.uflux,color='green',label='F$_{no AT}$',zorder=14)
+            self.ufluxLine = self.ax4.step(self.xr,s.uflux,color='green',label='F$_{noAT}$',zorder=14)
             self.ax4.set_ylim(self.axes.get_ylim())
             #self.ax1.set_title(spectrum.objname+" ["+spectrum.filegpid+"] @ "+spectrum.obsdate)
             self.ufluxLayer, = self.ufluxLine
@@ -1097,8 +1095,39 @@ class SpectrumCanvas(MplCanvas):
             s = self.spectrum            
             self.ax3.set_ylim([0.5,np.nanmax(s.exposure)*1.54])
             self.ax2.set_ylim([0.01,1.1])
+
+ 
+        # Adjust line labels if they exist
+        try:
+           ylim0,ylim1 = ylims
+           dy = np.abs(ylim0-ylim1)
+           for a in self.annotations:
+              xl,yl = a.xy
+              xt,yt = a.xytext
+              # Check unit (wavelength/frequency)
+              if self.xunit == 'um':
+                 xline = wline
+              elif self.xunit == 'THz':
+                 xline = c/wline * 1.e-6
+              wdiff = abs(s.wave - xline)
+              y = s.flux[(wdiff == wdiff.min())]
+              y1 = y
+              if (ylim1-(y+0.2*dy)) > ((y-0.2*dy)-ylim0):
+                 y2 = y+0.2*dy
+              else:
+                 y2 = y-0.2*dy
+              if y1 > ylim1:
+                 y1 = ylim1
+              if y2 > ylim1:
+                 y2 = ylim1-dy/20.
+              a.xy = (xl,y1)
+              a.xytext = (xl,y2)
+        except:
+           pass
+        
         self.fig.canvas.draw_idle()
 
+        
         
         
     def updateSpectrum(self,f=None,uf=None,exp=None,cont=None,moments=None,noise=None,atran=None):
@@ -1135,8 +1164,8 @@ class SpectrumCanvas(MplCanvas):
                 if uf is not None:
                     umaxf = np.nanmax(uf)
                     if umaxf > maxf: maxf = umaxf
-                #ylim1 = maxf
                 self.axes.set_ylim(ylim0, maxf*1.1)
+                self.ylimits = (ylim0,maxf*1.1)
                 self.updateYlim()
             if moments is not None:
                 # Update position, size, and dispersion from moments
@@ -1260,7 +1289,7 @@ class SpectrumCanvas(MplCanvas):
                     txt.set_text('AtmTr')
                 elif label == 'Uflux':
                     self.displayUFlux = True
-                    txt.set_text('F$_{no AT}$')
+                    txt.set_text('F$_{noAT}$')
                 elif label == 'Flux':
                     self.displayFlux = True
                     txt.set_text('F')
