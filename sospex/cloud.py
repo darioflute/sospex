@@ -148,7 +148,7 @@ class cloudImage(object):
             response = urllib.request.urlopen(file)
             output = response.read()
             fitsfile= BytesIO(output)  # Read the downloaded FITS data
-            hdulist = fits.open(fitsfile)
+            hdulist = fits.open(fitsfile,memmap=False)
             header = hdulist['PRIMARY'].header
             self.data = hdulist['PRIMARY'].data
             hdulist.close()
@@ -177,7 +177,7 @@ class cloudImage(object):
 
             try:           
                 print('opening ',image_file)
-                hdulist = fits.open(image_file)
+                hdulist = fits.open(image_file,memmap=False)
                 hdu = hdulist['PRIMARY']
                 hdulist.info()
                 header = hdulist['PRIMARY'].header
@@ -330,7 +330,7 @@ class cloudImage(object):
               "?center={0:.3f}".format(float(self.lon))+",{0:.3f}".format(float(self.lat))+"&size="+s1+','+s2+"pix&gzip=false"
         image_file = download_file(url,cache=True)
 
-        hdulist = fits.open(image_file)
+        hdulist = fits.open(image_file,memmap=False)
         #hdulist.info()
         header = hdulist['PRIMARY'].header
         self.data = hdulist['PRIMARY'].data
@@ -364,7 +364,7 @@ class cloudImage(object):
 
         # If a FITS file was downloaded pass image and header, otherwise failes
         try:
-            hdulist = fits.open(fitsfile)
+            hdulist = fits.open(fitsfile,memmap=False)
             header = hdulist['PRIMARY'].header
             self.data = hdulist['PRIMARY'].data
             hdulist.close()
@@ -417,7 +417,7 @@ class cloudImage(object):
             response = urllib.request.urlopen(full_url)
             output = response.read()
             fitsfile= BytesIO(output)  # Read the downloaded FITS data
-            hdulist = fits.open(fitsfile)
+            hdulist = fits.open(fitsfile,memmap=False)
             hdulist.info()
             header = hdulist['PRIMARY'].header
             self.data = hdulist['PRIMARY'].data[0,0,:,:]
@@ -477,7 +477,7 @@ class cloudImage(object):
             response = urllib.request.urlopen(file)
             output = response.read()
             fitsfile= BytesIO(output)  # Read the downloaded FITS data
-            hdulist = fits.open(fitsfile)
+            hdulist = fits.open(fitsfile,memmap=False)
             header = hdulist['PRIMARY'].header
             self.data = hdulist['PRIMARY'].data
             hdulist.close()
@@ -556,7 +556,7 @@ class cloudImage(object):
             response = urllib.request.urlopen(file)
             content= response.read()
             fitsfile = BytesIO(content)
-            hdulist = fits.open(fitsfile)
+            hdulist = fits.open(fitsfile,memmap=False)
             header = hdulist['PRIMARY'].header
             self.data = hdulist['PRIMARY'].data
             hdulist.close()
@@ -611,7 +611,7 @@ class cloudImage(object):
             response = urllib.request.urlopen(file)
             content= response.read()        
             fitsfile = BytesIO(bz2.decompress(content))
-            hdulist=fits.open(fitsfile)
+            hdulist=fits.open(fitsfile,memmap=False)
             header = hdulist['PRIMARY'].header
             self.data = hdulist['PRIMARY'].data
             hdulist.close()

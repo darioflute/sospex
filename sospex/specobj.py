@@ -9,7 +9,7 @@ class specCube(object):
 
         c = 299792458.0  # speed of light in m/s 
 
-        hdl = fits.open(infile)
+        hdl = fits.open(infile,memmap=False)
         header = hdl['PRIMARY'].header
         self.header = header
         self.filename = infile
@@ -139,7 +139,7 @@ class specCube(object):
 class ExtSpectrum(object):
     """ class for external spectrum """
     def __init__(self, infile):
-        hdl = fits.open(infile)
+        hdl = fits.open(infile, memmap=False)
         header = hdl[0].header
         # Assuming flux and wavelength are conserved in the respective extensions
         self.flux = hdl['FLUX'].data # in Jansky
