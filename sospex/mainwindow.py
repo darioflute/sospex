@@ -165,6 +165,7 @@ class GUI (QMainWindow):
         cube.addAction(QAction('Cut', self, shortcut='',triggered=self.cutCube))
         cube.addAction(QAction('Cropped', self, shortcut='',triggered=self.cropCube))
         cube.addAction(QAction('Continuum subtracted', self, shortcut='',triggered=self.savelCube))
+        cube.addAction(QAction('Masked', self, shortcut='',triggered=self.saveMaskedCube))
         file.addAction(QAction('Save image', self, shortcut='',triggered=self.saveFits))
         file.addAction(QAction('Save spectrum', self, shortcut='',triggered=self.saveSpectrum))
         aperture = file.addMenu("Aperture I/O")
@@ -242,6 +243,7 @@ class GUI (QMainWindow):
     def showHeader(self):
         """ Show header of the spectral cube """
 
+        # the function repr can be used to format the header printout
         try:
             header = self.specCube.header
             hv = header.values()
@@ -321,7 +323,8 @@ class GUI (QMainWindow):
         t.layout = QVBoxLayout(t)
         t.setSizePolicy(QSizePolicy.Ignored,QSizePolicy.Ignored) # Avoid expansion
         self.stabs.addTab(t, b)
-        sc = SpectrumCanvas(t, width=11, height=10.5, dpi=100)
+        #sc = SpectrumCanvas(t, width=11, height=10.5, dpi=100)
+        sc = SpectrumCanvas(t, width=5.5, height=5.25, dpi=100)
         #ih.setVisible(False)
         # Toolbar
         toolbar = QToolBar()
@@ -2338,7 +2341,7 @@ class GUI (QMainWindow):
             movie.start()
             label.resize(QSize(200,200))
             self.msgbox.setIconPixmap(pixmap)
-            self.msgbox.setText("Quering "+band+" ... ")
+            self.msgbox.setText("Querying "+band+" ... ")
             #retval = 
             self.msgbox.exec_()
         else:
@@ -2915,8 +2918,12 @@ class GUI (QMainWindow):
             message = "No continuum has been fit to the cube"
             self.sb.showMessage(message, 2000)
             print(message)
-            
 
+    def saveMaskedCube(self):
+        """ Save a cube after masking """
+        message = "Saving current version of the cube"
+        self.saveCube()
+        print(message)
         
     def saveCube(self, cont=False):
         """ Save a cut/cropped cube """ # TODO
@@ -4037,7 +4044,7 @@ class GUI (QMainWindow):
 
         if len(self.ihi) > 1:
         
-            self.CMlist = ['gist_heat','afmhot','ds9heat','gist_earth','gist_gray','inferno','ocean','plasma','seismic',
+            self.CMlist = ['gist_heat','afmhot','ds9heat','gist_earth','gist_gray','inferno','ocean','plasma','seismic','jet',
                            'ds9a','ds9b','ds9cool','ds9i8','ds9aips0','ds9rainbow','ds9he']
             self.STlist = ['linear','sqrt','square','log','power','sinh','asinh']
             self.CClist = ['cyan','lime','magenta','red','blue','purple','black','white','yellow']

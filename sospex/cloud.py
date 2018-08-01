@@ -195,13 +195,15 @@ class cloudImage(object):
                     self.source = instrument
                 except:
                     self.source = 'unknown'
-                
+
+                print('Instrument ',self.source)
                 #print(header)
                 self.wcs = WCS(header).celestial
+                print(self.wcs)
                 # Check if coordinates are inside the image
                 #print('data shape is',np.shape(self.data))
                 x,y = self.wcs.all_world2pix(self.lon,self.lat,1)
-                #print('x y ',x,y)
+                print('x y ',x,y)
                 ny,nx = np.shape(self.data)
                 #print('nx,ny ',nx,ny)
                 if x >= 0 and x< nx and y >= 0 and y  <= ny:

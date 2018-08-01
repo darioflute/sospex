@@ -194,12 +194,7 @@ def ds9cmap():
 class NavigationToolbar(NavigationToolbar2QT):
     def __init__(self,canvas,parent):
         # Select only a few buttons
-        #self.toolitems = [t for t in NavigationToolbar2QT.toolitems if
-        #                  t[0] in ('Home', 'Pan', 'Zoom', 'Save')]
         self.iconDir = os.path.join(os.path.dirname(os.path.abspath(__file__)),"icons")
-
-        #icon = QIcon(self.iconDir+'exit.png')
-        #print('path of icons is ', icon)
         self.toolitems = [
             ('Home','Go back to original limits','home','home'),
             ('Pan','Pan figure','move','pan'),
