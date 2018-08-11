@@ -438,8 +438,7 @@ class ImageCanvas(MplCanvas):
     def showImage(self, image):
         
         self.oimage = image.copy()
-        self.axes.cla()
-
+        #self.axes.cla()  # Why clearing axes ???
 
         # Intensity limits
         if self.cmin is None:
