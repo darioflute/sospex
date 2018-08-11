@@ -154,9 +154,11 @@ class ExtSpectrum(object):
 
 class Spectrum(object):
     """ class to define a spectrum """
-    def __init__(self, wave, flux, uflux=None, exposure=None, atran=None, instrument=None, baryshift=None, redshift=None, l0=None, area=None):
+    def __init__(self, wave, flux, eflux=None, uflux=None, exposure=None, atran=None, instrument=None, baryshift=None, redshift=None, l0=None, area=None):
         self.wave = wave
         self.flux = flux
+        if eflux is not None:
+            self.eflux = eflux
         if exposure is not None:
             self.exposure = exposure
         if atran is not None:

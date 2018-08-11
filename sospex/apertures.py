@@ -1,5 +1,6 @@
 import numpy as np
 from PyQt5.QtCore import pyqtSignal,QObject
+from matplotlib.artist import Artist
 
 class photoAperture(QObject):
     """ 
@@ -7,7 +8,6 @@ class photoAperture(QObject):
     
     Data are conserved in RA, Dec units to be passed to
     images with different astrometry
-    
     """
 
     def __init__(self, n, type, data):
@@ -43,7 +43,7 @@ class PixelInteractor(QObject):
         super().__init__()
         from matplotlib.patches import Rectangle
         from matplotlib.lines import Line2D
-        from matplotlib.artist import Artist
+        # from matplotlib.artist import Artist
         # To avoid crashing with maximum recursion depth exceeded
         import sys
         sys.setrecursionlimit(10000) # 10000 is 10x the default value
@@ -74,9 +74,9 @@ class PixelInteractor(QObject):
 
     def compute_markers(self):
 
-        theta0 = self.rect.angle / 180.*np.pi
+        # theta0 = self.rect.angle / 180.*np.pi
         w0 = self.rect.get_width()
-        h0 = self.rect.get_height()
+        # h0 = self.rect.get_height()
         x0,y0 = self.rect.get_xy()
         angle0 = self.rect.angle
 
@@ -251,7 +251,7 @@ class EllipseInteractor(QObject):
         super().__init__()
         from matplotlib.patches import Ellipse
         from matplotlib.lines import Line2D
-        from matplotlib.artist import Artist
+        # from matplotlib.artist import Artist
         # To avoid crashing with maximum recursion depth exceeded
         import sys
         sys.setrecursionlimit(10000) # 10000 is 10x the default value
@@ -513,7 +513,7 @@ class RectangleInteractor(QObject):
         super().__init__()
         from matplotlib.patches import Rectangle
         from matplotlib.lines import Line2D
-        from matplotlib.artist import Artist
+        # from matplotlib.artist import Artist
         # To avoid crashing with maximum recursion depth exceeded
         import sys
         sys.setrecursionlimit(10000) # 10000 is 10x the default value
@@ -786,9 +786,7 @@ class PolygonInteractor(QObject):
         super().__init__()
         from matplotlib.patches import Polygon
         from matplotlib.lines import Line2D
-        from matplotlib.artist import Artist
-
-
+        # from matplotlib.artist import Artist
         self.ax = ax
         self.type = 'Polygon'
         self.poly = Polygon(list(verts), animated=True, fill=False, closed=True, color='lime')
@@ -803,7 +801,6 @@ class PolygonInteractor(QObject):
         self._ind = None  # the active vert
         self.connect()
         self.aperture = self.poly
-
 
     def connect(self):
         self.cid_draw = self.canvas.mpl_connect('draw_event', self.draw_callback)

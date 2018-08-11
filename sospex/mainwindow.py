@@ -10,27 +10,19 @@ from PyQt5.QtCore import Qt, QSize, QTimer, QThread, QObject, pyqtSignal
 
 import matplotlib
 matplotlib.use('Qt5Agg')
-from matplotlib.widgets import SpanSelector, PolygonSelector, RectangleSelector, EllipseSelector#, LassoSelector
+from matplotlib.widgets import SpanSelector, PolygonSelector, RectangleSelector, EllipseSelector
 from matplotlib.patches import Polygon
 
 import warnings
 # To avoid excessive warning messages
 warnings.filterwarnings('ignore')
 
-# Local imports
-#from sospex.moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, ContParams
-#from sospex.graphics import (NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas,
-#                             cmDialog, ds9cmap, ScrollMessageBox)
-#from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
-#from sospex.specobj import specCube, Spectrum, ExtSpectrum
-#from sospex.cloud import cloudImage
-
-from moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, ContParams
-from graphics import  (NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas,
+from sospex.moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, ContParams
+from sospex.graphics import  (NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas,
                        cmDialog, ds9cmap, ScrollMessageBox)
-from apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
-from specobj import specCube,Spectrum, ExtSpectrum
-from cloud import cloudImage
+from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
+from sospex.specobj import specCube,Spectrum, ExtSpectrum
+from sospex.cloud import cloudImage
 
 class UpdateTabs(QObject):
     newImage = pyqtSignal([cloudImage])
@@ -160,6 +152,7 @@ class GUI (QMainWindow):
         file = bar.addMenu("File")
         file.addAction(QAction("Quit",self,shortcut='Ctrl+q',triggered=self.fileQuit))
         file.addAction(QAction("Open cube",self,shortcut='Ctrl+n',triggered=self.newFile))
+        file.addAction(QAction("Reload cube",self,shortcut='Ctrl+n',triggered=self.reloadFile))
         file.addAction(QAction("Import image",self,shortcut='Ctrl+d',triggered=self.selectDownloadImage))
         cube = file.addMenu("Save cube")
         cube.addAction(QAction('Cut', self, shortcut='',triggered=self.cutCube))
@@ -389,6 +382,8 @@ class GUI (QMainWindow):
         else:
             self.itabs.addTab(t, b)
         ic = ImageCanvas(t, width=11, height=10.5, dpi=100)
+        # No contours available
+        ic.contours = None
         ih = ImageHistoCanvas(t, width=11, height=0.5, dpi=100)
         ih.setVisible(False)
         ic.toolbar = NavigationToolbar(ic, self)
@@ -757,12 +752,16 @@ class GUI (QMainWindow):
             elif s.instrument == 'FIFI-LS':
                 if istab == 1:
                     ufluxAll = np.nanmean(s.uflux[:,yy,xx], axis=1)
+                    efluxAll = np.nanmean(s.eflux[:,yy,xx], axis=1)
                     expAll = np.nanmean(s.exposure[:,yy,xx], axis=1)
                     #print('modified flux ',np.size(xx))
                 else:
                     ufluxAll = np.nansum(s.uflux[:,yy,xx], axis=1)
+                    efluxAll = np.sqrt(np.nansum(s.eflux[:,yy,xx]**2, axis=1))
                     expAll = np.nansum(s.exposure[:,yy,xx], axis=1)                    
                 sc.spectrum.uflux = ufluxAll
+                sc.spectrum.eflux = efluxAll
+                sc.spectrum.exposure = expAll
                 sc.updateSpectrum(f=fluxAll,uf=ufluxAll,exp=expAll, cont=cont, moments = moments, noise=noise)
             
     def onDraw(self,event):
@@ -1047,6 +1046,7 @@ class GUI (QMainWindow):
         self.issueAction = self.createAction(self.path0+'/icons/issue.png','Report an issue','Ctrl+q',self.onIssue)
         self.quitAction = self.createAction(self.path0+'/icons/exit.png','Quit program','Ctrl+q',self.fileQuit)
         self.startAction = self.createAction(self.path0+'/icons/open.png','Load new observation','Ctrl+n',self.newFile)
+        self.reloadAction = self.createAction(self.path0+'/icons/reload.png','Reload observation','Ctrl+R',self.reloadFile)
         self.levelsAction = self.createAction(self.path0+'/icons/levels.png','Adjust image levels','Ctrl+L',self.changeVisibility)
         self.cmapAction = self.createAction(self.path0+'/icons/rainbow.png','Choose color map','Ctrl+m',self.changeColorMap)
         self.blink = 'off'
@@ -1077,6 +1077,7 @@ class GUI (QMainWindow):
         self.spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         self.tb.addAction(self.startAction)
+        self.tb.addAction(self.reloadAction)
         self.tb.addAction(self.helpAction)
         self.tb.addAction(self.issueAction)
         self.tb.addWidget(self.apertureAction)        
@@ -1122,7 +1123,7 @@ class GUI (QMainWindow):
         istab = self.spectra.index('Pix')
         if self.stabs.currentIndex() != istab:
             self.stabs.setCurrentIndex(istab)
-        sc = self.sci[istab]
+        # sc = self.sci[istab]
 
         # Get the reference scale
         ic0 = self.ici[0]
@@ -2016,9 +2017,10 @@ class GUI (QMainWindow):
         elif s.instrument == 'FIFI-LS':
             ufluxAll = np.nansum(s.uflux[:,yy,xx], axis=1)
             expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
-            spec = Spectrum(s.wave, fluxAll, uflux= ufluxAll,
+            efluxAll = np.sqrt(np.nansum(s.eflux[:,yy,xx]**2, axis=1))
+            spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, uflux=ufluxAll,
                             exposure=expAll, atran = s.atran, instrument=s.instrument,
-                            redshift=s.redshift, baryshift = s.baryshift, l0=s.l0)
+                            redshift=s.redshift, baryshift=s.baryshift, l0=s.l0)
         elif s.instrument == 'PACS':
             expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
             spec = Spectrum(s.wave, fluxAll, exposure=expAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0 )
@@ -2819,12 +2821,14 @@ class GUI (QMainWindow):
                 hdu2 = self.addExtension(sc.spectrum.flux,'FLUX','Jy',None)
                 hdlist = [hdu,hdu1,hdu2]
                 if self.specCube.instrument == 'FIFI-LS':
-                    hdu3 = self.addExtension(sc.spectrum.uflux,'UNCORR_FLUX','Jy',None)
-                    hdu4 = self.addExtension(sc.spectrum.exposure,'EXPOSURE','s',None)
-                    hdu5 = self.addExtension(self.specCube.atran,'ATM_TRANS','Norm',None)
+                    hdu3 = self.addExtension(sc.spectrum.eflux,'FLUX_ERROR','Jy',None)
+                    hdu4 = self.addExtension(sc.spectrum.uflux,'UNCORR_FLUX','Jy',None)
+                    hdu5 = self.addExtension(sc.spectrum.exposure,'EXPOSURE','s',None)
+                    hdu6 = self.addExtension(self.specCube.atran,'ATM_TRANS','Norm',None)
                     hdlist.append(hdu3)
                     hdlist.append(hdu4)
                     hdlist.append(hdu5)
+                    hdlist.append(hdu6)
                 # Save file
                 hdul = fits.HDUList(hdlist)
                 #hdul.info()    
@@ -2887,14 +2891,15 @@ class GUI (QMainWindow):
                     delimiter = ','
                 if self.specCube.instrument == 'FIFI-LS':
                     uf = sc.spectrum.uflux
+                    ef = sc.spectrum.eflux
                     e  = sc.spectrum.exposure
                     a  = self.specCube.atran
                     # Normal ASCII file
-                    fmt = delimiter.join(["%10.6e"]*5)
+                    fmt = delimiter.join(["%10.6e"]*6)
                     with open(outfile, 'wb') as file:
                         file.write(header.encode())
-                        file.write(b'\n"wavelength","flux","uflux","exposure","atran"\n')
-                        np.savetxt(file, np.column_stack((w,f,uf,e,a)), fmt=fmt, delimiter=delimiter)
+                        file.write(b'\n"wavelength","flux","eflux","uflux","exposure","atran"\n')
+                        np.savetxt(file, np.column_stack((w,f,ef,uf,e,a)), fmt=fmt, delimiter=delimiter)
                 else:
                     fmt = delimiter.join(["%10.6e"]*2)
                     with open(outfile, 'wb') as file:
@@ -2926,7 +2931,7 @@ class GUI (QMainWindow):
         print(message)
         
     def saveCube(self, cont=False):
-        """ Save a cut/cropped cube """ # TODO
+        """Save a cut/cropped cube."""
         from astropy.io import fits
         
 
@@ -3113,14 +3118,13 @@ class GUI (QMainWindow):
 
         if (fd.exec()):
             filenames= fd.selectedFiles()
-            image_file = filenames[0]
             print("Loading aperture from file: ", filenames[0])
             with open(filenames[0],'r') as f:
                 #data = json.load(f, object_pairs_hook=OrderedDict, encoding='utf-8')
                 data = json.load(f)#, object_pairs_hook=OrderedDict)
 
-            itab = self.itabs.currentIndex()
-            ic = self.ici[itab]
+            # itab = self.itabs.currentIndex()
+            # ic = self.ici[itab]
                             
             # Decoding info and opening new tab
             type = data['type']
@@ -3217,15 +3221,18 @@ class GUI (QMainWindow):
                 yy = yy[mask2d]
                 # Mask images and cubes
                 self.specCube.flux[:,yy,xx] = np.nan
-                """ update flux images (pix and all) """
-                ic0 = self.ici[0]
-                #ih0 = self.ihi[0]
-                image = ic0.oimage
-                image[yy,xx] = np.nan
-                cmin = ic0.cmin; cmax=ic0.cmax
-                ic0.showImage(image)
-                ic0.updateScale(cmin,cmax)
-                self.addContours(ic0) 
+                icis = [self.ici[0]]
+                if self.specCube.instrument == 'FIFI-LS':
+                    print('Masking uflux')
+                    self.specCube.uflux[:,yy,xx] = np.nan
+                    icis.append(self.ici[1])
+                for ic0 in icis:
+                    image = ic0.oimage
+                    image[yy,xx] = np.nan
+                    cmin = ic0.cmin; cmax=ic0.cmax
+                    ic0.showImage(image)
+                    ic0.updateScale(cmin,cmax)
+                    self.addContours(ic0) 
                 # mask C0, Mi, v, sv
                 sbands = [self.C0, self.M0, self.M1, self.M2, self.M3, self.M4, self.v, self.sv]
                 bands = ['C0','M0','M1','M2','M3','M4','v','sv']
@@ -3332,17 +3339,11 @@ class GUI (QMainWindow):
             
             self.sb.showMessage("Masking data ", 2000)
             self.specCube.flux[:,yy,xx] = np.nan
-            """ update flux image """
-            ic0 = self.ici[0]
-            image = ic0.oimage
-            image[yy,xx] = np.nan
-            cmin = ic0.cmin; cmax=ic0.cmax
-            ic0.showImage(image)
-            self.addContours(ic0)
-            ic0.updateScale(cmin,cmax)
+            icis = [self.ici[0]]
             if self.specCube.instrument == 'FIFI-LS':
                 self.specCube.uflux[:,yy,xx] = np.nan
-                ic0 = self.ici[1]
+                icis.append(self.ici[1])
+            for ic0 in icis:
                 image = ic0.oimage
                 image[yy,xx] = np.nan
                 cmin = ic0.cmin; cmax=ic0.cmax
@@ -3602,10 +3603,19 @@ class GUI (QMainWindow):
         except:
             self.sb.showMessage("First choose a cube ", 1000)
         
+    def reloadFile(self):
+        """Reload the file."""
+        
+        try:
+            filename = self.specCube.filename
+            self.loadFile(filename)
+            self.initializeImages()
+        except:
+            self.sb.showMessage("ERROR: You have to load a file first", 2000)
+            return
         
     def newFile(self):
-        """ Display a new image """
-
+        """Display a new image."""
 
         fd = QFileDialog()
         fd.setLabelText(QFileDialog.Accept, "Import")
@@ -3619,215 +3629,229 @@ class GUI (QMainWindow):
             print('Reading file ',fileName[0])
             # Save the file path for future reference
             self.pathFile, file = os.path.split(fileName[0])
-            # Read the spectral cube
-            # A more robust step to skip bad files should be added
+            self.loadFile(fileName[0])
             try:
-                self.specCube = specCube(fileName[0])
+                self.initializeImages()
             except:
-                self.sb.showMessage("ERROR: The selected file is not a good spectral cube ", 2000)
-                return
-            # Delete pre-existing spectral tabs
-            try:
-                for stab in reversed(range(len(self.sci))):
-                    self.removeSpecTab(stab)
-                #print('all spectral tabs removed')
-            except:
+                print('No spectral cube is defined')
                 pass
-            # Delete pre-existing image tabs
-            try:
-                # Remove tabs, image and histo canvases and disconnect them
-                # The removal is done in reversed order to get all the tabs
-                for itab in reversed(range(len(self.ici))):
-                    self.removeTab(itab)
-                #print('all image tabs removed')
-            except:
-                pass
-
-            # Update window title (to include object name)
-            self.setWindowTitle(self.title + " [ "+self.specCube.objname+" - "+self.specCube.instrument+" ]")
-
-
-            # Initialize
-            self.tabi = []
-            self.ici  = []
-            self.ihi  = []
-            self.ihcid = []
-            self.icid1 = []
-            self.icid2 = []
-            self.icid3 = []
-            self.icid4 = []
-            self.stabi = []
-            self.sci  = []
-            self.scid1 = []
-            self.scid2 = []
-            self.scid3 = []
-            self.scid4 = []
-
-            # Open new tabs and display it
-            if self.specCube.instrument == 'FIFI-LS':
-                self.bands = ['Flux','uFlux','Exp']
-                self.spectra = ['All','Pix']
-            elif self.specCube.instrument == 'GREAT':
-                self.bands = ['Flux','M0']
-                self.spectra = ['All','Pix']
-            elif self.specCube.instrument == 'PACS':
-                self.bands = ['Flux','Exp']
-                self.spectra = ['All','Pix']
-            else:
-                self.spectra = []
-                self.bands = []
-            #print ("bands are ", self.bands)
-            self.photoApertures = []
-            for b in self.bands:
-                t,ic,ih,h,c1,c2,c3,c4 = self.addImage(b)
-                self.tabi.append(t)
-                self.ici.append(ic)
-                self.ihi.append(ih)
-                self.ihcid.append(h)
-                self.icid1.append(c1)
-                self.icid2.append(c2)
-                self.icid3.append(c3)
-                self.icid4.append(c4)
-            # Make tab 'Flux' unclosable
-            self.itabs.tabBar().setTabButton(0,QTabBar.LeftSide,None)
-            self.itabs.tabBar().setTabButton(0,QTabBar.RightSide,None)
-            for s in self.spectra:
-                t,sc,scid1,scid2,scid3,scid4 = self.addSpectrum(s)
-                self.stabi.append(t)
-                self.sci.append(sc)
-                self.scid1.append(scid1)
-                self.scid2.append(scid2)
-                self.scid3.append(scid3)
-                self.scid4.append(scid4)
-            # Make tab 'All' unclosable
-            self.stabs.tabBar().setTabButton(0,QTabBar.LeftSide,None)
-            self.stabs.tabBar().setTabButton(0,QTabBar.RightSide,None)
-            # Make tab 'Pix' unclosable
-            self.stabs.tabBar().setTabButton(1,QTabBar.LeftSide,None)
-            self.stabs.tabBar().setTabButton(1,QTabBar.RightSide,None)
-                
-            # Compute initial images
-            for ima in self.bands:
-                ic = self.ici[self.bands.index(ima)]
-                if ima == 'Flux':
-                    image = np.nanmedian(self.specCube.flux, axis=0)
-                elif ima == 'uFlux':
-                    image = np.nanmedian(self.specCube.uflux, axis=0)
-                elif ima == 'Exp':
-                    image = np.nansum(self.specCube.exposure, axis=0)
-                elif ima == 'M0':
-                    self.computeZeroMoment()
-                    image = self.M0
-                else:
-                    pass
-                #print('size of image is ',np.shape(image))
-                ic.compute_initial_figure(image=image,wcs=self.specCube.wcs,title=ima,cMap=self.colorMap,
-                                          cMapDir=self.colorMapDirection,stretch=self.stretchMap)
-                if ima == 'Exp':
-                    ic.image.format_cursor_data = lambda z: "{:10.0f} s".format(float(z))
-                else:
-                    ic.image.format_cursor_data = lambda z: "{:10.4f} Jy".format(float(z))
-                # Callback to propagate axes limit changes among images
-                ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
-                ih = self.ihi[self.bands.index(ima)]
-                clim = ic.image.get_clim()
-                ih.compute_initial_figure(image=image,xmin=clim[0],xmax=clim[1])
-                # temporary ...
-                x = ic.axes.get_xlim()
-                y = ic.axes.get_ylim()
-                self.zoomlimits = [x,y]
-            # Compute initial total spectrum
-            spectrum = self.spectra[0]
-            sc = self.sci[self.spectra.index(spectrum)]
-            fluxAll = np.nansum(self.specCube.flux, axis=(1,2))
-            s = self.specCube
-            if s.instrument == 'GREAT':
-                spec = Spectrum(s.wave, fluxAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0 )
-            elif s.instrument == 'PACS':
-                expAll = np.nansum(s.exposure, axis=(1,2))
-                spec = Spectrum(s.wave, fluxAll, exposure=expAll,instrument=s.instrument, redshift=s.redshift, l0=s.l0 )
-            elif s.instrument == 'FIFI-LS':
-                ufluxAll = np.nansum(s.uflux, axis=(1,2))
-                expAll = np.nansum(s.exposure, axis=(1,2))
-                spec = Spectrum(s.wave, fluxAll, uflux= ufluxAll,
-                                exposure=expAll, atran = s.atran, instrument=s.instrument,
-                                redshift=s.redshift, baryshift = s.baryshift, l0=s.l0)
-            #print("Compute initial spectrum")
-            sc.compute_initial_spectrum(spectrum=spec)
-            self.specZoomlimits = [sc.xlimits,sc.ylimits]
-            sc.cid = sc.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomSpec)
-            # Start the span selector to show only part of the cube
-            sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
-                                   rectprops=dict(alpha=0.5, facecolor='LightSalmon'))
-            sc.span.active = False
-            # Compute initial pixel spectrum
-            spectrum = self.spectra[1]
-            sc = self.sci[self.spectra.index(spectrum)]
-            nz,ny,nx = np.shape(self.specCube.flux)
-            # Add pixel aperture
-
-            ic0 = self.ici[0]
-            x0 = nx // 2
-            y0 = ny // 2
-            r0,d0 = ic0.wcs.all_pix2world(x0,y0,1)
-            ws = ic0.pixscale; hs = ic0.pixscale        
-            n = len(self.photoApertures)
-            # Define pixel aperture
-            data = [r0,d0,ws]
-            self.photoApertures.append(photoAperture(n,'pixel',data))
-            for ic in self.ici:
-                x0,y0 = ic.wcs.all_world2pix(r0,d0,1)
-                w = ws/ic.pixscale; h = hs/ic.pixscale
-                pixel = PixelInteractor(ic.axes, (x0,y0), w)
-                ic.photApertures.append(pixel)
-                cidap=pixel.mySignal.connect(self.onRemoveAperture)
-                ic.photApertureSignal.append(cidap)
-                #cidapm=
-                pixel.modSignal.connect(self.onModifiedAperture)
-
-            print('Initialize spectrum')
-            s = self.specCube
-            x0 = nx // 2
-            y0 = ny // 2
-            fluxAll = s.flux[:,y0,x0]
-            if s.instrument == 'GREAT':
-                spec = Spectrum(s.wave, fluxAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0 )
-            elif s.instrument == 'PACS':
-                expAll = s.exposure[:,y0,x0]
-                spec = Spectrum(s.wave, fluxAll, exposure=expAll,instrument=s.instrument, redshift=s.redshift, l0=s.l0 )
-            elif s.instrument == 'FIFI-LS':
-                ufluxAll = s.uflux[:,y0,x0]
-                expAll = s.exposure[:,y0,x0]
-                spec = Spectrum(s.wave, fluxAll, uflux= ufluxAll,
-                                exposure=expAll, atran = s.atran, instrument=s.instrument,
-                                redshift=s.redshift, baryshift = s.baryshift, l0=s.l0)
-            sc.compute_initial_spectrum(spectrum=spec)
-            self.specZoomlimits = [sc.xlimits,sc.ylimits]
-            sc.cid = sc.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomSpec)
-            sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
-                                   rectprops=dict(alpha=0.5, facecolor='LightSalmon'))
-            sc.span.active = False
-
             
-            # Re-initialize variables
-            self.contours = 'off'
-            self.blink = 'off'
-            self.slice = 'off'
-            self.cutcube = 'off'
-            self.continuum = None
-            self.M0 = None
-            self.M1 = None
-            self.M2 = None
-            self.M3 = None
-            self.M4 = None
-            self.C0 = None
-            self.v  = None
-            self.sv = None
-            # Selectors
-            self.PS = None
-            self.ES = None
-            self.RS = None
-            self.LS = None
+    def loadFile(self, infile):
+        # Read the spectral cube
+        try:
+            self.specCube = specCube(infile)
+        except:
+            self.sb.showMessage("ERROR: The selected file is not a good spectral cube ", 2000)
+            return
+        # Delete pre-existing spectral tabs
+        try:
+            for stab in reversed(range(len(self.sci))):
+                self.removeSpecTab(stab)
+            #print('all spectral tabs removed')
+        except:
+            pass
+        # Delete pre-existing image tabs
+        try:
+            # Remove tabs, image and histo canvases and disconnect them
+            # The removal is done in reversed order to get all the tabs
+            for itab in reversed(range(len(self.ici))):
+                self.removeTab(itab)
+            #print('all image tabs removed')
+        except:
+            pass
+
+        # Update window title (to include object name)
+        self.setWindowTitle(self.title + " [ "+self.specCube.objname+" - "+self.specCube.instrument+" ]")
+
+
+        # Initialize
+        self.tabi = []
+        self.ici  = []
+        self.ihi  = []
+        self.ihcid = []
+        self.icid1 = []
+        self.icid2 = []
+        self.icid3 = []
+        self.icid4 = []
+        self.stabi = []
+        self.sci  = []
+        self.scid1 = []
+        self.scid2 = []
+        self.scid3 = []
+        self.scid4 = []
+
+        # Open new tabs and display it
+        if self.specCube.instrument == 'FIFI-LS':
+            self.bands = ['Flux','uFlux','Exp']
+            self.spectra = ['All','Pix']
+        elif self.specCube.instrument == 'GREAT':
+            self.bands = ['Flux','M0']
+            self.spectra = ['All','Pix']
+        elif self.specCube.instrument == 'PACS':
+            self.bands = ['Flux','Exp']
+            self.spectra = ['All','Pix']
+        else:
+            self.spectra = []
+            self.bands = []
+        #print ("bands are ", self.bands)
+        self.photoApertures = []
+        for b in self.bands:
+            t,ic,ih,h,c1,c2,c3,c4 = self.addImage(b)
+            self.tabi.append(t)
+            self.ici.append(ic)
+            self.ihi.append(ih)
+            self.ihcid.append(h)
+            self.icid1.append(c1)
+            self.icid2.append(c2)
+            self.icid3.append(c3)
+            self.icid4.append(c4)
+        # Make tab 'Flux' unclosable
+        self.itabs.tabBar().setTabButton(0,QTabBar.LeftSide,None)
+        self.itabs.tabBar().setTabButton(0,QTabBar.RightSide,None)
+        for s in self.spectra:
+            t,sc,scid1,scid2,scid3,scid4 = self.addSpectrum(s)
+            self.stabi.append(t)
+            self.sci.append(sc)
+            self.scid1.append(scid1)
+            self.scid2.append(scid2)
+            self.scid3.append(scid3)
+            self.scid4.append(scid4)
+        # Make tab 'All' unclosable
+        self.stabs.tabBar().setTabButton(0,QTabBar.LeftSide,None)
+        self.stabs.tabBar().setTabButton(0,QTabBar.RightSide,None)
+        # Make tab 'Pix' unclosable
+        self.stabs.tabBar().setTabButton(1,QTabBar.LeftSide,None)
+        self.stabs.tabBar().setTabButton(1,QTabBar.RightSide,None)
+            
+    def initializeImages(self):
+
+        s = self.specCube
+        # Compute initial images
+        for ima in self.bands:
+            ic = self.ici[self.bands.index(ima)]
+            if ima == 'Flux':
+                image = np.nanmedian(s.flux, axis=0)
+            elif ima == 'uFlux':
+                image = np.nanmedian(s.uflux, axis=0)
+            elif ima == 'Exp':
+                image = np.nansum(s.exposure, axis=0)
+            elif ima == 'M0':
+                self.computeZeroMoment()
+                image = self.M0
+            else:
+                pass
+            ic.compute_initial_figure(image=image,wcs=s.wcs,title=ima,cMap=self.colorMap,
+                                      cMapDir=self.colorMapDirection,stretch=self.stretchMap)
+            if ima == 'Exp':
+                ic.image.format_cursor_data = lambda z: "{:10.0f} s".format(float(z))
+            else:
+                ic.image.format_cursor_data = lambda z: "{:10.4f} Jy".format(float(z))
+            # Callback to propagate axes limit changes among images
+            ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed',
+                                               self.doZoomAll)
+            ih = self.ihi[self.bands.index(ima)]
+            clim = ic.image.get_clim()
+            ih.compute_initial_figure(image=image,xmin=clim[0],xmax=clim[1])
+            # temporary ...
+            x = ic.axes.get_xlim()
+            y = ic.axes.get_ylim()
+            self.zoomlimits = [x,y]
+        # Compute initial total spectrum
+        spectrum = self.spectra[0]
+        sc = self.sci[self.spectra.index(spectrum)]
+        fluxAll = np.nansum(s.flux, axis=(1,2))
+        if s.instrument == 'GREAT':
+            spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
+                            redshift=s.redshift, l0=s.l0 )
+        elif s.instrument == 'PACS':
+            expAll = np.nansum(s.exposure, axis=(1,2))
+            spec = Spectrum(s.wave, fluxAll, exposure=expAll,instrument=s.instrument,
+                            redshift=s.redshift, l0=s.l0 )
+        elif s.instrument == 'FIFI-LS':
+            ufluxAll = np.nansum(s.uflux, axis=(1,2))
+            expAll = np.nansum(s.exposure, axis=(1,2))
+            eflux = np.sqrt(np.nansum(s.eflux*s.eflux, axis=(1,2)))
+            spec = Spectrum(s.wave, fluxAll, eflux=eflux, uflux= ufluxAll,
+                            exposure=expAll, atran = s.atran, instrument=s.instrument,
+                            redshift=s.redshift, baryshift = s.baryshift, l0=s.l0)
+        #print("Compute initial spectrum")
+        sc.compute_initial_spectrum(spectrum=spec)
+        self.specZoomlimits = [sc.xlimits,sc.ylimits]
+        sc.cid = sc.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomSpec)
+        # Start the span selector to show only part of the cube
+        sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
+                               rectprops=dict(alpha=0.5, facecolor='LightSalmon'))
+        sc.span.active = False
+        # Compute initial pixel spectrum
+        spectrum = self.spectra[1]
+        sc = self.sci[self.spectra.index(spectrum)]
+        nz,ny,nx = np.shape(s.flux)
+        # Add pixel aperture
+
+        ic0 = self.ici[0]
+        x0 = nx // 2
+        y0 = ny // 2
+        r0,d0 = ic0.wcs.all_pix2world(x0,y0,1)
+        ws = ic0.pixscale  # ;hs = ic0.pixscale        
+        n = len(self.photoApertures)
+        # Define pixel aperture
+        data = [r0,d0,ws]
+        self.photoApertures.append(photoAperture(n,'pixel',data))
+        for ic in self.ici:
+            x0,y0 = ic.wcs.all_world2pix(r0,d0,1)
+            w = ws/ic.pixscale  # ;h = hs/ic.pixscale
+            pixel = PixelInteractor(ic.axes, (x0,y0), w)
+            ic.photApertures.append(pixel)
+            cidap=pixel.mySignal.connect(self.onRemoveAperture)
+            ic.photApertureSignal.append(cidap)
+            pixel.modSignal.connect(self.onModifiedAperture)
+
+        # print('Initialize spectrum')
+        s = self.specCube
+        x0 = nx // 2
+        y0 = ny // 2
+        fluxAll = s.flux[:,y0,x0]
+        if s.instrument == 'GREAT':
+            spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
+                            redshift=s.redshift, l0=s.l0 )
+        elif s.instrument == 'PACS':
+            expAll = s.exposure[:,y0,x0]
+            spec = Spectrum(s.wave, fluxAll, exposure=expAll,instrument=s.instrument,
+                            redshift=s.redshift, l0=s.l0 )
+        elif s.instrument == 'FIFI-LS':
+            ufluxAll = s.uflux[:,y0,x0]
+            expAll = s.exposure[:,y0,x0]
+            eflux = s.eflux[:,y0,x0]
+            spec = Spectrum(s.wave, fluxAll, eflux=eflux, uflux= ufluxAll,
+                            exposure=expAll, atran = s.atran, instrument=s.instrument,
+                            redshift=s.redshift, baryshift = s.baryshift, l0=s.l0)
+        sc.compute_initial_spectrum(spectrum=spec)
+        self.specZoomlimits = [sc.xlimits,sc.ylimits]
+        sc.cid = sc.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomSpec)
+        sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
+                               rectprops=dict(alpha=0.5, facecolor='LightSalmon'))
+        sc.span.active = False
+
+        
+        # Re-initialize variables
+        self.contours = 'off'
+        self.blink = 'off'
+        self.slice = 'off'
+        self.cutcube = 'off'
+        self.continuum = None
+        self.M0 = None
+        self.M1 = None
+        self.M2 = None
+        self.M3 = None
+        self.M4 = None
+        self.C0 = None
+        self.v  = None
+        self.sv = None
+        # Selectors
+        self.PS = None
+        self.ES = None
+        self.RS = None
+        self.LS = None
 
             
     def onSelect(self, xmin, xmax):
@@ -4192,8 +4216,7 @@ class GUI (QMainWindow):
         sc.updateYlim()
         
         
-if __name__ == '__main__':
-#def main():
+def main():
     #QApplication.setStyle('Fusion')
     app = QApplication(sys.argv)
     gui = GUI()

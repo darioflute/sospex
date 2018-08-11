@@ -226,9 +226,9 @@ class cmDialog(QDialog):
             #item = QListWidgetItem(self.list)
             #item.setText(cm)
             #item.setIcon(QIcon(path0+"/icons/"+cm+".png"))
-            item = QListWidgetItem(QIcon(path0+"/icons/"+cm+".png"),'',self.list)
+            #item = QListWidgetItem(QIcon(path0+"/icons/"+cm+".png"),'',self.list)
             #item.setSizeHint(iconSize)
-            #QListWidgetItem(QIcon(path0+"/icons/"+cm+".png"),cm,self.list)
+            QListWidgetItem(QIcon(path0+"/icons/"+cm+".png"),'',self.list)
 
         # For some reason this does not work when in the stylesheet
         stylesheet = "QListWidget::item {"\
@@ -265,9 +265,6 @@ class cmDialog(QDialog):
             QListWidgetItem(QIcon(path0+"/icons/"+st+"_.png"),st,self.slist)
         n = stlist.index(currentST)
         self.slist.setCurrentRow(n)
-
-        #self.slist.setStyleSheet( stylesheet)
-        
         label3 = QLabel("Contour color")        
         self.clist = QListWidget(self)
         iconSize = QSize(144,10)
@@ -915,14 +912,14 @@ class SpectrumCanvas(MplCanvas):
             self.ax4 = self.axes.twinx()
             self.ax2.set_ylim([0.01,1.1])
             self.ax4.tick_params(labelright='off',right='off')
-            self.atranLine = self.ax2.step(self.xr, s.atran,color='red',label='AtmTr',zorder=12)
-            self.exposureLine = self.ax3.step(self.x, s.exposure, color='orange',label='Exp',zorder=13)
+            self.atranLine = self.ax2.step(self.xr, s.atran,color='red',label='Atm',zorder=12)
+            self.exposureLine = self.ax3.step(self.x, s.exposure, color='orange',label='E',zorder=13)
             ymax = np.nanmax(s.flux); ymin = np.nanmin(s.flux)
             yumax = np.nanmax(s.uflux); yumin = np.nanmin(s.uflux)
             if yumax > ymax: ymax=yumax
             if yumin < ymin: ymin=yumin
             self.ax3.set_ylim([0.5,np.nanmax(s.exposure)*1.54])
-            self.ufluxLine = self.ax4.step(self.xr,s.uflux,color='green',label='F$_{noAT}$',zorder=14)
+            self.ufluxLine = self.ax4.step(self.xr,s.uflux,color='green',label='F$_{u}$',zorder=14)
             self.ax4.set_ylim(self.axes.get_ylim())
             #self.ax1.set_title(spectrum.objname+" ["+spectrum.filegpid+"] @ "+spectrum.obsdate)
             self.ufluxLayer, = self.ufluxLine
@@ -1103,6 +1100,7 @@ class SpectrumCanvas(MplCanvas):
               if self.xunit == 'um':
                  xline = xl
               elif self.xunit == 'THz':
+                 c = 299792458.0   
                  xline = c/xl * 1.e-6
               wdiff = abs(s.wave - xline)
               imin = np.argmin(wdiff)
@@ -1130,7 +1128,7 @@ class SpectrumCanvas(MplCanvas):
         
         
         
-    def updateSpectrum(self,f=None,uf=None,exp=None,cont=None,moments=None,noise=None,atran=None):
+    def updateSpectrum(self,f=None,uf=None,ef=None,exp=None,cont=None,moments=None,noise=None,atran=None):
 
         try:
             try:
