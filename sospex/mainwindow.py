@@ -752,7 +752,7 @@ class GUI (QMainWindow):
             elif s.instrument == 'FIFI-LS':
                 if istab == 1:
                     ufluxAll = np.nanmean(s.uflux[:,yy,xx], axis=1)
-                    efluxAll = np.nanmean(s.eflux[:,yy,xx], axis=1)
+                    efluxAll = np.sqrt(np.nanmean(s.eflux[:,yy,xx]**2, axis=1))
                     expAll = np.nanmean(s.exposure[:,yy,xx], axis=1)
                     #print('modified flux ',np.size(xx))
                 else:
@@ -762,7 +762,8 @@ class GUI (QMainWindow):
                 sc.spectrum.uflux = ufluxAll
                 sc.spectrum.eflux = efluxAll
                 sc.spectrum.exposure = expAll
-                sc.updateSpectrum(f=fluxAll,uf=ufluxAll,exp=expAll, cont=cont, moments = moments, noise=noise)
+                sc.updateSpectrum(f=fluxAll,uf=ufluxAll,
+                                  exp=expAll, cont=cont, moments = moments, noise=noise)
             
     def onDraw(self,event):
         
@@ -3788,8 +3789,8 @@ class GUI (QMainWindow):
         elif s.instrument == 'FIFI-LS':
             ufluxAll = np.nansum(s.uflux, axis=(1,2))
             expAll = np.nansum(s.exposure, axis=(1,2))
-            eflux = np.sqrt(np.nansum(s.eflux*s.eflux, axis=(1,2)))
-            spec = Spectrum(s.wave, fluxAll, eflux=eflux, uflux= ufluxAll,
+            efluxAll = np.sqrt(np.nansum(s.eflux*s.eflux, axis=(1,2)))
+            spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, uflux= ufluxAll,
                             exposure=expAll, atran = s.atran, instrument=s.instrument,
                             redshift=s.redshift, baryshift = s.baryshift, l0=s.l0)
         #print("Compute initial spectrum")
@@ -3839,8 +3840,8 @@ class GUI (QMainWindow):
         elif s.instrument == 'FIFI-LS':
             ufluxAll = s.uflux[:,y0,x0]
             expAll = s.exposure[:,y0,x0]
-            eflux = s.eflux[:,y0,x0]
-            spec = Spectrum(s.wave, fluxAll, eflux=eflux, uflux= ufluxAll,
+            efluxAll = s.eflux[:,y0,x0]
+            spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, uflux= ufluxAll,
                             exposure=expAll, atran = s.atran, instrument=s.instrument,
                             redshift=s.redshift, baryshift = s.baryshift, l0=s.l0)
         sc.compute_initial_spectrum(spectrum=spec)
