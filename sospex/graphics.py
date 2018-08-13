@@ -1046,11 +1046,13 @@ class SpectrumCanvas(MplCanvas):
                     xline = wline
                 elif self.xunit == 'THz':
                     xline = c/wline * 1.e-6
-                annotation = self.axes.annotate(nline, xy=(xline,y1),  xytext=(xline, y2), color='purple', alpha=0.4,
-                                                arrowprops=dict(edgecolor='purple',facecolor='y', arrowstyle='-',alpha=0.4,
+                annotation = self.axes.annotate(nline, xy=(xline,y1),  xytext=(xline, y2), 
+                                                color='purple', alpha=0.4, ha='center',
+                                                arrowprops=dict(edgecolor='purple',facecolor='y', 
+                                                                arrowstyle='-',alpha=0.4,
                                                 connectionstyle="angle,angleA=0,angleB=90,rad=10"),
-                                                rotation = 90, fontstyle = 'italic', fontproperties=font,
-                                                visible=self.displayLines,)
+                                                rotation = 90, fontstyle = 'italic',
+                                                fontproperties=font, visible=self.displayLines)
                 annotation.draggable()
                 self.annotations.append(annotation)     
 

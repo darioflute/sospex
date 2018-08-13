@@ -3053,7 +3053,7 @@ class GUI (QMainWindow):
 
     def exportAperture(self):
         import json, io
-
+        """Export an aperture in Json format."""
         # Check if tab with aperture is open
         istab = self.stabs.currentIndex()
         if istab > 1:
@@ -3095,23 +3095,38 @@ class GUI (QMainWindow):
             else:
                 data = {}
 
-            with io.open(self.pathFile+'/sospex_ap'+str(nap)+'.json', mode='w') as f:
-                str_= json.dumps(data,indent=2,sort_keys=True,separators=(',',': '), ensure_ascii=False)
-                print(str_)
-                f.write(str_)
-            self.sb.showMessage("Aperture exported in file sospex_ap"+str(nap)+'.json', 3000)
+
+            # Open a dialog
+            fd = QFileDialog()
+            fd.setLabelText(QFileDialog.Accept, "Export as")
+            fd.setNameFilters(["Json Files (*.json)","All Files (*)"])
+            fd.setOptions(QFileDialog.DontUseNativeDialog)
+            fd.setViewMode(QFileDialog.List)
+            if (fd.exec()):
+                filenames= fd.selectedFiles()
+                filename = filenames[0]
+                if filename[-5:] != '.json':
+                    filename += '.json'              
+                print("Exporting aperture to file: ", filename)
+                with io.open(filename, mode='w') as f:
+                    str_= json.dumps(data,indent=2,sort_keys=True,separators=(',',': '),
+                                     ensure_ascii=False)
+                    # print(str_)
+                    f.write(str_)
+                self.sb.showMessage("Aperture exported in file "+filename, 3000)
         else:
-            self.sb.showMessage("To export an aperture, select the tab with the desired aperture ", 3000)
+            self.sb.showMessage("To export an aperture, select the tab with the desired aperture ",
+                                3000)
                         
         
 
     def importAperture(self):
         import json
-
+        """Import an aperture defined in a Json file."""
         # Open a dialog
         fd = QFileDialog()
         fd.setLabelText(QFileDialog.Accept, "Import")
-        fd.setNameFilters(["Fits Files (sospex_ap*.json)","All Files (*)"])
+        fd.setNameFilters(["Json Files (*.json)","All Files (*)"])
         fd.setOptions(QFileDialog.DontUseNativeDialog)
         fd.setViewMode(QFileDialog.List)
         fd.setFileMode(QFileDialog.ExistingFile)
@@ -3127,18 +3142,21 @@ class GUI (QMainWindow):
             # ic = self.ici[itab]
                             
             # Decoding info and opening new tab
-            type = data['type']
-            if type == 'Polygon':
-                adverts = data['verts']
-                #verts = np.array([(ic.wcs.all_world2pix(r,d,1)) for (r,d) in adverts])       
-                self.drawNewPolygonAperture(adverts)
-            else:
-                r0 = data['ra0']
-                d0 = data['dec0']
-                w = data['width']
-                h = data['height']
-                angle = data['angle']
-                self.drawNewAperture(type,r0,d0,w,h,angle)
+            try:
+                type = data['type']
+                if type == 'Polygon':
+                    adverts = data['verts']
+                    #verts = np.array([(ic.wcs.all_world2pix(r,d,1)) for (r,d) in adverts])       
+                    self.drawNewPolygonAperture(adverts)
+                else:
+                    r0 = data['ra0']
+                    d0 = data['dec0']
+                    w = data['width']
+                    h = data['height']
+                    angle = data['angle']
+                    self.drawNewAperture(type,r0,d0,w,h,angle)
+            except:
+                self.sb.showMessage("The file is not a valide aperture file.", 3000)
         else:
             self.sb.showMessage("To export an aperture, select the tab with the desired aperture ", 3000)
             
