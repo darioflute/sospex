@@ -1,6 +1,6 @@
 package:
   name: sospex
-  version: 0.28.beta
+  version: 0.29.beta
 
 source:
   git_tag: master
