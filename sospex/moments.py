@@ -373,7 +373,7 @@ class SegmentsInteractor(QObject):
         """ Redraw segments in new units """
         
         # Rebuild line collection
-        x,y = zip(*self.xy)
+        x, y = zip(*self.xy)
         x = np.asarray(x)
         y = np.asarray(y)
 

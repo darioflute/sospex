@@ -889,15 +889,11 @@ class SpectrumCanvas(MplCanvas):
         self.linesLine = self.axes.plot([0,0.1],[0,0],color='purple',alpha=0.4,label='Lines',zorder=11)
         self.linesLayer, = self.linesLine
 
-
-
-
         # Add redshift value on the plot
         c = 299792.458  #km/s
         self.zannotation = self.axes.annotate(" cz = {:.1f} km/s".format(c*s.redshift), xy=(-0.15,-0.07), picker=5, xycoords='axes fraction')
         # Add reference wavelength value on the plot
         self.lannotation = self.axes.annotate(" $\\lambda_0$ = {:.4f} $\\mu$m".format(s.l0), xy=(-0.15,-0.12), picker=5, xycoords='axes fraction')
-                
         
         if s.instrument == 'FIFI-LS':
             try:
@@ -1012,6 +1008,8 @@ class SpectrumCanvas(MplCanvas):
                 pass
             self.vaxes = self.axes.twiny()
             self.vaxes.xaxis.set_major_formatter(ScalarFormatter(useOffset=False))
+            if self.xunit == 'THz':
+                vlims = (vlims[1], vlims[0])
             self.vaxes.set_xlim(vlims)
             self.vaxes.set_xlabel("Velocity [km/s]")
             # Elevate zorder of first axes (to guarantee axes gets the events)
@@ -1023,12 +1021,12 @@ class SpectrumCanvas(MplCanvas):
         # Add spectral lines
         self.annotations = []
         font = FontProperties(family='DejaVu Sans', size=12)
-        xlim0,xlim1 = self.axes.get_xlim()
-        ylim0,ylim1 = self.axes.get_ylim()
+        xlim0, xlim1 = self.axes.get_xlim()
+        ylim0, ylim1 = self.axes.get_ylim()
         c = 299792458.0  # speed of light in m/s
         if self.xunit == 'THz':
-            xlim1,xlim0 = c/xlim0*1.e-6,c/xlim1*1.e-6
-        dy = ylim1-ylim0
+            xlim1, xlim0 = c / xlim0 * 1.e-6, c / xlim1 * 1.e-6
+        dy = ylim1 - ylim0
 
         for line in self.Lines.keys():
             nline = self.Lines[line][0]
@@ -1057,52 +1055,49 @@ class SpectrumCanvas(MplCanvas):
                 self.annotations.append(annotation)     
 
     def computeVelLimits(self):
-        """ Compute velocity limits """
-
-        x1,x2 = self.xlimits
+        """Compute velocity limits."""
+        x1, x2 = self.xlimits
         c = 299792.458  # speed of light in km/s
         s = self.spectrum
-        vx1 = (x1/(1+s.redshift)/s.l0-1.)*c
-        vx2 = (x2/(1+s.redshift)/s.l0-1.)*c
-        return (vx1,vx2)
-            
+        vx1 = (x1 / (1 + s.redshift) / s.l0 - 1.) * c
+        vx2 = (x2 / (1 + s.redshift) / s.l0 - 1.) * c
+        return (vx1, vx2)
 
     def updateXlim(self):
-        """ update xlimits """
+        """Update xlimits."""
+        xlim0, xlim1 = self.xlimits
         vlim = self.computeVelLimits()
-        xlim0,xlim1 = self.xlimits
         if self.xunit == 'THz':
             c = 299792458.0  # speed of light in m/s
-            xlim1,xlim0 = c/xlim0*1.e-6,c/xlim1*1.e-6
-        self.axes.set_xlim(xlim0,xlim1)
+            xlim1, xlim0 = c / xlim0 * 1.e-6, c / xlim1 * 1.e-6
+            vlim = (vlim[1], vlim[0])
+        self.axes.set_xlim(xlim0, xlim1)
         self.vaxes.set_xlim(vlim)
         self.fig.canvas.draw_idle()
 
     def updateYlim(self,f=None):
-        """ update ylimits """
-
+        """Update ylimits."""
         # Grab new limits and update flux and 
         ylims = self.ylimits
         self.axes.set_ylim(ylims)
         s = self.spectrum            
         if self.instrument == 'FIFI-LS':
             self.ax4.set_ylim(ylims)
-            self.ax3.set_ylim([0.5,np.nanmax(s.exposure)*1.54])
-            self.ax2.set_ylim([0.01,1.1])
-
+            self.ax3.set_ylim([0.5, np.nanmax(s.exposure) * 1.54])
+            self.ax2.set_ylim([0.01, 1.1])
         # Adjust line labels if they exist
         try:
-           ylim0,ylim1 = ylims
-           dy = np.abs(ylim0-ylim1)
+           ylim0, ylim1 = ylims
+           dy = np.abs(ylim0 - ylim1)
            for a in self.annotations:
-              xl,yl = a.xy
-              xt,yt = a.get_position()
+              xl, yl = a.xy
+              xt, yt = a.get_position()
               # Check unit (wavelength/frequency)
               if self.xunit == 'um':
                  xline = xl
               elif self.xunit == 'THz':
                  c = 299792458.0   
-                 xline = c/xl * 1.e-6
+                 xline = c / xl * 1.e-6
               wdiff = abs(s.wave - xline)
               imin = np.argmin(wdiff)
               if f is None:
@@ -1110,27 +1105,21 @@ class SpectrumCanvas(MplCanvas):
               else:
                  y = f[imin]
               y1 = y
-              if (ylim1-(y+0.2*dy)) > ((y-0.2*dy)-ylim0):
-                 y2 = y+0.2*dy
+              if (ylim1 - (y + 0.2 * dy)) > ((y - 0.2 * dy) - ylim0):
+                 y2 = y + 0.2 * dy
               else:
-                 y2 = y-0.2*dy
+                 y2 = y - 0.2 * dy
               if y1 > ylim1:
                  y1 = ylim1
               if y2 > ylim1:
-                 y2 = ylim1-dy/20.
-              a.xy = (xl,y1)
-              a.set_position((xl,y2))
+                 y2 = ylim1 - dy / 20.
+              a.xy = (xl, y1)
+              a.set_position((xl, y2))
         except:
            pass
-
-        
         self.fig.canvas.draw_idle()
 
-        
-        
-        
     def updateSpectrum(self,f=None,uf=None,ef=None,exp=None,cont=None,moments=None,noise=None,atran=None):
-
         try:
             try:
                 self.arrow1.remove()
@@ -1191,26 +1180,19 @@ class SpectrumCanvas(MplCanvas):
                 verts = list(zip(xx,gauss))
                 self.gauss = Polygon(verts, fill=False, closed=False,color='skyblue')
                 self.axes.add_patch(self.gauss)
-                
                 #if noise is not None:
                 #    self.arrow3 = FancyArrowPatch((x-1.5*dx,y+5*noise),(x+1.5*dx,y+5*noise),arrowstyle=style,mutation_scale=1.0,linestyle='dotted')
                 #    self.axes.add_patch(self.arrow3)
-                    
         except:
             pass
-
             
     def shadeRegion(self, limits = None, color=None):
-
         if limits == None:
             wmin,wmax = self.regionlimits
         else:
             wmin,wmax = limits
-
         if color == None:
-            color = 'Lavender'
-
-            
+            color = 'Lavender'            
         if self.xunit == 'um':
             xmin = wmin
             xmax = wmax
@@ -1218,8 +1200,6 @@ class SpectrumCanvas(MplCanvas):
             c = 299792458.0  # speed of light in m/s
             xmax = c/wmin * 1.e-6
             xmin = c/wmax * 1.e-6
-
-
         # Select axes to appear in the background
         ax = self.axes
         zord = self.axes.get_zorder()
@@ -1247,25 +1227,20 @@ class SpectrumCanvas(MplCanvas):
             self.region = ax.axvspan(xmin,xmax,facecolor=color,alpha=1,linewidth=0,zorder=1)
         else:
             self.tmpRegion = ax.axvspan(xmin,xmax,facecolor=color,alpha=1,linewidth=0,zorder=1)
-        
-                
-    def shadeSpectrum(self):
-        """ shade part of the spectrum used for different operations """
 
+    def shadeSpectrum(self):
+        """Shade part of the spectrum used for different operations."""
         # Clean previous region
         try:
             self.region.remove()
         except:
             pass
-
         # Shade new region
         self.shadeRegion()
         self.shade = True
-        
-                
-    def onpick(self, event):
-        """ React to onpick events """
 
+    def onpick(self, event):
+        """React to onpick events."""
         if isinstance(event.artist, Line2D):
             legline = event.artist
             label = legline.get_label()
@@ -1280,11 +1255,12 @@ class SpectrumCanvas(MplCanvas):
                 txt.set_alpha(1.0)
                 if label == 'Exp':
                     self.displayExposure = True
-                    self.ax3.tick_params(labelright='on',right='on',direction='in',pad=-30,colors='orange')
+                    self.ax3.tick_params(labelright='on', right='on',
+                                         direction='in', pad=-30, colors='orange')
                     txt.set_text('Exp')
                 elif label == 'Atm':
                     self.displayAtran = True
-                    self.ax2.get_yaxis().set_tick_params(labelright='on',right='on')            
+                    self.ax2.get_yaxis().set_tick_params(labelright='on', right='on')            
                     self.ax2.get_yaxis().set_tick_params(which='both', direction='out',colors='red')
                     txt.set_text('AtmTr')
                 elif label == 'Uflux':
@@ -1302,10 +1278,10 @@ class SpectrumCanvas(MplCanvas):
                 txt.set_text('')
                 if label == 'Exp':
                     self.displayExposure = False
-                    self.ax3.get_yaxis().set_tick_params(labelright='off',right='off')
+                    self.ax3.get_yaxis().set_tick_params(labelright='off', right='off')
                 elif label == 'Atm':
                     self.displayAtran = False
-                    self.ax2.get_yaxis().set_tick_params(labelright='off',right='off')            
+                    self.ax2.get_yaxis().set_tick_params(labelright='off', right='off')            
                 elif label == 'Uflux':
                     self.displayUFlux = False
                 elif label == 'Flux':
@@ -1319,7 +1295,6 @@ class SpectrumCanvas(MplCanvas):
             self.fig.canvas.draw_idle()
         elif isinstance(event.artist, Text):
             text = event.artist.get_text()
-
             if event.artist == self.zannotation:
                 c = 299792.458 #km/s
                 znew = self.getDouble(self.spectrum.redshift*c)
@@ -1352,11 +1327,10 @@ class SpectrumCanvas(MplCanvas):
                 if text == 'Wavelength [$\mu$m]' or text == 'Frequency [THz]':
                     if self.xunit == 'um':
                         self.xunit = 'THz'
-                        self.axes.format_coord = lambda x, y: "{:6.4f} THz  {:10.4f} Jy".format(x,y)
+                        self.axes.format_coord = lambda x, y: "{:6.4f} THz {:10.4f} Jy".format(x, y)
                     else:
                         self.xunit = 'um'
-                        self.axes.format_coord = lambda x, y: "{:8.4f} um  {:10.4f} Jy".format(x,y)
-
+                        self.axes.format_coord = lambda x, y: "{:8.4f} um {:10.4f} Jy".format(x, y)
                     self.axes.clear()
                     try:
                         self.ax2.clear()
@@ -1367,30 +1341,28 @@ class SpectrumCanvas(MplCanvas):
                     self.drawSpectrum()
                     self.fig.canvas.draw_idle()
                     if self.guess is not None:
-                        self.guess.switchUnits()
-                    
+                        self.guess.switchUnits()                    
                 else:
                     self.dragged = event.artist
                     self.pick_pos = event.mouseevent.xdata
-                
         else:
             pass
         return True
 
-    def getDouble(self,z):
-        znew, okPressed = QInputDialog.getDouble(self, "Redshift","cz", z, -10000., 50000., 2)
+    def getDouble(self, z):
+        znew, okPressed = QInputDialog.getDouble(self, "Redshift", "cz", z, -10000., 50000., 2)
         if okPressed:
             return znew
         else:
             return None
 
-    def getlDouble(self,l):
-        lnew, okPressed = QInputDialog.getDouble(self, "Reference wavelength","Ref. wavelength [um]", l, 0., 500., 4)
+    def getlDouble(self, l):
+        lnew, okPressed = QInputDialog.getDouble(self, "Reference wavelength",
+                                                 "Ref. wavelength [um]", l, 0., 500., 4)
         if okPressed:
             return lnew
         else:
             return None
-
 
     def onrelease(self, event):
         if self.dragged is not None and self.pick_pos is not None:
@@ -1399,18 +1371,18 @@ class SpectrumCanvas(MplCanvas):
             x0 = self.pick_pos
             #print('pick up position is ',x0)
             w0 = np.array([self.Lines[line][1]  for  line in self.Lines.keys()])
-            wz = w0*(1.+self.spectrum.redshift)
+            wz = w0 * (1. + self.spectrum.redshift)
             if self.xunit == 'um':
-                z = (x1-x0)/x0
+                z = (x1 - x0) / x0
                 l0 = x0
             elif self.xunit == 'THz':
-                z = (x0-x1)/x1
+                z = (x0 - x1) / x1
                 c = 299792458.0  # speed of light in m/s
-                l0 = c/x0 * 1.e-6
+                l0 = c / x0 * 1.e-6
             wdiff = abs(l0 - wz)
             self.spectrum.l0 = (w0[(wdiff == wdiff.min())])[0]
             #print('Reference wavelength is ',self.spectrum.l0)
-            self.spectrum.redshift = (1.+self.spectrum.redshift)*(1+z)-1.
+            self.spectrum.redshift = (1. + self.spectrum.redshift) * (1 + z) - 1.
             for annotation in self.annotations:
                 annotation.remove()
             self.zannotation.remove()
