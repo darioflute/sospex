@@ -3013,6 +3013,8 @@ class GUI (QMainWindow):
                     image = ic0.oimage
                     image[yy,xx] = np.nan
                     cmin = ic0.cmin; cmax=ic0.cmax
+                    # Remove previous image before showing masked image
+                    ic0.image.remove()
                     ic0.showImage(image)
                     ic0.updateScale(cmin,cmax)
                     self.addContours(ic0) 
@@ -3116,6 +3118,8 @@ class GUI (QMainWindow):
                 image = ic0.oimage
                 image[yy,xx] = np.nan
                 cmin = ic0.cmin; cmax=ic0.cmax
+                # Remove previous image before showing masked image
+                ic0.image.remove()
                 ic0.showImage(image)
                 self.addContours(ic0)
                 ic0.updateScale(cmin,cmax)
