@@ -155,8 +155,8 @@ class GUI (QMainWindow):
         file.addAction(QAction("Reload cube",self,shortcut='Ctrl+n',triggered=self.reloadFile))
         file.addAction(QAction("Import image",self,shortcut='Ctrl+d',triggered=self.selectDownloadImage))
         cube = file.addMenu("Save cube")
-        cube.addAction(QAction('Cut', self, shortcut='',triggered=self.cutCube))
-        cube.addAction(QAction('Cropped', self, shortcut='',triggered=self.cropCube))
+        cube.addAction(QAction('Trim', self, shortcut='',triggered=self.cutCube))
+        cube.addAction(QAction('Crop', self, shortcut='',triggered=self.cropCube))
         cube.addAction(QAction('Continuum subtracted', self, shortcut='',triggered=self.savelCube))
         cube.addAction(QAction('Masked', self, shortcut='',triggered=self.saveMaskedCube))
         file.addAction(QAction('Save image', self, shortcut='',triggered=self.saveFits))
@@ -314,11 +314,9 @@ class GUI (QMainWindow):
         ''' Add a tab with an image '''
         t = QWidget()
         t.layout = QVBoxLayout(t)
-        t.setSizePolicy(QSizePolicy.Ignored,QSizePolicy.Ignored) # Avoid expansion
+        t.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored) # Avoid expansion
         self.stabs.addTab(t, b)
-        #sc = SpectrumCanvas(t, width=11, height=10.5, dpi=100)
         sc = SpectrumCanvas(t, width=5.5, height=5.25, dpi=100)
-        #ih.setVisible(False)
         # Toolbar
         toolbar = QToolBar()
         # Add actions to toolbar
@@ -330,27 +328,22 @@ class GUI (QMainWindow):
         toolbar.addSeparator()
         toolbar.addAction(self.hresizeAction)
         toolbar.addAction(self.vresizeAction)
-
-
-        
         # Navigation toolbar
         sc.toolbar = NavigationToolbar(sc, self)
-
         foot = QWidget()
         foot.layout = QHBoxLayout(foot)
         foot.layout.addWidget(toolbar)
         foot.layout.addWidget(sc.toolbar)
-
         t.layout.addWidget(sc)
         t.layout.addWidget(foot)
         self.stabs.resize(self.stabs.minimumSizeHint())  # Avoid expansion
         # connect image and histogram to  events
         scid1=sc.mpl_connect('button_release_event', self.onDraw2)
-        scid2=sc.mpl_connect('scroll_event',self.onWheel2)
-        scid3=sc.mpl_connect('key_press_event',self.onKeyPress2)
-        scid4=sc.mpl_connect('key_release_event',self.onKeyRelease2)
+        scid2=sc.mpl_connect('scroll_event', self.onWheel2)
+        scid3=sc.mpl_connect('key_press_event', self.onKeyPress2)
+        scid4=sc.mpl_connect('key_release_event', self.onKeyRelease2)
         self.ctrlIsHeld = False
-        return t,sc,scid1,scid2,scid3,scid4
+        return t, sc, scid1, scid2, scid3, scid4
 
     def addImage(self,b):
         ''' Add a tab with an image '''
@@ -387,7 +380,6 @@ class GUI (QMainWindow):
         ih = ImageHistoCanvas(t, width=11, height=0.5, dpi=100)
         ih.setVisible(False)
         ic.toolbar = NavigationToolbar(ic, self)
-
         # Toolbar
         toolbar = QToolBar()
         toolbar.addAction(self.levelsAction)
@@ -404,13 +396,11 @@ class GUI (QMainWindow):
         toolbar.addAction(self.maskAction)
         toolbar.addSeparator()
         #toolbar.addWidget(self.apertureAction)        
-
         # Foot
         foot = QWidget()
         foot.layout = QHBoxLayout(foot)
         foot.layout.addWidget(toolbar)
-        foot.layout.addWidget(ic.toolbar)
-        
+        foot.layout.addWidget(ic.toolbar)        
         #ic.toolbar.pan('on')
         t.layout.addWidget(ic)
         t.layout.addWidget(ih)
@@ -419,11 +409,10 @@ class GUI (QMainWindow):
         # connect image and histogram to  events
         cidh=ih.limSignal.connect(self.onChangeIntensity)
         cid1=ic.mpl_connect('button_release_event', self.onDraw)
-        cid2=ic.mpl_connect('scroll_event',self.onWheel)
+        cid2=ic.mpl_connect('scroll_event', self.onWheel)
         cid3=ic.mpl_connect('motion_notify_event', self.onMotion)
-        cid4=ic.mpl_connect('button_press_event', self.onPress)
-        
-        return t,ic,ih,cidh,cid1,cid2,cid3,cid4
+        cid4=ic.mpl_connect('button_press_event', self.onPress)        
+        return t, ic, ih, cidh, cid1, cid2, cid3, cid4
 
     def removeTab(self, itab):
         #print('Removing image tab no ',itab)
@@ -467,9 +456,7 @@ class GUI (QMainWindow):
         elif b == 'sv': self.sv = None
         # Remove band from band list
         del self.bands[itab]
-        
-        
-        
+
     def removeSpecTab(self, stab):
         #print('Removing spectral tab no ',stab)
         if stab > 1:
@@ -515,14 +502,13 @@ class GUI (QMainWindow):
         self.scid4.remove(c4)
         spec = None
         # Rename aperture tabs
-        if len(self.stabs)> 2:
-            for i in range(1,len(self.stabs)):
+        if len(self.stabs) > 2:
+            for i in range(2, len(self.stabs)):
                 apname = "{:d}".format(i-1)
                 self.stabs.setTabText(i,apname)
                 
     def onITabChange(self, itab):
         ''' When tab changes check if latest update of ellipse are implemented '''
-
         if itab < len(self.ici):
             ima = self.ici[itab]
             if len(self.stabs) > 1:
@@ -559,13 +545,11 @@ class GUI (QMainWindow):
 
     def onHelp(self, event):
         import webbrowser
-
         webbrowser.open('file://'+os.path.abspath(self.path0+'/help/Help.html'))
 
 
     def onIssue(self, event):
         import webbrowser
-        
         webbrowser.open('https://github.com/darioflute/sospex/issues')
 
     def onPress(self, event):
@@ -574,22 +558,18 @@ class GUI (QMainWindow):
         else:
             self.press = None
             return
-
         
     def onMotion(self, event):
         """ Update spectrum when moving an aperture on the image """
-
         if event.button == 3 and self.press is not None:
             xpress,ypress = self.press
             dx = event.x - xpress
             dy = event.y - ypress
             self.press = event.x, event.y
-
             # Get current bias and contrast
             itab = self.itabs.currentIndex()
             #ic = self.ici[itab]
             ih = self.ihi[itab]
-
             cmin = ih.limits[0]
             cmax = ih.limits[1]
             #cmin = ic.cmin; cmax= ic.cmax
@@ -604,32 +584,24 @@ class GUI (QMainWindow):
                 diff = np.abs(cmax-cmin)*0.5*(1.+percent*np.sign(dy))           
                 cmin = mid - diff
                 cmax = mid + diff
-
             ih.onSelect(cmin,cmax)
-
-
             #ic.image.set_clim([ic.cmin,ic.cmax])
             #ic.fig.canvas.draw_idle()
             #ic.bias += percent * np.sign(dy)
             #if ic.bias > 1: ic.bias = 1
             #elif ic.bias < 0: ic.bias = 0
             #ic.contrast += percent * np.sign(dx)
-
             # Update image norm
             #print(ic.bias,ic.contrast)
             #ic.updateNorm()
             
-
     def updateAperture(self):
-
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
         ic0 = self.ici[0]
         nap = self.stabs.currentIndex()-1
-
         aper = ic.photApertures[nap]
         aper0 = ic0.photApertures[nap]
-
         if aper.type == 'Polygon':
             verts = aper.poly.get_xy()
             adverts = np.array([(ic.wcs.all_pix2world(x,y,1)) for (x,y) in verts])                
@@ -662,44 +634,32 @@ class GUI (QMainWindow):
             aper0.rect.set_height(h0)
             aper0.rect.angle = angle
 
-
-
     def onRemoveContinuum(self, event):
-
         sc = self.sci[self.spectra.index('Pix')]
         sc.guess.disconnect()
         sc.guess = None
         sc.fig.canvas.draw_idle()
-
-        
-        
     def onRemoveAperture(self,event):
-        """ Interpret signal from apertures """
-        
+        """Interpret signal from apertures."""        
         itab = self.itabs.currentIndex()
         istab = self.stabs.currentIndex()
         n = istab-1
         ap = self.ici[itab].photApertures[n]
         apertype = ap.__class__.__name__
-
-        
         if (event == 'rectangle deleted' and apertype == 'RectangleInteractor') or \
            (event == 'ellipse deleted' and apertype == 'EllipseInteractor') \
            or (event == 'polygon deleted' and apertype == 'PolygonInteractor'):
             self.stabs.currentChanged.disconnect()
             self.removeSpecTab(istab)
-            self.stabs.setCurrentIndex(0)
+            self.stabs.setCurrentIndex(1)  # Pixel tab
             self.stabs.currentChanged.connect(self.onSTabChange)
         else:
             print(event)
 
-
     def onModifiedAperture(self, event):
-        """ Update spectrum when aperture is modified """
-
+        """Update spectrum when aperture is modified."""
         itab = self.itabs.currentIndex()
         #ic = self.ici[itab]
-
         # Grab aperture in the flux image to compute the new fluxes
         istab = self.stabs.currentIndex()
         if istab > 0:
@@ -715,7 +675,6 @@ class GUI (QMainWindow):
             inpoints = s.points[npath.contains_points(s.points)]
             xx,yy = inpoints.T
             #npoints = np.size(xx)
-
             if istab == 1 and self.continuum is not None:
                 xc=np.median(xx); yc = np.median(yy)
                 i = int(np.rint(xc)); j = int(np.rint(yc))
@@ -735,7 +694,6 @@ class GUI (QMainWindow):
                 cont = None
                 moments = None
                 noise = None
-
             if istab == 1: # case of pixel (with different kernels)
                 fluxAll = np.nanmean(s.flux[:,yy,xx], axis=1)
             else:
@@ -765,15 +723,12 @@ class GUI (QMainWindow):
                 sc.updateSpectrum(f=fluxAll,uf=ufluxAll,
                                   exp=expAll, cont=cont, moments = moments, noise=noise)
             
-    def onDraw(self,event):
-        
+    def onDraw(self,event):        
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
-
         # Deselect pan option on release of mouse
         if ic.toolbar._active == "PAN":
             ic.toolbar.pan()
-
         # Update patch in all the images
         # a status should be added to the apertures to avoid unnecessary redrawings
         istab = self.stabs.currentIndex()
@@ -825,7 +780,6 @@ class GUI (QMainWindow):
                     ap.poly.set_xy(verts)
                     ap.updateMarkers()
                     ima.changed = True
-            
 
     def onWheel(self,event):
         ''' enable zoom with mouse wheel and propagate changes to other tabs '''
@@ -839,7 +793,6 @@ class GUI (QMainWindow):
         self.zoomImage('down')
         
     def zoomImage(self, eb):
-            
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
         curr_xlim = ic.axes.get_xlim()
@@ -850,7 +803,6 @@ class GUI (QMainWindow):
             factor=0.9
         elif eb == 'down':
             factor=1.1
-
         new_width = (curr_xlim[1]-curr_xlim[0])*factor*0.5
         new_height= (curr_ylim[1]-curr_ylim[0])*factor*0.5
         x = [curr_x0-new_width,curr_x0+new_width]
@@ -919,7 +871,6 @@ class GUI (QMainWindow):
                     sc.zannotation.remove()
                     sc.drawSpectrum()
                     sc.fig.canvas.draw_idle()
-
             elif QMessageBox.No:
                 self.sb.showMessage("Redshift value unchanged ", 2000)
                 sc.spectrum.l0 = self.specCube.l0
@@ -930,8 +881,7 @@ class GUI (QMainWindow):
                 sc.drawSpectrum()
                 sc.fig.canvas.draw_idle()
             else:
-                pass           
-            
+                pass                       
         # Deselect pan & zoom options on mouse release
         if sc.toolbar._active == "PAN":
             sc.toolbar.pan()
@@ -950,7 +900,6 @@ class GUI (QMainWindow):
             
     def onWheel2(self,event):
         """ Wheel moves right/left the slice defined on spectrum """
-
         itab = self.stabs.currentIndex()
         sc = self.sci[itab]
         if self.ctrlIsHeld:
@@ -959,7 +908,6 @@ class GUI (QMainWindow):
                     eb = event.button
                     xmin,xmax = sc.regionlimits
                     dx = (xmax-xmin) * 0.5
-                    
                     # Increment region limits
                     if eb == 'up':
                         xmin += dx
@@ -993,20 +941,14 @@ class GUI (QMainWindow):
                 sc.updateXlim()
                 sc.ylimits = (curr_y0-new_height,curr_y0+new_height)
                 sc.updateYlim()
-            
-
-                
+               
     def createSpectralPanel(self):
         """ Panel to plot spectra """
-
         #self.spectralPanel = QGroupBox("")
         self.spectralPanel = QWidget()
         layout = QVBoxLayout(self.spectralPanel)
-        
-        
         # Toolbar
         self.createToolbar()
-
         # Tabs with plots        
         self.stabs = QTabWidget()
         self.stabs.setTabsClosable(True)
@@ -1019,29 +961,23 @@ class GUI (QMainWindow):
         self.scid2 = []
         self.scid3 = []
         self.scid4 = []
-        
         # Status bar
         self.sb = QStatusBar()
         self.sb.showMessage("Click the folder icon to load a cube !", 10000)
-        
         # Add widgets to panel
         banner = QWidget()
         banner.layout = QHBoxLayout(banner)
         banner.layout.addWidget(self.tb)
         banner.layout.addWidget(self.sb)
-
         layout.addWidget(self.stabs)
         layout.addWidget(banner)
 
-        
     def createToolbar(self):
         """ Toolbar with main commands """
-
         # Toolbar definition
         self.tb = QToolBar()
         self.tb.setMovable(True)
         self.tb.setObjectName('toolbar')
-
         # Actions
         self.helpAction = self.createAction(self.path0+'/icons/help.png','Help','Ctrl+q',self.onHelp)
         self.issueAction = self.createAction(self.path0+'/icons/issue.png','Report an issue','Ctrl+q',self.onIssue)
@@ -1057,26 +993,22 @@ class GUI (QMainWindow):
         self.contoursAction = self.createAction(self.path0+'/icons/contours.png','Overlap contours','Ctrl+c',self.overlapContours)
         self.apertureAction = self.createApertureAction()
         self.fitAction = self.createFitAction()
-        self.cutAction = self.createAction(self.path0+'/icons/cut.png','Cut part of the cube','Ctrl+k',self.cutCube)
+        self.cutAction = self.createAction(self.path0+'/icons/cut.png','Trim cube','Ctrl+k',self.cutCube)
         self.cropAction = self.createAction(self.path0+'/icons/crop.png','Crop the cube','Ctrl+K',self.cropCube)
         self.sliceAction = self.createAction(self.path0+'/icons/slice.png','Define a slice to compute moments and/or display','Ctrl+K',self.sliceCube)
         self.maskAction =  self.createAction(self.path0+'/icons/eraser.png','Erase a region','',self.maskCube)
         self.cloudAction = self.createAction(self.path0+'/icons/cloud.png','Download image from cloud','Ctrl+D',self.selectDownloadImage)
         self.fitsAction =  self.createAction(self.path0+'/icons/download.png','Save the image as a FITS/PNG/JPG/PDF file','Ctrl+S',self.saveFits)
         self.specAction = self.createAction(self.path0+'/icons/download.png','Save the spectrum as a ASCII/FITS/PNG/JPG/PDF file','Ctrl+S',self.saveSpectrum)
-
         self.vresizeAction = self.createAction(self.path0+'/icons/vresize.png','Resize image vertically','Ctrl+V',self.vresizeSpectrum)
         self.hresizeAction = self.createAction(self.path0+'/icons/hresize.png','Resize image horizontally','Ctrl+H',self.hresizeSpectrum)
         self.guessAction = self.createAction(self.path0+'/icons/guessCont.png','Draw two continuum segments around line','Ctrl+g',self.guessContinuum)
         self.fitContAction =self.createAction(self.path0+'/icons/fitCont.png','Fit continuum','Ctrl+g',self.fitCont)
         self.compMomAction = self.createAction(self.path0+'/icons/computeMoments.png','Compute moments','Ctrl+g',self.chooseComputeMoments)
         self.fitregionAction = self.createAction(self.path0+'/icons/fitregion.png','Fit baseline and compute moments inside region','Ctrl+f',self.fitRegion)
-        
         # Add buttons to the toolbar
-
         self.spacer = QWidget()
         self.spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-
         self.tb.addAction(self.startAction)
         self.tb.addAction(self.reloadAction)
         self.tb.addAction(self.helpAction)
@@ -1085,16 +1017,12 @@ class GUI (QMainWindow):
         #self.tb.addWidget(self.fitAction)        
         self.tb.addAction(self.quitAction)
 
-
-    def openContinuumTab(self):
-        
+    def openContinuumTab(self):        
         # Clear previous continuum estimate and open new tab
         s = self.specCube
         self.continuum = np.full((s.nz,s.ny,s.nx), np.nan) # Fit of continuum
         self.Cmask = np.zeros((s.nz,s.ny,s.nx), dtype=bool) # Spectral cube mask (for fitting the continuum)
         self.C0 = np.full((s.ny,s.nx), np.nan) # Continuum at ref. wavelength
-        
-
         # Open tabs if they do not exist
         if 'C0' not in self.bands:
             self.addBand('C0')
@@ -1103,7 +1031,6 @@ class GUI (QMainWindow):
             ic = self.ici[itab]
             ic.showImage(self.C0)
             ic.fig.canvas.draw_idle()
-
 
     def kernel1pixel(self):
         # Set kernel to 1 pixel
@@ -1118,18 +1045,15 @@ class GUI (QMainWindow):
         self.setKernel(9)
 
     def setKernel(self, size):
-        # Set the kernel to compute the spectrum in the Pixel tab (and the continuum)
-
+        """Set the kernel to compute the spectrum in the Pixel tab (and the continuum)."""
         # Change to pixel tab
         istab = self.spectra.index('Pix')
         if self.stabs.currentIndex() != istab:
             self.stabs.setCurrentIndex(istab)
         # sc = self.sci[istab]
-
         # Get the reference scale
         ic0 = self.ici[0]
         w0 = ic0.pixscale
-
         k1=False
         k5=False
         k9=False
@@ -1608,10 +1532,8 @@ class GUI (QMainWindow):
 
         return points
 
-
     def fitContAll(self):
         """ Fit continuum all over the cube """
-
         # Define region (excluding frame of 1 pixel)
         nx = self.specCube.nx
         ny = self.specCube.ny
@@ -1619,15 +1541,10 @@ class GUI (QMainWindow):
         yi = np.arange(1,ny-1)
         xi,yi = np.meshgrid(xi,yi)
         points = np.array([np.ravel(xi),np.ravel(yi)]).transpose()
-
         # Continuum mask
         self.continuumMask(points)
-
         # Fit
         self.fitContinuum(points)
-        
-        
-    
 
     def continuumMask(self, points):
 
@@ -1656,12 +1573,8 @@ class GUI (QMainWindow):
             self.Cmask[i0:i1,j,i] = 1
             self.Cmask[i2:i3,j,i] = 1
 
-    
-    
     def fitContinuum(self, points):
         """ Fit the continuum on a selected set of points """
-
-        # Fit the continuum
         f = self.specCube.flux
         m = self.Cmask
         w = self.specCube.wave
@@ -1702,9 +1615,6 @@ class GUI (QMainWindow):
         #itab = self.itabs.currentIndex()
         #if self.bands[itab] == 'C0':
         #    ic = self.ici[itab]
-        #    ic.fig.canvas.draw_idle()
-        
-        
         # Update continuum on pixel tab
         sc = self.sci[self.spectra.index('Pix')]
         ic = self.ici[0]
@@ -1771,22 +1681,15 @@ class GUI (QMainWindow):
         
     def computeMomentsRegion(self, eclick, erelease):
         """ Compute moments in a defined region """
-
         # Select points in the region
         points = self.onFitRect(eclick,erelease)
-
         # Define moments
         self.defineMoments()
-        
         # Compute moments
         self.computeMoments(points)
 
-        
-        
     def computeMoments(self, points):
         """ compute moments and velocities """
-
-
         # Update moments mask (from shaded region on Pix tab)
         sc = self.sci[self.spectra.index('Pix')]
         x0,x1 = sc.regionlimits
@@ -1796,7 +1699,6 @@ class GUI (QMainWindow):
             i,j = p
             self.Mmask[:,j,i] = 0
             self.Mmask[i0:i1,j,i] = 1
-        
         # Compute moments
         m = self.Mmask
         moments = [self.M0, self.M1, self.M2, self.M3, self.M4]
@@ -1805,8 +1707,6 @@ class GUI (QMainWindow):
         c = self.continuum
         moments, self.noise = multiComputeMoments(m,w,f,c,moments,points)
         self.M0, self.M1, self.M2, self.M3, self.M4 = moments
-
-            
         # Refresh the plotted images
         bands = ['M0','M1','M2','M3','M4']
         sbands = [self.M0, self.M1, self.M2,self.M3,self.M4]
@@ -1831,14 +1731,11 @@ class GUI (QMainWindow):
             ic.image.axes.set_xlim(ic0.image.axes.get_xlim())
             ic.image.axes.set_ylim(ic0.image.axes.get_ylim())
             ic.changed = True
-
         # Refresh current image (if a moment)
         itab = self.itabs.currentIndex()
         if self.bands[itab] in bands:
             ic = self.ici[itab]
             ic.fig.canvas.draw_idle()
-
-            
         # Update moments on pixel tab
         sc = self.sci[self.spectra.index('Pix')]
         ic = self.ici[0]
@@ -1847,25 +1744,19 @@ class GUI (QMainWindow):
         moments = [self.M0[j,i],self.M1[j,i],self.M2[j,i],self.M3[j,i],self.M4[j,i]]
         sc.updateSpectrum(cont=self.continuum[:,j,i], moments=moments, noise=self.noise[j,i])
         sc.fig.canvas.draw_idle()
-
         # Compute Velocities
         self.computeVelocities()
-        
-        
+
     def createAction(self,icon,text,shortcut,action):
         act = QAction(QIcon(icon),text, self)
         act.setShortcut(shortcut)
         act.triggered.connect(action)
         return act
 
-
-    
     def createApertureAction(self):
         """ Create combo box for choosing an aperture """
-
         self.apertures = [['apertures','Square','Rectangle'],
                      ['Circle','Ellipse','Polygon']]
-
         self.model = QStandardItemModel()
         for d in self.apertures:                
             row = []
@@ -1880,15 +1771,12 @@ class GUI (QMainWindow):
                 #item.setCheckState(False)
                 row.append(item)
             self.model.appendRow(row)
-
         self.apView = QTableView()
         # Remove headers and grid
         self.apView.verticalHeader().setVisible(False) 
         self.apView.horizontalHeader().setVisible(False)
         self.apView.setShowGrid(False)
         self.apView.setIconSize(QSize(24,24))
-
-        
         apertureAction = QComboBox()
         apertureAction.setToolTip("Choose an aperture\n")
         #apertureAction.SizeAdjustPolicy(QComboBox.AdjustToContentsOnFirstShow)
@@ -1897,7 +1785,6 @@ class GUI (QMainWindow):
         apertureAction.setView(self.apView)
         apertureAction.setModel(self.model)
         self.apView.setModel(self.model)
-            
         self.apView.resizeColumnsToContents()  # Once defined the model, resize the column width
         self.apView.setSelectionMode(QAbstractItemView.SingleSelection)
         self.apView.setSelectionBehavior(QAbstractItemView.SelectItems)
@@ -1907,15 +1794,12 @@ class GUI (QMainWindow):
         self.apView.setMinimumHeight(70)  
         #self.apView.setSizePolicy(sp)
         apertureAction.activated.connect(self.chooseAperture)
-
         return apertureAction
 
     def createFitAction(self):
         """ Create combo box for choosing an aperture """
-
         self.fitoptions = [['gaussfit','continuum','list'],
                            ['location','dispersion','check']]
-
         self.fmodel = QStandardItemModel()
         for d in self.fitoptions:                
             row = []
@@ -1932,15 +1816,12 @@ class GUI (QMainWindow):
                     item.setToolTip("Constrain the "+text)
                 row.append(item)
             self.fmodel.appendRow(row)
-
         self.fitView = QTableView()
         # Remove headers and grid
         self.fitView.verticalHeader().setVisible(False) 
         self.fitView.horizontalHeader().setVisible(False)
         self.fitView.setShowGrid(False)
         self.fitView.setIconSize(QSize(24,24))
-
-        
         fitAction = QComboBox()
         fitAction.setToolTip("Fit line and continuum (under construction)\n")
         #apertureAction.SizeAdjustPolicy(QComboBox.AdjustToContentsOnFirstShow)
@@ -1949,21 +1830,15 @@ class GUI (QMainWindow):
         fitAction.setView(self.fitView)
         fitAction.setModel(self.fmodel)
         self.fitView.setModel(self.fmodel)
-            
         self.fitView.resizeColumnsToContents()  # Once defined the model, resize the column width
         self.fitView.setSelectionMode(QAbstractItemView.SingleSelection)
         self.fitView.setSelectionBehavior(QAbstractItemView.SelectItems)
         self.fitView.setMinimumWidth(120)  
         self.fitView.setMinimumHeight(70)  
-
         fitAction.activated.connect(self.chooseFitOption)
-
         return fitAction
 
-
-    
     def onPolySelect(self, verts):
-
         self.disactiveSelectors()
         # 1 vertices in RA,Dec coords
         itab = self.itabs.currentIndex()
@@ -1975,7 +1850,6 @@ class GUI (QMainWindow):
         # Save aperture with vertices in ra,dec coordinates
         n = len(self.photoApertures)
         self.photoApertures.append(photoAperture(n,'polygon',adverts))
-        
         for ic in self.ici:
             # First adjust vertices to astrometry (they are in xy coords)
             verts = [(ic.wcs.all_world2pix(ra,dec,1)) for (ra,dec) in adverts]
@@ -1984,12 +1858,10 @@ class GUI (QMainWindow):
             cidap=poly.mySignal.connect(self.onRemoveAperture)
             ic.photApertureSignal.append(cidap)
             poly.modSignal.connect(self.onModifiedAperture)
-
         self.drawNewSpectrum(n)
 
     def drawNewSpectrum(self, n):        
         """ Add tab with the flux inside the aperture """
-
         apname = "{:d}".format(n)
         self.spectra.append(apname)
         t,sc,scid1,scid2,scid3,scid4 = self.addSpectrum(apname)
@@ -1999,10 +1871,6 @@ class GUI (QMainWindow):
         self.scid2.append(scid2)
         self.scid3.append(scid3)
         self.scid4.append(scid4)
-
-        #print('apertures are: ',len(self.ici[0].photApertures))
-        #print('current aperture is: ',n)
-        
         # Draw spectrum from polygon
         aperture = self.ici[0].photApertures[n].aperture
         path = aperture.get_path()
@@ -2010,8 +1878,7 @@ class GUI (QMainWindow):
         npath = transform.transform_path(path)
         s = self.specCube
         inpoints = s.points[npath.contains_points(s.points)]
-        xx,yy = inpoints.T
-        
+        xx,yy = inpoints.T        
         fluxAll = np.nansum(s.flux[:,yy,xx], axis=1)
         if s.instrument == 'GREAT':
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0 )
@@ -2024,8 +1891,7 @@ class GUI (QMainWindow):
                             redshift=s.redshift, baryshift=s.baryshift, l0=s.l0)
         elif s.instrument == 'PACS':
             expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
-            spec = Spectrum(s.wave, fluxAll, exposure=expAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0 )
-            
+            spec = Spectrum(s.wave, fluxAll, exposure=expAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0 )           
         sc.compute_initial_spectrum(spectrum=spec)
         self.specZoomlimits = [sc.xlimits,sc.ylimits]
         sc.cid = sc.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomSpec)
@@ -2033,17 +1899,13 @@ class GUI (QMainWindow):
         sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
                                rectprops=dict(alpha=0.5, facecolor='green'))
         sc.span.active = False
-
         # Select new tab
         self.stabs.setCurrentIndex(n+1)
-            
-        
+                   
     def onRectSelect(self, eclick, erelease):
-        'eclick and erelease are the press and release events'
-        
+        'eclick and erelease are the press and release events'        
         x1, y1 = eclick.xdata, eclick.ydata
         x2, y2 = erelease.xdata, erelease.ydata
-
         if self.selAp == 'Square' or self.selAp == 'Rectangle':
             x0=x1;y0=y1
             w  = np.abs(x2-x1)
@@ -2053,11 +1915,9 @@ class GUI (QMainWindow):
             y0 = (y1+y2)*0.5
             w  = np.abs(x2-x1)
             h  = np.abs(y2-y1)
-
         self.newSelectedAperture(x0,y0,w,h,self.selAp)
 
-    def newSelectedAperture(self, x0, y0, w, h, selAp):
-        
+    def newSelectedAperture(self, x0, y0, w, h, selAp):       
         itab = self.itabs.currentIndex()
         ic0 = self.ici[itab]
         r0,d0 = ic0.wcs.all_pix2world(x0,y0,1)
@@ -2066,7 +1926,6 @@ class GUI (QMainWindow):
 
     def drawNewAperture(self, selAp, r0, d0, ws, hs, angle):
         """ Draw new selected aperture """
-
         n = len(self.photoApertures)
         #print('existing apertures: ',selAp,n,len(self.ici[0].photApertures))
         if selAp == 'Square':
@@ -2128,10 +1987,8 @@ class GUI (QMainWindow):
                 ic.photApertureSignal.append(cidap)
                 #cidapm=
                 ellipse.modSignal.connect(self.onModifiedAperture)
-
         #print('existing apertures: ',len(self.photoApertures),len(self.ici[0].photApertures))
         self.drawNewSpectrum(n)
-
 
     def disactiveSelectors(self):
         """ Disactive all selectors, in the case more than one is selected """
@@ -2158,11 +2015,9 @@ class GUI (QMainWindow):
 
     def chooseFitOption(self, i):
         """ Choosing a fit option """
-
         index  = self.fitView.selectionModel().currentIndex()
         i = index.row()
         j = index.column()
-
         self.selFit = self.fitoptions[i][j]
         if self.selFit == 'list':
             self.sb.showMessage("You chose to open the "+self.selFit, 1000)
@@ -2172,18 +2027,14 @@ class GUI (QMainWindow):
             self.sb.showMessage("Choose a fitting option ", 1000)
         else:
             self.sb.showMessage("You chose the action "+self.selFit, 1000)
-
-
         #put back to the 0-th item
         self.fitAction.setCurrentIndex(0)
 
-        
     def chooseAperture(self, i):
         """ Choosing an aperture """
         index  = self.apView.selectionModel().currentIndex()
         i = index.row()
         j = index.column()
-
         self.selAp = self.apertures[i][j]
         if self.selAp == 'Ellipse':
             self.sb.showMessage("You chose an "+self.selAp, 1000)
@@ -2191,14 +2042,11 @@ class GUI (QMainWindow):
             self.sb.showMessage("Choose an aperture shape ", 1000)
         else:
             self.sb.showMessage("You chose a "+self.selAp, 1000)
-
         if len(self.ici) == 0:
             self.sb.showMessage("Start by opening a new image ", 1000)
             self.apertureAction.setCurrentIndex(0)
             return
-
         self.activateAperture()
-
 
     def selectSquareAperture(self):
         self.selAp = 'Square'
@@ -2225,11 +2073,7 @@ class GUI (QMainWindow):
         self.sb.showMessage("You chose a "+self.selAp, 1000)
         self.activateAperture()
 
-        
-
-        
     def activateAperture(self):
-
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
         print('aperture is ',self.selAp)
@@ -2277,16 +2121,14 @@ class GUI (QMainWindow):
                                       lineprops = dict(color='g', linestyle='-',linewidth = 2, alpha=0.8),
                                       interactive=False)
             self.ES.state.add('square')
-            self.ES.state.add('center')
-        
+            self.ES.state.add('center')        
         if self.selAp != 'apertures':
             ic.fig.canvas.draw_idle()
         #put back to the 0-th item
         self.apertureAction.setCurrentIndex(0)
 
     def selectDownloadImage(self):
-        """ Select the image to download """
-
+        """Select the image to download."""
         selectDI = QInputDialog()
         selectDI.setStyleSheet("* { font-size: 14pt; }")
         selectDI.setOption(QInputDialog.UseListViewForComboBoxItems)
@@ -2304,14 +2146,12 @@ class GUI (QMainWindow):
             self.downloadImage(selectDI.textValue())
 
     def downloadImage(self, band):
-        """ Download an image covering the cube """
-
+        """Download an image covering the cube."""
         # Compute center and size of image (in arcmin)
         nz,ny,nx = np.shape(self.specCube.flux)
         lon,lat = self.specCube.wcs.celestial.all_pix2world(ny//2,nx//2, 0)
         xsize = nx * self.specCube.pixscale /60. #size in arcmin
         ysize = ny * self.specCube.pixscale /60. #size in arcmin
-
         # Compute center and size (arcmin) of the displayed image 
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
@@ -2322,9 +2162,6 @@ class GUI (QMainWindow):
         lat = np.mean(dec)
         xsize = np.abs(ra[0]-ra[1])*np.cos(lat*np.pi/180.)*60.
         ysize = np.abs(dec[0]-dec[1])*60.
-        #print('Band selected is: ',band)
-
-
         if band != 'local':
             # Here call the thread
             self.downloadThread = DownloadThread(lon,lat,xsize,ysize,band,parent=self)
@@ -2356,11 +2193,9 @@ class GUI (QMainWindow):
             else:
                 message = 'The selected survey does not cover the displayed image'
             self.newImageMessage(message)
-
-        
+       
     def newImageMessage(self, message):
-        """ Message sent from download thread """
-        
+        """ Message sent from download thread """       
         self.sb.showMessage(message, 5000)
         try:
             self.msgbox.done(1)
@@ -2371,11 +2206,9 @@ class GUI (QMainWindow):
         " Save and display "
         self.saveDownloadedFits(downloadedImage)
         self.newImageTab(downloadedImage)
-        
 
     def newImageTab(self, downloadedImage):
         """ Open  a tab and display the new image """
-
         #print("Adding the new image ...")
         image = downloadedImage.data
         mask = np.isfinite(image)
@@ -2393,18 +2226,16 @@ class GUI (QMainWindow):
             self.icid1.append(c1)
             self.icid2.append(c2)
             self.icid3.append(c3)
-            self.icid4.append(c4)
-            
+            self.icid4.append(c4)           
             image = downloadedImage.data
             wcs = downloadedImage.wcs
-
-            ic.compute_initial_figure(image=image,wcs=wcs,title=band,cMap=self.colorMap,cMapDir=self.colorMapDirection,stretch=self.stretchMap)
+            ic.compute_initial_figure(image=image,wcs=wcs,title=band,
+                                      cMap=self.colorMap,cMapDir=self.colorMapDirection,
+                                      stretch=self.stretchMap)
             ih.compute_initial_figure(image=image)
             ic.image.set_clim(ih.limits)
             ic.changed = True
-
-            # Check rotation angle
-            
+           # Check rotation angle
             # Align with spectral cube
             ic0 = self.ici[0]
             x = ic0.axes.get_xlim()
@@ -2416,39 +2247,29 @@ class GUI (QMainWindow):
             ic.axes.set_xlim(x)
             ic.axes.set_ylim(y)
             ic.changed = True
-
-
             # Add existing apertures
             self.addApertures(ic)
-
             # Add existing contours
             self.addContours(ic)
-
             # Callback to propagate axes limit changes to other images
             ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
 
-
     def saveDownloadedFits(self, downloadedImage):
         """ Save the downloaded FITS image """
-
-        from astropy.io import fits
-        
+        from astropy.io import fits        
         # Dialog to save file
         fd = QFileDialog()
         fd.setLabelText(QFileDialog.Accept, "Save as")
         fd.setNameFilters(["Fits Files (*.fits)","All Files (*)"])
         fd.setOptions(QFileDialog.DontUseNativeDialog)
         fd.setViewMode(QFileDialog.List)
-        fd.selectFile(downloadedImage.source+'.fits')
-        
+        fd.selectFile(downloadedImage.source+'.fits')        
         if (fd.exec()):
             fileName = fd.selectedFiles()
             outfile = fileName[0]
-
             # Check the 
             filename, file_extension = os.path.splitext(outfile)
-            basename = os.path.basename(filename)
-            
+            basename = os.path.basename(filename)            
             # Primary header
             image = downloadedImage.data
             wcs   = downloadedImage.wcs
@@ -2461,20 +2282,17 @@ class GUI (QMainWindow):
             hdul = fits.HDUList([hdu])
             hdul.writeto(outfile,overwrite=True) # clobber true  allows rewriting
             hdul.close()
-
             
     def uploadSpectrum(self, event):
         """
         Upload existing spectrum
-        """
-        
+        """        
         fd = QFileDialog()
         fd.setLabelText(QFileDialog.Accept, "Import")
         fd.setNameFilters(["Fits Files (*.fits)","All Files (*)"])
         fd.setOptions(QFileDialog.DontUseNativeDialog)
         fd.setViewMode(QFileDialog.List)
         fd.setFileMode(QFileDialog.ExistingFile)
-
         if (fd.exec()):
             fileName= fd.selectedFiles()
             #print(fileName[0])
@@ -2488,7 +2306,6 @@ class GUI (QMainWindow):
 
     def addApertures(self, ic):
         """ Add apertures already defined on new image """
-
         ic0 = self.ici[0]
         for aper in ic0.photApertures:
             #apertype = aper.__class__.__name__
@@ -2558,9 +2375,6 @@ class GUI (QMainWindow):
                 #cidapm=
                 pixel.modSignal.connect(self.onModifiedAperture)
 
-
-        
-
     def blinkTab(self):
         ''' keep switching between two tabs until blink changes state '''
         itab = self.itabs.currentIndex()
@@ -2579,30 +2393,24 @@ class GUI (QMainWindow):
         else:
             self.blink = 'off'
             self.timer.stop()
-
-
         
     def fileQuit(self):
         """ Quitting the program """
         self.close()
 
-        
-
     def cutCube(self):  
-        """ Cut part of the cube """
-        self.sb.showMessage("Drag the mouse over the slice of the cube to save ", 2000)
+        """ Trim the cube """
+        self.sb.showMessage("Drag the mouse over the slice of the cube to trim ", 2000)
         self.cutcube = 'on'
         istab = self.spectra.index('All')
         self.stabs.setCurrentIndex(istab)
         sc = self.sci[istab]
         #sc.span.set_visible(True)
         sc.span.set_active(True)
-
         
     def cropCube(self):
         """ Crop part of the cube """
         self.sb.showMessage("Crop the cube using the zoomed image shown ", 2000)
-
         # Get limits and center
         ic0 = self.ici[0]
         xlimits = ic0.axes.get_xlim()
@@ -2631,12 +2439,10 @@ class GUI (QMainWindow):
 
     def cropCube2D(self,center,size):
         """ Generate cropped cube """
-
         from astropy.nddata import Cutout2D
         ic0 = self.ici[0]
         co = Cutout2D(ic0.oimage,center,size,wcs=ic0.wcs)
         bb = co.bbox_original
-
         self.specCube.flux = self.specCube.flux[:,bb[0][0]:bb[0][1]+1,bb[1][0]:bb[1][1]+1]
         self.specCube.wcs = co.wcs
         if self.specCube.instrument == 'FIFI-LS':
@@ -2653,11 +2459,9 @@ class GUI (QMainWindow):
         xi = np.arange(nx); yi = np.arange(ny)
         xi,yi = np.meshgrid(xi,yi)
         self.points = np.array([np.ravel(xi),np.ravel(yi)]).transpose()
-        
 
     def cutCube1D(self,xmin,xmax):
-        """ Generate cut cube """
-
+        """ Generate trimmed cube """
         self.specCube.flux = self.specCube.flux[xmin:xmax,:,:]
         self.specCube.wave = self.specCube.wave[xmin:xmax]
         nz,ny,nx = np.shape(self.specCube.flux)
@@ -2676,9 +2480,7 @@ class GUI (QMainWindow):
 
     def saveFits(self):
         """ Save the displayed image as a FITS file """
-
-        from astropy.io import fits
-        
+        from astropy.io import fits        
         # Dialog to save file
         fd = QFileDialog()
         fd.setLabelText(QFileDialog.Accept, "Save as")
@@ -2686,24 +2488,19 @@ class GUI (QMainWindow):
                            "JPG Files (*.jpg)","PDF Files (*.pdf)","All Files (*)"])
         fd.setOptions(QFileDialog.DontUseNativeDialog)
         fd.setViewMode(QFileDialog.List)
-
         if (fd.exec()):
             fileName = fd.selectedFiles()
             #print(fileName[0])
             outfile = fileName[0]
-
             itab = self.itabs.currentIndex()
             ic = self.ici[itab]
             band = self.bands[itab]
-
             if band == 'Flux' or band == 'Uflux' or band == 'Exp':
                 instrument = self.specCube.instrument
             else:
                 instrument = band
-
             # Check the 
             filename, file_extension = os.path.splitext(outfile)
-
             if file_extension == '.fits':
                 # Primary header
                 header = ic.wcs.to_header()
@@ -2722,12 +2519,9 @@ class GUI (QMainWindow):
                 print(message)
                 self.sb.showMessage(message, 2000)
 
-
     def saveSpectrum(self):
         """ Save the displayed spectrum as a FITS/ASCII file or as PNG/PDF image """
-
-        from astropy.io import fits
-        
+        from astropy.io import fits        
         # Dialog to save file
         fd = QFileDialog()
         fd.setLabelText(QFileDialog.Accept, "Save as")
@@ -2735,19 +2529,16 @@ class GUI (QMainWindow):
                            "PDF Files (*.pdf)","ASCII Files (*.txt)", "CSV Files (*.csv)","All Files (*)"])
         fd.setOptions(QFileDialog.DontUseNativeDialog)
         fd.setViewMode(QFileDialog.List)
-
         if (fd.exec()):
             fileName = fd.selectedFiles()
             outfile = fileName[0]
             filename, file_extension = os.path.splitext(outfile)
-
             # Tabs
             istab = self.stabs.currentIndex()
             itab = self.itabs.currentIndex()
             sc = self.sci[istab]
             ic = self.ici[itab]
             n = istab-1
-
             # Compute area of the aperture
             if n >= 0:
                 aperture = self.ici[0].photApertures[n].aperture
@@ -2758,8 +2549,7 @@ class GUI (QMainWindow):
                 inpoints = s.points[npath.contains_points(s.points)]
                 npoints = np.size(inpoints)/2
                 ps = s.pixscale/3600.
-                area = npoints*ps*ps
-            
+                area = npoints*ps*ps            
             if file_extension == '.fits':
                 # Primary header
                 hdu = fits.PrimaryHDU()
@@ -2913,11 +2703,9 @@ class GUI (QMainWindow):
                 message = "Extension has to be *.fits, *.txt, *.csv, *.png, *.jpg, or *.pdf "
                 self.sb.showMessage(message, 2000)
                 print(message)
-
     
     def savelCube(self):
         """ Save a cube after subtracting the continuum """
-
         if self.continuum is not None:
             self.saveCube(cont=True)
         else:
@@ -2934,26 +2722,20 @@ class GUI (QMainWindow):
     def saveCube(self, cont=False):
         """Save a cut/cropped cube."""
         from astropy.io import fits
-        
-
         # Dialog to save file
         fd = QFileDialog()
         fd.setLabelText(QFileDialog.Accept, "Save as")
         fd.setNameFilters(["Fits Files (*.fits)","All Files (*)"])
         fd.setOptions(QFileDialog.DontUseNativeDialog)
-        fd.setViewMode(QFileDialog.List)
-
-            
+        fd.setViewMode(QFileDialog.List)            
         if (fd.exec()):
             fileName = fd.selectedFiles()
             #print(fileName[0])
             outfile = fileName[0]
-
             if cont and self.continuum is not None:
                 flux = self.specCube.flux - self.continuum
             else:
                 flux = self.specCube.flux
-
             #print('Saving the cube with z size: ',self.specCube.n)
             # Reusable header
             header = self.specCube.wcs.to_header()
@@ -2963,8 +2745,7 @@ class GUI (QMainWindow):
             header['CDELT3'] = (self.specCube.cdelt3,'Increment')
             header['NAXIS3'] = (self.specCube.n,'3rd dimension')
             header['INSTRUME'] = (self.specCube.instrument, 'Instrument')
-            header['DATE-OBS'] = (self.specCube.obsdate, 'Date of the observation')
-            
+            header['DATE-OBS'] = (self.specCube.obsdate, 'Date of the observation')            
             if self.specCube.instrument == 'FIFI-LS':
                 header['CUNIT3'] = ('um','Wavelength unit')
                 header['OBJ_NAME'] = (self.specCube.objname, 'Object Name')
@@ -2978,17 +2759,14 @@ class GUI (QMainWindow):
                 header['ALTI_END'] = (self.specCube.altitude[1],'Equivalent aircraft pressure altitude [feet]')
                 header['PIXSCAL'] = (self.specCube.pixscale,'Pixel scale [arcsec]' )
                 header['RESOLUN'] = (self.specCube.resolution,'Spectral resolution')
-                header['NAXIS'] = (3,'Number of axis')
-                
+                header['NAXIS'] = (3,'Number of axis')                
                 # Primary header
                 hdu = fits.PrimaryHDU()
                 hdu.header.extend(header)
-
                 if cont and self.continuum is not None:
                     uflux = self.specCube.uflux - self.continuum
                 else:
                     uflux = self.specCube.uflux
-
                 # Extensions
                 hdu1 = self.addExtension(flux,'FLUX','Jy',header)
                 hdu2 = self.addExtension(self.specCube.eflux,'ERROR','Jy',header)
@@ -3051,7 +2829,6 @@ class GUI (QMainWindow):
             else:
                 pass    
 
-
     def exportAperture(self):
         import json, io
         """Export an aperture in Json format."""
@@ -3095,8 +2872,6 @@ class GUI (QMainWindow):
                 }
             else:
                 data = {}
-
-
             # Open a dialog
             fd = QFileDialog()
             fd.setLabelText(QFileDialog.Accept, "Export as")
@@ -3118,8 +2893,6 @@ class GUI (QMainWindow):
         else:
             self.sb.showMessage("To export an aperture, select the tab with the desired aperture ",
                                 3000)
-                        
-        
 
     def importAperture(self):
         import json
@@ -3131,17 +2904,14 @@ class GUI (QMainWindow):
         fd.setOptions(QFileDialog.DontUseNativeDialog)
         fd.setViewMode(QFileDialog.List)
         fd.setFileMode(QFileDialog.ExistingFile)
-
         if (fd.exec()):
             filenames= fd.selectedFiles()
             print("Loading aperture from file: ", filenames[0])
             with open(filenames[0],'r') as f:
                 #data = json.load(f, object_pairs_hook=OrderedDict, encoding='utf-8')
                 data = json.load(f)#, object_pairs_hook=OrderedDict)
-
             # itab = self.itabs.currentIndex()
-            # ic = self.ici[itab]
-                            
+            # ic = self.ici[itab]                            
             # Decoding info and opening new tab
             try:
                 type = data['type']
@@ -3160,9 +2930,7 @@ class GUI (QMainWindow):
                 self.sb.showMessage("The file is not a valide aperture file.", 3000)
         else:
             self.sb.showMessage("To export an aperture, select the tab with the desired aperture ", 3000)
-            
-                
-                
+
     def addExtension(self,data, extname, unit, hdr):
         from astropy.io import fits
         hdu = fits.ImageHDU()
@@ -3171,7 +2939,6 @@ class GUI (QMainWindow):
         if unit !=None: hdu.header['BUNIT']=(unit)
         if hdr != None: hdu.header.extend(hdr)
         return hdu
-
         
     def sliceCube(self):
         """ Cut part of the cube """
@@ -3191,7 +2958,6 @@ class GUI (QMainWindow):
         
     def maskCube(self):
         """ Mask a slice of the cube """
-
         # Dialog to choose between masking with contour level or polygon
         msgBox = QMessageBox()
         msgBox.setText('Mask the region')
@@ -3199,8 +2965,7 @@ class GUI (QMainWindow):
         msgBox.addButton('inside a polygon', QMessageBox.ActionRole)
         msgBox.addButton('outside a polygon', QMessageBox.ActionRole)
         msgBox.addButton('cancel', QMessageBox.ActionRole)
-        self.result = msgBox.exec()
-            
+        self.result = msgBox.exec()            
         if self.result == 0:
             self.maskCubeContour()
         elif self.result == 1:
@@ -3211,7 +2976,6 @@ class GUI (QMainWindow):
             pass
             
     def maskCubeContour(self):
-
         self.sb.showMessage("Masking data ", 2000)
         # Find the tab with levels
         itab = None
@@ -3273,46 +3037,38 @@ class GUI (QMainWindow):
             self.sb.showMessage("Please, define contours before masking ", 4000)                                
 
     def maskCubeInsidePolygon(self):
-        self.sb.showMessage("Draw the region to mask", 2000)
-        
+        self.sb.showMessage("Draw the region to mask", 2000)        
         # Start a Selector to define a polygon aperture
         itab = self.itabs.currentIndex()
         band = self.bands[itab]
         if band not in ['Flux','uFlux','Exp','C0','M0','M1','M2','M3','M4','v','sv']:
             itab = 0
-            self.itabs.setCurrentIndex(itab)
-            
+            self.itabs.setCurrentIndex(itab)            
         ic = self.ici[itab]
         if ic.toolbar._active == 'ZOOM':
             ic.toolbar.zoom()  # turn off zoom
             x = ic.axes.get_xlim()
             y = ic.axes.get_ylim()
-            self.zoomlimits = [x,y]
-            
+            self.zoomlimits = [x,y]            
         #self.LS = LassoSelector(ic.axes, onselect=self.onMask)
         self.LS = PolygonSelector(ic.axes, onselect=self.insideMask)
 
     def maskCubeOutsidePolygon(self):
-        self.sb.showMessage("Draw the region to mask", 2000)
-        
+        self.sb.showMessage("Draw the region to mask", 2000)        
         # Start a Selector to define a polygon aperture
         itab = self.itabs.currentIndex()
         band = self.bands[itab]
         if band not in ['Flux','uFlux','Exp','C0','M0','M1','M2','M3','M4','v','sv']:
             itab = 0
-            self.itabs.setCurrentIndex(itab)
-            
+            self.itabs.setCurrentIndex(itab)            
         ic = self.ici[itab]
         if ic.toolbar._active == 'ZOOM':
             ic.toolbar.zoom()  # turn off zoom
             x = ic.axes.get_xlim()
             y = ic.axes.get_ylim()
-            self.zoomlimits = [x,y]
-            
+            self.zoomlimits = [x,y]            
         #self.LS = LassoSelector(ic.axes, onselect=self.onMask)
         self.LS = PolygonSelector(ic.axes, onselect=self.outsideMask)
-
-    
 
     def insideMask(self,verts):
         self.onMask(verts,True)
@@ -3322,16 +3078,12 @@ class GUI (QMainWindow):
 
     def onMask(self, verts, inside = True):
         """ Uses the vertices of the mask to mask the cube (and moments) """
-
         s= self.specCube
         poly = Polygon(list(verts), fill=False, closed=True, color='lime')
-        self.disactiveSelectors()
-        
+        self.disactiveSelectors()        
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
         ic.axes.add_patch(poly)
-        
-
         """ Ask to mask points """
         flags = QMessageBox.Yes 
         flags |= QMessageBox.No
@@ -3343,7 +3095,6 @@ class GUI (QMainWindow):
                                         question,
                                         flags)            
         if response == QMessageBox.Yes:
-
             path = poly.get_path()
             transform = poly.get_patch_transform()
             npath = transform.transform_path(path)
@@ -3354,8 +3105,7 @@ class GUI (QMainWindow):
             else:
                 inpoints = s.points[~insidePts]
             xx,yy = inpoints.T
-            poly.remove()
-            
+            poly.remove()            
             self.sb.showMessage("Masking data ", 2000)
             self.specCube.flux[:,yy,xx] = np.nan
             icis = [self.ici[0]]
@@ -3369,7 +3119,6 @@ class GUI (QMainWindow):
                 ic0.showImage(image)
                 self.addContours(ic0)
                 ic0.updateScale(cmin,cmax)
-
             # mask C0, Mi, v, sv
             sbands = [self.C0, self.M0, self.M1, self.M2, self.M3, self.M4, self.v, self.sv]
             bands = ['C0','M0','M1','M2','M3','M4','v','sv']
@@ -3385,18 +3134,14 @@ class GUI (QMainWindow):
                     ih.compute_initial_figure(image=sb, xmin=clim[0],xmax=clim[1])
                     self.addContours(ic0)
                     ic0.updateScale(clim[0],clim[1])
-
             x,y = self.zoomlimits
             ic.axes.set_xlim(x)
             ic.axes.set_ylim(y)
             ic.fig.canvas.draw_idle()
         elif QMessageBox.No:
             poly.remove()
-
-
         
-    def computeZeroMoment(self):
-        
+    def computeZeroMoment(self):        
         c = 299792458. # m/s
         w = self.specCube.wave
         dw = [] 
@@ -3404,7 +3149,6 @@ class GUI (QMainWindow):
         dw.append(list((w[2:]-w[:-2])*0.5))
         dw.append([w[-1]-w[-2]])
         dw = np.concatenate(dw)
-
         nz,ny,nx = np.shape(self.specCube.flux)
         self.M0 = np.zeros((ny,nx))
         for i in range(nx):
@@ -3415,9 +3159,7 @@ class GUI (QMainWindow):
         
     def zeroMoment(self):
         """ Compute and display zero moment of flux """
-
-        self.computeZeroMoment()
-        
+        self.computeZeroMoment()        
         band = 'M0'
         # Open tab and display the image
         self.bands.append(band)
@@ -3429,8 +3171,7 @@ class GUI (QMainWindow):
         self.icid1.append(c1)
         self.icid2.append(c2)
         self.icid3.append(c3)
-        self.icid4.append(c4)
-        
+        self.icid4.append(c4)        
         ic.compute_initial_figure(image=self.M0,wcs=self.specCube.wcs,title=band,
                                   cMap=self.colorMap,cMapDir=self.colorMapDirection,stretch=self.stretchMap)
         # Callback to propagate axes limit changes among images
@@ -3438,13 +3179,10 @@ class GUI (QMainWindow):
         ih = self.ihi[self.bands.index(band)]
         clim = ic.image.get_clim()
         ih.compute_initial_figure(image=self.M0,xmin=clim[0],xmax=clim[1])
-
         # Add apertures
         self.addApertures(ic)
-
         # Add contours
         self.addContours(ic) 
-
         # Align with spectral cube
         ic0 = self.ici[0]
         x = ic0.axes.get_xlim()
@@ -3455,10 +3193,8 @@ class GUI (QMainWindow):
         ic.axes.set_ylim(y)
         ic.changed = True
 
-
     def addContours(self, ic):
         """ Add existing contours to newly added images """
-
         if self.contours == 'on':
             ih0 = None
             for ih,ic_ in zip(self.ihi, self.ici):
@@ -3476,7 +3212,6 @@ class GUI (QMainWindow):
             
     def overlapContours(self):
         """ Compute contours and overlap/remove them on images """
-
         if self.contours == 'off':
             #self.ctab = [self.itabs.currentIndex(),0]
             self.sb.showMessage("Click again to remove contours", 2000)
@@ -3509,7 +3244,6 @@ class GUI (QMainWindow):
 
     def drawContours(self):
         """ Draw contours of image """
-
         itab = self.itabs.currentIndex()
         ic0 = self.ici[itab]
         ih0 = self.ihi[itab]
@@ -3537,11 +3271,9 @@ class GUI (QMainWindow):
 
     def onModifyContours(self, n):
         """ Called by mysignal in the histogram canvas if contour levels change """
-
         # In some cases, computing contours can be computationally intense. So
         # we call threads in the case of new/modified contours
-        # Unfortunately this does not work because matplotlib is not thread safe.
-        
+        # Unfortunately this does not work because matplotlib is not thread safe.        
         itab = self.itabs.currentIndex()
         ic0 = self.ici[itab]
         ih0 = self.ihi[itab]
@@ -3566,12 +3298,10 @@ class GUI (QMainWindow):
             self.modifyOtherImagesContours(itab)
                 
     def modifyOtherImagesContours(self, i0):
-        """ Once the new contours are computed, propagate them to other images """
-        
+        """ Once the new contours are computed, propagate them to other images """        
         ic0 = self.ici[i0]
         ih0 = self.ihi[i0]
-        ic0.fig.canvas.draw_idle()
-        
+        ic0.fig.canvas.draw_idle()        
         ici = self.ici.copy()
         ici.remove(ic0)
         for ic in ici:
@@ -3586,7 +3316,6 @@ class GUI (QMainWindow):
                                              transform=ic.axes.get_transform(ic0.wcs))
                 # Differ drawing until changing tab
                 ic.changed = True
-
 
     # Redefine flux for FIFI-LS cubes
     def fluxMedianAT(self):
@@ -3623,8 +3352,7 @@ class GUI (QMainWindow):
             self.sb.showMessage("First choose a cube ", 1000)
         
     def reloadFile(self):
-        """Reload the file."""
-        
+        """Reload the file."""        
         try:
             filename = self.specCube.filename
             self.loadFile(filename)
@@ -3635,14 +3363,12 @@ class GUI (QMainWindow):
         
     def newFile(self):
         """Display a new image."""
-
         fd = QFileDialog()
         fd.setLabelText(QFileDialog.Accept, "Import")
         fd.setNameFilters(["Fits Files (*.fits)","All Files (*)"])
         fd.setOptions(QFileDialog.DontUseNativeDialog)
         fd.setViewMode(QFileDialog.List)
         fd.setFileMode(QFileDialog.ExistingFile)
-
         if (fd.exec()):
             fileName= fd.selectedFiles()
             print('Reading file ',fileName[0])
@@ -3678,11 +3404,9 @@ class GUI (QMainWindow):
             #print('all image tabs removed')
         except:
             pass
-
         # Update window title (to include object name)
-        self.setWindowTitle(self.title + " [ "+self.specCube.objname+" - "+self.specCube.instrument+" ]")
-
-
+        self.setWindowTitle(self.title + " [ "+self.specCube.objname+" - "+
+                                            self.specCube.instrument+" ]")
         # Initialize
         self.tabi = []
         self.ici  = []
@@ -3698,7 +3422,6 @@ class GUI (QMainWindow):
         self.scid2 = []
         self.scid3 = []
         self.scid4 = []
-
         # Open new tabs and display it
         if self.specCube.instrument == 'FIFI-LS':
             self.bands = ['Flux','uFlux','Exp']
@@ -3712,7 +3435,6 @@ class GUI (QMainWindow):
         else:
             self.spectra = []
             self.bands = []
-        #print ("bands are ", self.bands)
         self.photoApertures = []
         for b in self.bands:
             t,ic,ih,h,c1,c2,c3,c4 = self.addImage(b)
@@ -3741,9 +3463,14 @@ class GUI (QMainWindow):
         # Make tab 'Pix' unclosable
         self.stabs.tabBar().setTabButton(1,QTabBar.LeftSide,None)
         self.stabs.tabBar().setTabButton(1,QTabBar.RightSide,None)
-            
+        # Start selecting Pixel tab
+        istab = self.spectra.index('Pix')
+        if self.stabs.currentIndex() != istab:
+            self.stabs.currentChanged.disconnect()
+            self.stabs.setCurrentIndex(istab)  # Pixel tab
+            self.stabs.currentChanged.connect(self.onSTabChange)
+           
     def initializeImages(self):
-
         s = self.specCube
         # Compute initial images
         for ima in self.bands:
@@ -3806,7 +3533,6 @@ class GUI (QMainWindow):
         sc = self.sci[self.spectra.index(spectrum)]
         nz,ny,nx = np.shape(s.flux)
         # Add pixel aperture
-
         ic0 = self.ici[0]
         x0 = nx // 2
         y0 = ny // 2
@@ -3824,7 +3550,6 @@ class GUI (QMainWindow):
             cidap=pixel.mySignal.connect(self.onRemoveAperture)
             ic.photApertureSignal.append(cidap)
             pixel.modSignal.connect(self.onModifiedAperture)
-
         # print('Initialize spectrum')
         s = self.specCube
         x0 = nx // 2
@@ -3850,8 +3575,6 @@ class GUI (QMainWindow):
         sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
                                rectprops=dict(alpha=0.5, facecolor='LightSalmon'))
         sc.span.active = False
-
-        
         # Re-initialize variables
         self.contours = 'off'
         self.blink = 'off'
@@ -3872,22 +3595,17 @@ class GUI (QMainWindow):
         self.RS = None
         self.LS = None
 
-            
     def onSelect(self, xmin, xmax):
         """ Consider only a slice of the cube when computing the image """
-
         if self.slice == 'on':
             # Find indices of the shaded region
             sc = self.sci[self.spectra.index('Pix')]
             if sc.xunit == 'THz':
                 c = 299792458.0  # speed of light in m/s
                 xmin, xmax = c/xmax*1.e-6, c/xmin*1.e-6
-
             indmin, indmax = np.searchsorted(self.specCube.wave, (xmin, xmax))
             indmax = min(len(self.specCube.wave) - 1, indmax)
             sc.regionlimits = [xmin,xmax]
-
-
             # Remove previous contours on image
             for ic in self.ici:
                 if ic.contour is not None:
@@ -3903,8 +3621,6 @@ class GUI (QMainWindow):
                     print('There are ',len(ih.lev),len(ih.levels),' contour levels')
                     ih.levSignal.disconnect()
                     ih.removeLevels()
-
-        
             # Draw region on spectrum and hide span selector
             sc.shadeSpectrum()
             sc.fig.canvas.draw_idle()
@@ -3916,7 +3632,6 @@ class GUI (QMainWindow):
                 SI.line.set_visible(SI.showverts)
             except:
                 pass
-
             # Update images (flux, uflux, coverage)
             if self.specCube.instrument == 'GREAT':
                 imas = ['Flux']
@@ -3924,7 +3639,6 @@ class GUI (QMainWindow):
                 imas = ['Flux','Exp']
             elif self.specCube.instrument == 'FIFI-LS':
                 imas = ['Flux','uFlux','Exp']
-            
             x,y = self.zoomlimits
             for ima in imas:
                 ic = self.ici[self.bands.index(ima)]
@@ -3984,8 +3698,7 @@ class GUI (QMainWindow):
             self.cutcube = 'off'
             sc.tmpRegion.remove()
             sc.fig.canvas.draw_idle()
-            
-            
+
     def doZoomAll(self, event):
         ''' propagate limit changes to all images '''
         itab = self.itabs.currentIndex()
@@ -3994,26 +3707,22 @@ class GUI (QMainWindow):
             self.zoomAll(itab)
 
     def zoomAll(self, itab):
-
-        # Update total spectrum
+        """Update total spectrum."""
         s = self.specCube
         spectrum = self.spectra.index('All')
         sc = self.sci[spectrum]
-        
         ic = self.ici[itab]
         if ic.toolbar._active == 'ZOOM':
             ic.toolbar.zoom()  # turn off zoom
         x = ic.axes.get_xlim()
         y = ic.axes.get_ylim()
         ra,dec = ic.wcs.all_pix2world(x,y,1)
-
         # If not in the flux image, compute values for the flux image
         band = self.bands.index('Flux')
         if itab != band:
             ic = self.ici[band]
             x,y = ic.wcs.all_world2pix(ra,dec,1)            
         self.zoomlimits = [x,y]
-
         # Compute limits for new total spectrum
         x0 = int(np.min(x)); x1 = int(np.max(x))
         y0 = int(np.min(y)); y1 = int(np.max(y))
@@ -4021,7 +3730,6 @@ class GUI (QMainWindow):
         if y0 < 0: y0=0
         if x1 >= s.nx: x1 = s.nx-1
         if y1 >= s.ny: y1 = s.ny-1
-
         # Set new values in other image tabs
         ici = self.ici.copy()
         ici.remove(ic)
@@ -4032,8 +3740,6 @@ class GUI (QMainWindow):
             ima.axes.set_ylim(y)
             ima.changed = True
             ima.cid = ima.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
-
-        
         fluxAll = np.nansum(self.specCube.flux[:,y0:y1,x0:x1], axis=(1,2))
         if s.instrument == 'GREAT':
             sc.updateSpectrum(f=fluxAll)
@@ -4044,8 +3750,7 @@ class GUI (QMainWindow):
             ufluxAll = np.nansum(s.uflux[:,y0:y1,x0:x1], axis=(1,2))
             expAll = np.nansum(s.exposure[:,y0:y1,x0:x1], axis=(1,2))
             sc.updateSpectrum(f=fluxAll,uf=ufluxAll,exp=expAll)
-            
-            
+
     def doZoomSpec(self,event):
         """ In the future impose the same limits to all the spectral tabs """
         stab = self.stabs.currentIndex()
@@ -4060,7 +3765,6 @@ class GUI (QMainWindow):
         sc.ylimits = sc.axes.get_ylim()
         self.specZoomlimits = [sc.xlimits,sc.ylimits]
 
-        
     def changeVisibility(self):
         """ Hide/show the histogram of image intensities """
         try:
@@ -4072,21 +3776,15 @@ class GUI (QMainWindow):
             self.menuHisto.setChecked(not state)
         except:
             self.sb.showMessage("First choose a cube ", 1000)
-            
 
     def changeColorMap(self):
         """ Change a color map for the images """
-
         # check DS9 colormaps in http://nbviewer.jupyter.org/gist/adonath/c9a97d2f2d964ae7b9eb
-
         # stretching and normalization are treated at: http://docs.astropy.org/en/stable/visualization/normalization.html
         # normalization as 'sqrt' for instance ... norm = simple_norm(image,'sqrt') with astropy.visualization
         # Great adaption: https://github.com/glue-viz/ds9norm
-
         # In the colormap dialog I should add a list of possible stretches (sqrt, log , ...)
-
         if len(self.ihi) > 1:
-        
             self.CMlist = ['gist_heat','afmhot','ds9heat','gist_earth','gist_gray','inferno','ocean','plasma','seismic','jet',
                            'ds9a','ds9b','ds9cool','ds9i8','ds9aips0','ds9rainbow','ds9he']
             self.STlist = ['linear','sqrt','square','log','power','sinh','asinh']
@@ -4097,13 +3795,11 @@ class GUI (QMainWindow):
             self.selectCM.clist.currentRowChanged.connect(self.updateColorContour)
             self.selectCM.dirSignal.connect(self.reverseColorMap)
             self.selectCM.exec_()
-
         else:
             self.sb.showMessage("First choose a cube ", 1000)            
             
     def updateColorContour(self, newRow):
-        """ Update the stretch of the color map """
-        
+        """Update the stretch of the color map."""
         newColor = self.CClist[newRow]
         if newColor != self.colorContour:
             self.colorContour = newColor
@@ -4114,11 +3810,9 @@ class GUI (QMainWindow):
                         c.set_color(self.colorContour)
                     ic.fig.canvas.draw_idle()
                     #self.addContours(ic)
-        
 
     def updateStretchMap(self, newRow):
         """ Update the stretch of the color map """
-        
         newStretch = self.STlist[newRow]
         if newStretch != self.stretchMap:
             self.stretchMap = newStretch
@@ -4130,17 +3824,13 @@ class GUI (QMainWindow):
                 #ic.fig.canvas.draw_idle()
                 self.addContours(ic)
                 ic.changed = True
-
-
         itab  = self.itabs.currentIndex()
         ic = self.ici[itab]
         ic.fig.canvas.draw_idle()
         ic.changed = False
 
-                
     def updateColorMap(self, newRow):
         """ Update the color map of the image tabs """
-        
         newCM = self.CMlist[newRow]
         if newCM != self.colorMap:
             self.colorMap = newCM
@@ -4151,7 +3841,6 @@ class GUI (QMainWindow):
                 ic.image.set_clim(clim)
                 self.addContours(ic)
                 ic.changed = True
-
             itab  = self.itabs.currentIndex()
             ic = self.ici[itab]
             ic.fig.canvas.draw_idle()
@@ -4159,7 +3848,6 @@ class GUI (QMainWindow):
                 
     def reverseColorMap(self, reverse):
         """ Reverse color map direction """
-
         if self.colorMapDirection == "":
             self.colorMapDirection = "_r"
         else:
@@ -4172,17 +3860,13 @@ class GUI (QMainWindow):
             ic.image.set_clim(clim)
             self.addContours(ic)
             ic.changed = True
-
         itab  = self.itabs.currentIndex()
         ic = self.ici[itab]
         ic.fig.canvas.draw_idle()
         ic.changed = False
-        
-            
-            
+
     def onSTabChange(self, stab):
         #print('Spectral tab changed to ', stab)
-
         # This should activate an aperture (put dots on it and/or change color)
         if len(self.stabs) > 1:
             itab  = self.itabs.currentIndex()
@@ -4193,7 +3877,6 @@ class GUI (QMainWindow):
             # Activate interactor (toogle on) and disactivate
             for iap in range(nap):
                 ap = ic.photApertures[iap]
-                #aps = 
                 ic.photApertureSignal[iap]
                 if iap == n:
                     ap.showverts = True
@@ -4206,7 +3889,6 @@ class GUI (QMainWindow):
 
     def hresizeSpectrum(self):
         """ Expand spectrum to maximum wavelength range """
-
         istab = self.stabs.currentIndex()
         sc = self.sci[istab]
         xlim0 = np.min(sc.spectrum.wave)
@@ -4216,38 +3898,31 @@ class GUI (QMainWindow):
         
     def vresizeSpectrum(self):
         """ Expand spectrum to maximum flux range """
-
         istab = self.stabs.currentIndex()
         sc = self.sci[istab]
         spec = sc.spectrum
-
         ylim0 = np.nanmin(spec.flux)
         ylim1 = np.nanmax(spec.flux)
-
         if sc.instrument == 'FIFI-LS':
             u0 = np.nanmin(spec.uflux)
             u1 = np.nanmax(spec.uflux)
             if u0 < ylim0: ylim0 = u0
             if u1 > ylim1: ylim1 = u1
-
         # Slightly higher maximum
         sc.ylimits = (ylim0,ylim1*1.1)
-        sc.updateYlim()
-        
+        sc.updateYlim()        
         
 def main():
     #QApplication.setStyle('Fusion')
     app = QApplication(sys.argv)
-    gui = GUI()
-    
+    gui = GUI()    
     # Create and display the splash screen
     #splash_pix = QPixmap(gui.path0+'/icons/sospex.png')
     #splash = QSplashScreen(splash_pix, Qt.WindowStaysOnTopHint)
     #splash.setMask(splash_pix.mask())
     #splash.show()
     #splash.showMessage("<h1><font color='green'>Welcome to SOSPEX!</font></h1>", Qt.AlignTop | Qt.AlignCenter, Qt.white)
-    #app.processEvents()
-    
+    #app.processEvents()    
     # Adjust geometry to size of the screen
     screen_resolution = app.desktop().screenGeometry()
     width = screen_resolution.width()
@@ -4256,6 +3931,6 @@ def main():
     # Add an icon for the application
     app.setWindowIcon(QIcon(gui.path0+'/icons/sospex.png'))
     app.setApplicationName('SOSPEX')
-    app.setApplicationVersion('0.26-beta')
+    app.setApplicationVersion('0.27-beta')
     sys.exit(app.exec_())
     #splash.finish(gui)
