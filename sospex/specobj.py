@@ -93,8 +93,11 @@ class specCube(object):
         elif self.instrument == 'PACS':
             """ Case of PACS spectral cubes """
             self.objname = header['OBJECT']
-            self.redshift = header['REDSHFTV']*1000. # in km/s
-            self.redshift /= c
+            try:
+                self.redshift = header['REDSHFTV']*1000. # in km/s
+                self.redshift /= c
+            except:
+                self.redshift = 0.
             self.flux = hdl['image'].data
             self.exposure = hdl['coverage'].data
             wave = hdl['wcs-tab'].data
