@@ -12,6 +12,11 @@
 
 # spyder project
 .spyderproject
+.spyproject
+
+# egg-info directory
+*.egg-info
 
 # directory old
 old
+
