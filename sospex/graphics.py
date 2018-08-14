@@ -1008,8 +1008,6 @@ class SpectrumCanvas(MplCanvas):
                 pass
             self.vaxes = self.axes.twiny()
             self.vaxes.xaxis.set_major_formatter(ScalarFormatter(useOffset=False))
-            if self.xunit == 'THz':
-                vlims = (vlims[1], vlims[0])
             self.vaxes.set_xlim(vlims)
             self.vaxes.set_xlabel("Velocity [km/s]")
             # Elevate zorder of first axes (to guarantee axes gets the events)
@@ -1061,7 +1059,10 @@ class SpectrumCanvas(MplCanvas):
         s = self.spectrum
         vx1 = (x1 / (1 + s.redshift) / s.l0 - 1.) * c
         vx2 = (x2 / (1 + s.redshift) / s.l0 - 1.) * c
-        return (vx1, vx2)
+        if self.xunit == 'THz':
+            return (vx2, vx1)
+        else:
+            return (vx1, vx2)
 
     def updateXlim(self):
         """Update xlimits."""
@@ -1070,7 +1071,6 @@ class SpectrumCanvas(MplCanvas):
         if self.xunit == 'THz':
             c = 299792458.0  # speed of light in m/s
             xlim1, xlim0 = c / xlim0 * 1.e-6, c / xlim1 * 1.e-6
-            vlim = (vlim[1], vlim[0])
         self.axes.set_xlim(xlim0, xlim1)
         self.vaxes.set_xlim(vlim)
         self.fig.canvas.draw_idle()
