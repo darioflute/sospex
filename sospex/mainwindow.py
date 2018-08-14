@@ -3935,6 +3935,6 @@ def main():
     # Add an icon for the application
     app.setWindowIcon(QIcon(gui.path0+'/icons/sospex.png'))
     app.setApplicationName('SOSPEX')
-    app.setApplicationVersion('0.27-beta')
+    app.setApplicationVersion('0.28-beta')
     sys.exit(app.exec_())
     #splash.finish(gui)
