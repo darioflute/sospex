@@ -1290,8 +1290,8 @@ class SpectrumCanvas(MplCanvas):
                     self.displayLines = False
             if self.shade == True:
                 self.shadeRegion()
-            for annotation in self.annotations:
-                annotation.set_visible(self.displayLines)
+            if label == 'Lines':
+                self.setLinesVisibility(self.displayLines)
             self.fig.canvas.draw_idle()
         elif isinstance(event.artist, Text):
             text = event.artist.get_text()
@@ -1348,6 +1348,10 @@ class SpectrumCanvas(MplCanvas):
         else:
             pass
         return True
+    
+    def setLinesVisibility(self, visibility=True):
+        for annotation in self.annotations:
+                annotation.set_visible(visibility)
 
     def getDouble(self, z):
         znew, okPressed = QInputDialog.getDouble(self, "Redshift", "cz", z, -10000., 50000., 2)
