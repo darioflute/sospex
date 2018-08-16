@@ -1283,12 +1283,13 @@ class GUI (QMainWindow):
     def fitCont(self):
         """Options to fit the continuum."""
         if self.continuum is not None:
-            # Dialog to choose between fitting the entire cube or only a region of it
+            # Dialog to choose between fitting options
             msgBox = QMessageBox()
-            msgBox.setText('Fit the continuum:')
-            msgBox.addButton('All cube', QMessageBox.ActionRole)
-            msgBox.addButton('Region', QMessageBox.ActionRole)
+            msgBox.setText('Compute the continuum:')
+            msgBox.addButton('Fit all cube', QMessageBox.ActionRole)
+            msgBox.addButton('Fit region', QMessageBox.ActionRole)
             msgBox.addButton('Set to zero', QMessageBox.ActionRole)
+            msgBox.addButton('Set to medians', QMessageBox.ActionRole)
             msgBox.addButton('Cancel', QMessageBox.ActionRole)
             self.result = msgBox.exec()
             if self.result == 0:
@@ -1297,19 +1298,23 @@ class GUI (QMainWindow):
                 self.fitRegion()
             elif self.result == 2:
                 self.setContinuumZero()
+            elif self.result == 3:
+                self.setContinuumMedian()
             else:
                 pass
         else:
             msgBox = QMessageBox()
-            msgBox.setText('Set continuum to zero ?')
-            msgBox.addButton('Yes', QMessageBox.ActionRole)
-            msgBox.addButton('No', QMessageBox.ActionRole)
-            msgBox.addButton('Cancel', QMessageBox.ActionRole)
+            msgBox.setText('Fit the continuum:')
+            msgBox.addButton('Set to zero', QMessageBox.ActionRole)
+            msgBox.addButton('Compute medians', QMessageBox.ActionRole)
+            msgBox.addButton('Cancel and Define guess', QMessageBox.ActionRole)
             self.result = msgBox.exec()
             if self.result == 0:
                 self.setContinuumZero()
-            elif self.result == 1:            
-                message = 'First define a guess for the continuum'
+            elif self.result == 1:
+                self.setContinuumMedian()
+            elif self.result == 2:            
+                message = 'Define a guess for the continuum on the spectrum panel'
                 self.sb.showMessage(message, 4000)
             else:
                 pass
@@ -1319,7 +1324,44 @@ class GUI (QMainWindow):
         self.openContinuumTab()        
         self.continuum[:]=0.
         self.C0[:]=0.
-        # Refresh the plotted image
+        self.refreshContinuum()
+        
+    def getContinuumGuess(self):
+        sc = self.sci[self.spectra.index('Pix')]
+        if sc.guess is not None:
+            # guess values for the continuum in wavelength
+            xy = sc.guess.xy
+            xg,yg = zip(*xy)
+            xg = np.array(xg); yg = np.array(yg)
+            if sc.xunit == 'THz':
+                c = 299792458.0  # speed of light in m/s
+                xg = c/xg * 1.e-6  # THz to um
+            # Compute i0,i1,i2,i3 from xy
+            i0 = np.argmin(np.abs(self.specCube.wave-xg[0]))
+            i1 = np.argmin(np.abs(self.specCube.wave-xg[1]))
+            i2 = np.argmin(np.abs(self.specCube.wave-xg[2]))
+            i3 = np.argmin(np.abs(self.specCube.wave-xg[3]))
+            return i0, i1, i2, i3
+        else:
+            return None, None, None, None
+        
+    def setContinuumMedian(self):
+        """Compute continuum by using the median signal per pixel."""
+        self.openContinuumTab()
+        sc = self.sci[self.spectra.index('Pix')]
+        if sc.guess is not None:
+            i0, i1, i2, i3 = self.getContinuumGuess()
+            mask = np.zeros(len(self.specCube.flux), dtype=bool)
+            mask[i0:i1] = True
+            mask[i2:i3] = True
+            self.C0 = np.nanmedian(self.specCube.flux[mask,:,:], axis=0)
+        else:        
+            self.C0 = np.nanmedian(self.specCube.flux, axis=0)        
+        self.continuum = np.broadcast_to(self.C0, np.shape(self.specCube.flux))
+        self.refreshContinuum()
+        
+    def refreshContinuum(self):
+        """Refresh the plotted image of the continuuum."""
         itab = self.bands.index('C0')
         ic = self.ici[itab]
         ic.showImage(image=self.C0)
@@ -1337,6 +1379,7 @@ class GUI (QMainWindow):
         i = int(np.rint(xc)); j = int(np.rint(yc))
         sc.updateSpectrum(cont=self.continuum[:,j,i])
         sc.fig.canvas.draw_idle()
+         
 
     def chooseComputeMoments(self):
         """Options to compute the moments."""
@@ -1531,21 +1574,7 @@ class GUI (QMainWindow):
         self.fitContinuum(points)
 
     def continuumMask(self, points):
-        # Values
-        sc = self.sci[self.spectra.index('Pix')]
-        # guess values for the continuum in wavelength
-        xy = sc.guess.xy
-        xg,yg = zip(*xy)
-        xg = np.array(xg); yg = np.array(yg)
-        if sc.xunit == 'THz':
-            c = 299792458.0  # speed of light in m/s
-            xg = c/xg * 1.e-6  # THz to um
-        # Run the fit and computation of moments for the selected points
-        # Compute i0,i1,i2,i3 from xy
-        i0 = np.argmin(np.abs(self.specCube.wave-xg[0]))
-        i1 = np.argmin(np.abs(self.specCube.wave-xg[1]))
-        i2 = np.argmin(np.abs(self.specCube.wave-xg[2]))
-        i3 = np.argmin(np.abs(self.specCube.wave-xg[3]))
+        i0, i1, i2, i3 = self.getContinuumGuess()
         # Update masks
         for p in points:
             i,j = p
@@ -1564,11 +1593,13 @@ class GUI (QMainWindow):
         sc = self.sci[self.spectra.index('Pix')]
         intcp = sc.guess.intcpt
         slope = sc.guess.slope
-        #if self.specCube.instrument == 'FIFI-LS':
+        # For the moment we fix the exposure of GREAT data to 1 if they exist, 0 is they are NaNs
+        # if self.specCube.instrument == 'FIFI-LS':
         e = self.specCube.exposure
-        c,c0 = multiFitContinuum(m,w,f,c,c0,w0,points,slope,intcp,self.positiveContinuum, self.kernel,exp=e)
-        #else:
-        #    c,c0 = multiFitContinuum(m,w,f,c,c0,w0,points,slope,intcp,self.positiveContinuum, self.kernel)
+        c,c0 = multiFitContinuum(m,w,f,c,c0,w0,points,slope,intcp,self.positiveContinuum,
+                                 self.kernel,exp=e)
+        # else:
+        # c,c0 = multiFitContinuum(m,w,f,c,c0,w0,points,slope,intcp,self.positiveContinuum, self.kernel)
         self.continuum = c
         print('max continuum is ',np.nanmax(self.continuum))
         self.C0 = c0
