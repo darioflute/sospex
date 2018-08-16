@@ -84,6 +84,11 @@ class specCube(object):
             eta_mb =0.67
             calib = 971.
             factor = calib*eta_fss*eta_mb
+            exposure = np.median(self.flux, 0)
+            mask = exposure == np.nan
+            self.exposure = self.flux * 0.
+            for e in self.exposure:
+                e[~mask] = 1.
             self.flux *= factor   # Transformed from temperature to S_nu [Jy]            
             nu0 = header['RESTFREQ']  # MHz
             l0 = c/nu0  # in micron

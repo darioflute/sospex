@@ -466,10 +466,6 @@ class ContParams(QDialog):
             
     def Cancel(self):
         self.done(0)
-
-        
-        
-        
         
 # Functions for multiprocessing continuum fit and moment computation
 
@@ -515,11 +511,15 @@ def fitContinuum(p,slope,intcp,posCont,m,w,ff):
     return p, pars
 
 def fiteContinuum(p,slope,intcp,posCont,m,w,ff,ee):
+    # Skip if exposure is zero
+    se = np.nansum(ee)
+    if se == 0:
+        pars = None
+        return p, pars
     # Take the mean for each wavelength
     f = np.nanmean(ff,axis=1)
     mf = np.isnan(f)
     m[mf] = 0
-
     if np.sum(m) > 5:
         # Define parameters
         fit_params = Parameters()
@@ -535,9 +535,7 @@ def fiteContinuum(p,slope,intcp,posCont,m,w,ff,ee):
     else:
         pars = None
         pass
-    
     return p, pars
-
 
 def computeMoments(p,m,w,dw,f):
     """ compute moments on a spatial pixel """

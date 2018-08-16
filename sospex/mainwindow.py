@@ -394,7 +394,10 @@ class GUI (QMainWindow):
         return t, ic, ih, cidh, cid1, cid2, cid3, cid4
 
     def removeTab(self, itab):
-        #print('Removing image tab no ',itab)
+        close_msg = "Are you sure you want to close this image tab ?"
+        reply = QMessageBox.question(self, 'Message', close_msg, QMessageBox.Yes, QMessageBox.No)
+        if reply == QMessageBox.No:
+            return
         widget = self.itabs.widget(itab)
         if widget is not None:
             widget.deleteLater()
@@ -437,6 +440,10 @@ class GUI (QMainWindow):
         del self.bands[itab]
 
     def removeSpecTab(self, stab):
+        close_msg = "Are you sure you want to close this aperture ?"
+        reply = QMessageBox.question(self, 'Message', close_msg, QMessageBox.Yes, QMessageBox.No)
+        if reply == QMessageBox.No:
+            return
         #print('Removing spectral tab no ',stab)
         if stab > 1:
             # Once the tab is removed, also the relative aperture should be removed
@@ -1557,11 +1564,11 @@ class GUI (QMainWindow):
         sc = self.sci[self.spectra.index('Pix')]
         intcp = sc.guess.intcpt
         slope = sc.guess.slope
-        if self.specCube.instrument == 'FIFI-LS':
-            e = self.specCube.exposure
-            c,c0 = multiFitContinuum(m,w,f,c,c0,w0,points,slope,intcp,self.positiveContinuum, self.kernel,exp=e)
-        else:
-            c,c0 = multiFitContinuum(m,w,f,c,c0,w0,points,slope,intcp,self.positiveContinuum, self.kernel)
+        #if self.specCube.instrument == 'FIFI-LS':
+        e = self.specCube.exposure
+        c,c0 = multiFitContinuum(m,w,f,c,c0,w0,points,slope,intcp,self.positiveContinuum, self.kernel,exp=e)
+        #else:
+        #    c,c0 = multiFitContinuum(m,w,f,c,c0,w0,points,slope,intcp,self.positiveContinuum, self.kernel)
         self.continuum = c
         print('max continuum is ',np.nanmax(self.continuum))
         self.C0 = c0
@@ -3335,13 +3342,13 @@ class GUI (QMainWindow):
         """Display a new image."""
         fd = QFileDialog()
         fd.setLabelText(QFileDialog.Accept, "Import")
-        fd.setNameFilters(["Fits Files (*.fits)","All Files (*)"])
+        fd.setNameFilters(["Fits Files (*.fits)", "All Files (*)"])
         fd.setOptions(QFileDialog.DontUseNativeDialog)
         fd.setViewMode(QFileDialog.List)
         fd.setFileMode(QFileDialog.ExistingFile)
         if (fd.exec()):
             fileName= fd.selectedFiles()
-            print('Reading file ',fileName[0])
+            print('Reading file ', fileName[0])
             # Save the file path for future reference
             self.pathFile, file = os.path.split(fileName[0])
             self.loadFile(fileName[0])
@@ -3371,8 +3378,7 @@ class GUI (QMainWindow):
             # The removal is done in reversed order to get all the tabs
             for itab in reversed(range(len(self.ici))):
                 self.removeTab(itab)
-            #print('all image tabs removed')
-        except:
+        except BaseException:
             pass
         # Update window title (to include object name)
         self.setWindowTitle(self.title + " [ "+self.specCube.objname+" - "+
@@ -3397,7 +3403,8 @@ class GUI (QMainWindow):
             self.bands = ['Flux','uFlux','Exp']
             self.spectra = ['All','Pix']
         elif self.specCube.instrument == 'GREAT':
-            self.bands = ['Flux','M0']
+            #self.bands = ['Flux','M0']
+            self.bands = ['Flux']
             self.spectra = ['All','Pix']
         elif self.specCube.instrument == 'PACS':
             self.bands = ['Flux','Exp']
@@ -3843,7 +3850,6 @@ class GUI (QMainWindow):
         ic.changed = False
 
     def onSTabChange(self, stab):
-        #print('Spectral tab changed to ', stab)
         # This should activate an aperture (put dots on it and/or change color)
         if len(self.stabs) > 1:
             itab  = self.itabs.currentIndex()
