@@ -665,8 +665,8 @@ class GUI (QMainWindow):
             #npoints = np.size(xx)
             if istab == 1 and self.continuum is not None:
                 xc=np.median(xx); yc = np.median(yy)
-                i = int(np.rint(xc)); j = int(np.rint(yc))
                 try:
+                    i = int(np.rint(xc)); j = int(np.rint(yc))
                     cont = self.continuum[:,j,i]
                     try:
                         moments = [self.M0[j,i],self.M1[j,i],self.M2[j,i],self.M3[j,i],self.M4[j,i]]
