@@ -2213,6 +2213,17 @@ class GUI (QMainWindow):
     def newImageTab(self, downloadedImage):
         """Open  a tab and display the new image."""
         image = downloadedImage.data
+        # Put to NaN values of mode if this is more common than 10%
+        ima = image.ravel()
+        (_, idx, counts) = np.unique(ima, return_index=True, return_counts=True)
+        index = idx[np.argmax(counts)]
+        mode = ima[index]
+        m0 = image == mode
+        n0 = np.sum(m0)
+        nx, ny = np.shape(image)
+        p0 = n0 / (nx * ny)
+        if p0 > 0.1:
+            image[m0] = np.nan
         mask = np.isfinite(image)
         if np.sum(mask) == 0:
             self.sb.showMessage("The selected survey does not cover the displayed image", 2000)

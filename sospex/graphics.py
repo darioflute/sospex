@@ -390,16 +390,6 @@ class ImageCanvas(MplCanvas):
                 cmax=+10
             else:       
                 # Check if too many zeros
-                ima = image.ravel()
-                (_, idx, counts) = np.unique(ima, return_index=True, return_counts=True)
-                index = idx[np.argmax(counts)]
-                mode = ima[index]
-                m0 = image == mode
-                n0 = np.sum(m0)
-                nx, ny = np.shape(image)
-                p0 = n0 / (nx * ny)
-                if p0 > 0.1:
-                    image[m0] = np.nan
                 vmed0=np.nanmedian(image)
                 d0 = np.nanstd(image)
                 cmin = vmed0-2*d0
@@ -467,14 +457,6 @@ class ImageHistoCanvas(MplCanvas):
         else:
             # Print the histogram of finite values
             ima = image.ravel()
-            (_, idx, counts) = np.unique(ima, return_index=True, return_counts=True)
-            index = idx[np.argmax(counts)]
-            mode = ima[index]
-            # Put to NaN minimum values if they are too frequent
-            m0 = ima == mode
-            n0 = np.nansum(m0)
-            if n0/np.size(ima) > 0.1:
-                ima[m0] = np.nan            
             mask = np.isfinite(ima)
             ima = ima[mask]
             print('image has size', len(ima))
