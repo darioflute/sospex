@@ -393,11 +393,12 @@ class GUI (QMainWindow):
         cid4=ic.mpl_connect('button_press_event', self.onPress)        
         return t, ic, ih, cidh, cid1, cid2, cid3, cid4
 
-    def removeTab(self, itab):
-        close_msg = "Are you sure you want to close this image tab ?"
-        reply = QMessageBox.question(self, 'Message', close_msg, QMessageBox.Yes, QMessageBox.No)
-        if reply == QMessageBox.No:
-            return
+    def removeTab(self, itab, confirm=True):
+        if confirm:
+            close_msg = "Are you sure you want to close this image tab ?"
+            reply = QMessageBox.question(self, 'Message', close_msg, QMessageBox.Yes, QMessageBox.No)
+            if reply == QMessageBox.No:
+                return
         widget = self.itabs.widget(itab)
         if widget is not None:
             widget.deleteLater()
@@ -439,11 +440,12 @@ class GUI (QMainWindow):
         # Remove band from band list
         del self.bands[itab]
 
-    def removeSpecTab(self, stab):
-        close_msg = "Are you sure you want to close this aperture ?"
-        reply = QMessageBox.question(self, 'Message', close_msg, QMessageBox.Yes, QMessageBox.No)
-        if reply == QMessageBox.No:
-            return
+    def removeSpecTab(self, stab, confirm=True):
+        if confirm:
+            close_msg = "Are you sure you want to close this aperture ?"
+            reply = QMessageBox.question(self, 'Message', close_msg, QMessageBox.Yes, QMessageBox.No)
+            if reply == QMessageBox.No:
+                return
         #print('Removing spectral tab no ',stab)
         if stab > 1:
             # Once the tab is removed, also the relative aperture should be removed
@@ -636,7 +638,7 @@ class GUI (QMainWindow):
            (event == 'ellipse deleted' and apertype == 'EllipseInteractor') \
            or (event == 'polygon deleted' and apertype == 'PolygonInteractor'):
             self.stabs.currentChanged.disconnect()
-            self.removeSpecTab(istab)
+            self.removeSpecTab(istab, False)
             self.stabs.setCurrentIndex(1)  # Pixel tab
             self.stabs.currentChanged.connect(self.onSTabChange)
         else:
@@ -1425,7 +1427,7 @@ class GUI (QMainWindow):
                     self.addBand(new)
                 else:
                     itab = self.bands.index(new)
-                    self.removeTab(itab)
+                    self.removeTab(itab, False)
                     self.addBand(new)
             # Compute velocity fields
             c = 299792.458 # km/s
@@ -3399,7 +3401,7 @@ class GUI (QMainWindow):
         # Delete pre-existing spectral tabs
         try:
             for stab in reversed(range(len(self.sci))):
-                self.removeSpecTab(stab)
+                self.removeSpecTab(stab, False)
             #print('all spectral tabs removed')
         except:
             pass
@@ -3408,7 +3410,7 @@ class GUI (QMainWindow):
             # Remove tabs, image and histo canvases and disconnect them
             # The removal is done in reversed order to get all the tabs
             for itab in reversed(range(len(self.ici))):
-                self.removeTab(itab)
+                self.removeTab(itab, False)
         except BaseException:
             pass
         # Update window title (to include object name)
@@ -3924,7 +3926,7 @@ class GUI (QMainWindow):
             if u1 > ylim1: ylim1 = u1
         # Slightly higher maximum
         sc.ylimits = (ylim0,ylim1*1.1)
-        sc.updateYlim()        
+        sc.updateYlim()     
         
 def main():
     #QApplication.setStyle('Fusion')
