@@ -17,9 +17,9 @@ It has been developed and tested on Mac OS-X 10.11.6 (El Capitan) and Ubuntu Lin
 
 ### Current version
 
-The current version released on anaconda is: 0.30.beta 
+The current version released on anaconda is: 0.31.beta 
 
-Release date:  August 15, 2018
+Release date:  August 17, 2018
 
 ### How to install the program
 
