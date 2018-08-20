@@ -1,17 +1,16 @@
 import urllib, urllib.request
 import os
-from io import StringIO,BytesIO
+from io import BytesIO
 from astropy.io import ascii,fits
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 from astropy.utils.data import download_file
 from astropy.wcs import WCS
 from reproject import reproject_interp
-
 import numpy as np
 from html.parser import HTMLParser
 from PyQt5.QtWidgets import QFileDialog
-from PyQt5.QtCore import QObject
+
 
 class MyHTMLParser(HTMLParser):
 
@@ -174,7 +173,6 @@ class cloudImage(object):
             filenames= fd.selectedFiles()
             image_file = filenames[0]
             print("File selected is: ", filenames[0])
-
             try:           
                 print('opening ',image_file)
                 hdulist = fits.open(image_file,memmap=False)
@@ -188,24 +186,18 @@ class cloudImage(object):
                     self.data = hdulist['PRIMARY'].data[0,0,:,:]
                 else:
                     print('This is not an image')
-
-
                 try:
                     instrument = header['INSTRUME']
                     self.source = instrument
                 except:
                     self.source = 'unknown'
-
                 print('Instrument ',self.source)
-                #print(header)
                 self.wcs = WCS(header).celestial
                 print(self.wcs)
                 # Check if coordinates are inside the image
-                #print('data shape is',np.shape(self.data))
                 x,y = self.wcs.all_world2pix(self.lon,self.lat,1)
                 print('x y ',x,y)
                 ny,nx = np.shape(self.data)
-                #print('nx,ny ',nx,ny)
                 if x >= 0 and x< nx and y >= 0 and y  <= ny:
                     print('Source inside the FITS image')
                     # Check if N aligned with y, if not reproject image
@@ -218,33 +210,33 @@ class cloudImage(object):
                         pc1 = -np.hypot(pc11,pc12)
                         pc2 = np.hypot(pc21,pc22)
                         rota = np.arctan(pc21/pc22)
+                        print('rotation angle ', rota*180./np.pi)
                         if (np.abs(rota)*180./np.pi > 5.):
                             if h1["CRVAL2"] < 0:
                                 pc2=-pc2
                             h1.update(pc1_1=pc1,pc1_2=0.0,pc2_1=0.0,pc2_2=pc2,orientat=0.)
                             h1['NAXIS']=2
+                            # Compute the size of the rectangle containing the rotated rectangle
+                            rota = np.abs(rota)
                             n1 = int(np.rint(nx*np.sin(rota)+ny*np.cos(rota)))
                             n2 = int(np.rint(nx*np.cos(rota)+ny*np.sin(rota)))
                             h1['NAXIS1']= n1
                             h1['NAXIS2']= n2
-                            #print('n1,n2 ',n1,n2)
                             crpix1=header['CRPIX1']
                             crpix2=header['CRPIX2']
                             h1['crpix1'] = crpix1+(n1-nx)/2.
                             h1['crpix2'] = crpix2+(n2-ny)/2.
-                            #print(h1)
                             self.wcs = WCS(h1)
-                            #print(self.wcs)
                             print("Rotating the image ....")
                             array, footprint = reproject_interp(hdu, h1)
-                            print(np.shape(array))
+                            print('shape of rotated image is ',np.shape(array))
                             self.data= array
                             # Save the rotated image
                             self.saveRotatedFits(image_file)
                         else:
-                            print('The rotation angle is ',rota)                        
+                            print('No rotation needed. The rotation angle is ',rota*180./np.pi)                        
                     except:
-                        print('No rotation needed')
+                        print('Rotation failed')
                 else:
                     self.data = None
                     self.wcs = None
