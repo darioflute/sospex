@@ -9,7 +9,8 @@ class specCube(object):
         import time
         t = time.process_time()
         c = 299792458.0  # speed of light in m/s 
-        hdl = fits.open(infile,memmap=False)
+        # Option None seems faster than False
+        hdl = fits.open(infile,memmap=None)
         header = hdl['PRIMARY'].header
         self.header = header
         self.filename = infile
