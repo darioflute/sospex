@@ -1,5 +1,7 @@
 import numpy as np
 import os
+import matplotlib
+matplotlib.use('Qt5Agg')
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT 
@@ -293,7 +295,7 @@ class ImageCanvas(MplCanvas):
         # Define color map
             
     def compute_initial_figure(self, image=None, wcs=None, title=None, cMap = 'gist_heat',
-                               cMapDir = '_r', stretch='linear'):
+                               cMapDir = '_r', stretch='linear', instrument=None):
         self.colorMap = cMap
         self.colorMapDirection = cMapDir
         self.stretch = stretch
@@ -301,6 +303,8 @@ class ImageCanvas(MplCanvas):
             '''initial definition when images are not yet read'''
             pass
         else:
+            import time
+            t = time.process_time()
             self.wcs = wcs
             try:
                 self.fig.delaxes(self.axes)
@@ -323,7 +327,7 @@ class ImageCanvas(MplCanvas):
                 elif title == 'Exp':
                     title = 'Coverage map'
                 elif title == 'C0':
-                    title = 'C$_0$'
+                    title = 'Continuum at ref. wavelength $\lambda_0$'
                 elif title == 'M0':
                     title = 'M$_0$'
                 elif title == 'M1':
@@ -344,10 +348,20 @@ class ImageCanvas(MplCanvas):
             # Show image
             self.contrast = 1.
             self.bias = 0.5
-            self.cmin = None
-            self.cmax = None
+            if instrument is not None:
+                if instrument == 'GREAT':
+                    self.cmin = 0#np.nanmin(image)
+                    self.cmax = 1#np.nanmax(image)
+                else:
+                    self.cmin = None
+                    self.cmax = None
+            import time
+            t1 = time.process_time()
+            print('Pre-image is ', t1-t, 's')
             if image is not None:
                 self.showImage(image)
+            t2 = time.process_time() 
+            print('Image displayed in ',t2-t1, 's')
             self.changed = False            
             # Add ellipse centered on source
             self.pixscale = pixscales(self.wcs)[0]*3600. # Scale in arcsec
@@ -359,6 +373,8 @@ class ImageCanvas(MplCanvas):
             # Activate focus
             self.setFocusPolicy(Qt.ClickFocus)
             self.setFocus()
+            t3 = time.process_time() 
+            print('post image is ', t3-t2,'s')
 
     def stretchFunc(self, newStretch):
         if newStretch == 'linear':
@@ -399,9 +415,12 @@ class ImageCanvas(MplCanvas):
         self.norm = ImageNormalize(vmin=None, vmax=None, stretch=self.stretchFunc(self.stretch))
         self.image = self.axes.imshow(image, origin='lower',
                                       cmap=self.colorMap+self.colorMapDirection,
-                                      interpolation='none', norm=self.norm)
+                                      interpolation='nearest', norm=self.norm)
         self.fig.colorbar(self.image, cax=self.cbaxes)
-        self.image.set_clim([self.cmin,self.cmax])
+        if self.cmin != 0:
+            self.image.set_clim([self.cmin,self.cmax])
+        else:
+            self.cmin, self.cmax = self.image.get_clim()
 
         # Cursor data format
         def format_coord(x,y):
@@ -722,9 +741,10 @@ class SpectrumCanvas(MplCanvas):
         # Use legend to hide/show lines
         self.fig.canvas.mpl_connect('pick_event', self.onpick)
         self.fig.canvas.mpl_connect('button_release_event', self.onrelease)
-        self.dragged = None
+        self.dred = None
         self.region = None
         self.guess = None
+        self.dragged = None
         
     def compute_initial_spectrum(self, spectrum=None,xmin=None,xmax=None):
         if spectrum is None:

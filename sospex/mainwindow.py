@@ -74,6 +74,8 @@ class GUI (QMainWindow):
         self.colorMapDirection = '_r'
         self.stretchMap = 'linear'
         self.colorContour = 'cyan'
+        # Set initial state of all spectral tab
+        self.all = False
         # Default kernel
         self.kernel = 1
         # Get the path of the package
@@ -3378,6 +3380,11 @@ class GUI (QMainWindow):
             filename = self.specCube.filename
             self.loadFile(filename)
             self.initializeImages()
+            if self.specCube.instrument == 'GREAT':
+                print('compute Exp from Nan')
+                self.specCube.computeExpFromNan
+            self.all = False
+            #self.computeAll()
         except:
             self.sb.showMessage("ERROR: You have to load a file first", 2000)
             return
@@ -3398,6 +3405,11 @@ class GUI (QMainWindow):
             self.loadFile(fileName[0])
             try:
                 self.initializeImages()
+                if self.specCube.instrument == 'GREAT':
+                    print('compute Exp from Nan')
+                    self.specCube.computeExpFromNan
+                self.all = False
+                #self.computeAll()
             except:
                 print('No spectral cube is defined')
                 pass
@@ -3446,8 +3458,7 @@ class GUI (QMainWindow):
         if self.specCube.instrument == 'FIFI-LS':
             self.bands = ['Flux','uFlux','Exp']
             self.spectra = ['All','Pix']
-        elif self.specCube.instrument == 'GREAT':
-            #self.bands = ['Flux','M0']
+        elif self.specCube.instrument == 'GREAT': 
             self.bands = ['Flux']
             self.spectra = ['All','Pix']
         elif self.specCube.instrument == 'PACS':
@@ -3492,12 +3503,20 @@ class GUI (QMainWindow):
             self.stabs.currentChanged.connect(self.onSTabChange)
            
     def initializeImages(self):
+        import time
+        #t = time.process_time()
         s = self.specCube
         # Compute initial images
+        print('Initialize images')
         for ima in self.bands:
+            ts = time.process_time()
             ic = self.ici[self.bands.index(ima)]
             if ima == 'Flux':
-                image = np.nanmedian(s.flux, axis=0)
+                if s.instrument == 'GREAT':
+                    #image = np.mean(s.flux, axis=0)
+                    image = s.flux[s.n0,:,:]
+                else:
+                    image = np.nanmedian(s.flux, axis=0)
             elif ima == 'uFlux':
                 image = np.nanmedian(s.uflux, axis=0)
             elif ima == 'Exp':
@@ -3507,8 +3526,13 @@ class GUI (QMainWindow):
                 image = self.M0
             else:
                 pass
+            t0 = time.process_time()
+            print('Image prepared in ', t0-ts, 's')
             ic.compute_initial_figure(image=image,wcs=s.wcs,title=ima,cMap=self.colorMap,
-                                      cMapDir=self.colorMapDirection,stretch=self.stretchMap)
+                                      cMapDir=self.colorMapDirection,stretch=self.stretchMap,
+                                      instrument = s.instrument)
+            t1 = time.process_time() 
+            print('Image displayed in ', t1-t0,' s')
             if ima == 'Exp':
                 ic.image.format_cursor_data = lambda z: "{:10.0f} s".format(float(z))
             else:
@@ -3519,36 +3543,32 @@ class GUI (QMainWindow):
             ih = self.ihi[self.bands.index(ima)]
             clim = ic.image.get_clim()
             ih.compute_initial_figure(image=image,xmin=clim[0],xmax=clim[1])
+            t2 = time.process_time() 
+            print('Histogram computed ', t2-t1,' s')
             # temporary ...
             x = ic.axes.get_xlim()
             y = ic.axes.get_ylim()
             self.zoomlimits = [x,y]
-        # Compute initial total spectrum
-        spectrum = self.spectra[0]
-        sc = self.sci[self.spectra.index(spectrum)]
-        fluxAll = np.nansum(s.flux, axis=(1,2))
-        if s.instrument == 'GREAT':
-            spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
-                            redshift=s.redshift, l0=s.l0 )
-        elif s.instrument == 'PACS':
-            expAll = np.nansum(s.exposure, axis=(1,2))
-            spec = Spectrum(s.wave, fluxAll, exposure=expAll,instrument=s.instrument,
-                            redshift=s.redshift, l0=s.l0 )
-        elif s.instrument == 'FIFI-LS':
-            ufluxAll = np.nansum(s.uflux, axis=(1,2))
-            expAll = np.nansum(s.exposure, axis=(1,2))
-            efluxAll = np.sqrt(np.nansum(s.eflux*s.eflux, axis=(1,2)))
-            spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, uflux= ufluxAll,
-                            exposure=expAll, atran = s.atran, instrument=s.instrument,
-                            redshift=s.redshift, baryshift = s.baryshift, l0=s.l0)
-        #print("Compute initial spectrum")
-        sc.compute_initial_spectrum(spectrum=spec)
-        self.specZoomlimits = [sc.xlimits,sc.ylimits]
-        sc.cid = sc.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomSpec)
-        # Start the span selector to show only part of the cube
-        sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
-                               rectprops=dict(alpha=0.5, facecolor='LightSalmon'))
-        sc.span.active = False
+        # Re-initialize variables
+        self.contours = 'off'
+        self.blink = 'off'
+        self.slice = 'off'
+        self.cutcube = 'off'
+        self.continuum = None
+        self.M0 = None
+        self.M1 = None
+        self.M2 = None
+        self.M3 = None
+        self.M4 = None
+        self.C0 = None
+        self.v  = None
+        self.sv = None
+        # Selectors
+        self.PS = None
+        self.ES = None
+        self.RS = None
+        self.LS = None
+            
         # Compute initial pixel spectrum
         spectrum = self.spectra[1]
         sc = self.sci[self.spectra.index(spectrum)]
@@ -3572,7 +3592,7 @@ class GUI (QMainWindow):
             ic.photApertureSignal.append(cidap)
             pixel.modSignal.connect(self.onModifiedAperture)
         # print('Initialize spectrum')
-        s = self.specCube
+        #s = self.specCube
         x0 = nx // 2
         y0 = ny // 2
         fluxAll = s.flux[:,y0,x0]
@@ -3596,25 +3616,45 @@ class GUI (QMainWindow):
         sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
                                rectprops=dict(alpha=0.5, facecolor='LightSalmon'))
         sc.span.active = False
-        # Re-initialize variables
-        self.contours = 'off'
-        self.blink = 'off'
-        self.slice = 'off'
-        self.cutcube = 'off'
-        self.continuum = None
-        self.M0 = None
-        self.M1 = None
-        self.M2 = None
-        self.M3 = None
-        self.M4 = None
-        self.C0 = None
-        self.v  = None
-        self.sv = None
-        # Selectors
-        self.PS = None
-        self.ES = None
-        self.RS = None
-        self.LS = None
+        wave0 = s.wave[s.n0]
+        dwave = (s.wave[s.n0+1]-wave0)*0.5
+        sc.regionlimits = wave0-dwave,wave0+dwave
+        sc.shadeRegion()
+        # Draw this to start
+        t3 = time.process_time() 
+        print('Displaying ...', t3-t2,' s')
+        #sc.fig.canvas.draw_idle()
+
+    def computeAll(self):
+        """Compute initial total spectrum."""
+        print('Computing total spectrum')
+        s = self.specCube
+        spectrum = self.spectra[0]
+        sc = self.sci[self.spectra.index(spectrum)]
+        fluxAll = np.nansum(s.flux, axis=(1,2))
+        if s.instrument == 'GREAT':
+            spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
+                            redshift=s.redshift, l0=s.l0 )
+        elif s.instrument == 'PACS':
+            expAll = np.nansum(s.exposure, axis=(1,2))
+            spec = Spectrum(s.wave, fluxAll, exposure=expAll,instrument=s.instrument,
+                            redshift=s.redshift, l0=s.l0 )
+        elif s.instrument == 'FIFI-LS':
+            ufluxAll = np.nansum(s.uflux, axis=(1,2))
+            expAll = np.nansum(s.exposure, axis=(1,2))
+            efluxAll = np.sqrt(np.nansum(s.eflux*s.eflux, axis=(1,2)))
+            spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, uflux= ufluxAll,
+                            exposure=expAll, atran = s.atran, instrument=s.instrument,
+                            redshift=s.redshift, baryshift = s.baryshift, l0=s.l0)
+        sc.compute_initial_spectrum(spectrum=spec)
+        self.specZoomlimits = [sc.xlimits,sc.ylimits]
+        sc.cid = sc.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomSpec)
+        # Start the span selector to show only part of the cube
+        sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
+                               rectprops=dict(alpha=0.5, facecolor='LightSalmon'))
+        sc.span.active = False
+        self.all = True
+        
 
     def onSelect(self, xmin, xmax):
         """ Consider only a slice of the cube when computing the image """
@@ -3913,6 +3953,12 @@ class GUI (QMainWindow):
                     #ap.mySignal.disconnect()
                 ap.line.set_visible(ap.showverts)
             ic.fig.canvas.draw_idle()
+        if stab == 0:
+            if self.all == False:
+                try:
+                    self.computeAll()
+                except:
+                    pass
 
     def hresizeSpectrum(self):
         """ Expand spectrum to maximum wavelength range """

@@ -6,9 +6,9 @@ from astropy.wcs.utils import proj_plane_pixel_scales
 class specCube(object):
     """ spectral cube """
     def __init__(self, infile):
-
+        import time
+        t = time.process_time()
         c = 299792458.0  # speed of light in m/s 
-
         hdl = fits.open(infile,memmap=False)
         header = hdl['PRIMARY'].header
         self.header = header
@@ -49,8 +49,8 @@ class specCube(object):
             self.uflux = hdl['UNCORRECTED_FLUX'].data
             self.euflux = hdl['UNCORRECTED_ERROR'].data
             self.wave = hdl['WAVELENGTH'].data
-            self.n = len(self.wave)
             self.l0 = np.nanmedian(self.wave)
+            self.n = len(self.wave)
             #self.vel = np.zeros(self.n)  # prepare array of velocities
             self.x = hdl['X'].data
             self.y = hdl['Y'].data
@@ -66,6 +66,8 @@ class specCube(object):
             self.response = hdl['RESPONSE'].data
             self.exposure = hdl['EXPOSURE_MAP'].data
         elif self.instrument == 'GREAT':
+            #self.cmin = header['DATAMIN']
+            #self.cmax = header['DATAMAX']
             self.wcs = WCS(header).celestial
             self.crpix3 = header['CRPIX3']
             self.crval3 = header['CRVAL3']
@@ -84,11 +86,23 @@ class specCube(object):
             eta_mb =0.67
             calib = 971.
             factor = calib*eta_fss*eta_mb
-            exposure = np.median(self.flux, 0)
-            mask = exposure == np.nan
-            self.exposure = self.flux * 0.
-            for e in self.exposure:
-                e[~mask] = 1.
+            #t2 = time.process_time()
+            #print('Computing exposure cube after ', t2-t,' s')
+            #self.exposure = np.ones(np.shape(self.flux))
+            #mask = self.flux == np.nan
+            #self.exposure[mask] = 0
+            #t3 = time.process_time()
+            #print('Computedexposure cube after ', t3-t2,' s')
+            #mask = self.flux[0,:,:] == np.nan            
+            #exposure = np.median(self.flux, 0)
+            #mask = exposure == np.nan
+            #exposure[~mask] = 1
+            #exposure[mask] = 0
+            #fshape = np.shape(self.flux)
+            ##self.exposure = self.zeros(fshape)
+            #self.exposure = np.broadcast_to(exposure, fshape)
+            #for e in self.exposure:
+            #    e[~mask] = 1.
             self.flux *= factor   # Transformed from temperature to S_nu [Jy]            
             nu0 = header['RESTFREQ']  # MHz
             l0 = c/nu0  # in micron
@@ -134,15 +148,25 @@ class specCube(object):
         else:
             print('This is not a standard spectral cube')
 
-            
+        # index of the ref wavelength
+        self.n0 = np.argmin(np.abs(self.wave - self.l0))
+        print('ref wavelength at n: ', self.n0)
         hdl.close()
         # Create a grid of points
-        
         self.nz,self.ny,self.nx = np.shape(self.flux)
         xi = np.arange(self.nx); yi = np.arange(self.ny)
         xi,yi = np.meshgrid(xi,yi)
         self.points = np.array([np.ravel(xi),np.ravel(yi)]).transpose()
+           
+        elapsed_time = time.process_time() - t
+        print('Reading of cube completed in ', elapsed_time,' s')
 
+    def computeExpFromNan(self):
+        """Compute an exposure cube from NaN in the flux cube."""
+        self.exposure = np.ones(np.shape(self.flux))
+        mask = self.flux == np.nan
+        self.exposure[mask] = 0
+        
 
 class ExtSpectrum(object):
     """ class for external spectrum """
