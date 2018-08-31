@@ -28,6 +28,10 @@ python (https://www.anaconda.com/download).
 
 **You will have to use the Python 3.x distribution.**
 
+It is a good practice to update all your installed packages to have the latest versions:
+
+conda update --all
+
 The packages *lmfit* and *reproject* have to be installed from the astropy channel:
 
 conda install -c astropy lmfit
