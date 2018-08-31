@@ -24,7 +24,7 @@ Release date:  August 17, 2018
 ### How to install the program
 
 To install the code in your computer, you need first to install the anaconda
-python (https://www.continuum.io/downloads).
+python (https://www.anaconda.com/download).
 
 **You will have to use the Python 3.x distribution.**
 
