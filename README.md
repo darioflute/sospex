@@ -46,4 +46,25 @@ To quit the program, click on the icon shaped as an exiting person.
 The question mark icon open a series of tutorials on your web browser.
 
 ### Tutorials
+
 [Load a spectral cube](sospex/help/start.ipynb)
+
+[Zoom and Pan](sospex/help/zoom.ipynb)
+
+[Change image intensity levels](sospex/help/intensity.ipynb)
+
+[Using the spectral panel](sospex/help/specpanel.ipynb)
+
+[Select a slice of the cube](sospex/help/slice.ipynb)
+
+[Crop and cut the cubes](sospex/help/cutcrop.ipynb)
+
+[Select and modify apertures](sospex/help/apertures.ipynb)
+
+[Load external images](sospex/help/extimages.ipynb)
+
+[Blink between images](sospex/help/blink.ipynb)
+
+[Overlap contours](sospex/help/contours.ipynb)
+
+[Save images and spectra](sospex/help/save.ipynb)
