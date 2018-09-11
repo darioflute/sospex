@@ -112,15 +112,20 @@ class specCube(object):
             self.wave = l0 + l0*vel/c
         elif self.instrument == 'PACS':
             """ Case of PACS spectral cubes """
+            print('This is a PACS spectral cube')
             self.objname = header['OBJECT']
             try:
                 self.redshift = header['REDSHFTV']*1000. # in km/s
                 self.redshift /= c
             except:
                 self.redshift = 0.
+            print('Object is ',self.objname)
             self.flux = hdl['image'].data
+            print('Flux read')
             self.exposure = hdl['coverage'].data
+            print('Coverage read')
             wave = hdl['wcs-tab'].data
+            print('Wvl read')
             nwave = len(np.shape(wave['wavelen']))
             if nwave == 3:
                 self.wave = np.concatenate(wave['wavelen'][0])
@@ -128,8 +133,10 @@ class specCube(object):
                 self.wave = np.concatenate(wave['wavelen'])
             self.l0 = np.nanmedian(self.wave)
             self.n = len(self.wave)
+            print('Length of wavelength ',self.n)
             header = hdl['IMAGE'].header
             self.header = header
+            print('Header ',header)
             hdu = fits.PrimaryHDU(self.flux)
             hdu.header
             hdu.header['CRPIX1']=header['CRPIX1']
@@ -141,6 +148,7 @@ class specCube(object):
             hdu.header['CTYPE1']=header['CTYPE1']
             hdu.header['CTYPE2']=header['CTYPE2']
             self.wcs = WCS(hdu.header).celestial
+            print('astrometry ', self.wcs)
             self.pixscale,ypixscale = proj_plane_pixel_scales(self.wcs)*3600. # Pixel scale in arcsec
             self.crpix3 = 1
             w = self.wave
@@ -148,11 +156,11 @@ class specCube(object):
             self.cdelt3 = np.median(w[1:]-w[:-1])
         else:
             print('This is not a standard spectral cube')
+        hdl.close()
 
         # index of the ref wavelength
         self.n0 = np.argmin(np.abs(self.wave - self.l0))
         print('ref wavelength at n: ', self.n0)
-        hdl.close()
         # Create a grid of points
         self.nz,self.ny,self.nx = np.shape(self.flux)
         xi = np.arange(self.nx); yi = np.arange(self.ny)

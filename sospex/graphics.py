@@ -355,6 +355,9 @@ class ImageCanvas(MplCanvas):
                 else:
                     self.cmin = None
                     self.cmax = None
+            else:
+                self.cmin = None
+                self.cmax = None
             import time
             t1 = time.process_time()
             print('Pre-image is ', t1-t, 's')
@@ -434,7 +437,7 @@ class ImageCanvas(MplCanvas):
             xx = radec.ra.to_string(u.hour,sep=':',precision=1)
             yy = radec.dec.to_string(sep=':',precision=0)
             return '{:s} {:s} ({:4.0f},{:4.0f})'.format(xx,yy,x,y)
-                
+         
         self.axes.format_coord = format_coord
     
     def updateScale(self,_cmin,_cmax):

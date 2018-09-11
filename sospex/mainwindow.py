@@ -688,7 +688,7 @@ class GUI (QMainWindow):
                 fluxAll = np.nanmean(s.flux[:,yy,xx], axis=1)
             else:
                 fluxAll = np.nansum(s.flux[:,yy,xx], axis=1)
-            sc.spectrum.flux = fluxAll
+            # sc.spectrum.flux = fluxAll
             if s.instrument == 'GREAT':
                 sc.updateSpectrum(f=fluxAll, cont=cont, moments = moments, noise = noise)
             elif s.instrument == 'PACS':
@@ -2125,7 +2125,7 @@ class GUI (QMainWindow):
                                       lineprops = dict(color='g', linestyle='-',linewidth = 2,
                                                        alpha=0.8),
                                       interactive=False)
-            self.ES.state.add('square')
+            #self.ES.state.add('square')
             self.ES.state.add('center')        
         if self.selAp != 'apertures':
             ic.fig.canvas.draw_idle()
