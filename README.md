@@ -44,3 +44,6 @@ tree and select a file.
 To quit the program, click on the icon shaped as an exiting person.
 
 The question mark icon open a series of tutorials on your web browser.
+
+### Tutorials
+[Load a spectral cube](sospex/help/start.ipynb)
