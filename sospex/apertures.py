@@ -1,6 +1,7 @@
 import numpy as np
 from PyQt5.QtCore import pyqtSignal,QObject
 from matplotlib.artist import Artist
+from matplotlib.mlab import dist_point_to_segment
 
 class photoAperture(QObject):
     """ 
@@ -754,11 +755,6 @@ class RectangleInteractor(QObject):
         # update points
         x,y = self.compute_markers()
         self.line.set_data(x,y)
-
-
-
-        
-from matplotlib.mlab import dist_point_to_segment
         
 
 class PolygonInteractor(QObject):

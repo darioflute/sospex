@@ -23,6 +23,7 @@ from sospex.graphics import  (NavigationToolbar, ImageCanvas, ImageHistoCanvas, 
 from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
 from sospex.specobj import specCube,Spectrum, ExtSpectrum
 from sospex.cloud import cloudImage
+from sospex.interactors import SliderInteractor
 
 
 class UpdateTabs(QObject):
@@ -879,11 +880,11 @@ class GUI (QMainWindow):
             sc.toolbar.zoom()
 
     def onKeyPress2(self,event):
-        if event.key == 'control':
+        if event.key in ['control', 'cmd', 'shift', 'alt']:
             self.ctrlIsHeld = True
 
     def onKeyRelease2(self,event):
-        if event.key == 'control':
+        if event.key in ['control', 'cmd', 'shift', 'alt']:
             self.ctrlIsHeld = False
 
     def onWheel2(self,event):
@@ -3405,6 +3406,8 @@ class GUI (QMainWindow):
             self.loadFile(fileName[0])
             try:
                 self.initializeImages()
+                self.initializeSpectra()
+                self.initializeSlider()
                 if self.specCube.instrument == 'GREAT':
                     print('compute Exp from Nan')
                     self.specCube.computeExpFromNan
@@ -3512,11 +3515,11 @@ class GUI (QMainWindow):
             ts = time.process_time()
             ic = self.ici[self.bands.index(ima)]
             if ima == 'Flux':
-                if s.instrument == 'GREAT':
+                #if s.instrument == 'GREAT':
                     #image = np.mean(s.flux, axis=0)
-                    image = s.flux[s.n0,:,:]
-                else:
-                    image = np.nanmedian(s.flux, axis=0)
+                image = s.flux[s.n0,:,:]
+                #else:
+                #    image = np.nanmedian(s.flux, axis=0)
             elif ima == 'uFlux':
                 image = np.nanmedian(s.uflux, axis=0)
             elif ima == 'Exp':
@@ -3569,6 +3572,9 @@ class GUI (QMainWindow):
         self.RS = None
         self.LS = None
             
+    def initializeSpectra(self):
+        s = self.specCube
+        print("Initialize spectra")
         # Compute initial pixel spectrum
         spectrum = self.spectra[1]
         sc = self.sci[self.spectra.index(spectrum)]
@@ -3592,7 +3598,6 @@ class GUI (QMainWindow):
             ic.photApertureSignal.append(cidap)
             pixel.modSignal.connect(self.onModifiedAperture)
         # print('Initialize spectrum')
-        #s = self.specCube
         x0 = nx // 2
         y0 = ny // 2
         fluxAll = s.flux[:,y0,x0]
@@ -3621,9 +3626,19 @@ class GUI (QMainWindow):
         sc.regionlimits = wave0-dwave,wave0+dwave
         sc.shadeRegion()
         # Draw this to start
-        t3 = time.process_time() 
-        print('Displaying ...', t3-t2,' s')
+        # t3 = time.process_time() 
+        # print('Displaying ...', t3-t2,' s')
         #sc.fig.canvas.draw_idle()
+
+    def initializeSlider(self):
+        s = self.specCube
+        spectrum = self.spectra[1]
+        sc = self.sci[self.spectra.index(spectrum)]
+        w0 = s.wave[s.n0]
+        dw = (s.wave[s.n0+1]-w0)*0.5
+        print('slider ', w0, dw)
+        self.slider = SliderInteractor(sc.axes, w0, dw)
+        # sc.fig.canvas.draw_idle()
 
     def computeAll(self):
         """Compute initial total spectrum."""
