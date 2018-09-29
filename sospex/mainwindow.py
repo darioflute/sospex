@@ -3618,17 +3618,13 @@ class GUI (QMainWindow):
         sc.compute_initial_spectrum(spectrum=spec)
         self.specZoomlimits = [sc.xlimits,sc.ylimits]
         sc.cid = sc.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomSpec)
-        sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
-                               rectprops=dict(alpha=0.5, facecolor='LightSalmon'))
-        sc.span.active = False
+        #sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
+        #                       rectprops=dict(alpha=0.6, facecolor='LightGreen'))
+        #sc.span.active = False
         wave0 = s.wave[s.n0]
         dwave = (s.wave[s.n0+1]-wave0)*0.5
         sc.regionlimits = wave0-dwave,wave0+dwave
-        sc.shadeRegion()
-        # Draw this to start
-        # t3 = time.process_time() 
-        # print('Displaying ...', t3-t2,' s')
-        #sc.fig.canvas.draw_idle()
+        # sc.shadeRegion()
 
     def initializeSlider(self):
         s = self.specCube
@@ -3638,8 +3634,51 @@ class GUI (QMainWindow):
         dw = (s.wave[s.n0+1]-w0)*0.5
         print('slider ', w0, dw)
         self.slider = SliderInteractor(sc.axes, w0, dw)
+        self.slider.modSignal.connect(self.slideCube)
         # sc.fig.canvas.draw_idle()
 
+    def slideCube(self, event):
+        """Slide over the depth of the cube once the slider moves."""
+        # Capture the position of the slider and convert it in position in the cube
+        # Here we are just using wavelengths, make this more generic with frequency
+        w = self.slider.x
+        n = np.argmin(np.abs(self.specCube.wave - w))
+        print('Slider at ', w)
+        print('The new n is ', n)
+        print('cube is ', np.shape(self.specCube.flux))
+        # Display channel n of the spectral cube
+        if self.specCube.instrument == 'GREAT':
+            imas = ['Flux']
+        elif self.specCube.instrument == 'PACS':
+            imas = ['Flux','Exp']
+        elif self.specCube.instrument == 'FIFI-LS':
+            imas = ['Flux','uFlux','Exp']
+        x,y = self.zoomlimits
+        # itab = self.itabs.currentIndex()
+        # ic0 = self.ici[itab]
+        for ima in imas:
+            ic = self.ici[self.bands.index(ima)]
+            ih = self.ihi[self.bands.index(ima)]
+            if ima == 'Flux':
+                image = self.specCube.flux[n,:,:]
+            elif ima == 'uFlux':
+                image = self.specCube.uflux[n,:,:]
+            elif ima == 'Exp':
+                image = self.specCube.exposure[n,:,:]
+            else:
+                pass
+            ic.showImage(image)
+            # Set image limits to pre-existing values
+            ic.axes.set_xlim(x)
+            ic.axes.set_ylim(y)
+            ic.changed = True
+            # Update histogram
+            #clim = ic.image.get_clim()
+            ih.axes.clear()
+            #ih.compute_initial_figure(image=image,xmin=clim[0],xmax=clim[1])
+            ih.compute_initial_figure(image=image)
+            ih.fig.canvas.draw_idle()
+                
     def computeAll(self):
         """Compute initial total spectrum."""
         print('Computing total spectrum')

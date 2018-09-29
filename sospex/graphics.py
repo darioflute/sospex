@@ -350,8 +350,8 @@ class ImageCanvas(MplCanvas):
             self.bias = 0.5
             if instrument is not None:
                 if instrument == 'GREAT':
-                    self.cmin = 0#np.nanmin(image)
-                    self.cmax = 1#np.nanmax(image)
+                    self.cmin = 0  # np.nanmin(image)
+                    self.cmax = 1  # np.nanmax(image)
                 else:
                     self.cmin = None
                     self.cmax = None
@@ -416,9 +416,15 @@ class ImageCanvas(MplCanvas):
             self.cmin = cmin
             self.cmax = cmax        
         self.norm = ImageNormalize(vmin=None, vmax=None, stretch=self.stretchFunc(self.stretch))
+        # Remove pre-existing image
+        try:
+            self.image.remove()
+        except:
+            pass
         self.image = self.axes.imshow(image, origin='lower',
                                       cmap=self.colorMap+self.colorMapDirection,
-                                      interpolation='nearest', norm=self.norm)
+                                      interpolation='nearest',
+                                      norm=self.norm)
         self.fig.colorbar(self.image, cax=self.cbaxes)
         if self.cmin != 0:
             self.image.set_clim([self.cmin,self.cmax])
