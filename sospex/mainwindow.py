@@ -982,7 +982,7 @@ class GUI (QMainWindow):
         self.sliceAction = self.createAction(self.path0+'/icons/slice.png',
                                              'Define a slice to compute moments and/or display',
                                              'Ctrl+K',self.sliceCube)
-        self.slideAction = self.createAction(self.path0+'/icons/slider.png',
+        self.slideAction = self.createAction(self.path0+'/icons/slidecube.png',
                                              'Display a plane of the cube and show a slider',
                                              'Ctrl+S',self.initializeSlider)
         self.maskAction =  self.createAction(self.path0+'/icons/eraser.png','Erase a region',
