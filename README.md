@@ -75,6 +75,8 @@ The question mark icon open a series of tutorials on your web browser.
 
 [Using the spectral panel](sospex/help/specpanel.ipynb)
 
+[Sliding along the spectral dimension](sospex/help/slider.ipynb)
+
 [Select a slice of the cube](sospex/help/slice.ipynb)
 
 [Crop and cut the cubes](sospex/help/cutcrop.ipynb)
