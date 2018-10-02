@@ -3852,17 +3852,6 @@ class GUI (QMainWindow):
             ic.image.set_data(image)
             ic.oimage = image
             ic.fig.canvas.draw_idle()            
-            # ic.showImage(image)
-            # Set image limits to pre-existing values
-            #ic.axes.set_xlim(x)
-            #ic.axes.set_ylim(y)
-            #ic.changed = True
-            # Update histogram
-            #clim = ic.image.get_clim()
-            #ih.axes.clear()
-            #ih.compute_initial_figure(image=image,xmin=clim[0],xmax=clim[1])
-            #ih.compute_initial_figure(image=image)
-            #ih.fig.canvas.draw_idle()
         
     def removeContours(self):
         """Remove previous contours on image and histogram."""
@@ -4005,16 +3994,15 @@ class GUI (QMainWindow):
 
     def updateStretchMap(self, newRow):
         """ Update the stretch of the color map """
+        from astropy.visualization import ImageNormalize
         newStretch = self.STlist[newRow]
         if newStretch != self.stretchMap:
             self.stretchMap = newStretch
             for ic in self.ici:
                 ic.stretch = self.stretchMap
-                clim = ic.image.get_clim()
-                ic.showImage(ic.oimage)
-                ic.image.set_clim(clim)
-                #ic.fig.canvas.draw_idle()
-                self.addContours(ic)
+                ic.norm = ImageNormalize(vmin=None, vmax=None,
+                                         stretch=ic.stretchFunc(ic.stretch))
+                ic.image.norm = ic.norm
                 ic.changed = True
         itab  = self.itabs.currentIndex()
         ic = self.ici[itab]
@@ -4028,10 +4016,7 @@ class GUI (QMainWindow):
             self.colorMap = newCM
             for ic in self.ici:
                 ic.colorMap = self.colorMap
-                clim = ic.image.get_clim()
-                ic.showImage(ic.oimage)
-                ic.image.set_clim(clim)
-                self.addContours(ic)
+                ic.image.set_cmap(ic.colorMap+ic.colorMapDirection)
                 ic.changed = True
             itab  = self.itabs.currentIndex()
             ic = self.ici[itab]
@@ -4047,10 +4032,7 @@ class GUI (QMainWindow):
 
         for ic in self.ici:
             ic.colorMapDirection = self.colorMapDirection
-            clim = ic.image.get_clim()
-            ic.showImage(ic.oimage)
-            ic.image.set_clim(clim)
-            self.addContours(ic)
+            ic.image.set_cmap(ic.colorMap+ic.colorMapDirection)
             ic.changed = True
         itab  = self.itabs.currentIndex()
         ic = self.ici[itab]
