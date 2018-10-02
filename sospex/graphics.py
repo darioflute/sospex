@@ -477,6 +477,7 @@ class ImageHistoCanvas(MplCanvas):
         self.lev = []
         self.levels = []
         self._ind = None
+        self.changed = True
         
     def compute_initial_figure(self, image=None,xmin=None,xmax=None):
         if image is None:
@@ -487,7 +488,7 @@ class ImageHistoCanvas(MplCanvas):
             ima = image.ravel()
             mask = np.isfinite(ima)
             ima = ima[mask]
-            print('image has size', len(ima))
+            # print('image has size', len(ima))
             self.nh = len(ima)
             ima = np.sort(ima)
             s = np.size(ima)
@@ -727,6 +728,8 @@ class ImageHistoCanvas(MplCanvas):
 
 class SpectrumCanvas(MplCanvas):
     """ Canvas to plot spectra """
+    
+    switchSignal = pyqtSignal(str)
     def __init__(self, *args, **kwargs):
         MplCanvas.__init__(self, *args, **kwargs)
         from sospex.lines import define_lines
@@ -773,16 +776,17 @@ class SpectrumCanvas(MplCanvas):
         self.axes.grid(True, which='both')
         self.axes.xaxis.set_major_formatter(ScalarFormatter(useOffset=False))
         self.axes.yaxis.set_major_formatter(ScalarFormatter(useOffset=False))
-        self.axes.fmt_xdata = lambda x: "{:.4f}".format(x)        
         # Write labels
         self.axes.set_ylabel('Flux [Jy]')
         s = self.spectrum        
         if self.xunit == 'um':
+            self.axes.fmt_xdata = lambda x: "{:.4f}".format(x)        
             self.axes.set_xlabel('Wavelength [$\\mu$m]', picker=True)
             self.x = s.wave
             if s.instrument == 'FIFI-LS':
                 self.xr = self.x * (1+s.baryshift)
         elif self.xunit == 'THz':
+            self.axes.format_coord = lambda x, y: "{:6.4f} THz {:10.4f} Jy".format(x, y)
             c = 299792458.0  # speed of light in m/s
             self.axes.set_xlabel('Frequency [THz]', picker=True)
             self.x = c/s.wave * 1.e-6
@@ -794,19 +798,30 @@ class SpectrumCanvas(MplCanvas):
         self.contLine = self.axes.plot(self.x, s.continuum, color='skyblue',label='Cont',zorder=9)
         self.contLayer, = self.contLine
         # Define limits or adjust to previous limits
-        if self.xlimits is not None:
-            xlim0,xlim1 = self.xlimits
-            if self.xunit == 'THz':
-                c = 299792458.0  # speed of light in m/s
-                xlim1,xlim0 = c/xlim0*1.e-6,c/xlim1*1.e-6
-            self.axes.set_xlim(xlim0,xlim1)
-            self.axes.set_ylim(self.ylimits)
-        else:
+        if self.xlimits is None:
             xlim0 = np.min(s.wave)
             xlim1 = np.max(s.wave)
-            self.xlimits=(xlim0,xlim1)
-            self.ylimits=self.axes.get_ylim()
-            self.axes.set_xlim(xlim0,xlim1)
+            self.xlimits = (xlim0, xlim1)
+            self.ylimits = self.axes.get_ylim()
+        xlim0,xlim1 = self.xlimits
+        if self.xunit == 'THz':
+            c = 299792458.0  # speed of light in m/s
+            xlim1, xlim0 = c /xlim0 * 1.e-6, c / xlim1 * 1.e-6
+        self.axes.set_xlim(xlim0, xlim1)
+        self.axes.set_ylim(self.ylimits)
+        #if self.xlimits is not None:
+        #    xlim0,xlim1 = self.xlimits
+        #    if self.xunit == 'THz':
+        #        c = 299792458.0  # speed of light in m/s
+        #        xlim1,xlim0 = c/xlim0*1.e-6,c/xlim1*1.e-6
+        #    self.axes.set_xlim(xlim0,xlim1)
+        #    self.axes.set_ylim(self.ylimits)
+        #else:
+        #    xlim0 = np.min(s.wave)
+        #    xlim1 = np.max(s.wave)
+        #    self.xlimits=(xlim0,xlim1)
+        #    self.ylimits=self.axes.get_ylim()
+        #    self.axes.set_xlim(xlim0,xlim1)
         # Fake line to have the lines in the legend
         self.linesLine = self.axes.plot([0,0.1], [0,0], color='purple',
                                         alpha=0.4, label='Lines', zorder=11)
@@ -1238,23 +1253,8 @@ class SpectrumCanvas(MplCanvas):
                         QTest.mouseRelease(self, Qt.LeftButton)
             else:
                 if text == 'Wavelength [$\mu$m]' or text == 'Frequency [THz]':
-                    if self.xunit == 'um':
-                        self.xunit = 'THz'
-                        self.axes.format_coord = lambda x, y: "{:6.4f} THz {:10.4f} Jy".format(x, y)
-                    else:
-                        self.xunit = 'um'
-                        self.axes.format_coord = lambda x, y: "{:8.4f} um {:10.4f} Jy".format(x, y)
-                    self.axes.clear()
-                    try:
-                        self.ax2.clear()
-                        self.ax3.clear()
-                        self.ax4.clear()
-                    except:
-                        pass
-                    self.drawSpectrum()
-                    self.fig.canvas.draw_idle()
-                    if self.guess is not None:
-                        self.guess.switchUnits()                    
+                    self.switchUnits()
+                    self.switchSignal.emit('switched x unit')
                 else:
                     self.dragged = event.artist
                     self.pick_pos = event.mouseevent.xdata
@@ -1262,6 +1262,25 @@ class SpectrumCanvas(MplCanvas):
             pass
         return True
     
+    def switchUnits(self):
+        if self.xunit == 'um':
+            self.xunit = 'THz'
+            self.axes.format_coord = lambda x, y: "{:6.4f} THz {:10.4f} Jy".format(x, y)
+        else:
+            self.xunit = 'um'
+            self.axes.format_coord = lambda x, y: "{:8.4f} um {:10.4f} Jy".format(x, y)
+        self.axes.clear()
+        try:
+            self.ax2.clear()
+            self.ax3.clear()
+            self.ax4.clear()
+        except:
+            pass
+        self.drawSpectrum()
+        self.fig.canvas.draw_idle()
+        if self.guess is not None:
+            self.guess.switchUnits()  
+     
     def setLinesVisibility(self, visibility=True):
         for annotation in self.annotations:
                 annotation.set_visible(visibility)

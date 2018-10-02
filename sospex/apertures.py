@@ -238,8 +238,6 @@ class PixelInteractor(QObject):
         x,y = self.compute_markers()
         self.line.set_data(x,y)
 
-
-
     
 class EllipseInteractor(QObject):
 
@@ -293,9 +291,7 @@ class EllipseInteractor(QObject):
         self.aperture = self.ellipse
         self.press = None
         self.lock = None
-
- 
-        
+  
     def connect(self):
         self.cid_draw = self.canvas.mpl_connect('draw_event', self.draw_callback)
         self.cid_press = self.canvas.mpl_connect('button_press_event', self.button_press_callback)
@@ -303,8 +299,7 @@ class EllipseInteractor(QObject):
         self.cid_motion = self.canvas.mpl_connect('motion_notify_event', self.motion_notify_callback)
         self.cid_key = self.canvas.mpl_connect('key_press_event', self.key_press_callback)
         self.canvas.draw_idle()
-
-        
+  
     def disconnect(self):
         self.canvas.mpl_disconnect(self.cid_draw)
         self.canvas.mpl_disconnect(self.cid_press)
@@ -321,26 +316,21 @@ class EllipseInteractor(QObject):
         self.ax.draw_artist(self.ellipse)
         self.ax.draw_artist(self.line)
 
-
     def ellipse_changed(self, ellipse):
         'this method is called whenever the polygon object is called'
         # only copy the artist props to the line (except visibility)
         vis = self.line.get_visible()
         Artist.update_from(self.line, ellipse)
         self.line.set_visible(vis)  
-
-        
+  
     def get_ind_under_point(self, event):
         'get the index of the point if within epsilon tolerance'
-
         x, y = zip(*self.xy)
         d = np.hypot(x - event.xdata, y - event.ydata)
         indseq, = np.nonzero(d == d.min())
         ind = indseq[0]
-
         if d[ind] >= self.epsilon:
             ind = None
-
         return ind
 
     def button_press_callback(self, event):
@@ -357,15 +347,12 @@ class EllipseInteractor(QObject):
         theta0 = self.ellipse.angle/180*np.pi
         self.press = x0, y0, w0, h0, theta0, event.xdata, event.ydata
         self.xy0 = self.xy
-
         self.lock = "pressed"
-
 
     def key_press_callback(self, event):
         'whenever a key is pressed'
         if not event.inaxes:
             return
-
         if event.key == 't':
             self.showverts = not self.showverts
             self.line.set_visible(self.showverts)
@@ -376,7 +363,6 @@ class EllipseInteractor(QObject):
             #self.ellipse = None
             #self.line = None
             self.mySignal.emit('ellipse deleted')
-
         self.canvas.draw_idle()
 
     def button_release_callback(self, event):
@@ -391,7 +377,6 @@ class EllipseInteractor(QObject):
         self.background = None
         # To get other aperture redrawn
         self.canvas.draw_idle()
-        
 
     def motion_notify_callback(self, event):
         'on mouse movement'
@@ -404,28 +389,22 @@ class EllipseInteractor(QObject):
             return
         if event.button != 1:
             return
-
         x0, y0, w0, h0, theta0, xpress, ypress = self.press
         self.dx = event.xdata - xpress
         self.dy = event.ydata - ypress
         self.update_ellipse()
-
         # Redraw ellipse and points
         self.canvas.restore_region(self.background)
         self.ax.draw_artist(self.ellipse)
         self.ax.draw_artist(self.line)
         self.canvas.update()
         self.canvas.flush_events()
-
         # Notify callback
         self.modSignal.emit('ellipse modified')
 
-
     def update_ellipse(self):
-
         x0, y0, w0, h0, theta0, xpress, ypress = self.press
-        dx, dy = self.dx, self.dy
-        
+        dx, dy = self.dx, self.dy        
         if self.lock == "pressed":
             if self._ind == 0:
                 self.lock = "move"
@@ -454,8 +433,6 @@ class EllipseInteractor(QObject):
             c, s = np.cos(theta0), np.sin(theta0)
             R = np.matrix('{} {}; {} {}'.format(c, s, -s, c))
             (dx_,dy_), = np.array(np.dot(R,np.array([dx,dy])))
-
-
             # Avoid to pass through the center            
             if self._ind == 1:
                 w_ = w0+2*dx_  if (w0+2*dx_) > 0 else w0
@@ -469,24 +446,14 @@ class EllipseInteractor(QObject):
                     w_ = h_
                 else:
                     w_ = w0
-
             # update ellipse
             self.ellipse.width = w_
             self.ellipse.height = h_
             if self.type == 'Circle':
                 theta_ = 0.
             self.ellipse.angle = theta_
-
             # update points
             self.updateMarkers()
-            #ca = np.cos(theta_*np.pi/180.); sa = np.sin(theta_*np.pi/180.)
-            #x = [x0, x0+w_*0.5*ca, x0-h_*0.5*sa]
-            #y = [y0, y0+w_*0.5*sa, y0+h_*0.5*ca]
-            #self.xy = [(i,j) for (i,j) in zip(x,y)]
-                
-        # Redefine line
-        #self.line.set_data(zip(*self.xy))
-
 
     def updateMarkers(self):
         # update points
@@ -499,8 +466,6 @@ class EllipseInteractor(QObject):
         y = [y0, y0+w_*0.5*sa, y0+h_*0.5*ca]
         self.xy = [(i,j) for (i,j) in zip(x,y)]
         self.line.set_data(x,y)
-
-
 
 
 class RectangleInteractor(QObject):
@@ -531,20 +496,15 @@ class RectangleInteractor(QObject):
         self.rect = Rectangle(corner,width,height,edgecolor='Lime',facecolor='none',angle=angle,fill=False,animated=True)
         self.ax.add_patch(self.rect)
         self.canvas = self.rect.figure.canvas
-
         x,y = self.compute_markers()
         self.line = Line2D(x, y, marker='o', linestyle=None, linewidth=0., markerfacecolor='g', animated=True)
         self.ax.add_line(self.line)
-
         self.cid = self.rect.add_callback(self.rectangle_changed)
         self._ind = None  # the active point
-
         self.connect()
-
         self.aperture = self.rect
         self.press = None
         self.lock = None
-
 
     def compute_markers(self):
 
@@ -576,7 +536,6 @@ class RectangleInteractor(QObject):
         self.cid_motion = self.canvas.mpl_connect('motion_notify_event', self.motion_notify_callback)
         self.cid_key = self.canvas.mpl_connect('key_press_event', self.key_press_callback)
         self.canvas.draw_idle()
-
         
     def disconnect(self):
         self.canvas.mpl_disconnect(self.cid_draw)
@@ -594,14 +553,12 @@ class RectangleInteractor(QObject):
         self.ax.draw_artist(self.rect)
         self.ax.draw_artist(self.line)
 
-
     def rectangle_changed(self, rect):
         'this method is called whenever the polygon object is called'
         # only copy the artist props to the line (except visibility)
         vis = self.line.get_visible()
         Artist.update_from(self.line, rect)
         self.line.set_visible(vis)  
-
         
     def get_ind_under_point(self, event):
         'get the index of the point if within epsilon tolerance'
@@ -633,12 +590,10 @@ class RectangleInteractor(QObject):
 
         self.lock = "pressed"
 
-
     def key_press_callback(self, event):
         'whenever a key is pressed'
         if not event.inaxes:
             return
-
         if event.key == 't':
             self.showverts = not self.showverts
             self.line.set_visible(self.showverts)
@@ -649,7 +604,6 @@ class RectangleInteractor(QObject):
             #self.rect = None
             #self.line = None
             self.mySignal.emit('rectangle deleted')
-
         self.canvas.draw_idle()
 
     def button_release_callback(self, event):
@@ -664,11 +618,9 @@ class RectangleInteractor(QObject):
         self.background = None
         # To get other aperture redrawn
         self.canvas.draw_idle()
-        
 
     def motion_notify_callback(self, event):
         'on mouse movement'
-
         if not self.showverts:
             return
         if self._ind is None:
@@ -677,7 +629,6 @@ class RectangleInteractor(QObject):
             return
         if event.button != 1:
             return
-
         x0, y0, w0, h0, theta0, xpress, ypress = self.press
         self.dx = event.xdata - xpress
         self.dy = event.ydata - ypress
@@ -741,15 +692,12 @@ class RectangleInteractor(QObject):
                     w_ = h_
                 else:
                     w_ = w0
-
             # update rectangle
             self.rect.set_width(w_)
             self.rect.set_height(h_)
             self.rect.angle = theta_
-
             # update markers
             self.updateMarkers()
-
 
     def updateMarkers(self):
         # update points
@@ -940,4 +888,3 @@ class PolygonInteractor(QObject):
 
     def updateMarkers(self):
         self.line.set_data(zip(*self.poly.xy))
-        

@@ -23,7 +23,7 @@ from sospex.graphics import  (NavigationToolbar, ImageCanvas, ImageHistoCanvas, 
 from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
 from sospex.specobj import specCube,Spectrum, ExtSpectrum
 from sospex.cloud import cloudImage
-from sospex.interactors import SliderInteractor
+from sospex.interactors import SliderInteractor, SliceInteractor
 
 
 class UpdateTabs(QObject):
@@ -299,6 +299,7 @@ class GUI (QMainWindow):
         t.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored) # Avoid expansion
         self.stabs.addTab(t, b)
         sc = SpectrumCanvas(t, width=5.5, height=5.25, dpi=100)
+        sc.switchSignal.connect(self.switchUnits)
         # Toolbar
         toolbar = QToolBar()
         # Add actions to toolbar
@@ -306,6 +307,7 @@ class GUI (QMainWindow):
         toolbar.addAction(self.specAction)
         toolbar.addAction(self.guessAction)
         toolbar.addAction(self.sliceAction)
+        toolbar.addAction(self.slideAction)
         toolbar.addSeparator()
         toolbar.addSeparator()
         toolbar.addAction(self.hresizeAction)
@@ -518,6 +520,7 @@ class GUI (QMainWindow):
                     ap.line.set_visible(ap.showverts)
                 ima.changed = True
             if ima.changed:
+                print('redrawing figure .... ')
                 ima.fig.canvas.draw_idle()
                 ima.changed = False
             if self.blink == 'select':
@@ -891,45 +894,25 @@ class GUI (QMainWindow):
         """Wheel moves right/left the slice defined on spectrum."""
         itab = self.stabs.currentIndex()
         sc = self.sci[itab]
-        if self.ctrlIsHeld:
-            if itab == self.spectra.index('Pix'):
-                if sc.regionlimits is not None:
-                    eb = event.button
-                    xmin,xmax = sc.regionlimits
-                    dx = (xmax-xmin) * 0.5
-                    # Increment region limits
-                    if eb == 'up':
-                        xmin += dx
-                        xmax += dx
-                    elif eb == 'down':
-                        xmin -= dx
-                        xmax -= dx
-                    else:
-                        pass        
-                    # redraw images
-                    self.slice = 'on'
-                    if sc.xunit == 'THz':
-                        c = 299792458.0  # speed of light in m/s
-                        xmin, xmax = c/xmax*1.e-6, c/xmin*1.e-6  # Transform in THz as expected by onSelect
-                    self.onSelect(xmin,xmax)        
-        else:
-            if event.inaxes:
-                # zoom/unzoom 
-                eb = event.button
-                curr_xlim = sc.axes.get_xlim()
-                curr_ylim = sc.axes.get_ylim()
-                curr_x0 = (curr_xlim[0]+curr_xlim[1])*0.5
-                curr_y0 = (curr_ylim[0]+curr_ylim[1])*0.5
-                if eb == 'up':
-                    factor=0.9
-                elif eb == 'down':
-                    factor=1.1
-                new_width = (curr_xlim[1]-curr_xlim[0])*factor*0.5
-                new_height= (curr_ylim[1]-curr_ylim[0])*factor*0.5
-                sc.xlimits = (curr_x0-new_width,curr_x0+new_width)
-                sc.updateXlim()
-                sc.ylimits = (curr_y0-new_height,curr_y0+new_height)
-                sc.updateYlim()
+        if event.inaxes:
+            # zoom/unzoom 
+            eb = event.button
+            #curr_xlim = sc.axes.get_xlim()
+            curr_xlim = sc.xlimits
+            # curr_ylim = sc.axes.get_ylim()
+            curr_ylim = sc.ylimits
+            curr_x0 = (curr_xlim[0]+curr_xlim[1])*0.5
+            curr_y0 = (curr_ylim[0]+curr_ylim[1])*0.5
+            if eb == 'up':
+                factor=0.9
+            elif eb == 'down':
+                factor=1.1
+            new_width = (curr_xlim[1]-curr_xlim[0])*factor*0.5
+            new_height= (curr_ylim[1]-curr_ylim[0])*factor*0.5
+            sc.xlimits = (curr_x0-new_width,curr_x0+new_width)
+            sc.updateXlim()
+            sc.ylimits = (curr_y0-new_height,curr_y0+new_height)
+            sc.updateYlim()
                
     def createSpectralPanel(self):
         """Panel to plot spectra."""
@@ -999,6 +982,9 @@ class GUI (QMainWindow):
         self.sliceAction = self.createAction(self.path0+'/icons/slice.png',
                                              'Define a slice to compute moments and/or display',
                                              'Ctrl+K',self.sliceCube)
+        self.slideAction = self.createAction(self.path0+'/icons/slider.png',
+                                             'Display a plane of the cube and show a slider',
+                                             'Ctrl+S',self.initializeSlider)
         self.maskAction =  self.createAction(self.path0+'/icons/eraser.png','Erase a region',
                                              '',self.maskCube)
         self.cloudAction = self.createAction(self.path0+'/icons/cloud.png',
@@ -1896,12 +1882,15 @@ class GUI (QMainWindow):
         elif s.instrument == 'PACS':
             expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
             spec = Spectrum(s.wave, fluxAll, exposure=expAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0 )           
+        # Inherit the x-units of pix 
+        istab = self.spectra.index('Pix')
+        sc.xunit = self.sci[istab].xunit
         sc.compute_initial_spectrum(spectrum=spec)
         self.specZoomlimits = [sc.xlimits,sc.ylimits]
         sc.cid = sc.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomSpec)
         # Start the span selector to show only part of the cube
         sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
-                               rectprops=dict(alpha=0.5, facecolor='green'))
+                               rectprops=dict(alpha=0.3, facecolor='LightGreen'))
         sc.span.active = False
         # Select new tab
         self.stabs.setCurrentIndex(n+1)
@@ -2845,7 +2834,7 @@ class GUI (QMainWindow):
                 hdul.writeto(outfile,overwrite=True) 
                 hdul.close()
             else:
-                pass    
+                pass  
 
     def exportAperture(self):
         import json, io
@@ -2959,8 +2948,9 @@ class GUI (QMainWindow):
         """Select part of the cube."""
         self.sb.showMessage("Define slice of the cube ", 1000)
         self.slice = 'on'
-        istab = self.spectra.index('Pix')
-        self.stabs.setCurrentIndex(istab)
+        # istab = self.spectra.index('Pix')
+        # self.stabs.setCurrentIndex(istab)
+        istab = self.stabs.currentIndex()
         sc = self.sci[istab]
         ## toggle off continuum
         try:
@@ -2974,7 +2964,9 @@ class GUI (QMainWindow):
             sc.displayLines = False
             sc.setLinesVisibility(sc.displayLines)
             sc.fig.canvas.draw_idle()
-        sc.span.active=True
+        self.slider.disconnect()
+        self.slider = None
+        sc.span.active = True
         
     def maskCube(self):
         """Mask a slice of the cube."""
@@ -3381,11 +3373,12 @@ class GUI (QMainWindow):
             filename = self.specCube.filename
             self.loadFile(filename)
             self.initializeImages()
+            self.initializeSpectra()
+            self.initializeSlider()
             if self.specCube.instrument == 'GREAT':
                 print('compute Exp from Nan')
                 self.specCube.computeExpFromNan
             self.all = False
-            #self.computeAll()
         except:
             self.sb.showMessage("ERROR: You have to load a file first", 2000)
             return
@@ -3515,15 +3508,11 @@ class GUI (QMainWindow):
             ts = time.process_time()
             ic = self.ici[self.bands.index(ima)]
             if ima == 'Flux':
-                #if s.instrument == 'GREAT':
-                    #image = np.mean(s.flux, axis=0)
                 image = s.flux[s.n0,:,:]
-                #else:
-                #    image = np.nanmedian(s.flux, axis=0)
             elif ima == 'uFlux':
-                image = np.nanmedian(s.uflux, axis=0)
+                image = s.uflux[s.n0,:,:]
             elif ima == 'Exp':
-                image = np.nansum(s.exposure, axis=0)
+                image = s.exposure[s.n0,:,:]
             elif ima == 'M0':
                 self.computeZeroMoment()
                 image = self.M0
@@ -3544,6 +3533,7 @@ class GUI (QMainWindow):
             ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed',
                                                self.doZoomAll)
             ih = self.ihi[self.bands.index(ima)]
+            ih.changed = False
             clim = ic.image.get_clim()
             ih.compute_initial_figure(image=image,xmin=clim[0],xmax=clim[1])
             t2 = time.process_time() 
@@ -3618,35 +3608,47 @@ class GUI (QMainWindow):
         sc.compute_initial_spectrum(spectrum=spec)
         self.specZoomlimits = [sc.xlimits,sc.ylimits]
         sc.cid = sc.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomSpec)
-        #sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
-        #                       rectprops=dict(alpha=0.6, facecolor='LightGreen'))
-        #sc.span.active = False
+        sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
+                               rectprops=dict(alpha=0.3, facecolor='LightGreen'))
+        sc.span.active = False
         wave0 = s.wave[s.n0]
         dwave = (s.wave[s.n0+1]-wave0)*0.5
         sc.regionlimits = wave0-dwave,wave0+dwave
         # sc.shadeRegion()
 
     def initializeSlider(self):
+        try:
+            self.slicer.disconnect()
+        except BaseException:
+            pass
+        self.slicer = None
         s = self.specCube
-        spectrum = self.spectra[1]
-        sc = self.sci[self.spectra.index(spectrum)]
+        # spectrum = self.spectra[1]
+        sc = self.sci[self.stabs.currentIndex()]
         w0 = s.wave[s.n0]
-        dw = (s.wave[s.n0+1]-w0)*0.5
-        print('slider ', w0, dw)
+        dw = s.wave[s.n0+1]-w0
+        if sc.xunit == 'THz':
+            c = 299792458.0  # speed of light in m/s
+            r = w0/dw
+            w0 = c / w0 * 1.e-6
+            dw = c / dw * 1.e-6 / np.abs(r * r - 0.25)
         self.slider = SliderInteractor(sc.axes, w0, dw)
         self.slider.modSignal.connect(self.slideCube)
-        # sc.fig.canvas.draw_idle()
+        # if sc.xunit == 'THz':
+        #     self.sliderSwitchUnits()
 
     def slideCube(self, event):
         """Slide over the depth of the cube once the slider moves."""
         # Capture the position of the slider and convert it in position in the cube
         # Here we are just using wavelengths, make this more generic with frequency
         w = self.slider.x
+        stab = self.stabs.currentIndex()
+        sc = self.sci[stab]
+        if sc.xunit == 'THz':
+            c = 299792458.0  # speed of light in m/s
+            w = c / w * 1.e-6
         n = np.argmin(np.abs(self.specCube.wave - w))
-        print('Slider at ', w)
-        print('The new n is ', n)
-        print('cube is ', np.shape(self.specCube.flux))
-        # Display channel n of the spectral cube
+       # Display channel n of the spectral cube
         if self.specCube.instrument == 'GREAT':
             imas = ['Flux']
         elif self.specCube.instrument == 'PACS':
@@ -3654,11 +3656,9 @@ class GUI (QMainWindow):
         elif self.specCube.instrument == 'FIFI-LS':
             imas = ['Flux','uFlux','Exp']
         x,y = self.zoomlimits
-        # itab = self.itabs.currentIndex()
-        # ic0 = self.ici[itab]
+        itab = self.itabs.currentIndex()
+        ic0 = self.ici[itab]
         for ima in imas:
-            ic = self.ici[self.bands.index(ima)]
-            ih = self.ihi[self.bands.index(ima)]
             if ima == 'Flux':
                 image = self.specCube.flux[n,:,:]
             elif ima == 'uFlux':
@@ -3667,18 +3667,55 @@ class GUI (QMainWindow):
                 image = self.specCube.exposure[n,:,:]
             else:
                 pass
-            ic.showImage(image)
-            # Set image limits to pre-existing values
-            ic.axes.set_xlim(x)
-            ic.axes.set_ylim(y)
-            ic.changed = True
-            # Update histogram
-            #clim = ic.image.get_clim()
-            ih.axes.clear()
-            #ih.compute_initial_figure(image=image,xmin=clim[0],xmax=clim[1])
-            ih.compute_initial_figure(image=image)
-            ih.fig.canvas.draw_idle()
-                
+            ic = self.ici[self.bands.index(ima)]
+            # Update only data to go faster
+            ic.image.set_data(image)
+            ic.oimage = image
+            if ic == ic0:
+                ic.fig.canvas.draw_idle()
+                ic.changed = False
+                # draw_idle seems faster than update ...
+                # ic.axes.draw_artist(ic.image)
+                # ic.fig.canvas.update()
+                # ic.fig.canvas.flush_events()
+            else:
+                ic.changed = True
+            ih = self.ihi[self.bands.index(ima)]
+            ih.changed = True
+
+    def switchUnits(self):
+        """React to switch in units of the spectrum canvas."""
+        if self.slider is not None:
+            self.sliderSwitchUnits()
+        if self.slicer is not None:
+            self.slicerSwitchUnits()
+        # change units in other tabs
+        stab = self.stabs.currentIndex()
+        sc0 = self.sci[stab]
+        sci = self.sci.copy()
+        sci.remove(sc0)
+        if self.all == False:
+            sci.remove(self.sci[0])
+            self.sci[0].xunit = 'THz'
+        for sc in sci:
+            sc.switchUnits()
+
+    def sliderSwitchUnits(self):
+        c = 299792458.0  # speed of light in m/s
+        r = self.slider.x/self.slider.dx
+        self.slider.x = c / self.slider.x * 1.e-6
+        self.slider.dx = c / self.slider.dx * 1.e-6 / np.abs(r * r - 0.25)
+        print('dx ', self.slider.dx)
+        self.slider.redraw(0)
+        
+    def slicerSwitchUnits(self):
+        c = 299792458.0  # speed of light in m/s
+        xl = self.slicer.xl
+        xr = self.slicer.xr
+        self.slicer.xl = c / xr * 1.e-6
+        self.slicer.xr = c / xl * 1.e-6
+        self.slicer.redraw()
+
     def computeAll(self):
         """Compute initial total spectrum."""
         print('Computing total spectrum')
@@ -3705,7 +3742,7 @@ class GUI (QMainWindow):
         sc.cid = sc.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomSpec)
         # Start the span selector to show only part of the cube
         sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
-                               rectprops=dict(alpha=0.5, facecolor='LightSalmon'))
+                               rectprops=dict(alpha=0.3, facecolor='LightGreen'))
         sc.span.active = False
         self.all = True
         
@@ -3714,30 +3751,19 @@ class GUI (QMainWindow):
         """ Consider only a slice of the cube when computing the image """
         if self.slice == 'on':
             # Find indices of the shaded region
-            sc = self.sci[self.spectra.index('Pix')]
-            if sc.xunit == 'THz':
-                c = 299792458.0  # speed of light in m/s
-                xmin, xmax = c/xmax*1.e-6, c/xmin*1.e-6
-            indmin, indmax = np.searchsorted(self.specCube.wave, (xmin, xmax))
-            indmax = min(len(self.specCube.wave) - 1, indmax)
-            sc.regionlimits = [xmin,xmax]
-            # Remove previous contours on image
-            for ic in self.ici:
-                if ic.contour is not None:
-                    for coll in ic.contour.collections:
-                        coll.remove()
-                    ic.contour = None
-                    ic.changed = True
-            self.contours = 'off'
-            #self.menuContours.setChecked(False)
-            # Remove contour lines in the histogram
-            for ih in self.ihi:
-                if len(ih.lev) > 0:
-                    print('There are ',len(ih.lev),len(ih.levels),' contour levels')
-                    ih.levSignal.disconnect()
-                    ih.removeLevels()
+            # sc = self.sci[self.spectra.index('Pix')]
+            sc = self.sci[self.stabs.currentIndex()]
+            #if sc.xunit == 'THz':
+            #    c = 299792458.0  # speed of light in m/s
+            #    xmin, xmax = c/xmax*1.e-6, c/xmin*1.e-6
+            #indmin, indmax = np.searchsorted(self.specCube.wave, (xmin, xmax))
+            #indmax = min(len(self.specCube.wave) - 1, indmax)
+            #sc.regionlimits = [xmin,xmax]
+            self.removeContours()
             # Draw region on spectrum
-            sc.shadeSpectrum()
+            # sc.shadeSpectrum()
+            self.slicer = SliceInteractor(sc.axes, xmin, xmax)
+            self.slicer.modSignal.connect(self.updateImages)
             # Hide span selector
             sc.span.active = False
             # Show the lines
@@ -3753,37 +3779,10 @@ class GUI (QMainWindow):
             except BaseException:
                 pass
             # Update images (flux, uflux, coverage)
-            if self.specCube.instrument == 'GREAT':
-                imas = ['Flux']
-            elif self.specCube.instrument == 'PACS':
-                imas = ['Flux','Exp']
-            elif self.specCube.instrument == 'FIFI-LS':
-                imas = ['Flux','uFlux','Exp']
-            x,y = self.zoomlimits
-            for ima in imas:
-                ic = self.ici[self.bands.index(ima)]
-                ih = self.ihi[self.bands.index(ima)]
-                if ima == 'Flux':
-                    image = np.nanmedian(self.specCube.flux[indmin:indmax,:,:], axis=0)
-                elif ima == 'uFlux':
-                    image = np.nanmedian(self.specCube.uflux[indmin:indmax,:,:], axis=0)
-                elif ima == 'Exp':
-                    image = np.nansum(self.specCube.exposure[indmin:indmax,:,:], axis=0)
-                else:
-                    pass
-                ic.showImage(image)
-                # Set image limits to pre-existing values
-                ic.axes.set_xlim(x)
-                ic.axes.set_ylim(y)
-                ic.changed = True
-                # Update histogram
-                #clim = ic.image.get_clim()
-                ih.axes.clear()
-                #ih.compute_initial_figure(image=image,xmin=clim[0],xmax=clim[1])
-                ih.compute_initial_figure(image=image)
-                ih.fig.canvas.draw_idle()
+            self.updateImages()
             self.slice = 'off'
         elif self.cutcube == 'on':
+            # TO BE UPDATED ...
             # Find indices of the shaded region
             #print('xmin, xmax ',xmin,xmax)
             sc = self.sci[self.spectra.index('All')]
@@ -3795,31 +3794,92 @@ class GUI (QMainWindow):
             sc.span.active = False
             indmin, indmax = np.searchsorted(self.specCube.wave, (xmin, xmax))
             indmax = min(len(self.specCube.wave) - 1, indmax)
-            #print('indmin, indmax', indmin,indmax)
             size = indmax-indmin
-            nz,nx,ny = np.shape(self.specCube.flux)
+            nz, nx, ny = np.shape(self.specCube.flux)
             if size == nx:
                 self.sb.showMessage("No cutting needed ", 2000)
             else:
                 flags = QMessageBox.Yes 
                 flags |= QMessageBox.No
-                question = "Do you want to cut the part of the cube selected on the image ?"
+                question = "Do you want to trim the cube to the part selected on the image ?"
                 response = QMessageBox.question(self, "Question",
                                                 question,
                                                 flags)            
                 if response == QMessageBox.Yes:
-                    self.sb.showMessage("Cutting the cube ", 2000)
+                    self.sb.showMessage("Trimming the cube ", 2000)
                     self.cutCube1D(indmin,indmax)
                     self.saveCube()
                     # Load trimmed cube
                     self.reloadFile()
                 elif QMessageBox.No:
-                    self.sb.showMessage("Cropping aborted ", 2000)
+                    self.sb.showMessage("Trimming aborted ", 2000)
                 else:
                     pass
             self.cutcube = 'off'
             sc.tmpRegion.remove()
             sc.fig.canvas.draw_idle()
+
+    def updateImages(self):
+        """Update images once the cursors of the slice move."""
+        sc = self.sci[self.spectra.index('Pix')]
+        xmin = self.slicer.xl
+        xmax = self.slicer.xr
+        if sc.xunit == 'THz':
+            c = 299792458.0  # speed of light in m/s
+            xmin, xmax = c/xmax*1.e-6, c/xmin*1.e-6
+        indmin, indmax = np.searchsorted(self.specCube.wave, (xmin, xmax))
+        indmax = min(len(self.specCube.wave) - 1, indmax)
+        sc.regionlimits = [xmin,xmax]
+        if self.specCube.instrument == 'GREAT':
+            imas = ['Flux']
+        elif self.specCube.instrument == 'PACS':
+            imas = ['Flux','Exp']
+        elif self.specCube.instrument == 'FIFI-LS':
+            imas = ['Flux','uFlux','Exp']
+        x,y = self.zoomlimits
+        for ima in imas:
+            ic = self.ici[self.bands.index(ima)]
+            #ih = self.ihi[self.bands.index(ima)]
+            if ima == 'Flux':
+                image = np.nanmean(self.specCube.flux[indmin:indmax,:,:], axis=0)
+            elif ima == 'uFlux':
+                image = np.nanmean(self.specCube.uflux[indmin:indmax,:,:], axis=0)
+            elif ima == 'Exp':
+                image = np.nansum(self.specCube.exposure[indmin:indmax,:,:], axis=0)
+            else:
+                pass
+            # Update image
+            ic.image.set_data(image)
+            ic.oimage = image
+            ic.fig.canvas.draw_idle()            
+            # ic.showImage(image)
+            # Set image limits to pre-existing values
+            #ic.axes.set_xlim(x)
+            #ic.axes.set_ylim(y)
+            #ic.changed = True
+            # Update histogram
+            #clim = ic.image.get_clim()
+            #ih.axes.clear()
+            #ih.compute_initial_figure(image=image,xmin=clim[0],xmax=clim[1])
+            #ih.compute_initial_figure(image=image)
+            #ih.fig.canvas.draw_idle()
+        
+    def removeContours(self):
+        """Remove previous contours on image and histogram."""
+        for ic in self.ici:
+            if ic.contour is not None:
+                for coll in ic.contour.collections:
+                    coll.remove()
+                ic.contour = None
+                ic.changed = True
+        self.contours = 'off'
+        #self.menuContours.setChecked(False)
+        # Remove contour lines in the histogram
+        for ih in self.ihi:
+            if len(ih.lev) > 0:
+                print('There are ',len(ih.lev),len(ih.levels),' contour levels')
+                ih.levSignal.disconnect()
+                ih.removeLevels()
 
     def doZoomAll(self, event):
         """Propagate limit changes to all images."""
@@ -3893,9 +3953,19 @@ class GUI (QMainWindow):
             itab = self.itabs.currentIndex()
             ih = self.ihi[itab]
             state = ih.isVisible()
-            for ih in self.ihi:
-                ih.setVisible(not state)
-            self.menuHisto.setChecked(not state)
+            # for ih in self.ihi:
+            #     ih.setVisible(not state)
+            # self.menuHisto.setChecked(not state)
+            ih.setVisible(not state)
+            if ih.isVisible():
+                if ih.changed:
+                    image = self.ici[itab].oimage
+                    ih.axes.clear()
+                    #clim = image.get_clim()
+                    #ih.compute_initial_figure(image=image,xmin=clim[0],xmax=clim[1])
+                    ih.compute_initial_figure(image=image)
+                    ih.fig.canvas.draw_idle()
+                    ih.changed = False
         except:
             self.sb.showMessage("First choose a cube ", 1000)
 
@@ -4007,6 +4077,22 @@ class GUI (QMainWindow):
                     #ap.mySignal.disconnect()
                 ap.line.set_visible(ap.showverts)
             ic.fig.canvas.draw_idle()
+            #
+            if self.slider is not None:
+                x = self.slider.x
+                dx = self.slider.dx
+                self.slider.disconnect()
+                sc = self.sci[istab]
+                self.slider = SliderInteractor(sc.axes, x, dx)
+                self.slider.modSignal.connect(self.slideCube)
+            if self.slicer is not None:
+                xl = self.slicer.xl
+                xr = self.slicer.xr
+                self.slicer.disconnect()
+                sc = self.sci[istab]
+                self.slicer = SliceInteractor(sc.axes, xl, xr)
+                self.slicer.modSignal.connect(self.updateImages)
+        # Delayed computation of all tab
         if stab == 0:
             if self.all == False:
                 try:
