@@ -30,21 +30,21 @@ python (https://www.anaconda.com/download).
 
 It is a good practice to update all your installed packages to have the latest versions:
 
-conda update --all
+conda update --all -y
 
 The packages *lmfit* and *reproject* have to be installed from the astropy channel:
 
-conda install -c astropy lmfit
+conda install -c astropy lmfit -y
 
-conda install -c astropy reproject
+conda install -c astropy reproject -y
 
 Now you are ready to install sospex:
 
-conda install -c darioflute sospex
+conda install -c darioflute sospex -y
 
 If there is a new release, you will have only to update the package:
 
-conda update -c darioflute sospex
+conda update -c darioflute sospex -y
 
 
 ### How to start the program
