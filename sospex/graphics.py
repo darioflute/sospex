@@ -445,6 +445,11 @@ class ImageCanvas(MplCanvas):
             return '{:s} {:s} ({:4.0f},{:4.0f})'.format(xx,yy,x,y)
          
         self.axes.format_coord = format_coord
+        
+    def updateImage(self, image):
+        """Update only the image data."""
+        self.image.set_data(image)
+        self.oimage = image
     
     def updateScale(self,_cmin,_cmax):
         self.image.set_clim([_cmin, _cmax])

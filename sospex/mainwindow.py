@@ -3029,11 +3029,9 @@ class GUI (QMainWindow):
                     # ic0.image.remove()
                     # ic0.showImage(image)
                     # New technique
-                    ic0.image.set_date(image)
-                    ic0.oimage = image
-                    ic0.fig.canvas.draw_idle()
+                    ic0.updateImage(image)
                     ic0.updateScale(cmin,cmax)
-                    self.addContours(ic0) 
+                    # self.addContours(ic0) 
                 # mask C0, Mi, v, sv
                 sbands = [self.C0, self.M0, self.M1, self.M2, self.M3, self.M4, self.v, self.sv]
                 bands = ['C0','M0','M1','M2','M3','M4','v','sv']
@@ -3046,8 +3044,7 @@ class GUI (QMainWindow):
                         clim = ic.image.get_clim()
                         # ic.showImage(sb)
                         # self.addContours(ic)
-                        ic.image.set_date(sb)
-                        ic.oimage = sb
+                        ic.updateImage(sb)
                         ic.fig.canvas.draw_idle()
                         ih.axes.cla()
                         ih.compute_initial_figure(image=sb, xmin=clim[0],xmax=clim[1])
@@ -3141,8 +3138,7 @@ class GUI (QMainWindow):
                 # ic0.image.remove()
                 # ic0.showImage(image)
                 # self.addContours(ic0)
-                ic0.image.set_data(image)
-                ic0.oimage = image
+                ic0.updateImage(image)
                 ic0.updateScale(cmin,cmax)
             # mask C0, Mi, v, sv
             sbands = [self.C0, self.M0, self.M1, self.M2, self.M3, self.M4, self.v, self.sv]
@@ -3155,8 +3151,7 @@ class GUI (QMainWindow):
                     ih = self.ihi[itab]
                     clim = ic0.image.get_clim()
                     # ic0.showImage(sb)
-                    ic0.image.set_data(sb)
-                    ic0.oimage = sb
+                    ic0.updateImage(sb)
                     ic0.updateScale(clim[0],clim[1])
                     # ic0.fig.canvas.draw_idle()
                     ih.axes.cla()
@@ -3681,8 +3676,7 @@ class GUI (QMainWindow):
                 pass
             ic = self.ici[self.bands.index(ima)]
             # Update only data to go faster
-            ic.image.set_data(image)
-            ic.oimage = image
+            ic.updateImage(image)
             if ic == ic0:
                 ic.fig.canvas.draw_idle()
                 ic.changed = False
@@ -3860,8 +3854,7 @@ class GUI (QMainWindow):
             else:
                 pass
             # Update image
-            ic.image.set_data(image)
-            ic.oimage = image
+            ic.updateImage(image)
             ic.fig.canvas.draw_idle()            
         
     def removeContours(self):
