@@ -3026,8 +3026,12 @@ class GUI (QMainWindow):
                     image[yy,xx] = np.nan
                     cmin = ic0.cmin; cmax=ic0.cmax
                     # Remove previous image before showing masked image
-                    ic0.image.remove()
-                    ic0.showImage(image)
+                    # ic0.image.remove()
+                    # ic0.showImage(image)
+                    # New technique
+                    ic0.image.set_date(image)
+                    ic0.oimage = image
+                    ic0.fig.canvas.draw_idle()
                     ic0.updateScale(cmin,cmax)
                     self.addContours(ic0) 
                 # mask C0, Mi, v, sv
@@ -3040,8 +3044,11 @@ class GUI (QMainWindow):
                         ic = self.ici[itab]
                         ih = self.ihi[itab]
                         clim = ic.image.get_clim()
-                        ic.showImage(sb)
-                        self.addContours(ic)
+                        # ic.showImage(sb)
+                        # self.addContours(ic)
+                        ic.image.set_date(sb)
+                        ic.oimage = sb
+                        ic.fig.canvas.draw_idle()
                         ih.axes.cla()
                         ih.compute_initial_figure(image=sb, xmin=clim[0],xmax=clim[1])
                         ic.updateScale(clim[0],clim[1])
@@ -3745,7 +3752,6 @@ class GUI (QMainWindow):
                                rectprops=dict(alpha=0.3, facecolor='LightGreen'))
         sc.span.active = False
         self.all = True
-        
 
     def onSelect(self, xmin, xmax):
         """ Consider only a slice of the cube when computing the image """
