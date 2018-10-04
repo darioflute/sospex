@@ -42,6 +42,8 @@ Now you are ready to install sospex:
 
 conda install -c darioflute sospex -y
 
+### Updating
+
 If there is a new release, you will have only to update the package:
 
 conda update -c darioflute sospex -y
