@@ -1,6 +1,6 @@
 package:
   name: sospex
-  version: 0.32.beta
+  version: 0.33.beta
 
 source:
   git_tag: master
@@ -15,9 +15,9 @@ requirements:
 
   run:
     - python >=3.6
-    - numpy >=1.9.3
+    - numpy >=1.15
     - astropy >=3.0
-    - matplotlib >=2.1.1
+    - matplotlib >=2.1<3.0
         
 test:
   imports:
