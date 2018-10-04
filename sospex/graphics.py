@@ -304,8 +304,8 @@ class ImageCanvas(MplCanvas):
             '''initial definition when images are not yet read'''
             pass
         else:
-            import time
-            t = time.process_time()
+            # import time
+            # t = time.process_time()
             self.wcs = wcs
             try:
                 self.fig.delaxes(self.axes)
@@ -359,13 +359,13 @@ class ImageCanvas(MplCanvas):
             else:
                 self.cmin = None
                 self.cmax = None
-            import time
+            # import time
             # t1 = time.process_time()
             # print('Pre-image is ', t1-t, 's')
             if image is not None:
                 self.showImage(image)
-            t2 = time.process_time() 
-            print('Image displayed in ',t2-t, 's')
+            # t2 = time.process_time() 
+            # print('Image displayed in ',t2-t, 's')
             self.changed = False            
             # Add ellipse centered on source
             self.pixscale = pixscales(self.wcs)[0]*3600. # Scale in arcsec
@@ -1170,7 +1170,7 @@ class SpectrumCanvas(MplCanvas):
         """React to onpick events."""
         # print('picked event ', event.artist)
         if isinstance(event.artist, Line2D):
-            print('Line ', event.artist)
+            # print('Line ', event.artist)
             legline = event.artist
             label = legline.get_label()
             origline = self.lined[legline]

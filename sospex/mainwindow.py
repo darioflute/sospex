@@ -3540,13 +3540,13 @@ class GUI (QMainWindow):
                 image = self.M0
             else:
                 pass
-            t0 = time.process_time()
-            print('Image prepared in ', t0-ts, 's')
+            # t0 = time.process_time()
+            # print('Image prepared in ', t0-ts, 's')
             ic.compute_initial_figure(image=image,wcs=s.wcs,title=ima,cMap=self.colorMap,
                                       cMapDir=self.colorMapDirection,stretch=self.stretchMap,
                                       instrument = s.instrument)
             t1 = time.process_time() 
-            print('Image displayed in ', t1-t0,' s')
+            print('Image displayed in ', t1-ts,' s')
             if ima == 'Exp':
                 ic.image.format_cursor_data = lambda z: "{:10.0f} s".format(float(z))
             else:
