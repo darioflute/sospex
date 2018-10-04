@@ -826,6 +826,12 @@ class GUI (QMainWindow):
             if response == QMessageBox.Yes:
                 self.sb.showMessage("Updating the redshift ", 2000)
                 self.specCube.redshift = sc.spectrum.redshift
+                # Check if all has been already computed 
+                if self.all == False:
+                    try:
+                        self.computeAll()
+                    except BaseException:
+                        pass
                 # Propagate to other tabs
                 for sc_ in self.sci:
                     sc_.spectrum.redshift = self.specCube.redshift
