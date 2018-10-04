@@ -2964,8 +2964,11 @@ class GUI (QMainWindow):
             sc.displayLines = False
             sc.setLinesVisibility(sc.displayLines)
             sc.fig.canvas.draw_idle()
-        self.slider.disconnect()
-        self.slider = None
+        try:
+            self.slider.disconnect()
+            self.slider = None
+        except BaseException:
+            pass
         sc.span.active = True
         
     def maskCube(self):
@@ -3381,7 +3384,7 @@ class GUI (QMainWindow):
             self.loadFile(filename)
             self.initializeImages()
             self.initializeSpectra()
-            self.initializeSlider()
+            # self.initializeSlider()
             if self.specCube.instrument == 'GREAT':
                 print('compute Exp from Nan')
                 self.specCube.computeExpFromNan
@@ -3407,7 +3410,7 @@ class GUI (QMainWindow):
             try:
                 self.initializeImages()
                 self.initializeSpectra()
-                self.initializeSlider()
+                # self.initializeSlider()
                 if self.specCube.instrument == 'GREAT':
                     print('compute Exp from Nan')
                     self.specCube.computeExpFromNan
@@ -3622,6 +3625,8 @@ class GUI (QMainWindow):
         dwave = (s.wave[s.n0+1]-wave0)*0.5
         sc.regionlimits = wave0-dwave,wave0+dwave
         # sc.shadeRegion()
+        self.slider = None
+        self.slicer = None
 
     def initializeSlider(self):
         try:
@@ -4130,6 +4135,6 @@ def main():
     # Add an icon for the application
     app.setWindowIcon(QIcon(gui.path0+'/icons/sospex.png'))
     app.setApplicationName('SOSPEX')
-    app.setApplicationVersion('0.32-beta')
+    app.setApplicationVersion('0.33-beta')
     sys.exit(app.exec_())
     #splash.finish(gui)

@@ -1,6 +1,6 @@
-SOSPEX - version 0.31-beta
+SOSPEX - version 0.33-beta
 
-Copyright 2017 -  Dario Fadda.
+Copyright 2017, 2018 -  Dario Fadda.
 
 SOSPEX stands for SOFIA Spectral Explorer.
 

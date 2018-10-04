@@ -1,6 +1,6 @@
 import numpy as np
-import os
 import matplotlib
+import os
 matplotlib.use('Qt5Agg')
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -20,6 +20,7 @@ rcParams['legend.numpoints']=1
 from matplotlib.lines import Line2D
 from matplotlib.text import Text
 from matplotlib.widgets import SpanSelector
+import matplotlib.transforms as transforms
 
 from astropy.wcs.utils import proj_plane_pixel_scales as pixscales
 from astropy.coordinates import SkyCoord
@@ -796,7 +797,7 @@ class SpectrumCanvas(MplCanvas):
             self.axes.set_xlabel('Frequency [THz]', picker=True)
             self.x = c/s.wave * 1.e-6
             if s.instrument == 'FIFI-LS':
-                self.xr = self.x / (1+s.baryshift)             
+                self.xr = self.x / (1 + s.baryshift)             
         #self.fluxLine = self.axes.step(self.x,s.flux,color='blue',label='Flux',zorder=10)
         self.fluxLine = self.axes.step(self.x,s.flux,color='blue',label='F',zorder=10)
         self.fluxLayer, = self.fluxLine
@@ -814,19 +815,6 @@ class SpectrumCanvas(MplCanvas):
             xlim1, xlim0 = c /xlim0 * 1.e-6, c / xlim1 * 1.e-6
         self.axes.set_xlim(xlim0, xlim1)
         self.axes.set_ylim(self.ylimits)
-        #if self.xlimits is not None:
-        #    xlim0,xlim1 = self.xlimits
-        #    if self.xunit == 'THz':
-        #        c = 299792458.0  # speed of light in m/s
-        #        xlim1,xlim0 = c/xlim0*1.e-6,c/xlim1*1.e-6
-        #    self.axes.set_xlim(xlim0,xlim1)
-        #    self.axes.set_ylim(self.ylimits)
-        #else:
-        #    xlim0 = np.min(s.wave)
-        #    xlim1 = np.max(s.wave)
-        #    self.xlimits=(xlim0,xlim1)
-        #    self.ylimits=self.axes.get_ylim()
-        #    self.axes.set_xlim(xlim0,xlim1)
         # Fake line to have the lines in the legend
         self.linesLine = self.axes.plot([0,0.1], [0,0], color='purple',
                                         alpha=0.4, label='Lines', zorder=11)
@@ -917,7 +905,7 @@ class SpectrumCanvas(MplCanvas):
         self.labs = [l.get_label() for l in lns]
         leg = self.axes.legend(lns, self.labs, loc='upper center', bbox_to_anchor=(0.5, -0.1),
                                fancybox=True, shadow=True, ncol=5)
-        leg.draggable()        
+        # leg.set_draggable(True)  # works only in matplotlib 3.0.0      
         self.lined = dict()
         self.labed = dict()
         for legline, origline, txt in zip(leg.get_lines(), lines, leg.texts):
@@ -979,7 +967,13 @@ class SpectrumCanvas(MplCanvas):
                     xline = wline
                 elif self.xunit == 'THz':
                     xline = c/wline * 1.e-6
-                annotation = self.axes.annotate(nline, xy=(xline,y1),  xytext=(xline, y2), 
+                y2 = 0.95  # Axes coordinates
+                trans = transforms.blended_transform_factory(self.axes.transData, 
+                                                             self.axes.transAxes)
+                annotation = self.axes.annotate(nline, xy=(xline,y1),  xytext=(xline, y2),
+                                                textcoords = trans,
+                                                #draggable=True,
+                                                picker=5,
                                                 color='purple', alpha=0.4, ha='center',
                                                 arrowprops=dict(edgecolor='purple',facecolor='y', 
                                                                 arrowstyle='-',alpha=0.4,
@@ -987,7 +981,7 @@ class SpectrumCanvas(MplCanvas):
                                                 rotation = 90, fontstyle = 'italic',
                                                 fontproperties=font, visible=self.displayLines)
                 annotation.draggable()
-                self.annotations.append(annotation)     
+                self.annotations.append(annotation)    
 
     def computeVelLimits(self):
         """Compute velocity limits."""
@@ -1051,7 +1045,7 @@ class SpectrumCanvas(MplCanvas):
               if y2 > ylim1:
                  y2 = ylim1 - dy / 20.
               a.xy = (xl, y1)
-              a.set_position((xl, y2))
+              # a.set_position((xl, y2))
         except:
            pass
         self.fig.canvas.draw_idle()
@@ -1174,7 +1168,9 @@ class SpectrumCanvas(MplCanvas):
 
     def onpick(self, event):
         """React to onpick events."""
+        print('picked event ', event.artist)
         if isinstance(event.artist, Line2D):
+            print('Line ', event.artist)
             legline = event.artist
             label = legline.get_label()
             origline = self.lined[legline]
@@ -1186,20 +1182,21 @@ class SpectrumCanvas(MplCanvas):
             if vis:
                 legline.set_alpha(1.0)
                 txt.set_alpha(1.0)
-                if label == 'Exp':
+                print('label is ',label)
+                if label == 'E':
                     self.displayExposure = True
                     self.ax3.tick_params(labelright='on', right='on',
                                          direction='in', pad=-30, colors='orange')
-                    txt.set_text('Exp')
+                    txt.set_text('E')
                 elif label == 'Atm':
                     self.displayAtran = True
                     self.ax2.get_yaxis().set_tick_params(labelright='on', right='on')            
                     self.ax2.get_yaxis().set_tick_params(which='both', direction='out',colors='red')
-                    txt.set_text('AtmTr')
-                elif label == 'Uflux':
+                    txt.set_text('Atm')
+                elif label == 'F$_{u}$':
                     self.displayUFlux = True
-                    txt.set_text('F$_{noAT}$')
-                elif label == 'Flux':
+                    txt.set_text('F$_{u}$')
+                elif label == 'F':
                     self.displayFlux = True
                     txt.set_text('F')
                 elif label == 'Lines':
@@ -1266,6 +1263,12 @@ class SpectrumCanvas(MplCanvas):
         else:
             pass
         return True
+    
+    def pickSwitch(self, artist, mouseevent):
+        print('artist ', artist)
+        print('switching units ... ', mouseevent)
+        self.switchUnits()
+        self.switchSignal.emit('switched x unit')
     
     def switchUnits(self):
         if self.xunit == 'um':

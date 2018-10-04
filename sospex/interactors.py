@@ -29,7 +29,7 @@ class SliderInteractor(QObject):
         # color = '#A9BA9D'  # Laurel green
         # self.region = self.ax.axvspan(x-dx/2., x+dx/2., facecolor='lightgreen', alpha=0.5,
         #                              linewidth=0, zorder=1, animated=True)
-        trans = transforms.blended_transform_factory(ax.transData, ax.transAxes)
+        trans = transforms.blended_transform_factory(self.ax.transData, self.ax.transAxes)
         self.region = Rectangle((x - dx * 0.5, 0.), dx, 1, facecolor='lightgreen', alpha=0.3,
                                 zorder=1, animated=True, transform=trans)
         # x coords are data, y coords are axes (points stays in the same spot when zooming)
