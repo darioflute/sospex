@@ -62,7 +62,7 @@ class GUI (QMainWindow):
     
     def __init__(self):
         super().__init__()
-        self.title = 'SOSPEX: SOFIA Spectrum Explorer'
+        self.title = 'SOSPEX: SOFIA Spectral Explorer'
         self.left = 10
         self.top = 10
         self.width = 640
@@ -82,7 +82,7 @@ class GUI (QMainWindow):
         # Get the path of the package
         self.path0, file0 = os.path.split(__file__)
         # Define style
-        with open(self.path0+'/yellow-stylesheet.css',"r") as fh:
+        with open(os.path.join(self.path0,'yellow-stylesheet.css'),"r") as fh:
             self.setStyleSheet(fh.read())
         self.initUI()
  
@@ -121,7 +121,7 @@ class GUI (QMainWindow):
         
     def welcomeMessage(self):
         self.wbox = QMessageBox()
-        pixmap = QPixmap(self.path0+'/icons/sospex.png')
+        pixmap = QPixmap(os.path.join(self.path0,'icons','sospex.png'))
         self.wbox.setIconPixmap(pixmap)
         self.wbox.setText("Welcome to SOSPEX")
         self.wbox.setInformativeText('SOFIA Spectrum Explorer\n\n '+\
@@ -265,7 +265,7 @@ class GUI (QMainWindow):
 
     def about(self):
         # Get path of the package
-        file=open(self.path0+"/copyright.txt","r")
+        file=open(os.path.join(self.path0,"copyright.txt"),"r")
         message=file.read()
         QMessageBox.about(self, "About", message)
 
@@ -539,7 +539,7 @@ class GUI (QMainWindow):
 
     def onHelp(self, event):
         import webbrowser
-        webbrowser.open('file://'+os.path.abspath(self.path0+'/help/Help.html'))
+        webbrowser.open('file://'+os.path.abspath(os.path.join(self.path0,'help','Help.html')))
 
     def onIssue(self, event):
         import webbrowser
@@ -578,15 +578,6 @@ class GUI (QMainWindow):
                 cmin = mid - diff
                 cmax = mid + diff
             ih.onSelect(cmin,cmax)
-            #ic.image.set_clim([ic.cmin,ic.cmax])
-            #ic.fig.canvas.draw_idle()
-            #ic.bias += percent * np.sign(dy)
-            #if ic.bias > 1: ic.bias = 1
-            #elif ic.bias < 0: ic.bias = 0
-            #ic.contrast += percent * np.sign(dx)
-            # Update image norm
-            #print(ic.bias,ic.contrast)
-            #ic.updateNorm()
             
     def updateAperture(self):
         itab = self.itabs.currentIndex()
@@ -653,7 +644,6 @@ class GUI (QMainWindow):
     def onModifiedAperture(self, event):
         """Update spectrum when aperture is modified."""
         itab = self.itabs.currentIndex()
-        #ic = self.ici[itab]
         # Grab aperture in the flux image to compute the new fluxes
         istab = self.stabs.currentIndex()
         if istab > 0:
@@ -668,7 +658,6 @@ class GUI (QMainWindow):
             npath = transform.transform_path(path)
             inpoints = s.points[npath.contains_points(s.points)]
             xx,yy = inpoints.T
-            #npoints = np.size(xx)
             if istab == 1 and self.continuum is not None:
                 xc=np.median(xx); yc = np.median(yy)
                 try:
@@ -909,9 +898,7 @@ class GUI (QMainWindow):
         if event.inaxes:
             # zoom/unzoom 
             eb = event.button
-            #curr_xlim = sc.axes.get_xlim()
             curr_xlim = sc.xlimits
-            # curr_ylim = sc.axes.get_ylim()
             curr_ylim = sc.ylimits
             curr_x0 = (curr_xlim[0]+curr_xlim[1])*0.5
             curr_y0 = (curr_ylim[0]+curr_ylim[1])*0.5
@@ -963,65 +950,67 @@ class GUI (QMainWindow):
         self.tb.setMovable(True)
         self.tb.setObjectName('toolbar')
         # Actions
-        self.helpAction = self.createAction(self.path0+'/icons/help.png',
+        self.helpAction = self.createAction(os.path.join(self.path0,'icons','help.png'),
                                             'Help','Ctrl+q',self.onHelp)
         self.issueAction = self.createAction(self.path0+'/icons/issue.png',
                                              'Report an issue','Ctrl+q',self.onIssue)
-        self.quitAction = self.createAction(self.path0+'/icons/exit.png','Quit program',
-                                            'Ctrl+q',self.fileQuit)
-        self.startAction = self.createAction(self.path0+'/icons/open.png','Load new observation',
-                                             'Ctrl+n',self.newFile)
-        self.reloadAction = self.createAction(self.path0+'/icons/reload.png','Reload observation',
-                                              'Ctrl+R',self.reloadFile)
-        self.levelsAction = self.createAction(self.path0+'/icons/levels.png','Adjust image levels',
+        self.quitAction = self.createAction(os.path.join(self.path0,'icons','exit.png'),
+                                            'Quit program', 'Ctrl+q',self.fileQuit)
+        self.startAction = self.createAction(os.path.join(self.path0,'icons','open.png'),
+                                             'Load new observation', 'Ctrl+n',self.newFile)
+        self.reloadAction = self.createAction(os.path.join(self.path0,'icons','reload.png'),
+                                              'Reload observation', 'Ctrl+R',self.reloadFile)
+        self.levelsAction = self.createAction(os.path.join(self.path0,'icons','levels.png'),
+                                              'Adjust image levels',
                                               'Ctrl+L',self.changeVisibility)
-        self.cmapAction = self.createAction(self.path0+'/icons/rainbow.png','Choose color map',
-                                            'Ctrl+m',self.changeColorMap)
+        self.cmapAction = self.createAction(os.path.join(self.path0,'icons','rainbow.png'),
+                                            'Choose color map', 'Ctrl+m',self.changeColorMap)
         self.blink = 'off'
-        self.blinkAction = self.createAction(self.path0+'/icons/blink.png','Blink between 2 images',
-                                             'Ctrl+B',self.blinkImages)
-        self.momentAction = self.createAction(self.path0+'/icons/map.png','Compute moment 0',
-                                              'Ctrl+m',self.zeroMoment)
+        self.blinkAction = self.createAction(os.path.join(self.path0,'icons','blink.png'),
+                                             'Blink between 2 images', 'Ctrl+B',self.blinkImages)
+        self.momentAction = self.createAction(os.path.join(self.path0,'icons','map.png'),
+                                              'Compute moment 0', 'Ctrl+m',self.zeroMoment)
         self.contours = 'off'
-        self.contoursAction = self.createAction(self.path0+'/icons/contours.png','Overlap contours',
-                                                'Ctrl+c',self.overlapContours)
+        self.contoursAction = self.createAction(os.path.join(self.path0,'icons','contours.png'),
+                                                'Overlap contours', 'Ctrl+c',self.overlapContours)
         self.apertureAction = self.createApertureAction()
         self.fitAction = self.createFitAction()
-        self.cutAction = self.createAction(self.path0+'/icons/cut.png','Trim cube',
-                                           'Ctrl+k',self.cutCube)
-        self.cropAction = self.createAction(self.path0+'/icons/crop.png','Crop the cube',
-                                            'Ctrl+K',self.cropCube)
-        self.sliceAction = self.createAction(self.path0+'/icons/slice.png',
+        self.cutAction = self.createAction(os.path.join(self.path0,'icons','cut.png'),
+                                           'Trim cube', 'Ctrl+k',self.cutCube)
+        self.cropAction = self.createAction(os.path.join(self.path0,'icons','crop.png'),
+                                            'Crop the cube', 'Ctrl+K',self.cropCube)
+        self.sliceAction = self.createAction(os.path.join(self.path0,'icons','slice.png'),
                                              'Define a slice to compute moments and/or display',
                                              'Ctrl+K',self.sliceCube)
-        self.slideAction = self.createAction(self.path0+'/icons/slidecube.png',
+        self.slideAction = self.createAction(os.path.join(self.path0,'icons','slidecube.png'),
                                              'Display a plane of the cube and show a slider',
                                              'Ctrl+S',self.initializeSlider)
-        self.maskAction =  self.createAction(self.path0+'/icons/eraser.png','Erase a region',
-                                             '',self.maskCube)
-        self.cloudAction = self.createAction(self.path0+'/icons/cloud.png',
+        self.maskAction =  self.createAction(os.path.join(self.path0,'icons','eraser.png'),
+                                             'Erase a region', '', self.maskCube)
+        self.cloudAction = self.createAction(os.path.join(self.path0,'icons','cloud.png'),
                                              'Download image from cloud',
-                                             'Ctrl+D',self.selectDownloadImage)
-        self.fitsAction =  self.createAction(self.path0+'/icons/download.png',
+                                             'Ctrl+D', self.selectDownloadImage)
+        self.fitsAction =  self.createAction(os.path.join(self.path0,'icons','download.png'),
                                              'Save the image as a FITS/PNG/JPG/PDF file',
                                              'Ctrl+S',self.saveFits)
-        self.specAction = self.createAction(self.path0+'/icons/download.png',
+        self.specAction = self.createAction(os.path.join(self.path0,'icons','download.png'),
                                             'Save the spectrum as a ASCII/FITS/PNG/JPG/PDF file',
                                             'Ctrl+S',self.saveSpectrum)
-        self.vresizeAction = self.createAction(self.path0+'/icons/vresize.png',
+        self.vresizeAction = self.createAction(os.path.join(self.path0,'icons','vresize.png'),
                                                'Resize image vertically',
                                                'Ctrl+V',self.vresizeSpectrum)
-        self.hresizeAction = self.createAction(self.path0+'/icons/hresize.png',
+        self.hresizeAction = self.createAction(os.path.join(self.path0,'icons','hresize.png'),
                                                'Resize image horizontally',
                                                'Ctrl+H',self.hresizeSpectrum)
-        self.guessAction = self.createAction(self.path0+'/icons/guessCont.png',
+        self.guessAction = self.createAction(os.path.join(self.path0,'icons','guessCont.png'),
                                              'Draw two continuum segments around line',
                                              'Ctrl+g',self.guessContinuum)
-        self.fitContAction =self.createAction(self.path0+'/icons/fitCont.png','Fit continuum',
+        self.fitContAction =self.createAction(os.path.join(self.path0,'icons','fitCont.png'),
+                                              'Fit continuum',
                                               'Ctrl+g',self.fitCont)
-        self.compMomAction = self.createAction(self.path0+'/icons/computeMoments.png',
+        self.compMomAction = self.createAction(os.path.join(self.path0,'icons','computeMoments.png'),
                                                'Compute moments','Ctrl+g',self.chooseComputeMoments)
-        self.fitregionAction = self.createAction(self.path0+'/icons/fitregion.png',
+        self.fitregionAction = self.createAction(os.path.join(self.path0,'icons','fitregion.png'),
                                                  'Fit baseline and compute moments inside region',
                                                  'Ctrl+f',self.fitRegion)
         # Add buttons to the toolbar
@@ -1763,7 +1752,7 @@ class GUI (QMainWindow):
         for d in self.apertures:                
             row = []
             for text in d:
-                item = QStandardItem(QIcon(self.path0+'/icons/'+text.lower()+'.png'),"")
+                item = QStandardItem(QIcon(os.path.join(self.path0,'icons',text.lower()+'.png')),"")
                 item.setTextAlignment(Qt.AlignCenter)
                 if text != 'apertures':
                     item.setToolTip("Choose a "+text)
@@ -1806,7 +1795,7 @@ class GUI (QMainWindow):
         for d in self.fitoptions:                
             row = []
             for text in d:
-                item = QStandardItem(QIcon(self.path0+'/icons/'+text+'.png'),"")
+                item = QStandardItem(QIcon(os.path.join(self.path0,'icons',text+'.png')),"")
                 item.setTextAlignment(Qt.AlignCenter)
                 if text == 'gaussfit':
                     item.setToolTip("Choose an option")
@@ -2127,7 +2116,6 @@ class GUI (QMainWindow):
                                       lineprops = dict(color='g', linestyle='-',linewidth = 2,
                                                        alpha=0.8),
                                       interactive=False)
-            #self.ES.state.add('square')
             self.ES.state.add('center')        
         if self.selAp != 'apertures':
             ic.fig.canvas.draw_idle()
@@ -2179,9 +2167,9 @@ class GUI (QMainWindow):
             self.msgbox = QMessageBox()
             #self.msgbox.setIcon(QMessageBox.Information)
             label = QLabel(self.msgbox)
-            pixmap = QPixmap(self.path0+'/icons/niet.png')
+            pixmap = QPixmap(os.path.join(self.path0,'icons','niet.png'))
             label.setPixmap(pixmap)
-            movie = QMovie(self.path0+'/icons/spinplane.gif')
+            movie = QMovie(os.path.join(self.path0,'icons','spinplane.gif'))
             #movie = QMovie(self.path0+'/icons/loader.gif')
             label.setMovie(movie)
             movie.jumpToFrame(0)
@@ -3422,12 +3410,10 @@ class GUI (QMainWindow):
             try:
                 self.initializeImages()
                 self.initializeSpectra()
-                # self.initializeSlider()
                 if self.specCube.instrument == 'GREAT':
                     print('compute Exp from Nan')
                     self.specCube.computeExpFromNan
                 self.all = False
-                #self.computeAll()
             except:
                 print('No spectral cube is defined')
                 pass
@@ -3773,17 +3759,9 @@ class GUI (QMainWindow):
         """ Consider only a slice of the cube when computing the image """
         if self.slice == 'on':
             # Find indices of the shaded region
-            # sc = self.sci[self.spectra.index('Pix')]
             sc = self.sci[self.stabs.currentIndex()]
-            #if sc.xunit == 'THz':
-            #    c = 299792458.0  # speed of light in m/s
-            #    xmin, xmax = c/xmax*1.e-6, c/xmin*1.e-6
-            #indmin, indmax = np.searchsorted(self.specCube.wave, (xmin, xmax))
-            #indmax = min(len(self.specCube.wave) - 1, indmax)
-            #sc.regionlimits = [xmin,xmax]
             self.removeContours()
             # Draw region on spectrum
-            # sc.shadeSpectrum()
             self.slicer = SliceInteractor(sc.axes, xmin, xmax)
             self.slicer.modSignal.connect(self.updateImages)
             # Hide span selector
@@ -3804,9 +3782,7 @@ class GUI (QMainWindow):
             self.updateImages()
             self.slice = 'off'
         elif self.cutcube == 'on':
-            # TO BE UPDATED ...
             # Find indices of the shaded region
-            #print('xmin, xmax ',xmin,xmax)
             sc = self.sci[self.spectra.index('All')]
             if sc.xunit == 'THz':
                 c = 299792458.0  # speed of light in m/s
@@ -3883,7 +3859,6 @@ class GUI (QMainWindow):
                 ic.contour = None
                 ic.changed = True
         self.contours = 'off'
-        #self.menuContours.setChecked(False)
         # Remove contour lines in the histogram
         for ih in self.ihi:
             if len(ih.lev) > 0:
@@ -4011,7 +3986,6 @@ class GUI (QMainWindow):
                     for c in contours:
                         c.set_color(self.colorContour)
                     ic.fig.canvas.draw_idle()
-                    #self.addContours(ic)
 
     def updateStretchMap(self, newRow):
         """ Update the stretch of the color map """
@@ -4129,24 +4103,16 @@ class GUI (QMainWindow):
         sc.updateYlim()     
         
 def main():
-    #QApplication.setStyle('Fusion')
+    # QApplication.setStyle('Fusion')
     app = QApplication(sys.argv)
     gui = GUI()    
-    # Create and display the splash screen
-    #splash_pix = QPixmap(gui.path0+'/icons/sospex.png')
-    #splash = QSplashScreen(splash_pix, Qt.WindowStaysOnTopHint)
-    #splash.setMask(splash_pix.mask())
-    #splash.show()
-    #splash.showMessage("<h1><font color='green'>Welcome to SOSPEX!</font></h1>", Qt.AlignTop | Qt.AlignCenter, Qt.white)
-    #app.processEvents()    
     # Adjust geometry to size of the screen
     screen_resolution = app.desktop().screenGeometry()
     width = screen_resolution.width()
     gui.setGeometry(width*0.025, 0, width*0.95, width*0.5)
     gui.hsplitter.setSizes ([width*0.40,width*0.48])
     # Add an icon for the application
-    app.setWindowIcon(QIcon(gui.path0+'/icons/sospex.png'))
+    app.setWindowIcon(QIcon(os.path.join(gui.path0,'icons','sospex.png')))
     app.setApplicationName('SOSPEX')
-    app.setApplicationVersion('0.33-beta')
+    app.setApplicationVersion('0.34-beta')
     sys.exit(app.exec_())
-    #splash.finish(gui)

@@ -204,7 +204,7 @@ class cmDialog(QDialog):
             #item.setIcon(QIcon(path0+"/icons/"+cm+".png"))
             #item = QListWidgetItem(QIcon(path0+"/icons/"+cm+".png"),'',self.list)
             #item.setSizeHint(iconSize)
-            QListWidgetItem(QIcon(path0+"/icons/"+cm+".png"),'',self.list)
+            QListWidgetItem(QIcon(os.path.join(path0,"icons",cm+".png")),'',self.list)
         # For some reason this does not work when in the stylesheet
         stylesheet = "QListWidget::item {"\
                      +"border-style: solid;"\
@@ -231,7 +231,7 @@ class cmDialog(QDialog):
         self.slist.setSizePolicy(QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding))
         self.slist.setMaximumSize(QSize(160,150))
         for st in stlist:
-            QListWidgetItem(QIcon(path0+"/icons/"+st+"_.png"),st,self.slist)
+            QListWidgetItem(QIcon(os.path.join(path0,"icons",st+"_.png")),st,self.slist)
         n = stlist.index(currentST)
         self.slist.setCurrentRow(n)
         label3 = QLabel("Contour color")        
@@ -241,7 +241,7 @@ class cmDialog(QDialog):
         self.clist.setSizePolicy(QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding))
         self.clist.setMaximumSize(QSize(160,150))
         for col in clist:
-            QListWidgetItem(QIcon(path0+"/icons/"+col+".png"),'',self.clist)
+            QListWidgetItem(QIcon(os.path.join(path0,"icons",col+".png")),'',self.clist)
         n = clist.index(currentCC)
         self.clist.setCurrentRow(n)
         self.clist.setStyleSheet(stylesheet)        

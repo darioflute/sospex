@@ -124,7 +124,7 @@ class cloudImage(object):
         html = response.read()
         parser = MyHTMLParser()
         parser.feed(html.decode('utf-8'))
-        data= parser.data
+        # data= parser.data
         values= parser.values
         parser.close()
 
@@ -273,7 +273,7 @@ class cloudImage(object):
 
             # Check the 
             filename, file_extension = os.path.splitext(outfile)
-            basename = os.path.basename(filename)
+            # basename = os.path.basename(filename)
             
             # Primary header
             image = self.data
@@ -460,7 +460,7 @@ class cloudImage(object):
 
         parser = MyHTMLParser()
         parser.feed(html.decode('utf-8'))
-        data= parser.data
+        # data= parser.data
         values= parser.values
         parser.close()
         # Retrieve file
@@ -535,7 +535,7 @@ class cloudImage(object):
 
         parser = MyHTMLParser()
         parser.feed(html.decode('utf-8'))
-        data= parser.data
+        # data= parser.data
         values= parser.values
         parser.close()
 
@@ -589,7 +589,7 @@ class cloudImage(object):
         
         parser = MyHTMLParser()
         parser.feed(html.decode('utf-8'))
-        data= parser.data
+        # data= parser.data
         values= parser.values
         parser.close()
 
