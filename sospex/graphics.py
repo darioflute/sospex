@@ -360,12 +360,12 @@ class ImageCanvas(MplCanvas):
                 self.cmin = None
                 self.cmax = None
             import time
-            t1 = time.process_time()
-            print('Pre-image is ', t1-t, 's')
+            # t1 = time.process_time()
+            # print('Pre-image is ', t1-t, 's')
             if image is not None:
                 self.showImage(image)
             t2 = time.process_time() 
-            print('Image displayed in ',t2-t1, 's')
+            print('Image displayed in ',t2-t, 's')
             self.changed = False            
             # Add ellipse centered on source
             self.pixscale = pixscales(self.wcs)[0]*3600. # Scale in arcsec
@@ -377,8 +377,8 @@ class ImageCanvas(MplCanvas):
             # Activate focus
             self.setFocusPolicy(Qt.ClickFocus)
             self.setFocus()
-            t3 = time.process_time() 
-            print('post image is ', t3-t2,'s')
+            # t3 = time.process_time() 
+            # print('post image is ', t3-t2,'s')
 
     def stretchFunc(self, newStretch):
         if newStretch == 'linear':
@@ -1168,7 +1168,7 @@ class SpectrumCanvas(MplCanvas):
 
     def onpick(self, event):
         """React to onpick events."""
-        print('picked event ', event.artist)
+        # print('picked event ', event.artist)
         if isinstance(event.artist, Line2D):
             print('Line ', event.artist)
             legline = event.artist
@@ -1182,7 +1182,7 @@ class SpectrumCanvas(MplCanvas):
             if vis:
                 legline.set_alpha(1.0)
                 txt.set_alpha(1.0)
-                print('label is ',label)
+                # print('label is ',label)
                 if label == 'E':
                     self.displayExposure = True
                     self.ax3.tick_params(labelright='on', right='on',
@@ -1265,8 +1265,8 @@ class SpectrumCanvas(MplCanvas):
         return True
     
     def pickSwitch(self, artist, mouseevent):
-        print('artist ', artist)
-        print('switching units ... ', mouseevent)
+        # print('artist ', artist)
+        # print('switching units ... ', mouseevent)
         self.switchUnits()
         self.switchSignal.emit('switched x unit')
     
