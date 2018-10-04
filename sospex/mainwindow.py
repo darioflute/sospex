@@ -856,6 +856,12 @@ class GUI (QMainWindow):
             if response == QMessageBox.Yes:
                 self.sb.showMessage("Updating the reference wavelength ", 2000)
                 self.specCube.l0 = sc.spectrum.l0
+                # Check if all has been already computed 
+                if self.all == False:
+                    try:
+                        self.computeAll()
+                    except BaseException:
+                        pass
                 # Propagate to other tabs
                 for sc_ in self.sci:
                     sc_.spectrum.l0 = self.specCube.l0
@@ -4088,7 +4094,7 @@ class GUI (QMainWindow):
             if self.all == False:
                 try:
                     self.computeAll()
-                except:
+                except BaseException:
                     pass
 
     def hresizeSpectrum(self):
