@@ -21,7 +21,7 @@ The current version released on anaconda is: 0.33.beta
 
 Release date:  October 4, 2018
 
-### How to install the program
+### Install with anaconda
 
 To install the code in your computer, you need first to install the anaconda
 python (https://www.anaconda.com/download).
@@ -42,12 +42,19 @@ Now you are ready to install sospex:
 
 conda install -c darioflute sospex -y
 
-### Updating
+### Updating with anaconda
 
 If there is a new release, you will have only to update the package:
 
 conda update -c darioflute sospex -y
 
+### Install with pipy
+
+pip install sospex
+
+to update:
+
+pip install --upgrade sospex
 
 ### How to start the program
 
