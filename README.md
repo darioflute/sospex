@@ -48,6 +48,14 @@ If there is a new release, you will have only to update the package:
 
 conda update -c darioflute sospex -y
 
+Alternatively, add the channel to your anaconda:
+
+conda config --add channels darioflute
+
+and simply do:
+
+conda update sospex
+
 ### Install with pipy
 
 pip install sospex
