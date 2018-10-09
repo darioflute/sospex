@@ -8,7 +8,6 @@ class specCube(object):
     def __init__(self, infile):
         import time
         t = time.process_time()
-        c = 299792458.0  # speed of light in m/s 
         # Option None seems faster than False
         hdl = fits.open(infile,memmap=None)
         header = hdl['PRIMARY'].header
@@ -20,128 +19,21 @@ class specCube(object):
             origin = header['ORIGIN']
             if origin == 'GILDAS Consortium':
                 self.instrument = 'GREAT'
-
         try:
             self.obsdate = header['DATE-OBS']
         except:
             self.obsdate = header['DATE']
-
-        if self.instrument == 'FIFI-LS':        
-            self.wcs = WCS(header).celestial
-            self.crpix3 = header['CRPIX3']
-            self.crval3 = header['CRVAL3']
-            self.cdelt3 = header['CDELT3']
-            self.objname = header['OBJ_NAME']
-            try:
-                self.filegpid = header['FILEGPID']
-            except:
-                self.filegpid = 'Unknown'
-            self.baryshift = header['BARYSHFT']
-            self.pixscale = header['PIXSCAL']
-            self.resolution = header['RESOLUN']
-            self.za = (header['ZA_START'], header['ZA_END'])
-            self.altitude = (header['ALTI_STA'],header['ALTI_END'])
-            try:
-                self.redshift = hdl['REDSHIFT'].data
-            except:
-                self.redshift = 0.0
-            self.flux = hdl['FLUX'].data
-            self.eflux = hdl['ERROR'].data
-            self.uflux = hdl['UNCORRECTED_FLUX'].data
-            self.euflux = hdl['UNCORRECTED_ERROR'].data
-            self.wave = hdl['WAVELENGTH'].data
-            self.l0 = np.nanmedian(self.wave)
-            self.n = len(self.wave)
-            #self.vel = np.zeros(self.n)  # prepare array of velocities
-            self.x = hdl['X'].data
-            self.y = hdl['Y'].data
-            #self.atran = hdl['TRANSMISSION'].data
-            try:
-                utran = hdl['UNSMOOTHED_TRANSMISSION'].data
-                w = utran[0,:]
-                t = utran[1,:]
-                self.atran = np.interp(self.wave,w,t)  # Interpolation at the resolution of the wavelength grid
-            except:
-                print('The unsmoothed transmission is not available')
-                self.atran = hdl['TRANSMISSION'].data   
-            self.response = hdl['RESPONSE'].data
-            self.exposure = hdl['EXPOSURE_MAP'].data
+        # Reading files
+        if self.instrument == 'FIFI-LS':     
+            self.readFIFI(hdl)
         elif self.instrument == 'GREAT':
-            #self.cmin = header['DATAMIN']
-            #self.cmax = header['DATAMAX']
-            self.wcs = WCS(header).celestial
-            self.crpix3 = header['CRPIX3']
-            self.crval3 = header['CRVAL3']
-            self.cdelt3 = header['CDELT3']
-            self.objname = header['OBJECT']
-            self.redshift = header['VELO-LSR'] # in m/s
-            self.redshift /= c
-            self.pixscale,ypixscale = proj_plane_pixel_scales(self.wcs)*3600. # Pixel scale in arcsec
-            self.n = header['NAXIS3']
-            naxes = header['NAXIS']
-            if naxes == 4:
-                self.flux = (hdl['PRIMARY'].data)[0,:,:,:]
-            else:
-                self.flux = hdl['PRIMARY'].data
-            eta_fss=0.97
-            eta_mb =0.67
-            calib = 971.
-            factor = calib*eta_fss*eta_mb
-            self.flux *= factor   # Transformed from temperature to S_nu [Jy]            
-            nu0 = header['RESTFREQ']  # MHz
-            l0 = c/nu0  # in micron
-            vel = -self.cdelt3*self.crpix3+self.cdelt3*np.arange(self.n)+self.crval3
-            self.l0 = l0
-            self.wave = l0 + l0*vel/c
+            self.readGREAT(hdl)
         elif self.instrument == 'PACS':
-            """ Case of PACS spectral cubes """
-            print('This is a PACS spectral cube')
-            self.objname = header['OBJECT']
-            try:
-                self.redshift = header['REDSHFTV']*1000. # in km/s
-                self.redshift /= c
-            except:
-                self.redshift = 0.
-            print('Object is ',self.objname)
-            self.flux = hdl['image'].data
-            print('Flux read')
-            self.exposure = hdl['coverage'].data
-            print('Coverage read')
-            wave = hdl['wcs-tab'].data
-            print('Wvl read')
-            nwave = len(np.shape(wave['wavelen']))
-            if nwave == 3:
-                self.wave = np.concatenate(wave['wavelen'][0])
-            else:
-                self.wave = np.concatenate(wave['wavelen'])
-            self.l0 = np.nanmedian(self.wave)
-            self.n = len(self.wave)
-            print('Length of wavelength ',self.n)
-            header = hdl['IMAGE'].header
-            self.header = header
-            print('Header ',header)
-            hdu = fits.PrimaryHDU(self.flux)
-            hdu.header
-            hdu.header['CRPIX1']=header['CRPIX1']
-            hdu.header['CRPIX2']=header['CRPIX2']
-            hdu.header['CDELT1']=header['CDELT1']
-            hdu.header['CDELT2']=header['CDELT2']
-            hdu.header['CRVAL1']=header['CRVAL1']
-            hdu.header['CRVAL2']=header['CRVAL2']
-            hdu.header['CTYPE1']=header['CTYPE1']
-            hdu.header['CTYPE2']=header['CTYPE2']
-            self.wcs = WCS(hdu.header).celestial
-            print('astrometry ', self.wcs)
-            self.pixscale,ypixscale = proj_plane_pixel_scales(self.wcs)*3600. # Pixel scale in arcsec
-            self.crpix3 = 1
-            w = self.wave
-            self.crval3 = w[0]
-            self.cdelt3 = np.median(w[1:]-w[:-1])
+            self.readPACS(hdl)
         else:
-            print('This is not a standard spectral cube')
+            print('This is not a supported spectral cube')
         hdl.close()
-
-        # index of the ref wavelength
+        # Index of the ref wavelength
         self.n0 = np.argmin(np.abs(self.wave - self.l0))
         print('ref wavelength at n: ', self.n0)
         # Create a grid of points
@@ -149,7 +41,7 @@ class specCube(object):
         xi = np.arange(self.nx); yi = np.arange(self.ny)
         xi,yi = np.meshgrid(xi, yi)
         self.points = np.array([np.ravel(xi), np.ravel(yi)]).transpose()
-           
+        # Time used for reading
         elapsed_time = time.process_time() - t
         print('Reading of cube completed in ', elapsed_time,' s')
 
@@ -158,6 +50,124 @@ class specCube(object):
         self.exposure = np.ones(np.shape(self.flux))
         mask = self.flux == np.nan
         self.exposure[mask] = 0
+        
+    def readFIFI(self, hdl):
+        print('This is a FIFI-LS spectral cube')
+        self.wcs = WCS(self.header).celestial
+        self.crpix3 = self.header['CRPIX3']
+        self.crval3 = self.header['CRVAL3']
+        self.cdelt3 = self.header['CDELT3']
+        self.objname = self.header['OBJ_NAME']
+        try:
+            self.filegpid = self.header['FILEGPID']
+        except:
+            self.filegpid = 'Unknown'
+        self.baryshift = self.header['BARYSHFT']
+        self.pixscale = self.header['PIXSCAL']
+        self.resolution = self.header['RESOLUN']
+        self.za = (self.header['ZA_START'], self.header['ZA_END'])
+        self.altitude = (self.header['ALTI_STA'],self.header['ALTI_END'])
+        try:
+            self.redshift = hdl['REDSHIFT'].data
+        except:
+            self.redshift = 0.0
+        self.flux = hdl['FLUX'].data
+        self.eflux = hdl['ERROR'].data
+        self.uflux = hdl['UNCORRECTED_FLUX'].data
+        self.euflux = hdl['UNCORRECTED_ERROR'].data
+        self.wave = hdl['WAVELENGTH'].data
+        self.l0 = np.nanmedian(self.wave)
+        self.n = len(self.wave)
+        #self.vel = np.zeros(self.n)  # prepare array of velocities
+        self.x = hdl['X'].data
+        self.y = hdl['Y'].data
+        #self.atran = hdl['TRANSMISSION'].data
+        try:
+            utran = hdl['UNSMOOTHED_TRANSMISSION'].data
+            w = utran[0,:]
+            t = utran[1,:]
+            self.atran = np.interp(self.wave,w,t)  # Interpolation at the resolution of the wavelength grid
+        except:
+            print('The unsmoothed transmission is not available')
+            self.atran = hdl['TRANSMISSION'].data   
+        self.response = hdl['RESPONSE'].data
+        self.exposure = hdl['EXPOSURE_MAP'].data
+          
+    def readGREAT(self, hdl):
+        print('This is a GREAT spectral cube')
+        #self.cmin = header['DATAMIN']
+        #self.cmax = header['DATAMAX']
+        self.wcs = WCS(self.header).celestial
+        self.crpix3 = self.header['CRPIX3']
+        self.crval3 = self.header['CRVAL3']
+        self.cdelt3 = self.header['CDELT3']
+        self.objname = self.header['OBJECT']
+        self.redshift = self.header['VELO-LSR'] # in m/s
+        c = 299792458.0  # speed of light in m/s 
+        self.redshift /= c
+        self.pixscale,ypixscale = proj_plane_pixel_scales(self.wcs)*3600. # Pixel scale in arcsec
+        self.n = self.header['NAXIS3']
+        naxes = self.header['NAXIS']
+        if naxes == 4:
+            self.flux = (hdl['PRIMARY'].data)[0,:,:,:]
+        else:
+            self.flux = hdl['PRIMARY'].data
+        eta_fss=0.97
+        eta_mb =0.67
+        calib = 971.
+        factor = calib*eta_fss*eta_mb
+        self.flux *= factor   # Transformed from temperature to S_nu [Jy]            
+        nu0 = self.header['RESTFREQ']  # MHz
+        l0 = c/nu0  # in micron
+        vel = -self.cdelt3*self.crpix3+self.cdelt3*np.arange(self.n)+self.crval3
+        self.l0 = l0
+        self.wave = l0 + l0*vel/c
+
+    def readPACS(self, hdl):
+        """ Case of PACS spectral cubes """
+        print('This is a PACS spectral cube')
+        self.objname = self.header['OBJECT']
+        try:
+            self.redshift = self.header['REDSHFTV']*1000. # in km/s
+            c = 299792458.0  # speed of light in m/s 
+            self.redshift /= c
+        except:
+            self.redshift = 0.
+        print('Object is ',self.objname)
+        self.flux = hdl['image'].data
+        # print('Flux read')
+        self.exposure = hdl['coverage'].data
+        # print('Coverage read')
+        wave = hdl['wcs-tab'].data
+        # print('Wvl read')
+        nwave = len(np.shape(wave['wavelen']))
+        if nwave == 3:
+            self.wave = np.concatenate(wave['wavelen'][0])
+        else:
+            self.wave = np.concatenate(wave['wavelen'])
+        self.l0 = np.nanmedian(self.wave)
+        self.n = len(self.wave)
+        # print('Length of wavelength ',self.n)
+        header = hdl['IMAGE'].header
+        self.header = header
+        # print('Header ',header)
+        hdu = fits.PrimaryHDU(self.flux)
+        hdu.header
+        hdu.header['CRPIX1']=header['CRPIX1']
+        hdu.header['CRPIX2']=header['CRPIX2']
+        hdu.header['CDELT1']=header['CDELT1']
+        hdu.header['CDELT2']=header['CDELT2']
+        hdu.header['CRVAL1']=header['CRVAL1']
+        hdu.header['CRVAL2']=header['CRVAL2']
+        hdu.header['CTYPE1']=header['CTYPE1']
+        hdu.header['CTYPE2']=header['CTYPE2']
+        self.wcs = WCS(hdu.header).celestial
+        # print('astrometry ', self.wcs)
+        self.pixscale,ypixscale = proj_plane_pixel_scales(self.wcs)*3600. # Pixel scale in arcsec
+        self.crpix3 = 1
+        w = self.wave
+        self.crval3 = w[0]
+        self.cdelt3 = np.median(w[1:]-w[:-1])
         
 
 class ExtSpectrum(object):
