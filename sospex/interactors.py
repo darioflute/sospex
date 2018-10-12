@@ -4,7 +4,6 @@ from PyQt5.QtCore import pyqtSignal, QObject
 from matplotlib.lines import Line2D
 import matplotlib.transforms as transforms
 from matplotlib.patches import Rectangle
-from matplotlib.widgets import AxesWidget
 
 class SliderInteractor(QObject):
     """
@@ -329,7 +328,7 @@ class DistanceSelector(QObject):
                     angle += 180
                 self.zlab.set_rotation(angle)
                 # distances in degs
-                dx = np.abs((xx-self.x0))
+                dx = np.abs((xx-self.x0)) * np.cos(self.y0 * np.pi/180.)
                 dy = np.abs((yy-self.y0))
                 dz = np.sqrt(dx*dx+dy*dy)
                 # formatting
