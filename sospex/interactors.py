@@ -4,7 +4,7 @@ from PyQt5.QtCore import pyqtSignal, QObject
 from matplotlib.lines import Line2D
 import matplotlib.transforms as transforms
 from matplotlib.patches import Rectangle
-
+from matplotlib.widgets import AxesWidget
 
 class SliderInteractor(QObject):
     """
@@ -262,3 +262,167 @@ class SliceInteractor(QObject):
         self.canvas.update()
         self.canvas.flush_events()
        
+        
+class DistanceSelector(QObject):
+
+#    def __init__(self, ax, fig, wcs, callback, color='#7ec0ee'):
+    def __init__(self, ax, fig, wcs, callback, color='cornflowerblue'):
+        super().__init__()
+
+        self.x = []
+        self.y = []
+        self.color = color
+        self.fig = fig
+        self.ax = ax
+        x1,x2 = self.ax.get_xlim()
+        y1,y2 = self.ax.get_ylim()
+        self.dx = np.abs(x2 - x1)/30.
+        self.dy = np.abs(y2 - y1)/30.
+        self.callback = callback
+        self.wcs = wcs
+
+        self.__ID2 = self.fig.canvas.mpl_connect('button_press_event', self.__button_press_callback)
+        self.__ID3 = self.fig.canvas.mpl_connect('button_release_event', self.__button_release_callback)
+
+    def __motion_notify_callback(self, event):
+        if event.inaxes:
+            x, y = event.xdata, event.ydata
+            if (event.button == None or event.button == 1):
+                self.line1.set_data([self.x[0], x], [self.y[0], y])
+                self.xline.set_data([self.x[0], x], [self.y[0], self.y[0]])
+                self.yline.set_data([x, x], [self.y[0], y])
+                # print('x y ', x, y)
+                dx = np.abs(x-self.x[0])
+                dy = np.abs(y-self.y[0])
+                xm = 0.5 * (self.x[0] + x)
+                ym = 0.5 * (self.y[0] + y)
+                if y > self.y[0]: # northern
+                    self.xlab.set_position((xm, self.y[0] - self.dy))
+                else:
+                    self.xlab.set_position((xm, self.y[0] + self.dy))
+                if x < self.x[0]: # western
+                    self.ylab.set_position((x - self.dx, ym))
+                else:
+                    self.ylab.set_position((x + self.dx, ym))
+                rad = np.arctan2(y-self.y[0], x-self.x[0])
+                angle = np.degrees(rad)
+                if angle > 0 and angle < 90:
+                    dx = -np.sin(rad)
+                    dy = np.cos(rad)
+                elif angle >= 90 and angle < 180:
+                    dx = np.sin(rad)
+                    dy = -np.cos(rad)
+                elif angle <=0 and angle > -90:
+                    dx = np.sin(rad)
+                    dy = -np.cos(rad)
+                else:
+                    dx = -np.sin(rad)
+                    dy = np.cos(rad)
+                self.zlab.set_position((xm + self.dx * dx, ym + self.dx * dy))
+                pixel = np.array([[x, y]], np.float_)
+                world = self.wcs.wcs_pix2world(pixel, 1)                    
+                xx = world[0][0]
+                yy = world[0][1]
+                if angle > 90:
+                    angle -= 180
+                elif angle < -90:
+                    angle += 180
+                self.zlab.set_rotation(angle)
+                # distances in degs
+                dx = np.abs((xx-self.x0))
+                dy = np.abs((yy-self.y0))
+                dz = np.sqrt(dx*dx+dy*dy)
+                # formatting
+                def toDMS(x):
+                    sx = ""
+                    if x > 1:
+                        xd_ = int(x)
+                        sx += "{0:d}".format(xd_)+":"
+                        xm = (x - xd_) * 60.
+                    else:
+                        xm = x * 60.
+                    if xm > 1:
+                        xm_ = int(xm)
+                        if x > 1:
+                            sx += "{0:02d}".format(xm_)+":"
+                        else:
+                            sx += "{0:d}".format(xm_)+":"
+                        xs = (xm - xm_) * 60.
+                    else:
+                        xs = xm * 60.
+                    if x * 60 > 1:
+                        sx += "{0:05.2f}".format(xs)
+                    else:
+                        sx += "{0:.2f}".format(xs)
+                    return sx
+                sx = toDMS(dx)
+                sy = toDMS(dy)
+                sz = toDMS(dz)
+                if np.abs(angle) < 3:
+                    self.xlab.set_text("")                    
+                else:
+                    self.xlab.set_text(sx)
+                if np.abs(np.abs(angle)-90) < 3:
+                    self.ylab.set_text("")
+                else:
+                    self.ylab.set_text(sy)
+                self.zlab.set_text(sz)                
+                self.fig.canvas.draw_idle()
+
+    def __button_release_callback(self, event):
+        if event.inaxes:
+            x, y = event.xdata, event.ydata
+            if event.button == 1:
+                self.x.append(x)
+                self.y.append(y)
+                self.line1.set_data([self.x[0], self.x[1]], [self.y[0], self.y[1]])
+                self.fig.canvas.draw_idle()
+                self.fig.canvas.mpl_disconnect(self.__ID1)
+                self.xy = [(i,j) for (i,j) in zip(self.x,self.y)]
+                # Disconnect
+                self.fig.canvas.mpl_disconnect(self.__ID1) 
+                self.fig.canvas.mpl_disconnect(self.__ID2) 
+                self.fig.canvas.mpl_disconnect(self.__ID3) 
+                # Callback function, pass the vertices
+                self.callback(self.xy)
+                # Remove lines
+                self.remove()
+
+    def __button_press_callback(self, event):
+        if event.inaxes:
+            x, y = event.xdata, event.ydata
+            if event.button == 1:
+                self.line1 = Line2D([x, x], [y, y], marker='o', color=self.color)
+                self.xline = Line2D([x, x], [y, y], linestyle='--', color=self.color)
+                self.yline = Line2D([x, x], [y, y], linestyle='--', color=self.color)
+                self.xlab = self.ax.annotate("", xy=(x,y), xycoords='data',
+                                             ha='center', va='center', color=self.color)
+                self.ylab = self.ax.annotate("", xy=(x,y), xycoords='data',
+                                             ha='center', va='center',rotation=90, color=self.color)
+                self.zlab = self.ax.annotate("", xy=(x,y), xycoords='data',
+                                             ha='center', va='center', color=self.color)
+                self.x=[x]
+                self.y=[y]
+                pixel0 = np.array([[self.x[0], self.y[0]]], np.float_)
+                world = self.wcs.wcs_pix2world(pixel0, 1)                    
+                self.x0 = world[0][0]
+                self.y0 = world[0][1]
+                self.__ID1 = self.fig.canvas.mpl_connect('motion_notify_event',
+                                                         self.__motion_notify_callback)
+                self.ax.add_line(self.line1)
+                self.ax.add_line(self.xline)
+                self.ax.add_line(self.yline)
+                # add a segment
+                self.fig.canvas.draw_idle()
+
+    def remove(self):
+        """ Remove lines from plot """
+        try:
+            self.line1.remove()
+            self.xline.remove()
+            self.yline.remove()
+            self.xlab.remove()
+            self.ylab.remove()
+            self.zlab.remove()
+        except:
+            print('no lines to remove')

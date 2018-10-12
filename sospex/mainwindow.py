@@ -23,7 +23,7 @@ from sospex.graphics import  (NavigationToolbar, ImageCanvas, ImageHistoCanvas, 
 from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
 from sospex.specobj import specCube,Spectrum, ExtSpectrum
 from sospex.cloud import cloudImage
-from sospex.interactors import SliderInteractor, SliceInteractor
+from sospex.interactors import SliderInteractor, SliceInteractor, DistanceSelector
 
 
 class UpdateTabs(QObject):
@@ -378,6 +378,7 @@ class GUI (QMainWindow):
         toolbar.addAction(self.fitContAction)
         toolbar.addAction(self.compMomAction)
         toolbar.addAction(self.maskAction)
+        toolbar.addAction(self.distanceAction)
         toolbar.addSeparator()
         #toolbar.addWidget(self.apertureAction)        
         # Foot
@@ -1013,6 +1014,8 @@ class GUI (QMainWindow):
         self.fitregionAction = self.createAction(os.path.join(self.path0,'icons','fitregion.png'),
                                                  'Fit baseline and compute moments inside region',
                                                  'Ctrl+f',self.fitRegion)
+        self.distanceAction = self.createAction(os.path.join(self.path0,'icons','squareset.png'),
+                                                'Measure distance', '', self.computeDistance)
         # Add buttons to the toolbar
         self.spacer = QWidget()
         self.spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -2970,6 +2973,29 @@ class GUI (QMainWindow):
         except BaseException:
             pass
         sc.span.active = True
+        
+    def computeDistance(self):
+        itab = self.itabs.currentIndex()
+        ic = self.ici[itab]
+        # Disactivate aperture
+        istab = self.stabs.currentIndex()
+        n = istab - 1
+        if n >= 0:
+            ap = ic.photApertures[n]
+            ap.showverts = False
+            ap.line.set_visible(ap.showverts)
+        self.DS = DistanceSelector(ic.axes, ic.fig, ic.wcs, self.printDistance)
+        
+    def printDistance(self, xy):
+        itab = self.itabs.currentIndex()
+        ic = self.ici[itab]
+        istab = self.stabs.currentIndex()
+        n = istab - 1
+        if n >= 0:
+            ap = ic.photApertures[n]
+            ap.showverts = True
+            ap.line.set_visible(ap.showverts)        
+            ic.fig.canvas.draw_idle()
         
     def maskCube(self):
         """Mask a slice of the cube."""
