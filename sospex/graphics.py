@@ -1084,6 +1084,18 @@ class SpectrumCanvas(MplCanvas):
                 self.axes.set_ylim(minf, maxf*1.1)
                 self.ylimits = (minf,maxf*1.1)
                 self.updateYlim(f=f)
+                if self.guess is not None:
+                    # Reposition the guess to see the markers
+                    g = self.guess
+                    x, y = zip(*g.xy)
+                    mask = ((self.x > x[0]) & (self.x < x[1])) | ((self.x > x[2]) & (self.x < x[3]))
+                    med = np.nanmedian(f[mask])
+                    ymed = np.nanmedian(y)
+                    y += med - ymed
+                    g.line1.set_ydata(y[:2])
+                    g.line2.set_ydata(y[2:])
+                    g.line.set_ydata(y)
+                    g.xy = [(i,j) for (i,j) in zip(x,y)]
             if moments is not None:
                 # Update position, size, and dispersion from moments
                 x = moments[1]; y = np.nanmedian(cont)

@@ -3,39 +3,34 @@ from PyQt5.QtCore import pyqtSignal,QObject
 from PyQt5.QtWidgets import QDialog, QPushButton, QGroupBox, QHBoxLayout, QVBoxLayout, QGridLayout, QRadioButton, QButtonGroup
 from matplotlib.lines import Line2D
 from matplotlib.artist import Artist
-
-#from matplotlib import collections  as mc
+import matplotlib.transforms as transforms
 import multiprocessing as mp
-#from lmfit.models import LinearModel
 from lmfit import Parameters, minimize
-#from scipy.signal import medfilt
 
-
-class Guess(object):
-    """ class to define a spectrum """
-    def __init__(self, pts, xpts, yc, offset):
-
-        self.min = pts[0]
-        self.max = pts[3]
-        delta = xpts[2]-xpts[1]
-        self.mean  = xpts[1]+delta*0.5
-        self.sigma = delta/5.
-        self.amp  = yc
-        self.offset = offset
-
-        # initialize boundaries
-        if self.amp > 0:
-            self.amplims = [0, self.amp*1.2]
-        else:
-            self.amplims = [self.amp*1.2, 0]
-
-        self.meanlims = [self.mean-self.sigma, self.mean+self.sigma]
-        self.sigmalims = [0,self.sigma*1.5]
-        if self.offset > 0:
-            self.offlims = [0,2*self.offset]
-        else:
-            self.offlims = [None,None]
-
+#class Guess(object):
+#    """ class to define a spectrum """
+#    def __init__(self, pts, xpts, yc, offset):
+#
+#        self.min = pts[0]
+#        self.max = pts[3]
+#        delta = xpts[2]-xpts[1]
+#        self.mean  = xpts[1]+delta*0.5
+#        self.sigma = delta/5.
+#        self.amp  = yc
+#        self.offset = offset
+#
+#        # initialize boundaries
+#        if self.amp > 0:
+#            self.amplims = [0, self.amp*1.2]
+#        else:
+#            self.amplims = [self.amp*1.2, 0]
+#
+#        self.meanlims = [self.mean-self.sigma, self.mean+self.sigma]
+#        self.sigmalims = [0,self.sigma*1.5]
+#        if self.offset > 0:1
+#            self.offlims = [0,2*self.offset]
+#        else:
+#            self.offlims = [None,None]
 
 class SegmentsSelector(QObject):
 
@@ -165,7 +160,7 @@ class SegmentsSelector(QObject):
 
 class SegmentsInteractor(QObject):
     """
-    A continuum editor.
+    A continuum interactor.
     """
     
     showverts = True
@@ -173,34 +168,38 @@ class SegmentsInteractor(QObject):
     mySignal = pyqtSignal(str)
     modSignal = pyqtSignal(str)
 
-    def __init__(self, ax, verts, zeroDeg=True):
+    def __init__(self, ax, verts, zeroDeg=True, color='#7ec0ee'):
         super().__init__()
-
 
         self.ax = ax
         self.type = 'Continuum'
-        #        color = 'skyblue'
-        color = '#7ec0ee'
-
+        # color = 'skyblue'
+        # color = '#7ec0ee'
         self.zeroDeg = zeroDeg
         x, y = zip(*verts)
         self.xy = [(i,j) for (i,j) in zip(x,y)]
-        self.computeSlope()
+        self.computeSlope()        
         self.line1 = Line2D(x[:2],y[:2],color=color,linewidth=2, animated = True)
         self.line2 = Line2D(x[2:],y[2:],color=color,linewidth=2, animated = True)
-
+        trans = transforms.blended_transform_factory(ax.transData, ax.transAxes)
+        self.xl1a = Line2D([x[0], x[0]], [0, 1], color=color, linewidth=1,
+                           animated=True, transform=trans)
+        self.xl1b = Line2D([x[1], x[1]], [0, 1], color=color, linewidth=1,
+                           animated=True, transform=trans)
+        self.xl2a = Line2D([x[2], x[2]], [0, 1], color=color, linewidth=1,
+                           animated=True, transform=trans)
+        self.xl2b = Line2D([x[3], x[3]], [0, 1], color=color, linewidth=1,
+                           animated=True, transform=trans)
         self.canvas = ax.figure.canvas
         self.line = Line2D(x, y, marker='o', linestyle=None, linewidth=0., markerfacecolor=color, animated=True)                
-        self.ax.add_line(self.line1)
-        self.ax.add_line(self.line2)
-        self.ax.add_line(self.line)
-
+        self.artists = [self.line1, self.line2, self.xl1a, self.xl1b, self.xl2a, self.xl2b, self.line]
+        for artist in self.artists:
+            self.ax.add_line(artist)
         self.cid = self.line1.add_callback(self.si_changed)
         self._ind = None  # the active vert
         self.connect()
 
     def computeSlope(self):
-
         xg,yg = zip(*self.xy)
         xg = np.array(xg); yg = np.array(yg)
         if self.zeroDeg:
@@ -209,13 +208,17 @@ class SegmentsInteractor(QObject):
             self.slope = (yg[3]-yg[0])/(xg[3]-xg[0])
         self.intcpt = yg[0]-self.slope*xg[0]
 
-
     def connect(self):
-        self.cid_draw = self.canvas.mpl_connect('draw_event', self.draw_callback)
-        self.cid_press = self.canvas.mpl_connect('button_press_event', self.button_press_callback)
-        self.cid_release = self.canvas.mpl_connect('button_release_event', self.button_release_callback)
-        self.cid_motion = self.canvas.mpl_connect('motion_notify_event', self.motion_notify_callback)
-        self.cid_key = self.canvas.mpl_connect('key_press_event', self.key_press_callback)
+        self.cid_draw = self.canvas.mpl_connect('draw_event',
+                                                self.draw_callback)
+        self.cid_press = self.canvas.mpl_connect('button_press_event',
+                                                 self.button_press_callback)
+        self.cid_release = self.canvas.mpl_connect('button_release_event',
+                                                   self.button_release_callback)
+        self.cid_motion = self.canvas.mpl_connect('motion_notify_event',
+                                                  self.motion_notify_callback)
+        self.cid_key = self.canvas.mpl_connect('key_press_event',
+                                               self.key_press_callback)
         self.canvas.draw_idle()
 
     def disconnect(self):
@@ -226,10 +229,14 @@ class SegmentsInteractor(QObject):
         self.canvas.mpl_disconnect(self.cid_key)
         try:
             self.line1.remove()
+            self.xl1a.remove()
+            self.xl1b.remove()
         except:
             print('no line 1')
         try:
             self.line2.remove()
+            self.xl2a.remove()
+            self.xl2b.remove()
         except:
             print('no line 2')
         try:
@@ -241,9 +248,8 @@ class SegmentsInteractor(QObject):
         
     def draw_callback(self, event):
         self.background = self.canvas.copy_from_bbox(self.ax.bbox)
-        self.ax.draw_artist(self.line1)
-        self.ax.draw_artist(self.line2)
-        self.ax.draw_artist(self.line)
+        for artist in self.artists:
+            self.ax.draw_artist(artist)
 
     def si_changed(self, line1):
         'this method is called whenever the line1 object is called'
@@ -254,7 +260,6 @@ class SegmentsInteractor(QObject):
 
     def get_ind_under_point(self, event):
         'get the index of the point if within epsilon tolerance'
-
         # Distance is computed in pixels on the screen
         xy = self.ax.transData.transform(self.xy)
         x, y = zip(*xy)
@@ -262,18 +267,15 @@ class SegmentsInteractor(QObject):
         d = np.hypot(x - event.x, y - event.y)
         indseq, = np.nonzero(d == d.min())
         ind = indseq[0]
-
         print('distance is ',d[ind])
         if d[ind] >= self.epsilon:
             ind = None
-
         return ind
 
     def key_press_callback(self, event):
         'whenever a key is pressed'
         if not event.inaxes:
             return
-
         if event.key == 't':
             self.showverts = not self.showverts
             self.line.set_visible(self.showverts)
@@ -281,10 +283,7 @@ class SegmentsInteractor(QObject):
                 self._ind = None
         elif event.key == 'd':
             self.mySignal.emit('segments deleted')
-
         self.canvas.draw_idle()
-
-
 
     def button_press_callback(self, event):
         'whenever a mouse button is pressed'
@@ -304,7 +303,6 @@ class SegmentsInteractor(QObject):
             return
         self._ind = None
 
-
     def motion_notify_callback(self, event):
         'on mouse movement'
         if not self.showverts:
@@ -315,17 +313,13 @@ class SegmentsInteractor(QObject):
             return
         if event.button != 1:
             return
-
-        x_, y_ = event.xdata, event.ydata
-
         # Rebuild line collection
         x,y = zip(*self.xy)
         x = np.asarray(x)
         y = np.asarray(y)
-
         # Update point
+        x_, y_ = event.xdata, event.ydata
         y[self._ind] = y_
-
         if self._ind > 0:
             if x_ < x[self._ind-1]:
                 x[self._ind] = x[self._ind-1]
@@ -335,62 +329,53 @@ class SegmentsInteractor(QObject):
             if x_ > x[self._ind+1]:
                 x[self._ind] = x[self._ind+1]
             else:
-                x[self._ind] = x_
-        
+                x[self._ind] = x_        
         if self.zeroDeg:
             m = 0
         else:
             if self._ind < 2:
                 m = (y[3]-y[self._ind])/(x[3]-x[self._ind])
             else:
-                m = (y[self._ind]-y[0])/(x[self._ind]-x[0])
-
-    
+                m = (y[self._ind]-y[0])/(x[self._ind]-x[0])    
         for i in range(4):
             y[i] = y[self._ind]+m*(x[i]-x[self._ind])
             self.xy[i] = (x[i],y[i])
-
         # Update segments and markers
         self.updateLinesMarkers()
-
-        self.canvas.restore_region(self.background)
-        self.ax.draw_artist(self.line1)
-        self.ax.draw_artist(self.line2)
-        self.ax.draw_artist(self.line)
-        self.canvas.update()
-        self.canvas.flush_events()
-
+        self.redraw()
         # Notify callback
         self.modSignal.emit('continuum guess modified')
 
     def updateLinesMarkers(self):
+        x, y = zip(*self.xy)
+        self.xl1a.set_xdata([x[0], x[0]])
+        self.xl1b.set_xdata([x[1], x[1]])
+        self.xl2a.set_xdata([x[2], x[2]])
+        self.xl2b.set_xdata([x[3], x[3]])        
         self.line1.set_data(zip(*self.xy[:2]))
         self.line2.set_data(zip(*self.xy[2:]))
         self.line.set_data(zip(*self.xy))
 
+    def redraw(self):
+        self.canvas.restore_region(self.background)
+        for artist in self.artists:
+            self.ax.draw_artist(artist)
+        self.canvas.update()
+        self.canvas.flush_events()
 
     def switchUnits(self):
         """ Redraw segments in new units """
-        
         # Rebuild line collection
         x, y = zip(*self.xy)
         x = np.asarray(x)
         y = np.asarray(y)
-
         c = 299792458.0  # speed of light in m/s
         x = c/x * 1.e-6  # um to THz or viceversa
         for i in range(4):
             self.xy[i] = (x[i],y[i])
-
         # Update segments and markers
         self.updateLinesMarkers()
-
-        self.canvas.restore_region(self.background)
-        self.ax.draw_artist(self.line1)
-        self.ax.draw_artist(self.line2)
-        self.ax.draw_artist(self.line)
-        self.canvas.update()
-        self.canvas.flush_events()
+        self.redraw()
         
 # Dialogs
 
@@ -399,7 +384,6 @@ class ContParams(QDialog):
     
     def __init__(self, k, parent=None):
         super().__init__(parent)
-
         if k == 1:
             self.k = 0
         elif k == 5:
@@ -407,16 +391,15 @@ class ContParams(QDialog):
         elif k == 9:
             self.k = 2
         else:
-            self.k = 0
-            
+            self.k = 0            
         self.setupUI()
 
-    def setupUI(self):
-        
+    def setupUI(self):        
+        self.regions = self.createGroup('Regions',['1', '3', '7'])
         self.function = self.createGroup('Function',['Constant','Slope'])
-        self.boundary = self.createGroup('Boundary',['None','Positive'])
-        self.kernel   = self.createGroup('Kernel',['1 pixel','5 pixels','9 pixels'],default=self.k)
-
+        self.boundary = self.createGroup('Boundary',['None','Non negative'])
+        self.kernel   = self.createGroup('Kernel', ['1 pixel','5 pixels','9 pixels'],
+                                         default=self.k)
         hgroup = QGroupBox()
         hbox = QHBoxLayout()
         self.button1 = QPushButton("OK")
@@ -425,13 +408,13 @@ class ContParams(QDialog):
         self.button2.clicked.connect(self.Cancel)
         hbox.addWidget(self.button1) 
         hbox.addWidget(self.button2)
-        hgroup.setLayout(hbox)
-        
+        hgroup.setLayout(hbox)        
         grid = QGridLayout()
-        grid.addWidget(self.function,0,0)
-        grid.addWidget(self.boundary,1,0)
-        grid.addWidget(self.kernel,2,0)
-        grid.addWidget(hgroup, 3, 0)
+        grid.addWidget(self.regions,0,0)
+        grid.addWidget(self.function,1,0)
+        grid.addWidget(self.boundary,2,0)
+        grid.addWidget(self.kernel,3,0)
+        grid.addWidget(hgroup, 4, 0)
         self.setLayout(grid)
         self.setWindowTitle('Continuum parameters')
         self.resize(400,300)
@@ -454,7 +437,6 @@ class ContParams(QDialog):
         group.setLayout(vbox)
         return group
 
-
     def OK(self):
         self.done(1)
 
@@ -462,7 +444,8 @@ class ContParams(QDialog):
         function  = self.function.buttons.checkedButton().text()
         boundary  = self.boundary.buttons.checkedButton().text()
         kernel    = self.kernel.buttons.checkedButton().text()
-        return function, boundary, kernel
+        regions   = self.regions.buttons.checkedButton().text()
+        return function, boundary, kernel, regions
             
     def Cancel(self):
         self.done(0)
@@ -492,7 +475,6 @@ def fitContinuum(p,slope,intcp,posCont,m,w,ff):
     f = np.nanmean(ff,axis=1)
     mf = np.isnan(f)
     m[mf] = 0
-
     if np.sum(m) > 5:
         # Define parameters
         fit_params = Parameters()
@@ -507,7 +489,6 @@ def fitContinuum(p,slope,intcp,posCont,m,w,ff):
     else:
         pars = None
         pass
-    
     return p, pars
 
 def fiteContinuum(p,slope,intcp,posCont,m,w,ff,ee):
@@ -537,12 +518,11 @@ def fiteContinuum(p,slope,intcp,posCont,m,w,ff,ee):
         pass
     return p, pars
 
+
 def computeMoments(p,m,w,dw,f):
     """ compute moments on a spatial pixel """
-
     mf = np.isnan(f)
     m[mf] = 0
-
     # compute the error on f
     if np.sum(m) > 5:
         f = f[m]

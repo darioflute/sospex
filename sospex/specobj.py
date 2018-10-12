@@ -40,7 +40,9 @@ class specCube(object):
         self.nz, self.ny, self.nx = np.shape(self.flux)
         xi = np.arange(self.nx); yi = np.arange(self.ny)
         xi,yi = np.meshgrid(xi, yi)
-        self.points = np.array([np.ravel(xi), np.ravel(yi)]).transpose()
+        # Alternative way
+        # self.points = np.array([np.ravel(xi), np.ravel(yi)]).transpose()
+        self.points = np.c_[np.ravel(xi), np.ravel(yi)]
         # Time used for reading
         elapsed_time = time.process_time() - t
         print('Reading of cube completed in ', elapsed_time,' s')

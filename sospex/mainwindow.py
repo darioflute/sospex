@@ -893,7 +893,7 @@ class GUI (QMainWindow):
             self.ctrlIsHeld = False
 
     def onWheel2(self,event):
-        """Wheel moves right/left the slice defined on spectrum."""
+        """Wheel zooms/unzooms spectrum."""
         itab = self.stabs.currentIndex()
         sc = self.sci[itab]
         if event.inaxes:
@@ -1122,7 +1122,7 @@ class GUI (QMainWindow):
         w0 = ic0.pixscale
         self.CP = ContParams(self.kernel)
         if self.CP.exec_() == QDialog.Accepted:
-            function,boundary,kernel = self.CP.save()
+            function, boundary, kernel, regions = self.CP.save()
             if function == 'Constant':
                 self.zeroDeg = True
             else:
@@ -1153,7 +1153,12 @@ class GUI (QMainWindow):
             self.kernel1.setChecked(k1)
             self.kernel5.setChecked(k5)
             self.kernel9.setChecked(k9)
-            # Hide lines  
+            self.ncells = int(regions)   # Number of Voronoi cells
+            print('selected ', self.ncells, ' regions')
+            # Create Voronoi sites, KDTree, plot Voronoi ridges on image
+            # TODO
+            
+            # Hide lines
             # sc = self.sci[self.spectra.index('Pix')]
             print('lines are ', sc.displayLines)
             if sc.displayLines == True:
@@ -1174,7 +1179,7 @@ class GUI (QMainWindow):
             self.onRemoveContinuum('segments deleted')
         # I don't know how to disactivate the draggable feature, so I hide the annotations
         # when selecting the continuum
-        self.CS = SegmentsSelector(sc.axes,sc.fig, self.onContinuumSelect,zD=self.zeroDeg)
+        self.CS = SegmentsSelector(sc.axes, sc.fig, self.onContinuumSelect, zD=self.zeroDeg)
         self.openContinuumTab()
         # Update the pixel marker with new kernel
         for ic in self.ici:
@@ -1269,7 +1274,6 @@ class GUI (QMainWindow):
             sc.displayLines = True
             sc.setLinesVisibility(sc.displayLines)
             sc.fig.canvas.draw_idle()
-
 
     def onModifiedGuess(self):
         pass
@@ -1374,7 +1378,6 @@ class GUI (QMainWindow):
         i = int(np.rint(xc)); j = int(np.rint(yc))
         sc.updateSpectrum(cont=self.continuum[:,j,i])
         sc.fig.canvas.draw_idle()
-         
 
     def chooseComputeMoments(self):
         """Options to compute the moments."""
@@ -1507,7 +1510,6 @@ class GUI (QMainWindow):
                                         interactive=False)
             self.RS.to_draw.set_visible(False)
             self.RS.set_visible(True)
-
 
     def fitContRegion(self, eclick, erelease):
         """Fit the continuum in a selected region."""
