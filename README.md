@@ -107,3 +107,7 @@ The question mark icon open a series of tutorials on your web browser.
 [Overlap contours](sospex/help/contours.ipynb)
 
 [Save images and spectra](sospex/help/save.ipynb)
+
+[Fit continuum and compute moments](sospex/help/moments.ipynb)
+
+[Erase part of the cube](sospex/help/erase.ipynb)
