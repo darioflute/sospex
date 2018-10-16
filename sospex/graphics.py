@@ -1051,7 +1051,7 @@ class SpectrumCanvas(MplCanvas):
         self.fig.canvas.draw_idle()
 
     def updateSpectrum(self, f=None, uf=None, ef=None, exp=None, cont=None,
-                       moments=None, noise=None, atran=None):
+                       moments=None, noise=None, atran=None, ncell=0):
         try:
             try:
                 self.arrow1.remove()
@@ -1088,14 +1088,14 @@ class SpectrumCanvas(MplCanvas):
                     # Reposition the guess to see the markers
                     g = self.guess
                     x, y = zip(*g.xy)
+                    x = self.xguess[ncell]
+                    # print('n ', ncell, 'and x is ', x)
                     mask = ((self.x > x[0]) & (self.x < x[1])) | ((self.x > x[2]) & (self.x < x[3]))
                     med = np.nanmedian(f[mask])
                     ymed = np.nanmedian(y)
                     y += med - ymed
-                    g.line1.set_ydata(y[:2])
-                    g.line2.set_ydata(y[2:])
-                    g.line.set_ydata(y)
                     g.xy = [(i,j) for (i,j) in zip(x,y)]
+                    g.updateLinesMarkers()
             if moments is not None:
                 # Update position, size, and dispersion from moments
                 x = moments[1]; y = np.nanmedian(cont)
@@ -1103,7 +1103,7 @@ class SpectrumCanvas(MplCanvas):
                 dx = np.sqrt(2.*np.log(2))* np.sqrt(moments[2])
                 # Amplitude of a Gaussian ...
                 c = 299792458. # m/s
-                A = moments[0] * 1.e26 / np.sqrt(2.*np.pi*moments[2]) * x*x/c*1.e-6
+                A = moments[0] * 1.e26 / np.sqrt(2. * np.pi*moments[2]) * x * x / c * 1.e-6
                 style = 'wedge'
                 if self.xunit == 'THz':
                     dx = (c*dx)/(x*x-dx*dx) * 1.e-6

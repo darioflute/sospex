@@ -12,6 +12,7 @@ import matplotlib
 matplotlib.use('Qt5Agg')
 from matplotlib.widgets import SpanSelector, PolygonSelector, RectangleSelector, EllipseSelector
 from matplotlib.patches import Polygon
+from scipy.spatial import KDTree
 
 # To avoid excessive warning messages
 import warnings
@@ -659,14 +660,23 @@ class GUI (QMainWindow):
             npath = transform.transform_path(path)
             inpoints = s.points[npath.contains_points(s.points)]
             xx,yy = inpoints.T
+            # If tab is pix, then compute the center to decide which Voronoi cells it belongs
+            if istab == 1:
+                xc = int(np.median(xx))
+                yc = int(np.median(yy))
+                ncell = self.regions[yc,xc]
+            else:
+                ncell = 0
+
             if istab == 1 and self.continuum is not None:
                 xc=np.median(xx); yc = np.median(yy)
                 try:
                     i = int(np.rint(xc)); j = int(np.rint(yc))
-                    cont = self.continuum[:,j,i]
+                    cont = self.continuum[:, j, i]
                     try:
-                        moments = [self.M0[j,i],self.M1[j,i],self.M2[j,i],self.M3[j,i],self.M4[j,i]]
-                        noise = self.noise[j,i]
+                        moments = [self.M0[j, i], self.M1[j, i], self.M2[j, i],
+                                   self.M3[j, i], self.M4[j, i]]
+                        noise = self.noise[j, i]
                     except:
                         moments = None
                         noise = None
@@ -679,33 +689,34 @@ class GUI (QMainWindow):
                 moments = None
                 noise = None
             if istab == 1: # case of pixel (with different kernels)
-                fluxAll = np.nanmean(s.flux[:,yy,xx], axis=1)
+                fluxAll = np.nanmean(s.flux[:, yy, xx], axis=1)
             else:
-                fluxAll = np.nansum(s.flux[:,yy,xx], axis=1)
+                fluxAll = np.nansum(s.flux[:, yy, xx], axis=1)
             # sc.spectrum.flux = fluxAll
             if s.instrument == 'GREAT':
-                sc.updateSpectrum(f=fluxAll, cont=cont, moments = moments, noise = noise)
+                sc.updateSpectrum(f=fluxAll, cont=cont, moments=moments, noise=noise, ncell=ncell)
             elif s.instrument == 'PACS':
                 if istab == 1:
-                    expAll = np.nanmean(s.exposure[:,yy,xx], axis=1)
+                    expAll = np.nanmean(s.exposure[:, yy, xx], axis=1)
                 else:
-                    expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
-                sc.updateSpectrum(f=fluxAll,exp=expAll, cont=cont, moments = moments, noise=noise)
+                    expAll = np.nansum(s.exposure[:, yy, xx], axis=1)
+                sc.updateSpectrum(f=fluxAll, exp=expAll, cont=cont, moments=moments,
+                                  noise=noise, ncell=ncell)
             elif s.instrument == 'FIFI-LS':
                 if istab == 1:
-                    ufluxAll = np.nanmean(s.uflux[:,yy,xx], axis=1)
+                    ufluxAll = np.nanmean(s.uflux[:, yy, xx], axis=1)
                     efluxAll = np.sqrt(np.nanmean(s.eflux[:,yy,xx]**2, axis=1))
-                    expAll = np.nanmean(s.exposure[:,yy,xx], axis=1)
+                    expAll = np.nanmean(s.exposure[:, yy, xx], axis=1)
                     #print('modified flux ',np.size(xx))
                 else:
-                    ufluxAll = np.nansum(s.uflux[:,yy,xx], axis=1)
-                    efluxAll = np.sqrt(np.nansum(s.eflux[:,yy,xx]**2, axis=1))
-                    expAll = np.nansum(s.exposure[:,yy,xx], axis=1)                    
+                    ufluxAll = np.nansum(s.uflux[:, yy, xx], axis=1)
+                    efluxAll = np.sqrt(np.nansum(s.eflux[:, yy, xx]**2, axis=1))
+                    expAll = np.nansum(s.exposure[:, yy, xx], axis=1)                    
                 sc.spectrum.uflux = ufluxAll
                 sc.spectrum.eflux = efluxAll
                 sc.spectrum.exposure = expAll
-                sc.updateSpectrum(f=fluxAll,uf=ufluxAll,
-                                  exp=expAll, cont=cont, moments = moments, noise=noise)
+                sc.updateSpectrum(f=fluxAll, uf=ufluxAll, exp=expAll,
+                                  cont=cont, moments=moments, noise=noise, ncell=ncell)
             
     def onDraw(self,event):        
         itab = self.itabs.currentIndex()
@@ -726,13 +737,13 @@ class GUI (QMainWindow):
                 w0    = aper.ellipse.width
                 h0    = aper.ellipse.height
                 angle = aper.ellipse.angle
-                ra0,dec0 = ic.wcs.all_pix2world(x0,y0,1)
+                ra0,dec0 = ic.wcs.all_pix2world(x0, y0, 1)
                 ws = w0 * ic.pixscale; hs = h0 * ic.pixscale
                 for ima in ici:
-                    x0,y0 = ima.wcs.all_world2pix(ra0,dec0,1)
-                    w0 = ws/ima.pixscale; h0 = hs/ima.pixscale
-                    ap = ima.photApertures[istab-1]
-                    ap.ellipse.center = x0,y0
+                    x0,y0 = ima.wcs.all_world2pix(ra0, dec0, 1)
+                    w0 = ws/ima.pixscale; h0 = hs / ima.pixscale
+                    ap = ima.photApertures[istab - 1]
+                    ap.ellipse.center = x0, y0
                     ap.ellipse.width = w0
                     ap.ellipse.height = h0
                     ap.ellipse.angle = angle
@@ -743,11 +754,12 @@ class GUI (QMainWindow):
                 w0    = aper.rect.get_width()
                 h0    = aper.rect.get_height()
                 angle = aper.rect.angle
-                ra0,dec0 = ic.wcs.all_pix2world(x0,y0,1)
+                ra0,dec0 = ic.wcs.all_pix2world(x0, y0, 1)
                 ws = w0 * ic.pixscale; hs = h0 * ic.pixscale
                 for ima in ici:
-                    x0,y0 = ima.wcs.all_world2pix(ra0,dec0,1)
-                    w0 = ws/ima.pixscale; h0 = hs/ima.pixscale
+                    x0,y0 = ima.wcs.all_world2pix(ra0, dec0, 1)
+                    w0 = ws / ima.pixscale
+                    h0 = hs / ima.pixscale
                     ap = ima.photApertures[istab-1]
                     ap.rect.set_xy((x0,y0))
                     ap.rect.set_width(w0)
@@ -757,10 +769,10 @@ class GUI (QMainWindow):
                     ima.changed = True
             elif aper.type == 'Polygon':
                 verts = aper.poly.get_xy()
-                adverts = np.array([(ic.wcs.all_pix2world(x,y,1)) for (x,y) in verts])                
+                adverts = np.array([(ic.wcs.all_pix2world(x, y, 1)) for (x, y) in verts])                
                 for ima in ici:
-                    verts = [(ima.wcs.all_world2pix(ra,dec,1)) for (ra,dec) in adverts]
-                    ap = ima.photApertures[istab-1]
+                    verts = [(ima.wcs.all_world2pix(ra, dec, 1)) for (ra, dec) in adverts]
+                    ap = ima.photApertures[istab - 1]
                     ap.poly.set_xy(verts)
                     ap.updateMarkers()
                     ima.changed = True
@@ -1155,9 +1167,30 @@ class GUI (QMainWindow):
             self.kernel9.setChecked(k9)
             self.ncells = int(regions)   # Number of Voronoi cells
             print('selected ', self.ncells, ' regions')
+            # Create sites
+            nx = self.specCube.nx
+            ny = self.specCube.ny
+            if self.ncells == 1:
+                self.sites = np.array([[nx // 2, ny // 2]])
+            elif self.ncells == 3:
+                x = nx // 2
+                dy = ny // 4
+                self.sites = np.array([[x, dy], [x, 2 * dy], [x, 3 * dy]])
+            elif self.ncells == 7:
+                dx = nx // 4
+                dy3 = ny // 3
+                dy4 = ny // 4
+                self.sites = np.array([
+                        [dx, dy3], [dx, 2 * dy3],
+                        [dx * 2, dy4], [dx * 2, 2 * dy4], [dx * 2, 3 * dy4],
+                        [dx * 3, dy3], [dx * 3, 2 * dy3]
+                        ])
             # Create Voronoi sites, KDTree, plot Voronoi ridges on image
-            # TODO
-            
+            tree = KDTree(self.sites)
+            tq = tree.query(self.specCube.points)
+            self.regions = tq[1].reshape(ny, nx)
+            print('shape speccube ', np.shape(self.specCube.flux))
+            print('shape regions ', np.shape(self.regions))
             # Hide lines
             # sc = self.sci[self.spectra.index('Pix')]
             print('lines are ', sc.displayLines)
@@ -1269,15 +1302,28 @@ class GUI (QMainWindow):
         SI.modSignal.connect(self.onModifiedGuess)
         SI.mySignal.connect(self.onRemoveContinuum)
         sc.guess = SI
+        # Generate a list of limits connected to each Voronoi cell
+        xg,yg = zip(*sc.guess.xy)
+        sc.xguess = [xg] * self.ncells
         # 
         if sc.displayLines == False:
             sc.displayLines = True
             sc.setLinesVisibility(sc.displayLines)
             sc.fig.canvas.draw_idle()
 
-    def onModifiedGuess(self):
-        pass
-        #print('modified guess')    
+    def onModifiedGuess(self, event):
+        """Pass modification to the xguess limits of the Voronoi cell."""
+        istab = self.stabs.currentIndex()
+        if istab == 1:
+            # Grab new values 
+            sc = self.sci[istab]
+            x, y = zip(*sc.guess.xy)
+            # Identify cursor position of pixel-aperture on image
+            aperture = self.ici[0].photApertures[0].aperture
+            xc, yc = aperture.xy
+            ncell = self.regions[int(yc), int(xc)]
+            # Update the guess limits for cell
+            sc.xguess[ncell] = x
 
     def fitCont(self):
         """Options to fit the continuum."""
