@@ -395,7 +395,7 @@ class ContParams(QDialog):
         self.setupUI()
 
     def setupUI(self):        
-        self.regions = self.createGroup('Regions',['1', '3', '7'])
+        self.regions = self.createGroup('Regions',['1', '4', '7'])
         self.function = self.createGroup('Function',['Constant','Slope'])
         self.boundary = self.createGroup('Boundary',['None','Non negative'])
         self.kernel   = self.createGroup('Kernel', ['1 pixel','5 pixels','9 pixels'],

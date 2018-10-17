@@ -4,6 +4,9 @@ from PyQt5.QtCore import pyqtSignal, QObject
 from matplotlib.lines import Line2D
 import matplotlib.transforms as transforms
 from matplotlib.patches import Rectangle
+from matplotlib.mlab import dist_point_to_segment
+from matplotlib.artist import Artist
+
 
 class SliderInteractor(QObject):
     """
@@ -425,3 +428,244 @@ class DistanceSelector(QObject):
             self.zlab.remove()
         except:
             print('no lines to remove')
+
+
+class VoronoiInteractor(QObject):
+    """
+    Draw a Voronoi tessellation with input sites. 
+    Update after adding/removing sites.
+
+    Arguments:
+        ax       axes used by the interactor
+        fig      figure used by the interactor
+        sites    points used as input by the Voronoi tessellation
+
+    Key-bindings:
+
+      'v' toggle voronoi markers on and off.  When on,
+          site markers can be moved and deleted
+
+      'd' delete the site under point
+
+      'i' insert a site at point.  You must be within epsilon of the
+          line connecting two existing vertices
+    """
+
+    mySignal = pyqtSignal(str)
+    modSignal = pyqtSignal(str)
+
+    def __init__(self, ax, sites, epsilon=10, showsites=True):
+        super().__init__()
+        from matplotlib.patches import Polygon
+        from matplotlib.lines import Line2D
+        # from matplotlib.artist import Artist
+        self.ax = ax
+        self.type = 'Polygon'
+        self.epsilon = epsilon
+        self.showsites = showsites
+        self.poly = Polygon(list(sites), animated=True, fill=False, closed=True, color='red')
+        self.ax.add_patch(self.poly)
+        self.canvas = self.poly.figure.canvas
+
+        self.sites = sites
+        x, y = zip(*self.sites)
+        self.line = Line2D(x, y, marker='o', linestyle=None, linewidth=0.,
+                           markerfacecolor='red', animated=True)
+        self.ax.add_line(self.line)
+        #self.canvas = self.line.figure.canvas
+
+        # self.sites = self.sites
+        self.sites = sites
+        self.drawVoronoi()
+        #self.cid = self.poly.add_callback(self.poly_changed)
+        self._ind = None  # the active vert
+        self.connect()
+        
+    def drawVoronoi(self):
+        from scipy.spatial import Voronoi
+        self.sites = self.poly.xy
+        vor = Voronoi(self.sites)
+        # Ridge segments
+        self.segments = []
+        for simplex in vor.ridge_vertices:
+            simplex = np.asarray(simplex)
+            if np.all(simplex >= 0):
+                x = vor.vertices[simplex, 0]
+                y = vor.vertices[simplex, 1]
+                segment = Line2D(x, y, color='black', linestyle='-')#, animated=True)
+                self.ax.add_line(segment)
+                self.segments.append(segment)
+        center = self.sites.mean(axis=0)
+        # Ridge rays
+        self.rays = []
+        for pointidx, simplex in zip(vor.ridge_points, vor.ridge_vertices):
+            simplex = np.asarray(simplex)
+            if np.any(simplex < 0):
+                i = simplex[simplex >= 0][0] # finite end Voronoi vertex
+                t = self.sites[pointidx[1]] - self.sites[pointidx[0]]  # tangent
+                t = t / np.linalg.norm(t)
+                n = np.array([-t[1], t[0]]) # normal
+                midpoint = self.sites[pointidx].mean(axis=0)
+                far_point = vor.vertices[i] + np.sign(np.dot(midpoint - center, n)) * n * 100
+                x = [vor.vertices[i,0], far_point[0]]
+                y = [vor.vertices[i,1], far_point[1]]
+                ray = Line2D(x, y, color='black', linestyle='--')#, animated=True)
+                self.ax.add_line(ray)
+                self.rays.append(ray)
+
+    def connect(self):
+        self.cid_draw = self.canvas.mpl_connect('draw_event', self.draw_callback)
+        self.cid_press = self.canvas.mpl_connect('button_press_event', self.button_press_callback)
+        self.cid_key = self.canvas.mpl_connect('key_press_event', self.key_press_callback)
+        self.cid_release = self.canvas.mpl_connect('button_release_event', self.button_release_callback)
+        self.cid_motion = self.canvas.mpl_connect('motion_notify_event', self.motion_notify_callback)
+        self.canvas.draw_idle()
+
+    def disconnect(self):
+        self.canvas.mpl_disconnect(self.cid_draw)
+        self.canvas.mpl_disconnect(self.cid_press)
+        self.canvas.mpl_disconnect(self.cid_key)
+        self.canvas.mpl_disconnect(self.cid_release)
+        self.canvas.mpl_disconnect(self.cid_motion)
+        self.poly.remove()
+        self.line.remove()
+        for s in self.segments + self.rays:
+            s.remove()
+        self.canvas.draw_idle()
+        self.aperture = None
+        
+    def draw_callback(self, event):
+        self.background = self.canvas.copy_from_bbox(self.ax.bbox)
+        self.ax.draw_artist(self.poly)
+        self.ax.draw_artist(self.line)
+        #for s in self.segments + self.rays:
+        #    s.remove()
+        #self.drawVoronoi()
+        #self.canvas.blit(self.ax.bbox)
+        #self.canvas.udpate()
+        #self.canvas.flush_events()
+
+    def poly_changed(self, poly):
+        'this method is called whenever the polygon object is called'
+        # only copy the artist props to the line (except visibility)
+        vis = self.line.get_visible()
+        Artist.update_from(self.line, poly)
+        #for s in self.segments + self.rays:
+        #    s.remove()
+        #self.drawVoronoi()
+        self.line.set_visible(vis)  # don't use the poly visibility state
+        # print('poly changed')
+
+    def get_ind_under_point(self, event):
+        'get the index of the vertex under point if within epsilon tolerance'
+        # display coords
+        xy = np.asarray(self.poly.xy)
+        xyt = self.poly.get_transform().transform(xy)
+        xt, yt = xyt[:, 0], xyt[:, 1]
+        d = np.hypot(xt - event.x, yt - event.y)
+        indseq, = np.nonzero(d == d.min())
+        ind = indseq[0]
+        if d[ind] >= self.epsilon:
+            ind = None
+        return ind
+
+    def button_press_callback(self, event):
+        'whenever a mouse button is pressed'
+        if not self.showsites:
+            return
+        if event.inaxes is None:
+            return
+        if event.button != 1:
+            return
+        self._ind = self.get_ind_under_point(event)
+
+    def button_release_callback(self, event):
+        'whenever a mouse button is released'
+        if not self.showsites:
+            return
+        if event.button != 1:
+            return
+        self._ind = None
+        # For some reason, 't' inhibites the changes in Voronoi
+        for s in self.segments + self.rays:
+            s.remove()
+        self.drawVoronoi()
+        # print('release ', self.sites)
+        # Notify callback
+        self.modSignal.emit('voronoi modified')
+
+    def key_press_callback(self, event):
+        'whenever a key is pressed'
+        if not event.inaxes:
+            return
+        if event.key == 'v':
+            self.showsites = not self.showsites
+            self.line.set_visible(self.showsites)
+            self.poly.set_visible(self.showsites)
+            if not self.showsites:
+                self._ind = None
+            self.canvas.draw_idle()
+        elif event.key == 'd':
+            ind = self.get_ind_under_point(event)
+            if ind is not None:
+                if len(self.poly.xy) < 4:  # the minimum polygon has 4 points since the 1st is repeated as final
+                    # Delete polygon
+                    #self.disconnect()
+                    #self.poly = None
+                    #self.line = None
+                    self.mySignal.emit('voronoi deleted')
+                else:
+                    self.poly.xy = [tup
+                                    for i, tup in enumerate(self.poly.xy)
+                                    if i != ind]
+                    self.line.set_data(zip(*self.poly.xy))
+                    self.mySignal.emit('one voronoi site removed')
+                for s in self.segments + self.rays:
+                    s.remove()
+                self.drawVoronoi()
+        elif event.key == 'i':
+            xys = self.poly.get_transform().transform(self.poly.xy)
+            p = event.x, event.y  # display coords
+            for i in range(len(xys) - 1):
+                s0 = xys[i]
+                s1 = xys[i + 1]
+                d = dist_point_to_segment(p, s0, s1)
+                if d <= self.epsilon:
+                    self.poly.xy = np.array(
+                        list(self.poly.xy[:i+1]) +
+                        [(event.xdata, event.ydata)] +
+                        list(self.poly.xy[i+1:]))
+                    self.line.set_data(zip(*self.poly.xy))
+                    break
+            self.mySignal.emit('one voronoi site added')
+            for s in self.segments + self.rays:
+                s.remove()
+            self.drawVoronoi()
+
+    def motion_notify_callback(self, event):
+        'on mouse movement'
+        if not self.showsites:
+            return
+        if self._ind is None:
+            return
+        if event.inaxes is None:
+            return
+        if event.button != 1:
+            return
+        x, y = event.xdata, event.ydata
+
+        self.poly.xy[self._ind] = x, y
+        if self._ind == 0:
+            self.poly.xy[-1] = x, y
+        elif self._ind == len(self.poly.xy) - 1:
+            self.poly.xy[0] = x, y
+        self.updateMarkers()
+        self.canvas.restore_region(self.background)
+        self.ax.draw_artist(self.poly)
+        self.ax.draw_artist(self.line)
+        self.canvas.update()
+        self.canvas.flush_events()
+
+    def updateMarkers(self):
+        self.line.set_data(zip(*self.poly.xy))
+        self.sites = self.poly.xy

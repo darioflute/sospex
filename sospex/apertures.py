@@ -55,6 +55,7 @@ class PixelInteractor(QObject):
         self.angle  = angle
         self.width  = width
         self.height = width
+        print('corner is ', corner)
         self.rect = Rectangle(corner,width,height,edgecolor='Lime',facecolor='none',angle=angle,fill=False,animated=True)
         self.ax.add_patch(self.rect)
         self.canvas = self.rect.figure.canvas
@@ -204,6 +205,9 @@ class PixelInteractor(QObject):
         self.ax.draw_artist(self.line)
         self.canvas.update()
         self.canvas.flush_events()
+        
+        # alternative (slower)
+        # self.canvas.draw_idle()
 
         # Notify callback
         self.modSignal.emit('rectangle modified')

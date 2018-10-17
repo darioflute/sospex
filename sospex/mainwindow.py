@@ -24,7 +24,7 @@ from sospex.graphics import  (NavigationToolbar, ImageCanvas, ImageHistoCanvas, 
 from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
 from sospex.specobj import specCube,Spectrum, ExtSpectrum
 from sospex.cloud import cloudImage
-from sospex.interactors import SliderInteractor, SliceInteractor, DistanceSelector
+from sospex.interactors import SliderInteractor, SliceInteractor, DistanceSelector, VoronoiInteractor
 
 
 class UpdateTabs(QObject):
@@ -1172,25 +1172,43 @@ class GUI (QMainWindow):
             ny = self.specCube.ny
             if self.ncells == 1:
                 self.sites = np.array([[nx // 2, ny // 2]])
-            elif self.ncells == 3:
-                x = nx // 2
-                dy = ny // 4
-                self.sites = np.array([[x, dy], [x, 2 * dy], [x, 3 * dy]])
+            elif self.ncells == 4:
+                dx = nx // 3
+                dy = ny // 3
+                self.sites = np.array([[dx, dy], [dx * 1.01, 2 * dy],
+                                       [dx * 2, 2 * dy], [dx * 2.02, dy]
+                                       ])
             elif self.ncells == 7:
                 dx = nx // 4
                 dy3 = ny // 3
                 dy4 = ny // 4
                 self.sites = np.array([
-                        [dx, dy3], [dx, 2 * dy3],
-                        [dx * 2, dy4], [dx * 2, 2 * dy4], [dx * 2, 3 * dy4],
-                        [dx * 3, dy3], [dx * 3, 2 * dy3]
+                        [dx * 2, 2 * dy4], [dx, dy3], [dx, 2 * dy3],
+                        [dx * 2, 3 * dy4], [dx * 3, 2 * dy3], [dx * 3,  dy3],
+                        [dx * 2, dy4]
                         ])
+            # print sites
+            print('sites ', self.sites)
             # Create Voronoi sites, KDTree, plot Voronoi ridges on image
             tree = KDTree(self.sites)
             tq = tree.query(self.specCube.points)
             self.regions = tq[1].reshape(ny, nx)
             print('shape speccube ', np.shape(self.specCube.flux))
             print('shape regions ', np.shape(self.regions))
+            # Call Voronoi interactor
+            #self.VI = VoronoiInteractor(ic0.axes, ic0.fig, self.sites)
+            itab = self.itabs.currentIndex()
+            band = self.bands[itab]
+            print('band is ', band)
+            ic0 = self.ici[itab]
+            #self.VI = VorInteractor(ic0.axes, self.sites)
+            try:
+                self.VI.disconnect
+            except BaseException:
+                pass
+            self.VI = VoronoiInteractor(ic0.axes, self.sites)
+            #ic0.fig.canvas.draw()
+            #ic0.photApertures[0].background = ic0.fig.canvas.copy_from_bbox(ic0.axes.bbox)
             # Hide lines
             # sc = self.sci[self.spectra.index('Pix')]
             print('lines are ', sc.displayLines)
