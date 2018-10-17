@@ -395,7 +395,7 @@ class ContParams(QDialog):
         self.setupUI()
 
     def setupUI(self):        
-        self.regions = self.createGroup('Regions',['1', '4', '7'])
+        self.regions = self.createGroup('Regions',['1', '4', '7' ,'13'])
         self.function = self.createGroup('Function',['Constant','Slope'])
         self.boundary = self.createGroup('Boundary',['None','Non negative'])
         self.kernel   = self.createGroup('Kernel', ['1 pixel','5 pixels','9 pixels'],
@@ -423,7 +423,7 @@ class ContParams(QDialog):
         """ creates a group of radio buttons  """
         group = QGroupBox(title)
         group.buttons = QButtonGroup()
-        vbox = QVBoxLayout()
+        vbox = QHBoxLayout()
         buttons = []
         i = 0
         for item in items:

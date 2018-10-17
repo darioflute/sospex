@@ -521,17 +521,19 @@ class VoronoiInteractor(QObject):
         self.cid_motion = self.canvas.mpl_connect('motion_notify_event', self.motion_notify_callback)
         self.canvas.draw_idle()
 
+    def removeRidges(self):
+        for s in self.segments + self.rays:
+            s.remove()
+        self.poly.remove()
+        self.line.remove()
+        self.canvas.draw_idle()
+
     def disconnect(self):
         self.canvas.mpl_disconnect(self.cid_draw)
         self.canvas.mpl_disconnect(self.cid_press)
         self.canvas.mpl_disconnect(self.cid_key)
         self.canvas.mpl_disconnect(self.cid_release)
         self.canvas.mpl_disconnect(self.cid_motion)
-        self.poly.remove()
-        self.line.remove()
-        for s in self.segments + self.rays:
-            s.remove()
-        self.canvas.draw_idle()
         self.aperture = None
         
     def draw_callback(self, event):
@@ -619,7 +621,7 @@ class VoronoiInteractor(QObject):
                                     for i, tup in enumerate(self.poly.xy)
                                     if i != ind]
                     self.line.set_data(zip(*self.poly.xy))
-                    self.mySignal.emit('one voronoi site removed')
+                    self.modSignal.emit(str(ind))  # Pass the index canceled
                 for s in self.segments + self.rays:
                     s.remove()
                 self.drawVoronoi()
@@ -637,7 +639,7 @@ class VoronoiInteractor(QObject):
                         list(self.poly.xy[i+1:]))
                     self.line.set_data(zip(*self.poly.xy))
                     break
-            self.mySignal.emit('one voronoi site added')
+            self.modSignal.emit('one voronoi site added')
             for s in self.segments + self.rays:
                 s.remove()
             self.drawVoronoi()

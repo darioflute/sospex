@@ -662,9 +662,12 @@ class GUI (QMainWindow):
             xx,yy = inpoints.T
             # If tab is pix, then compute the center to decide which Voronoi cells it belongs
             if istab == 1:
-                xc = int(np.median(xx))
-                yc = int(np.median(yy))
-                ncell = self.regions[yc,xc]
+                if self.ncells > 1:
+                    xc = int(np.median(xx))
+                    yc = int(np.median(yy))
+                    ncell = self.regions[yc,xc]
+                else:
+                    ncell = 0
             else:
                 ncell = 0
 
@@ -1187,39 +1190,45 @@ class GUI (QMainWindow):
                         [dx * 2, 3 * dy4], [dx * 3, 2 * dy3], [dx * 3,  dy3],
                         [dx * 2, dy4]
                         ])
+            elif self.ncells == 13:
+                dx = nx // 6
+                dy = ny // 8
+                self.sites = np.array([
+                        [3 * dx, 4 * dy],
+                        [2 * dx, 5 * dy], [2 * dx, 3 * dy],
+                        [3 * dx, 2 * dy],
+                        [4 * dx, 3 * dy], [4 * dx, 5 * dy],
+                        [3 * dx, 6 * dy],
+                        [2 * dx, 7 * dy],
+                        [1 * dx, 4 * dy],
+                        [2 * dx, 1 * dy], [4 * dx, 1 * dy],
+                        [5 * dx, 4 * dy],
+                        [4 * dx, 7 * dy]
+                        ])
             # print sites
-            print('sites ', self.sites)
+            # print('sites ', self.sites)
             # Create Voronoi sites, KDTree, plot Voronoi ridges on image
-            tree = KDTree(self.sites)
-            tq = tree.query(self.specCube.points)
-            self.regions = tq[1].reshape(ny, nx)
-            print('shape speccube ', np.shape(self.specCube.flux))
-            print('shape regions ', np.shape(self.regions))
-            # Call Voronoi interactor
-            #self.VI = VoronoiInteractor(ic0.axes, ic0.fig, self.sites)
-            itab = self.itabs.currentIndex()
-            band = self.bands[itab]
-            print('band is ', band)
-            ic0 = self.ici[itab]
-            #self.VI = VorInteractor(ic0.axes, self.sites)
             try:
+                print('Removing previous tessellation.')
+                self.VI.removeRidges()
                 self.VI.disconnect
+                self.VI.modSignal.disconnect()
+                self.VI = None
             except BaseException:
                 pass
-            self.VI = VoronoiInteractor(ic0.axes, self.sites)
-            #ic0.fig.canvas.draw()
-            #ic0.photApertures[0].background = ic0.fig.canvas.copy_from_bbox(ic0.axes.bbox)
-            # Hide lines
-            # sc = self.sci[self.spectra.index('Pix')]
-            print('lines are ', sc.displayLines)
+            if self.ncells > 1:
+                tree = KDTree(self.sites)
+                tq = tree.query(self.specCube.points)
+                self.regions = tq[1].reshape(ny, nx)
+                itab = self.itabs.currentIndex()
+                ic0 = self.ici[itab]
+                self.VI = VoronoiInteractor(ic0.axes, self.sites)
+                self.VI.modSignal.connect(self.updateKDTree)
             if sc.displayLines == True:
                 sc.displayLines = False
                 sc.setLinesVisibility(sc.displayLines)
-                print('replot spectrum after hiding lines ', sc.displayLines )
+                # print('replot spectrum after hiding lines ', sc.displayLines )
                 sc.fig.canvas.draw_idle()
-                #linesHidden = False
-            #else:
-                #linesHidden = True
         else:
             return
         # Help on status bar
@@ -1251,6 +1260,26 @@ class GUI (QMainWindow):
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
         ic.fig.canvas.draw_idle()
+        
+    def updateKDTree(self, event):
+        """React to modification of Voronoi cells."""
+        sc = self.sci[self.spectra.index('Pix')]
+        nx = self.specCube.nx
+        ny = self.specCube.ny
+        self.sites = self.VI.sites
+        tree = KDTree(self.sites)
+        tq = tree.query(self.specCube.points)
+        self.regions = tq[1].reshape(ny, nx)
+        if event == 'voronoi modified':
+            pass
+        elif event == 'one voronoi site added':
+            # Add to the list the last value
+            newguess = sc.xguess[-1]
+            sc.xguess.append(newguess)
+        else:
+            print('Site '+event+' removed')
+            ind = int(event)
+            del sc.xguess[ind]
 
     def addBand(self, band):
         """Add a band and display it in a new tab."""
@@ -1339,7 +1368,10 @@ class GUI (QMainWindow):
             # Identify cursor position of pixel-aperture on image
             aperture = self.ici[0].photApertures[0].aperture
             xc, yc = aperture.xy
-            ncell = self.regions[int(yc), int(xc)]
+            if self.ncells > 1:
+                ncell = self.regions[int(yc), int(xc)]
+            else:
+                ncell = 0
             # Update the guess limits for cell
             sc.xguess[ncell] = x
 
