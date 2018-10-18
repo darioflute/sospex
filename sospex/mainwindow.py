@@ -80,6 +80,8 @@ class GUI (QMainWindow):
         self.all = False
         # Default kernel
         self.kernel = 1
+        # Default number of cells
+        self.ncells = 1
         # Get the path of the package
         self.path0, file0 = os.path.split(__file__)
         # Define style
@@ -1205,11 +1207,8 @@ class GUI (QMainWindow):
                         [5 * dx, 4 * dy],
                         [4 * dx, 7 * dy]
                         ])
-            # print sites
-            # print('sites ', self.sites)
             # Create Voronoi sites, KDTree, plot Voronoi ridges on image
             try:
-                print('Removing previous tessellation.')
                 self.VI.removeRidges()
                 self.VI.disconnect
                 self.VI.modSignal.disconnect()
@@ -1377,29 +1376,41 @@ class GUI (QMainWindow):
 
     def fitCont(self):
         """Options to fit the continuum."""
+        msgBox = QMessageBox()
+        msgBox.setText('Compute the continuum:')
         if self.continuum is not None:
             # Dialog to choose between fitting options
-            msgBox = QMessageBox()
-            msgBox.setText('Compute the continuum:')
             msgBox.addButton('Fit all cube', QMessageBox.ActionRole)
-            msgBox.addButton('Fit region', QMessageBox.ActionRole)
-            msgBox.addButton('Set to zero', QMessageBox.ActionRole)
-            msgBox.addButton('Set to medians', QMessageBox.ActionRole)
-            msgBox.addButton('Cancel', QMessageBox.ActionRole)
-            self.result = msgBox.exec()
-            if self.result == 0:
-                self.fitContAll()
-            elif self.result == 1:
-                self.fitRegion()
-            elif self.result == 2:
-                self.setContinuumZero()
-            elif self.result == 3:
-                self.setContinuumMedian()
+            if self.ncells > 1:
+                msgBox.addButton('Fit region', QMessageBox.ActionRole)
+                msgBox.addButton('Set to zero', QMessageBox.ActionRole)
+                msgBox.addButton('Set to medians', QMessageBox.ActionRole)
+                msgBox.addButton('Cancel', QMessageBox.ActionRole)
+                self.result = msgBox.exec()
+                if self.result == 0:
+                    self.fitContAll()
+                elif self.result == 1:
+                    self.fitRegion()
+                elif self.result == 2:
+                    self.setContinuumZero()
+                elif self.result == 3:
+                    self.setContinuumMedian()
+                else:
+                    pass
             else:
-                pass
+                msgBox.addButton('Set to zero', QMessageBox.ActionRole)
+                msgBox.addButton('Set to medians', QMessageBox.ActionRole)
+                msgBox.addButton('Cancel', QMessageBox.ActionRole)
+                self.result = msgBox.exec()
+                if self.result == 0:
+                    self.fitContAll()
+                elif self.result == 1:
+                    self.setContinuumZero()
+                elif self.result == 2:
+                    self.setContinuumMedian()
+                else:
+                    pass                
         else:
-            msgBox = QMessageBox()
-            msgBox.setText('Fit the continuum:')
             msgBox.addButton('Set to zero', QMessageBox.ActionRole)
             msgBox.addButton('Compute medians', QMessageBox.ActionRole)
             msgBox.addButton('Cancel and Define guess', QMessageBox.ActionRole)
