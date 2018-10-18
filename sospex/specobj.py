@@ -117,8 +117,8 @@ class specCube(object):
         eta_fss=0.97
         eta_mb =0.67
         calib = 971.
-        factor = calib*eta_fss*eta_mb
-        self.flux *= factor   # Transformed from temperature to S_nu [Jy]            
+        self.Tb2Jy = calib*eta_fss*eta_mb
+        self.flux *= self.Tb2Jy   # Transformed from temperature to S_nu [Jy]            
         nu0 = self.header['RESTFREQ']  # MHz
         l0 = c/nu0  # in micron
         vel = -self.cdelt3*self.crpix3+self.cdelt3*np.arange(self.n)+self.crval3
