@@ -1208,22 +1208,6 @@ class GUI (QMainWindow):
                         [5 * dx, 4 * dy],
                         [4 * dx, 7 * dy]
                         ])
-            # Create Voronoi sites, KDTree, plot Voronoi ridges on image
-            try:
-                self.VI.removeRidges()
-                self.VI.disconnect
-                self.VI.modSignal.disconnect()
-                self.VI = None
-            except BaseException:
-                pass
-            if self.ncells > 1:
-                tree = KDTree(self.sites)
-                tq = tree.query(self.specCube.points)
-                self.regions = tq[1].reshape(ny, nx)
-                itab = self.itabs.currentIndex()
-                ic0 = self.ici[itab]
-                self.VI = VoronoiInteractor(ic0.axes, self.sites)
-                self.VI.modSignal.connect(self.updateKDTree)
             if sc.displayLines == True:
                 sc.displayLines = False
                 sc.setLinesVisibility(sc.displayLines)
@@ -1257,9 +1241,24 @@ class GUI (QMainWindow):
             y = yc - w/np.sqrt(2.) * np.cos((45.-theta)*np.pi/180.)
             pixel.rect.set_xy((x,y))
             ic.changed = True
+        # Create Voronoi sites, KDTree, plot Voronoi ridges on image
+        try:
+            self.VI.removeRidges()
+            self.VI.disconnect
+            self.VI.modSignal.disconnect()
+            self.VI = None
+        except BaseException:
+            pass
         itab = self.itabs.currentIndex()
-        ic = self.ici[itab]
-        ic.fig.canvas.draw_idle()
+        ic0 = self.ici[itab]
+        if self.ncells > 1:
+            tree = KDTree(self.sites)
+            tq = tree.query(self.specCube.points)
+            self.regions = tq[1].reshape(ny, nx)
+            self.VI = VoronoiInteractor(ic0.axes, self.sites)
+            self.VI.modSignal.connect(self.updateKDTree)
+        else:
+            ic0.fig.canvas.draw_idle()
         
     def updateKDTree(self, event):
         """React to modification of Voronoi cells."""
