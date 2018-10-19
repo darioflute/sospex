@@ -267,7 +267,7 @@ class SegmentsInteractor(QObject):
         d = np.hypot(x - event.x, y - event.y)
         indseq, = np.nonzero(d == d.min())
         ind = indseq[0]
-        print('distance is ',d[ind])
+        # print('distance is ',d[ind])
         if d[ind] >= self.epsilon:
             ind = None
         return ind
@@ -317,19 +317,41 @@ class SegmentsInteractor(QObject):
         x,y = zip(*self.xy)
         x = np.asarray(x)
         y = np.asarray(y)
+        # Check order of x (increasing if wavelength, decreasing if frequency)
+        if x[3] > x[0]:
+            case = 'wave'
+        else:
+            case = 'freq'
         # Update point
         x_, y_ = event.xdata, event.ydata
         y[self._ind] = y_
-        if self._ind > 0:
-            if x_ < x[self._ind-1]:
-                x[self._ind] = x[self._ind-1]
-            else:
-                x[self._ind] = x_
-        if self._ind < 3:
-            if x_ > x[self._ind+1]:
-                x[self._ind] = x[self._ind+1]
-            else:
-                x[self._ind] = x_        
+        # How avoiding overstepping ...
+        if case == 'wave':
+            if self._ind == 0:
+                if x_ < x[1]:
+                    x[0] = x_
+            elif self._ind == 1:
+                if (x_ > x[0]) & (x_ < x[2]):
+                    x[1] = x_
+            elif self._ind == 2:
+                if (x_ > x[1]) & (x_ < x[3]):
+                    x[2] = x_
+            elif self._ind == 3:
+                if (x_ > x[2]):
+                    x[3] = x_
+        else:
+            if self._ind == 0:
+                if x_ > x[1]:
+                    x[0] = x_
+            elif self._ind == 1:
+                if (x_ < x[0]) & (x_ > x[2]):
+                    x[1] = x_
+            elif self._ind == 2:
+                if (x_ < x[1]) & (x_ > x[3]):
+                    x[2] = x_
+            elif self._ind == 3:
+                if (x_ < x[2]):
+                    x[3] = x_
         if self.zeroDeg:
             m = 0
         else:
@@ -375,7 +397,7 @@ class SegmentsInteractor(QObject):
             self.xy[i] = (x[i],y[i])
         # Update segments and markers
         self.updateLinesMarkers()
-        self.redraw()
+        # self.redraw()
         
 # Dialogs
 
@@ -450,6 +472,56 @@ class ContParams(QDialog):
     def Cancel(self):
         self.done(0)
         
+class ContFitParams(QDialog):
+    """ Dialog window to define type of the continuum fit """
+    def __init__(self, options, parent=None):
+        super().__init__(parent)
+        self.options = options
+        self.setupUI()
+
+    def setupUI(self):        
+        hgroup = QGroupBox()
+        hbox = QHBoxLayout()
+        self.button1 = QPushButton("OK")
+        self.button1.clicked.connect(self.OK)
+        self.button2 = QPushButton("Cancel")
+        self.button2.clicked.connect(self.Cancel)
+        hbox.addWidget(self.button1) 
+        hbox.addWidget(self.button2)
+        hgroup.setLayout(hbox)   
+        
+        self.group = QGroupBox('Options')
+        self.group.buttons = QButtonGroup()
+        vbox = QVBoxLayout()
+        buttons = []
+        i = 0
+        for option in self.options:
+            buttons.append(QRadioButton(option))
+            self.group.buttons.addButton(buttons[-1], i)
+            vbox.addWidget(buttons[-1])
+            i += 1
+        vbox.addStretch(1)
+        # Set 1st option as default
+        buttons[0].setChecked(True)
+        self.group.setLayout(vbox)
+
+        grid = QGridLayout()
+        grid.addWidget(self.group,0,0)
+        grid.addWidget(hgroup, 1, 0)
+        self.setLayout(grid)
+        self.setWindowTitle('Fitting the continuum')
+        self.resize(400,300)
+        
+    def OK(self):
+        self.done(1)
+
+    def save(self):
+        option  = self.group.buttons.checkedButton().text()
+        return option
+            
+    def Cancel(self):
+        self.done(0)
+
 # Functions for multiprocessing continuum fit and moment computation
 
 def residuals(p,x,data=None,eps=None):
@@ -558,7 +630,7 @@ def computeMoments(p,m,w,dw,f):
             dw = dw[pos]
             M0 = np.sum(Slambda*dw) # [Jy Hz]  
             M1 = np.sum(w*Slambda*dw)/M0 # [um]
-            M2 = np.sum((w-M1)*(w-M1)*Slambda*dw)/M0 # [um*um]
+            M2 = np.sum(np.power(w-M1,2)*Slambda*dw)/M0 # [um*um]
             SD = np.sqrt(M2)
             M3 = np.sum(np.power(w-M1,3)*Slambda*dw)/M0/np.power(SD,3)
             M4 = np.sum(np.power(w-M1,4)*Slambda*dw)/M0/np.power(SD,4)-3. # Relative to Gaussian which is 3
@@ -608,14 +680,12 @@ def multiComputeMoments(m,w,f,c,moments,points):
     return moments, noise
     
 
-def multiFitContinuum(m,w,f,c,c0,w0,points,slope,intcp,posCont,kernel,exp=None):
-
+def multiFitContinuum(m, w, f, c, c0, w0, points, slope, intcp, posCont, kernel, exp=None):
     # To avoid forking error in MAC OS-X
     try:
         mp.set_start_method('spawn')
     except RuntimeError:
         pass
-
     if kernel == 1:
         ik = np.array([0])
         jk = np.array([0])
@@ -629,10 +699,6 @@ def multiFitContinuum(m,w,f,c,c0,w0,points,slope,intcp,posCont,kernel,exp=None):
         print ('unsupported kernel, use one pixel only')
         ik = np.array([0])
         jk = np.array([0])
-
-    if exp is None:
-        print('exp is none')
-        
     if exp is None:
         with mp.Pool(processes=mp.cpu_count()) as pool:
             res = [pool.apply_async(fitContinuum, (p,slope,intcp,posCont,m[:,p[1],p[0]],w,
@@ -640,14 +706,16 @@ def multiFitContinuum(m,w,f,c,c0,w0,points,slope,intcp,posCont,kernel,exp=None):
             results = [r.get() for r in res]
     else:
         with mp.Pool(processes=mp.cpu_count()) as pool:
-            res = [pool.apply_async(fiteContinuum, (p,slope,intcp,posCont,m[:,p[1],p[0]],w,
-                                                   f[:,p[1]+ik,p[0]+jk],exp[:,p[1]+ik,p[0]+jk])) for p in points]
-            results = [r.get() for r in res]
-            
+            res = [pool.apply_async(fiteContinuum, 
+                                    (p, slope, intcp, posCont, m[:,p[1],p[0]], w,
+                                     f[:,p[1]+ik,p[0]+jk],exp[:,p[1]+ik,p[0]+jk])) for p in points]
+            results = [r.get() for r in res] 
+    print('c is writeable ', c.flags)
+    c_ = c.copy()
+    c0_ = c0.copy()
     for p, pars in results:
         if pars is not None:
-            i,j = p
-            c[:,j,i] = residuals(pars, w)
-            c0[j,i]  = residuals(pars, w0)
-            
-    return c, c0
+            i, j = p
+            c_[:, j, i] = residuals(pars, w)
+            c0_[j, i] = residuals(pars, w0)
+    return c_, c0_

@@ -502,9 +502,9 @@ class ImageHistoCanvas(MplCanvas):
             smax = min(int(s*0.9995),s-1)
             nbins=256
             self.median = np.median(ima)
-            self.sdev   = np.std(ima[smin:smax])
-            self.min    = np.min(ima)
-            self.max    = np.max(ima)
+            self.sdev = np.std(ima[smin:smax])
+            self.min = np.min(ima)
+            self.max = np.max(ima)
             self.epsilon = self.sdev/3.            
             # Define the interval containing 99% of the values
             if xmin == None:
@@ -799,9 +799,9 @@ class SpectrumCanvas(MplCanvas):
             if s.instrument == 'FIFI-LS':
                 self.xr = self.x / (1 + s.baryshift)             
         #self.fluxLine = self.axes.step(self.x,s.flux,color='blue',label='Flux',zorder=10)
-        self.fluxLine = self.axes.step(self.x,s.flux,color='blue',label='F',zorder=10)
+        self.fluxLine = self.axes.step(self.x, s.flux, color='blue', label='F', zorder=10)
         self.fluxLayer, = self.fluxLine
-        self.contLine = self.axes.plot(self.x, s.continuum, color='skyblue',label='Cont',zorder=9)
+        self.contLine = self.axes.plot(self.x, s.continuum, color='skyblue', label='Cont', zorder=9)
         self.contLayer, = self.contLine
         # Define limits or adjust to previous limits
         if self.xlimits is None:
@@ -1010,6 +1010,7 @@ class SpectrumCanvas(MplCanvas):
         """Update ylimits."""
         # Grab new limits and update flux and 
         ylims = self.ylimits
+        # print('update y limits', ylims)
         self.axes.set_ylim(ylims)
         s = self.spectrum            
         if self.instrument == 'FIFI-LS':
@@ -1050,7 +1051,7 @@ class SpectrumCanvas(MplCanvas):
            pass
         self.fig.canvas.draw_idle()
 
-    def updateSpectrum(self, f=None, uf=None, ef=None, exp=None, cont=None,
+    def updateSpectrum(self, f=None, uf=None, exp=None, cont=None,
                        moments=None, noise=None, atran=None, ncell=0):
         try:
             try:
@@ -1074,6 +1075,7 @@ class SpectrumCanvas(MplCanvas):
                 self.ax3.draw_artist(self.exposureLine[0])
             if f is not None:
                 self.fluxLine[0].set_ydata(f)
+                # self.spectrum.flux = f
                 self.axes.draw_artist(self.fluxLine[0])
                 ylim0,ylim1 = self.axes.get_ylim()
                 maxf = np.nanmax(f)
@@ -1089,8 +1091,10 @@ class SpectrumCanvas(MplCanvas):
                     g = self.guess
                     x, y = zip(*g.xy)
                     x = self.xguess[ncell]
-                    # print('n ', ncell, 'and x is ', x)
-                    mask = ((self.x > x[0]) & (self.x < x[1])) | ((self.x > x[2]) & (self.x < x[3]))
+                    if self.xunit == 'THz':
+                       mask = ((self.x < x[0]) & (self.x > x[1])) | ((self.x < x[2]) & (self.x > x[3]))
+                    else:   
+                       mask = ((self.x > x[0]) & (self.x < x[1])) | ((self.x > x[2]) & (self.x < x[3]))                        
                     med = np.nanmedian(f[mask])
                     ymed = np.nanmedian(y)
                     y += med - ymed
@@ -1281,7 +1285,7 @@ class SpectrumCanvas(MplCanvas):
         # print('switching units ... ', mouseevent)
         self.switchUnits()
         self.switchSignal.emit('switched x unit')
-    
+        
     def switchUnits(self):
         if self.xunit == 'um':
             self.xunit = 'THz'
@@ -1289,18 +1293,24 @@ class SpectrumCanvas(MplCanvas):
         else:
             self.xunit = 'um'
             self.axes.format_coord = lambda x, y: "{:8.4f} um {:10.4f} Jy".format(x, y)
-        self.axes.clear()
-        try:
-            self.ax2.clear()
-            self.ax3.clear()
-            self.ax4.clear()
-        except:
-            pass
+        # self.axes.clear()
+        # try:
+        #   self.ax2.clear()
+        #    self.ax3.clear()
+        #    self.ax4.clear()
+        #except BaseException:
+        #    pass
+        if self.guess is not None:
+            # Switch xguess units
+            c = 299792458.0  # speed of light in m/s
+            for x in self.xguess:
+                x = c / np.array(x) * 1.e-6  # um to THz or viceversa
+            # Switch guess
+            self.guess.switchUnits()
+        # Redrawing is maybe excessive
         self.drawSpectrum()
         self.fig.canvas.draw_idle()
-        if self.guess is not None:
-            self.guess.switchUnits()  
-     
+
     def setLinesVisibility(self, visibility=True):
         for annotation in self.annotations:
                 annotation.set_visible(visibility)

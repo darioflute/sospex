@@ -20,6 +20,8 @@ config = {
         'packages':['sospex'],
         'scripts':['bin/sospex'],
         'install_requires':[
+                'numpy',
+                'scipy',
                 'astropy>=3.0',
                 'lmfit',
                 'reproject',
@@ -32,6 +34,8 @@ config = {
                 "Programming Language :: Python :: 3",
                 "License :: OSI Approved :: GPLv3+ License",
                 "Operating System :: OS Independent",
+                "Intended Audience :: Science/Research", 
+                "Development Status :: 4 - Beta",
                 ],
      }
 

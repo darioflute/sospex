@@ -12,17 +12,18 @@ import matplotlib
 matplotlib.use('Qt5Agg')
 from matplotlib.widgets import SpanSelector, PolygonSelector, RectangleSelector, EllipseSelector
 from matplotlib.patches import Polygon
-from scipy.spatial import KDTree
+from scipy.spatial import cKDTree as KDTree  # cKDTree implementation in C++ (KDTree in pure Python)
 
 # To avoid excessive warning messages
 import warnings
 warnings.filterwarnings('ignore')
 
-from sospex.moments import SegmentsSelector, SegmentsInteractor, multiFitContinuum, multiComputeMoments, ContParams
+from sospex.moments import (SegmentsSelector, SegmentsInteractor, multiFitContinuum,
+                            multiComputeMoments, ContParams, ContFitParams)
 from sospex.graphics import  (NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas,
                        cmDialog, ds9cmap, ScrollMessageBox)
 from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
-from sospex.specobj import specCube,Spectrum, ExtSpectrum
+from sospex.specobj import specCube, Spectrum, ExtSpectrum
 from sospex.cloud import cloudImage
 from sospex.interactors import SliderInteractor, SliceInteractor, DistanceSelector, VoronoiInteractor
 
@@ -697,6 +698,7 @@ class GUI (QMainWindow):
                 fluxAll = np.nanmean(s.flux[:, yy, xx], axis=1)
             else:
                 fluxAll = np.nansum(s.flux[:, yy, xx], axis=1)
+            sc.spectrum.flux = fluxAll
             # sc.spectrum.flux = fluxAll
             if s.instrument == 'GREAT':
                 sc.updateSpectrum(f=fluxAll, cont=cont, moments=moments, noise=noise, ncell=ncell)
@@ -1077,7 +1079,6 @@ class GUI (QMainWindow):
         istab = self.spectra.index('Pix')
         if self.stabs.currentIndex() != istab:
             self.stabs.setCurrentIndex(istab)
-        # sc = self.sci[istab]
         # Get the reference scale
         ic0 = self.ici[0]
         w0 = ic0.pixscale
@@ -1376,50 +1377,28 @@ class GUI (QMainWindow):
 
     def fitCont(self):
         """Options to fit the continuum."""
-        msgBox = QMessageBox()
-        msgBox.setText('Compute the continuum:')
         if self.continuum is not None:
-            # Dialog to choose between fitting options
-            msgBox.addButton('Fit all cube', QMessageBox.ActionRole)
             if self.ncells > 1:
-                msgBox.addButton('Fit region', QMessageBox.ActionRole)
-                msgBox.addButton('Set to zero', QMessageBox.ActionRole)
-                msgBox.addButton('Set to medians', QMessageBox.ActionRole)
-                msgBox.addButton('Cancel', QMessageBox.ActionRole)
-                self.result = msgBox.exec()
-                if self.result == 0:
-                    self.fitContAll()
-                elif self.result == 1:
-                    self.fitRegion()
-                elif self.result == 2:
-                    self.setContinuumZero()
-                elif self.result == 3:
-                    self.setContinuumMedian()
-                else:
-                    pass
+                options = ['Fit all cube', 'Fit region', 'Set to zero', 'Set to medians']
             else:
-                msgBox.addButton('Set to zero', QMessageBox.ActionRole)
-                msgBox.addButton('Set to medians', QMessageBox.ActionRole)
-                msgBox.addButton('Cancel', QMessageBox.ActionRole)
-                self.result = msgBox.exec()
-                if self.result == 0:
-                    self.fitContAll()
-                elif self.result == 1:
-                    self.setContinuumZero()
-                elif self.result == 2:
-                    self.setContinuumMedian()
-                else:
-                    pass                
+                options = ['Fit all cube', 'Set to zero', 'Set to medians']
         else:
-            msgBox.addButton('Set to zero', QMessageBox.ActionRole)
-            msgBox.addButton('Compute medians', QMessageBox.ActionRole)
-            msgBox.addButton('Cancel and Define guess', QMessageBox.ActionRole)
-            self.result = msgBox.exec()
-            if self.result == 0:
-                self.setContinuumZero()
-            elif self.result == 1:
+            options = ['Set to zero', 'Set to medians']
+        CFP = ContFitParams(options)
+        if CFP.exec_() == QDialog.Accepted:
+            option = CFP.save()
+            if option == 'Fit all cube':
+                self.fitContAll()
+            elif option == 'Fit region':
+                self.fitContRegion()
+            elif option == 'Set to medians':
                 self.setContinuumMedian()
-            elif self.result == 2:            
+            elif option == 'Set to zero':
+                self.setContinuumZero()
+            else:
+                pass
+        else:
+            if self.continuum is None:
                 message = 'Define a guess for the continuum on the spectrum panel'
                 self.sb.showMessage(message, 4000)
             else:
@@ -1432,9 +1411,11 @@ class GUI (QMainWindow):
         self.C0[:]=0.
         self.refreshContinuum()
         
-    def getContinuumGuess(self):
+    def getContinuumGuess(self, ncell=None):
         sc = self.sci[self.spectra.index('Pix')]
-        if sc.guess is not None:
+        if sc.guess is None:
+            return None, None, None, None  
+        elif self.ncells < 1:
             # guess values for the continuum in wavelength
             xy = sc.guess.xy
             xg,yg = zip(*xy)
@@ -1442,27 +1423,41 @@ class GUI (QMainWindow):
             if sc.xunit == 'THz':
                 c = 299792458.0  # speed of light in m/s
                 xg = c/xg * 1.e-6  # THz to um
-            # Compute i0,i1,i2,i3 from xy
-            i0 = np.argmin(np.abs(self.specCube.wave-xg[0]))
-            i1 = np.argmin(np.abs(self.specCube.wave-xg[1]))
-            i2 = np.argmin(np.abs(self.specCube.wave-xg[2]))
-            i3 = np.argmin(np.abs(self.specCube.wave-xg[3]))
-            return i0, i1, i2, i3
         else:
-            return None, None, None, None
+            xg = sc.xguess[ncell]
+            xg = np.array(xg)
+            if sc.xunit == 'THz':
+                c = 299792458.0  # speed of light in m/s
+                xg = c/xg * 1.e-6  # THz to um
+        # Compute i0,i1,i2,i3 from xy
+        i0 = np.argmin(np.abs(self.specCube.wave-xg[0]))
+        i1 = np.argmin(np.abs(self.specCube.wave-xg[1]))
+        i2 = np.argmin(np.abs(self.specCube.wave-xg[2]))
+        i3 = np.argmin(np.abs(self.specCube.wave-xg[3]))
+        return i0, i1, i2, i3
         
     def setContinuumMedian(self):
         """Compute continuum by using the median signal per pixel."""
         self.openContinuumTab()
         sc = self.sci[self.spectra.index('Pix')]
-        if sc.guess is not None:
-            i0, i1, i2, i3 = self.getContinuumGuess()
-            mask = np.zeros(len(self.specCube.flux), dtype=bool)
-            mask[i0:i1] = True
-            mask[i2:i3] = True
-            self.C0 = np.nanmedian(self.specCube.flux[mask,:,:], axis=0)
-        else:        
-            self.C0 = np.nanmedian(self.specCube.flux, axis=0)        
+        if sc.guess is None:
+            self.C0 = np.nanmedian(self.specCube.flux, axis=0)
+        else:
+            if self.ncells < 1:
+                i0, i1, i2, i3 = self.getContinuumGuess()
+                mask = np.zeros(len(self.specCube.flux), dtype=bool)
+                mask[i0:i1] = True
+                mask[i2:i3] = True
+                self.C0 = np.nanmedian(self.specCube.flux[mask,:,:], axis=0)
+            else:
+                # Otherwise, find the regions
+                for ncell in range(self.ncells):
+                    i0, i1, i2, i3 = self.getContinuumGuess(ncell)
+                    mask = np.zeros(len(self.specCube.flux), dtype=bool)
+                    mask[i0:i1] = True
+                    mask[i2:i3] = True
+                    j, i = np.where(self.regions == ncell)
+                    self.C0[j, i] = np.nanmedian((self.specCube.flux[:, j, i])[mask,:], axis=0)                   
         self.continuum = np.broadcast_to(self.C0, np.shape(self.specCube.flux))
         self.refreshContinuum()
         
@@ -1502,7 +1497,6 @@ class GUI (QMainWindow):
                     msgBox.addButton('Region', QMessageBox.ActionRole)
                     msgBox.addButton('Cancel', QMessageBox.ActionRole)
                     self.result = msgBox.exec()
-                
                     if self.result == 0:
                         self.computeMomentsAll()
                     elif self.result == 1:
@@ -1618,7 +1612,7 @@ class GUI (QMainWindow):
             self.RS.to_draw.set_visible(False)
             self.RS.set_visible(True)
 
-    def fitContRegion(self, eclick, erelease):
+    def fitContRegionOld(self, eclick, erelease):
         """Fit the continuum in a selected region."""
         # Select points in the region
         points = self.onFitRect(eclick,erelease)
@@ -1662,46 +1656,85 @@ class GUI (QMainWindow):
         xi,yi = np.meshgrid(xi,yi)
         points = np.array([np.ravel(xi),np.ravel(yi)]).transpose()
         return points
+    
+    def fitContRegion(self):
+        """Fit continuum inside region occupied by the cursor."""
+        # position of the cursor
+        aperture = self.ici[0].photApertures[0].aperture
+        xc, yc = aperture.xy
+        if self.ncells > 1:
+            ncell = self.regions[int(yc), int(xc)]
+            exp = np.nansum(self.specCube.exposure, axis=0)
+            mask = (self.regions == ncell) & (exp > 0)
+            mask[0, :] = False
+            mask[-1, :] = False
+            mask[:, 0] = False
+            mask[:, -1] = False
+            yi, xi = np.where(mask == True)
+            points = np.c_[xi, yi]
+        else:
+            print('There are no defined regions')
+            return
+        # Create the mask for the continuum
+        self.continuumMask(points)
+        # Execute the fit
+        self.fitContinuum(points)
 
     def fitContAll(self):
         """Fit continuum all over the cube."""
         # Define region (excluding frame of 1 pixel)
-        nx = self.specCube.nx
-        ny = self.specCube.ny
-        xi = np.arange(1,nx-1)
-        yi = np.arange(1,ny-1)
-        xi,yi = np.meshgrid(xi,yi)
-        points = np.array([np.ravel(xi),np.ravel(yi)]).transpose()
+        #nx = self.specCube.nx
+        #ny = self.specCube.ny
+        #xi = np.arange(1,nx-1)
+        #yi = np.arange(1,ny-1)
+        #xi,yi = np.meshgrid(xi,yi)
+        # For efficiency, points with no exposure should be masked
+        exp = np.nansum(self.specCube.exposure, axis=0)
+        mask = exp > 0
+        mask[0, :] = False
+        mask[-1, :] = False
+        mask[:, 0] = False
+        mask[:, -1] = False
+        yi, xi = np.where(mask == True)
+        points = np.c_[xi, yi]
+        ## points = np.array([np.ravel(xi),np.ravel(yi)]).transpose()
+        #points = np.c_[np.ravel(xi), np.ravel(yi)]
         # Continuum mask
         self.continuumMask(points)
         # Fit
         self.fitContinuum(points)
 
     def continuumMask(self, points):
-        i0, i1, i2, i3 = self.getContinuumGuess()
         # Update masks
-        for p in points:
-            i,j = p
-            self.Cmask[:,j,i] = 0
-            self.Cmask[i0:i1,j,i] = 1
-            self.Cmask[i2:i3,j,i] = 1
+        if self.ncells < 1:
+            i0, i1, i2, i3 = self.getContinuumGuess()
+            for p in points:
+                i, j = p
+                self.Cmask[:,j,i] = 0
+                self.Cmask[i0:i1,j,i] = 1
+                self.Cmask[i2:i3,j,i] = 1
+        else:
+            for p in points:
+                i, j = p
+                ncell = self.regions[j, i]
+                i0, i1, i2, i3 = self.getContinuumGuess(ncell)
+                self.Cmask[:,j,i] = 0
+                self.Cmask[i0:i1,j,i] = 1
+                self.Cmask[i2:i3,j,i] = 1
+        print('Continuum mask computed')
+        # Eventually apply smoothing on the borders of the xguess map to avoid sudden change of continuum
 
     def fitContinuum(self, points):
         """Fit the continuum on a selected set of points."""
-        f = self.specCube.flux
-        m = self.Cmask
-        w = self.specCube.wave
-        w0 = self.specCube.l0
-        c = self.continuum
-        c0 = self.C0
         sc = self.sci[self.spectra.index('Pix')]
         intcp = sc.guess.intcpt
         slope = sc.guess.slope
         # For the moment we fix the exposure of GREAT data to 1 if they exist, 0 is they are NaNs
         # if self.specCube.instrument == 'FIFI-LS':
-        e = self.specCube.exposure
-        c,c0 = multiFitContinuum(m,w,f,c,c0,w0,points,slope,intcp,self.positiveContinuum,
-                                 self.kernel,exp=e)
+        c, c0 = multiFitContinuum(self.Cmask, self.specCube.wave, self.specCube.flux,
+                                  self.continuum, self.C0, self.specCube.l0,
+                                  points, slope, intcp, self.positiveContinuum,
+                                  self.kernel, exp=self.specCube.exposure)
         # else:
         # c,c0 = multiFitContinuum(m,w,f,c,c0,w0,points,slope,intcp,self.positiveContinuum, self.kernel)
         self.continuum = c
@@ -3849,7 +3882,7 @@ class GUI (QMainWindow):
         r = self.slider.x/self.slider.dx
         self.slider.x = c / self.slider.x * 1.e-6
         self.slider.dx = c / self.slider.dx * 1.e-6 / np.abs(r * r - 0.25)
-        print('dx ', self.slider.dx)
+        # print('dx ', self.slider.dx)
         self.slider.redraw(0)
         
     def slicerSwitchUnits(self):
