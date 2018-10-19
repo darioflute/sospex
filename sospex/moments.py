@@ -1,6 +1,7 @@
 import numpy as np
 from PyQt5.QtCore import pyqtSignal,QObject
-from PyQt5.QtWidgets import QDialog, QPushButton, QGroupBox, QHBoxLayout, QVBoxLayout, QGridLayout, QRadioButton, QButtonGroup
+from PyQt5.QtWidgets import (QDialog, QPushButton, QGroupBox, QHBoxLayout, QVBoxLayout,
+                             QGridLayout, QRadioButton, QButtonGroup, QLabel)
 from matplotlib.lines import Line2D
 from matplotlib.artist import Artist
 import matplotlib.transforms as transforms
@@ -417,11 +418,13 @@ class ContParams(QDialog):
         self.setupUI()
 
     def setupUI(self):        
-        self.regions = self.createGroup('Regions',['1', '4', '7' ,'13'])
-        self.function = self.createGroup('Function',['Constant','Slope'])
-        self.boundary = self.createGroup('Boundary',['None','Non negative'])
-        self.kernel   = self.createGroup('Kernel', ['1 pixel','5 pixels','9 pixels'],
-                                         default=self.k)
+        self.function = self.createGroup('Continuum function', ['Constant', 'Slope'])
+        self.boundary = self.createGroup('Continuum boundary', ['None', 'Non negative'])
+        self.kernel   = self.createGroup('Kernel pixels', ['1', '5', '9'], default=self.k)
+        self.regions = self.createGroup('No of regions', ['1', '4', '7' ,'13'])
+        self.emlines = self.createGroup('No of emission lines', ['0', '1', '2', '3'])
+        self.ablines = self.createGroup('No of absorption lines', ['0', '1', '2'])
+        # OK/Cancel line
         hgroup = QGroupBox()
         hbox = QHBoxLayout()
         self.button1 = QPushButton("OK")
@@ -431,14 +434,21 @@ class ContParams(QDialog):
         hbox.addWidget(self.button1) 
         hbox.addWidget(self.button2)
         hgroup.setLayout(hbox)        
+        # Help
+        label = QLabel("After defining the parameters, click and drag twice\n" +
+                       "on the spectrum to define the two continuum regions")
+        # Grid
         grid = QGridLayout()
-        grid.addWidget(self.regions,0,0)
-        grid.addWidget(self.function,1,0)
-        grid.addWidget(self.boundary,2,0)
-        grid.addWidget(self.kernel,3,0)
-        grid.addWidget(hgroup, 4, 0)
+        grid.addWidget(self.function, 0, 0)
+        grid.addWidget(self.boundary, 0, 1)
+        grid.addWidget(self.kernel, 1, 0)
+        grid.addWidget(self.regions, 1, 1)
+        grid.addWidget(self.emlines, 2, 0)
+        grid.addWidget(self.ablines, 2, 1)
+        grid.addWidget(label, 3, 0 , 1, 2)
+        grid.addWidget(hgroup, 4, 0, 1, 2)
         self.setLayout(grid)
-        self.setWindowTitle('Continuum parameters')
+        self.setWindowTitle('Fitting parameters')
         self.resize(400,300)
 
     def createGroup(self, title, items, default=0):    
@@ -521,6 +531,60 @@ class ContFitParams(QDialog):
             
     def Cancel(self):
         self.done(0)
+        
+
+class SlicerDialog(QDialog):
+    """Dialog window to define type of slicer."""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setupUI()
+
+    def setupUI(self):        
+        hgroup = QGroupBox()
+        hbox = QHBoxLayout()
+        self.button1 = QPushButton("OK")
+        self.button1.clicked.connect(self.OK)
+        self.button2 = QPushButton("Cancel")
+        self.button2.clicked.connect(self.Cancel)
+        hbox.addWidget(self.button1) 
+        hbox.addWidget(self.button2)
+        hgroup.setLayout(hbox)   
+        # Group defining type of slice
+        self.group = QGroupBox('Show')
+        self.group.buttons = QButtonGroup()
+        vbox = QVBoxLayout()
+        buttons = []
+        buttons.append(QRadioButton('Channel'))
+        self.group.buttons.addButton(buttons[-1], 0)
+        vbox.addWidget(buttons[-1])
+        buttons.append(QRadioButton('Cube slice'))
+        self.group.buttons.addButton(buttons[-1], 0)
+        vbox.addWidget(buttons[-1])
+        buttons.append(QRadioButton('None'))
+        self.group.buttons.addButton(buttons[-1], 0)
+        vbox.addWidget(buttons[-1])
+        vbox.addStretch(1)
+        # Set 1st option as default
+        buttons[0].setChecked(True)
+        self.group.setLayout(vbox)
+        # Define the grid
+        grid = QGridLayout()
+        grid.addWidget(self.group,0,0)
+        grid.addWidget(hgroup, 1, 0)
+        self.setLayout(grid)
+        self.setWindowTitle('Slicer selection')
+        self.resize(300,200)
+        
+    def OK(self):
+        self.done(1)
+
+    def save(self):
+        option  = self.group.buttons.checkedButton().text()
+        return option
+            
+    def Cancel(self):
+        self.done(0)
+
 
 # Functions for multiprocessing continuum fit and moment computation
 

@@ -19,7 +19,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 from sospex.moments import (SegmentsSelector, SegmentsInteractor, multiFitContinuum,
-                            multiComputeMoments, ContParams, ContFitParams)
+                            multiComputeMoments, ContParams, ContFitParams, SlicerDialog)
 from sospex.graphics import  (NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas,
                        cmDialog, ds9cmap, ScrollMessageBox)
 from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
@@ -145,7 +145,7 @@ class GUI (QMainWindow):
         file.addAction(QAction("Import image",self,shortcut='Ctrl+d',
                                triggered=self.selectDownloadImage))
         cube = file.addMenu("Save cube")
-        cube.addAction(QAction('Trimmed', self, shortcut='',triggered=self.cutCube))
+        cube.addAction(QAction('Trimmed', self, shortcut='',triggered=self.trimCube))
         cube.addAction(QAction('Cropped', self, shortcut='',triggered=self.cropCube))
         cube.addAction(QAction('Continuum subtracted', self, shortcut='',triggered=self.savelCube))
         cube.addAction(QAction('Current status', self, shortcut='',triggered=self.saveMaskedCube))
@@ -156,6 +156,10 @@ class GUI (QMainWindow):
         aperture.addAction(QAction('Import',self,shortcut='',triggered=self.importAperture))
         # View
         view = bar.addMenu("View")
+        slice = view.addMenu("Show slider")
+        slice.addAction(QAction('on channel', self, shortcut='', triggered=self.initializeSlider))
+        slice.addAction(QAction('on slice', self, shortcut='', triggered=self.initializeSlicer))
+        slice.addAction(QAction('no', self, shortcut='', triggered=self.removeSliders))
         self.menuHisto = QAction('Image levels',self,shortcut='',
                                  checkable = True, triggered=self.changeVisibility)
         view.addAction(self.menuHisto)
@@ -204,8 +208,10 @@ class GUI (QMainWindow):
                                     triggered=self.fitContRegion))
         continuum.addAction(QAction('Set continuum to zero ',self,shortcut='',
                                     triggered=self.setContinuumZero))        
+        continuum.addAction(QAction('Set continuum to medians ',self,shortcut='',
+                                    triggered=self.setContinuumMedian))        
         moments = tools.addMenu("Compute moments")
-        moments.addAction(QAction('Define slice',self,shortcut='',triggered=self.sliceCube))
+        # moments.addAction(QAction('Define slice',self,shortcut='',triggered=self.sliceCube))
         moments.addAction(QAction('Compute all cube',self,shortcut='',
                                   triggered=self.computeMomentsAll))
         moments.addAction(QAction('Compute inside region',self,shortcut='',
@@ -310,7 +316,7 @@ class GUI (QMainWindow):
         toolbar.addAction(self.cutAction)
         toolbar.addAction(self.specAction)
         toolbar.addAction(self.guessAction)
-        toolbar.addAction(self.sliceAction)
+        # toolbar.addAction(self.sliceAction)
         toolbar.addAction(self.slideAction)
         toolbar.addSeparator()
         toolbar.addSeparator()
@@ -996,15 +1002,15 @@ class GUI (QMainWindow):
         self.apertureAction = self.createApertureAction()
         self.fitAction = self.createFitAction()
         self.cutAction = self.createAction(os.path.join(self.path0,'icons','cut.png'),
-                                           'Trim cube', 'Ctrl+k',self.cutCube)
+                                           'Trim cube', 'Ctrl+k',self.trimCube)
         self.cropAction = self.createAction(os.path.join(self.path0,'icons','crop.png'),
                                             'Crop the cube', 'Ctrl+K',self.cropCube)
         self.sliceAction = self.createAction(os.path.join(self.path0,'icons','slice.png'),
                                              'Define a slice to compute moments and/or display',
                                              'Ctrl+K',self.sliceCube)
         self.slideAction = self.createAction(os.path.join(self.path0,'icons','slidecube.png'),
-                                             'Display a plane of the cube and show a slider',
-                                             'Ctrl+S',self.initializeSlider)
+                                             'Display a slice of the cube and show a slider',
+                                             'Ctrl+S',self.selectSlider)
         self.maskAction =  self.createAction(os.path.join(self.path0,'icons','eraser.png'),
                                              'Erase a region', '', self.maskCube)
         self.cloudAction = self.createAction(os.path.join(self.path0,'icons','cloud.png'),
@@ -1023,7 +1029,7 @@ class GUI (QMainWindow):
                                                'Resize image horizontally',
                                                'Ctrl+H',self.hresizeSpectrum)
         self.guessAction = self.createAction(os.path.join(self.path0,'icons','guessCont.png'),
-                                             'Draw two continuum segments around line',
+                                             'Define cube fitting parameters',
                                              'Ctrl+g',self.guessContinuum)
         self.fitContAction =self.createAction(os.path.join(self.path0,'icons','fitCont.png'),
                                               'Fit continuum',
@@ -1150,17 +1156,15 @@ class GUI (QMainWindow):
             else:
                 self.positiveContinuum = True
             k1=k5=k9=False
-            if kernel == '1 pixel':
-                self.kernel = 1
+            self.kernel = int(kernel)
+            if kernel == 1:
                 theta = 0.
                 k1= True
-            elif kernel == '5 pixels':
-                self.kernel = 5
+            elif kernel == 5:
                 w0 *= np.sqrt(2.)*1.5 
                 theta = 45.
                 k5 = True
-            elif kernel == '9 pixels':
-                self.kernel = 9
+            elif kernel == 9:
                 w0 *= 2.6
                 theta = 0.
                 k9 = True
@@ -2058,9 +2062,10 @@ class GUI (QMainWindow):
     def newSelectedAperture(self, x0, y0, w, h, selAp):       
         itab = self.itabs.currentIndex()
         ic0 = self.ici[itab]
-        r0,d0 = ic0.wcs.all_pix2world(x0,y0,1)
-        ws = w*ic0.pixscale; hs = h*ic0.pixscale
-        self.drawNewAperture(selAp,r0,d0,ws,hs,0.)
+        r0, d0 = ic0.wcs.all_pix2world(x0, y0, 1)
+        ws = w * ic0.pixscale
+        hs = h * ic0.pixscale
+        self.drawNewAperture(selAp, r0, d0, ws, hs, 0.)
 
     def drawNewAperture(self, selAp, r0, d0, ws, hs, angle):
         """Draw new selected aperture."""
@@ -2068,25 +2073,27 @@ class GUI (QMainWindow):
         if selAp == 'Square':
             self.disactiveSelectors()
             # Define square
-            data = [r0,d0,ws]
-            self.photoApertures.append(photoAperture(n,'square',data))
+            data = [r0, d0, ws]
+            self.photoApertures.append(photoAperture(n, 'square', data))
             for ic in self.ici:
-                x0,y0 = ic.wcs.all_world2pix(r0,d0,1)
-                w = ws/ic.pixscale; h = hs/ic.pixscale
-                square = RectangleInteractor(ic.axes, (x0,y0), w,angle=angle)
+                x0, y0 = ic.wcs.all_world2pix(r0, d0, 1)
+                w = ws / ic.pixscale
+                h = hs / ic.pixscale
+                square = RectangleInteractor(ic.axes, (x0, y0), w, angle=angle)
                 ic.photApertures.append(square)
-                cidap=square.mySignal.connect(self.onRemoveAperture)
+                cidap = square.mySignal.connect(self.onRemoveAperture)
                 ic.photApertureSignal.append(cidap)
                 square.modSignal.connect(self.onModifiedAperture)
         elif selAp == 'Rectangle':
             self.disactiveSelectors()
             # Define rectangle
-            data = [r0,d0,ws,hs]
-            self.photoApertures.append(photoAperture(n,'rectangle',data))
+            data = [r0, d0, ws, hs]
+            self.photoApertures.append(photoAperture(n, 'rectangle', data))
             for ic in self.ici:
-                x0,y0 = ic.wcs.all_world2pix(r0,d0,1)
-                w = ws/ic.pixscale; h = hs/ic.pixscale
-                rectangle = RectangleInteractor(ic.axes, (x0,y0), w, h,angle=angle)
+                x0, y0 = ic.wcs.all_world2pix(r0, d0, 1)
+                w = ws / ic.pixscale
+                h = hs / ic.pixscale
+                rectangle = RectangleInteractor(ic.axes, (x0, y0), w, h, angle=angle)
                 ic.photApertures.append(rectangle)
                 cidap=rectangle.mySignal.connect(self.onRemoveAperture)
                 ic.photApertureSignal.append(cidap)
@@ -2095,12 +2102,13 @@ class GUI (QMainWindow):
         elif selAp == 'Circle':
             self.disactiveSelectors()
             # Define circle
-            data = [r0,d0,ws]
-            self.photoApertures.append(photoAperture(n,'circle',data))
+            data = [r0, d0, ws]
+            self.photoApertures.append(photoAperture(n, 'circle', data))
             for ic in self.ici:
-                x0,y0 = ic.wcs.all_world2pix(r0,d0,1)
-                w = ws/ic.pixscale; h = hs/ic.pixscale
-                circle = EllipseInteractor(ic.axes, (x0,y0), w)
+                x0, y0 = ic.wcs.all_world2pix(r0, d0, 1)
+                w = ws / ic.pixscale
+                h = hs / ic.pixscale
+                circle = EllipseInteractor(ic.axes, (x0, y0), w)
                 ic.photApertures.append(circle)
                 cidap=circle.mySignal.connect(self.onRemoveAperture)
                 ic.photApertureSignal.append(cidap)
@@ -2108,12 +2116,13 @@ class GUI (QMainWindow):
         elif selAp == 'Ellipse':
             self.disactiveSelectors()
             # Define ellipse
-            data = [r0,d0,ws,hs]
-            self.photoApertures.append(photoAperture(n,'ellipse',data))
+            data = [r0, d0, ws, hs]
+            self.photoApertures.append(photoAperture(n, 'ellipse', data))
             for ic in self.ici:
-                x0,y0 = ic.wcs.all_world2pix(r0,d0,1)
-                w = ws/ic.pixscale; h = hs/ic.pixscale
-                ellipse = EllipseInteractor(ic.axes, (x0,y0), w, h,angle=angle)
+                x0, y0 = ic.wcs.all_world2pix(r0, d0, 1)
+                w = ws / ic.pixscale
+                h = hs / ic.pixscale
+                ellipse = EllipseInteractor(ic.axes, (x0, y0), w, h, angle=angle)
                 ic.photApertures.append(ellipse)
                 cidap=ellipse.mySignal.connect(self.onRemoveAperture)
                 ic.photApertureSignal.append(cidap)
@@ -2545,15 +2554,58 @@ class GUI (QMainWindow):
         """ Quitting the program """
         self.close()
 
-    def cutCube(self):  
+    def trimCubeOld(self):  
         """ Trim the cube """
         self.sb.showMessage("Drag the mouse over the slice of the cube to trim ", 2000)
-        self.cutcube = 'on'
+        self.trimcube = 'on'
         istab = self.spectra.index('All')
         self.stabs.setCurrentIndex(istab)
         sc = self.sci[istab]
         #sc.span.set_visible(True)
         sc.span.set_active(True)
+    
+    def trimMessage(self):
+        self.wbox = QMessageBox()
+        self.wbox.setText("How to trim a cube")
+        self.wbox.setInformativeText('* Open slicer in the spectral panel\n\n'+\
+                                '* Adjust the limits to the region of interest\n\n'+\
+                                '* Trim the rest using this command again.')
+        self.wbox.show()
+        
+    def trimCube(self):
+        """Trimming the cube."""
+        if self.slicer is None:
+            # Message to define a slice first
+            self.trimMessage()
+        else:
+            # Find indices of the slice
+            xmin = self.slicer.xl
+            xmax = self.slicer.xr
+            istab = self.stabs.currentIndex()
+            sc = self.sci[istab]
+            if sc.xunit == 'THz':
+                c = 299792458.0  # speed of light in m/s
+                xmin, xmax = c/xmax*1.e-6, c/xmin*1.e-6
+            indmin, indmax = np.searchsorted(self.specCube.wave, (xmin, xmax))
+            indmax = min(len(self.specCube.wave) - 1, indmax)
+            size = indmax-indmin
+            nz, nx, ny = np.shape(self.specCube.flux)
+            if size == nx:
+                self.sb.showMessage("No cutting needed ", 2000)
+            else:
+                flags = QMessageBox.Yes | QMessageBox.No
+                question = "Do you want to trim the cube to the slice selected on the spectrum ?"
+                response = QMessageBox.question(self, "Question", question, flags)            
+            if response == QMessageBox.Yes:
+                self.sb.showMessage("Trimming the cube ", 2000)
+                self.trimCube1D(indmin,indmax)
+                self.saveCube()
+                # Load trimmed cube
+                self.reloadFile()
+            elif QMessageBox.No:
+                self.sb.showMessage("Trimming aborted ", 2000)
+            else:
+                pass
         
     def cropCube(self):
         """ Crop part of the cube """
@@ -2609,7 +2661,7 @@ class GUI (QMainWindow):
         xi,yi = np.meshgrid(xi,yi)
         self.points = np.array([np.ravel(xi),np.ravel(yi)]).transpose()
 
-    def cutCube1D(self,xmin,xmax):
+    def trimCube1D(self,xmin,xmax):
         """ Generate trimmed cube """
         self.specCube.flux = self.specCube.flux[xmin:xmax,:,:]
         self.specCube.wave = self.specCube.wave[xmin:xmax]
@@ -3551,7 +3603,7 @@ class GUI (QMainWindow):
             self.loadFile(filename)
             self.initializeImages()
             self.initializeSpectra()
-            # self.initializeSlider()
+            self.initializeSlider()
             if self.specCube.instrument == 'GREAT':
                 print('compute Exp from Nan')
                 self.specCube.computeExpFromNan
@@ -3581,6 +3633,7 @@ class GUI (QMainWindow):
                     print('compute Exp from Nan')
                     self.specCube.computeExpFromNan
                 self.all = False
+                self.initializeSlider()
             except:
                 print('No spectral cube is defined')
                 pass
@@ -3721,7 +3774,7 @@ class GUI (QMainWindow):
         self.contours = 'off'
         self.blink = 'off'
         self.slice = 'off'
-        self.cutcube = 'off'
+        self.trimcube = 'off'
         self.continuum = None
         self.M0 = None
         self.M1 = None
@@ -3793,17 +3846,87 @@ class GUI (QMainWindow):
         self.slider = None
         self.slicer = None
 
-    def initializeSlider(self):
+    def selectSlider(self):
+        SD = SlicerDialog()
+        if SD.exec_() == QDialog.Accepted:
+            option = SD.save()
+            if option == 'Channel':
+                self.initializeSlider()
+            elif option == 'Cube slice':
+                self.initializeSlicer()
+            elif option == 'None':
+                self.removeSliders()
+            else:
+                pass
+            
+    def removeSliders(self):
         try:
             self.slicer.disconnect()
+            self.slicer = None
         except BaseException:
             pass
-        self.slicer = None
+        try:
+            self.slider.disconnect()
+            self.slider = None
+        except BaseException:
+            pass
+        
+    def initializeSlicer(self):
+        if self.slicer is not None:
+            return
+        # Number or channels on one side
+        ndw = 3
         s = self.specCube
-        # spectrum = self.spectra[1]
+        w0 = s.wave[s.n0]
+        dw = s.wave[s.n0+1]-w0
+        sc = self.sci[self.stabs.currentIndex()]
+        try:
+            x = self.slider.x
+            if sc.xunit == 'THz':
+                c = 299792458.0  # speed of light in m/s
+                w0 = c / x * 1.e-6
+            else:
+                w0 = x            
+            self.slider.disconnect()
+            self.slider = None
+        except BaseException:
+            pass
+        if sc.xunit == 'THz':
+            c = 299792458.0  # speed of light in m/s
+            r = w0/dw
+            w0 = c / w0 * 1.e-6
+            dw = c / dw * 1.e-6 / np.abs(r * r - 0.25)
+        self.slicer = SliceInteractor(sc.axes, w0 - ndw * dw, w0 + ndw * dw)
+        self.slicer.modSignal.connect(self.updateImages)
+        sc.fig.canvas.draw_idle()  
+
+    def initializeSlider(self):
+        s = self.specCube
         sc = self.sci[self.stabs.currentIndex()]
         w0 = s.wave[s.n0]
         dw = s.wave[s.n0+1]-w0
+        try:
+            xm = 0.5 * (self.slicer.xl + self.slicer.xr)
+            if sc.xunit == 'THz':
+                c = 299792458.0  # speed of light in m/s
+                w0 = c / xm * 1.e-6
+            else:
+                w0 = xm
+            self.slicer.disconnect()
+            self.slicer = None
+        except BaseException:
+            pass
+        try:
+            x = self.slider.x
+            if sc.xunit == 'THz':
+                c = 299792458.0  # speed of light in m/s
+                w0 = c / x * 1.e-6
+            else:
+                w0 = x            
+            self.slider.disconnect()
+            self.slider = None
+        except BaseException:
+            pass
         if sc.xunit == 'THz':
             c = 299792458.0  # speed of light in m/s
             r = w0/dw
@@ -3811,8 +3934,6 @@ class GUI (QMainWindow):
             dw = c / dw * 1.e-6 / np.abs(r * r - 0.25)
         self.slider = SliderInteractor(sc.axes, w0, dw)
         self.slider.modSignal.connect(self.slideCube)
-        # if sc.xunit == 'THz':
-        #     self.sliderSwitchUnits()
 
     def slideCube(self, event):
         """Slide over the depth of the cube once the slider moves."""
@@ -3948,7 +4069,7 @@ class GUI (QMainWindow):
             # Update images (flux, uflux, coverage)
             self.updateImages()
             self.slice = 'off'
-        elif self.cutcube == 'on':
+        elif self.trimcube == 'on':
             # Find indices of the shaded region
             sc = self.sci[self.spectra.index('All')]
             if sc.xunit == 'THz':
@@ -3972,7 +4093,7 @@ class GUI (QMainWindow):
                                                 flags)            
                 if response == QMessageBox.Yes:
                     self.sb.showMessage("Trimming the cube ", 2000)
-                    self.cutCube1D(indmin,indmax)
+                    self.trimCube1D(indmin,indmax)
                     self.saveCube()
                     # Load trimmed cube
                     self.reloadFile()
@@ -3980,7 +4101,7 @@ class GUI (QMainWindow):
                     self.sb.showMessage("Trimming aborted ", 2000)
                 else:
                     pass
-            self.cutcube = 'off'
+            self.trimcube = 'off'
             sc.tmpRegion.remove()
             sc.fig.canvas.draw_idle()
 
