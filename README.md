@@ -1,8 +1,6 @@
-# sospex
+# <img alt="SoSpEx" src="sospex/icons/sospexlogo.png" height="100">
 
-## SOFIA SPectrum EXplorer
-
-This code displays FIFI-LS and GREAT spectral cubes and allows interactions with them.
+The sospex code displays FIFI-LS and GREAT spectral cubes and allows interactions with them.
 In particular, the cube is shown as a 2D image (spatial image obtained as
 average along the wavelength dimension) and a spectrum (sum of spatial pixels
 of the original cube).
