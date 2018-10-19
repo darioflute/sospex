@@ -19,7 +19,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 from sospex.moments import (SegmentsSelector, SegmentsInteractor, multiFitContinuum,
-                            multiComputeMoments, ContParams, ContFitParams, SlicerDialog)
+                            multiComputeMoments, ContParams, ContFitParams, SlicerDialog, FitCubeDialog)
 from sospex.graphics import  (NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas,
                        cmDialog, ds9cmap, ScrollMessageBox)
 from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
@@ -77,8 +77,13 @@ class GUI (QMainWindow):
         self.colorMapDirection = '_r'
         self.stretchMap = 'linear'
         self.colorContour = 'cyan'
-        # Set initial state of all spectral tab
+        # Set initial state of all spectral tab (all true is computed)
         self.all = False
+        # Set status of continuum fit (all if continuum defined for the whole cube)
+        self.fitcont = False
+        # Set default number of lines to fit across the cube
+        self.abslines = 0
+        self.emslines = 0
         # Default kernel
         self.kernel = 1
         # Default number of cells
@@ -128,7 +133,7 @@ class GUI (QMainWindow):
         pixmap = QPixmap(os.path.join(self.path0,'icons','sospex.png'))
         self.wbox.setIconPixmap(pixmap)
         self.wbox.setText("Welcome to SOSPEX")
-        self.wbox.setInformativeText('SOFIA Spectrum Explorer\n\n '+\
+        self.wbox.setInformativeText('SOFIA SPectral EXplorer\n\n '+\
                                      '* Click on folder icon to load spectra\n\n'+\
                                      '* Click on running men icon to exit\n\n'+\
                                      '* Click on question mark for further help')
@@ -386,7 +391,7 @@ class GUI (QMainWindow):
         toolbar.addAction(self.fitsAction)
         #toolbar.addAction(self.fitregionAction)
         toolbar.addAction(self.fitContAction)
-        toolbar.addAction(self.compMomAction)
+        # toolbar.addAction(self.compMomAction)
         toolbar.addAction(self.maskAction)
         toolbar.addAction(self.distanceAction)
         toolbar.addSeparator()
@@ -1031,9 +1036,9 @@ class GUI (QMainWindow):
         self.guessAction = self.createAction(os.path.join(self.path0,'icons','guessCont.png'),
                                              'Define cube fitting parameters',
                                              'Ctrl+g',self.guessContinuum)
-        self.fitContAction =self.createAction(os.path.join(self.path0,'icons','fitCont.png'),
-                                              'Fit continuum',
-                                              'Ctrl+g',self.fitCont)
+        self.fitContAction =self.createAction(os.path.join(self.path0,'icons','fit.png'),
+                                              'Fit continuum/moments/lines',
+                                              'Ctrl+g',self.ContMomLines)
         self.compMomAction = self.createAction(os.path.join(self.path0,'icons','computeMoments.png'),
                                                'Compute moments','Ctrl+g',self.chooseComputeMoments)
         self.fitregionAction = self.createAction(os.path.join(self.path0,'icons','fitregion.png'),
@@ -1377,6 +1382,61 @@ class GUI (QMainWindow):
                 ncell = 0
             # Update the guess limits for cell
             sc.xguess[ncell] = x
+            
+    def ContMomLines(self):
+        """Dialog to select fit options for the cube."""
+        print('fit cont is ', self.fitcont)
+        if self.continuum is not None:
+            if self.fitcont:
+                moments = True
+                options = ['No']
+            else:
+                moments = False
+                options = []
+            if self.abslines + self.emslines > 0:
+                lines = True
+            else:
+                lines = False
+            if self.ncells > 1:
+                options.extend(['Fit region', 'Fit all cube', 'Set to zero', 'Set to medians'])
+            else:
+                options.extend(['Fit all cube', 'Set to zero', 'Set to medians'])
+        else:
+            options = ['Set to zero', 'Set to medians']
+            moments = False
+            lines = False
+        FCD = FitCubeDialog(options, moments, lines)
+        if FCD.exec_() == QDialog.Accepted:
+            coption, moption, loption = FCD.save()
+            if coption == 'Fit all cube':
+                self.fitContAll()
+            elif coption == 'Fit region':
+                self.fitContRegion()
+            elif coption == 'Set to medians':
+                self.setContinuumMedian()
+            elif coption == 'Set to zero':
+                self.setContinuumZero()
+            elif coption == 'No':
+                pass
+            if moption is None:
+                pass
+            else:
+                if moption == 'Region':
+                    print('Fit region moments')
+                    pass
+                elif moption == 'All':
+                    print('Fit all moments')
+                    pass
+            if loption is None:
+                pass
+            else:
+                if loption == 'Region':
+                    pass
+                elif loption == 'All':
+                    pass
+        else:
+            message = 'Define a guess for the continuum on the spectrum panel'
+            self.sb.showMessage(message, 4000)
 
     def fitCont(self):
         """Options to fit the continuum."""
@@ -1413,6 +1473,7 @@ class GUI (QMainWindow):
         self.continuum[:]=0.
         self.C0[:]=0.
         self.refreshContinuum()
+        self.fitCont = True
         
     def getContinuumGuess(self, ncell=None):
         sc = self.sci[self.spectra.index('Pix')]
@@ -1463,7 +1524,8 @@ class GUI (QMainWindow):
                     self.C0[j, i] = np.nanmedian((self.specCube.flux[:, j, i])[mask,:], axis=0)                   
         self.continuum = np.broadcast_to(self.C0, np.shape(self.specCube.flux))
         self.refreshContinuum()
-        
+        self.fitcont = True
+  
     def refreshContinuum(self):
         """Refresh the plotted image of the continuuum."""
         itab = self.bands.index('C0')
@@ -1706,6 +1768,8 @@ class GUI (QMainWindow):
         self.continuumMask(points)
         # Fit
         self.fitContinuum(points)
+        # Set flag
+        self.fitcont = True
 
     def continuumMask(self, points):
         # Update masks
@@ -3608,6 +3672,10 @@ class GUI (QMainWindow):
                 print('compute Exp from Nan')
                 self.specCube.computeExpFromNan
             self.all = False
+            self.fitcont = False
+            # Set default number of lines to fit across the cube
+            self.abslines = 0
+            self.emslines = 0
         except:
             self.sb.showMessage("ERROR: You have to load a file first", 2000)
             return
@@ -3633,6 +3701,10 @@ class GUI (QMainWindow):
                     print('compute Exp from Nan')
                     self.specCube.computeExpFromNan
                 self.all = False
+                self.fitcont = False
+                # Set default number of lines to fit across the cube
+                self.abslines = 0
+                self.emslines = 0
                 self.initializeSlider()
             except:
                 print('No spectral cube is defined')

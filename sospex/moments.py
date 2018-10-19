@@ -532,6 +532,100 @@ class ContFitParams(QDialog):
     def Cancel(self):
         self.done(0)
         
+class FitCubeDialog(QDialog):
+    """Dialog to fit the cube."""
+    
+    def __init__(self, options, moments=False, lines=False, parent=None):
+        super().__init__(parent)
+        self.options = options
+        self.moments = moments
+        self.lines = lines
+        self.setupUI()
+
+    def setupUI(self):        
+        hgroup = QGroupBox()
+        grid = QGridLayout()
+        # OK/Cancel box
+        hbox = QHBoxLayout()
+        self.button1 = QPushButton("OK")
+        self.button1.clicked.connect(self.OK)
+        self.button2 = QPushButton("Cancel")
+        self.button2.clicked.connect(self.Cancel)
+        hbox.addWidget(self.button1) 
+        hbox.addWidget(self.button2)
+        hgroup.setLayout(hbox)  
+        # Continuum (should be connected to alter other two boxes)
+        self.continuum = self.createGroup('Continuum', self.options)
+        ibox = 0
+        vsize = 200
+        grid.addWidget(self.continuum, ibox, 0)
+        # Moments (should be connected to alter other two boxes)
+        if self.moments:
+            ibox += 1
+            if 'Fit region' in set(self.options):
+                self.momentsbox = self.createGroup('Moments', ['No','Region','All'])
+            else:
+                self.momentsbox = self.createGroup('Moments', ['No','All'])                
+            grid.addWidget(self.momentsbox, ibox, 0)
+            vsize += 50
+        # Lines (should be connected to alter other two boxes)
+        if self.lines:
+            ibox += 1
+            if 'Fit region' in set(self.options):
+                self.linesbox = self.createGroup('Lines', ['No','Region','All'])
+            else:
+                 self.linesbox = self.createGroup('Lines', ['No','All'])               
+            grid.addWidget(self.linesbox, ibox, 0)
+            vsize += 50
+        ibox += 1 
+        grid.addWidget(hgroup, ibox, 0)
+        self.setLayout(grid)
+        self.setWindowTitle('Fitting the continuum')
+        self.resize(400,vsize)
+
+    def createGroup(self, title, items, default=0):    
+        """ creates a group of radio buttons  """
+        group = QGroupBox(title)
+        group.buttons = QButtonGroup()
+        vbox = QVBoxLayout()
+        buttons = []
+        i = 0
+        for item in items:
+            buttons.append(QRadioButton(item))
+            group.buttons.addButton(buttons[-1], i)
+            vbox.addWidget(buttons[-1])
+            i += 1
+        vbox.addStretch(1)
+        # Set 1st option as default
+        buttons[default].setChecked(True)
+        group.setLayout(vbox)
+        return group
+
+    def OK(self):
+        self.done(1)
+
+    def save(self):
+        continuum  = self.continuum.buttons.checkedButton().text()
+        if self.moments:
+            moments  = self.momentsbox.buttons.checkedButton().text()
+            if moments != 'No':
+                continuum = 'No'
+        else:
+            moments = None
+        if self.lines:
+            lines = self.linesbox.buttons.checkedButton().text()
+            if lines != 'No':
+                continuum = 'No'
+                moments = 'No'
+        else:
+            lines = None
+        if lines is not None and moments is not None:
+            if moments != 'No':
+                lines = 'No'
+        return continuum, moments, lines
+            
+    def Cancel(self):
+        self.done(0)
 
 class SlicerDialog(QDialog):
     """Dialog window to define type of slicer."""
