@@ -1389,7 +1389,7 @@ class GUI (QMainWindow):
         if self.continuum is not None:
             if self.fitcont:
                 moments = True
-                options = ['No']
+                options = []
             else:
                 moments = False
                 options = []
@@ -1474,12 +1474,12 @@ class GUI (QMainWindow):
         self.C0[:]=0.
         self.refreshContinuum()
         self.fitCont = True
-        
+
     def getContinuumGuess(self, ncell=None):
         sc = self.sci[self.spectra.index('Pix')]
         if sc.guess is None:
             return None, None, None, None  
-        elif self.ncells < 1:
+        elif self.ncells == 1:
             # guess values for the continuum in wavelength
             xy = sc.guess.xy
             xg,yg = zip(*xy)
@@ -1499,15 +1499,16 @@ class GUI (QMainWindow):
         i2 = np.argmin(np.abs(self.specCube.wave-xg[2]))
         i3 = np.argmin(np.abs(self.specCube.wave-xg[3]))
         return i0, i1, i2, i3
-        
+
     def setContinuumMedian(self):
         """Compute continuum by using the median signal per pixel."""
         self.openContinuumTab()
         sc = self.sci[self.spectra.index('Pix')]
+        print('ncells ', self.ncells)
         if sc.guess is None:
             self.C0 = np.nanmedian(self.specCube.flux, axis=0)
         else:
-            if self.ncells < 1:
+            if self.ncells == 1:
                 i0, i1, i2, i3 = self.getContinuumGuess()
                 mask = np.zeros(len(self.specCube.flux), dtype=bool)
                 mask[i0:i1] = True
@@ -1525,7 +1526,7 @@ class GUI (QMainWindow):
         self.continuum = np.broadcast_to(self.C0, np.shape(self.specCube.flux))
         self.refreshContinuum()
         self.fitcont = True
-  
+
     def refreshContinuum(self):
         """Refresh the plotted image of the continuuum."""
         itab = self.bands.index('C0')

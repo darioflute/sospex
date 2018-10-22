@@ -1,7 +1,7 @@
 import numpy as np
 from PyQt5.QtCore import pyqtSignal,QObject
 from PyQt5.QtWidgets import (QDialog, QPushButton, QGroupBox, QHBoxLayout, QVBoxLayout,
-                             QGridLayout, QRadioButton, QButtonGroup, QLabel)
+                             QGridLayout, QRadioButton, QButtonGroup, QLabel, QCheckBox)
 from matplotlib.lines import Line2D
 from matplotlib.artist import Artist
 import matplotlib.transforms as transforms
@@ -554,34 +554,78 @@ class FitCubeDialog(QDialog):
         hbox.addWidget(self.button1) 
         hbox.addWidget(self.button2)
         hgroup.setLayout(hbox)  
-        # Continuum (should be connected to alter other two boxes)
-        self.continuum = self.createGroup('Continuum', self.options)
         ibox = 0
         vsize = 200
+        if self.moments | self.lines:
+            self.continuum = self.createGroup('', self.options)
+            # Check buttons
+            checkbuttons = QButtonGroup(self)
+            # Continuum (should be connected to alter other two boxes)
+            self.checkcontinuum = QCheckBox('Continuum')
+            self.continuum.setEnabled(False)
+            checkbuttons.addButton(self.checkcontinuum)
+            self.checkcontinuum.stateChanged.connect(self.toggleCGroupBox)
+            grid.addWidget(self.checkcontinuum, ibox, 0)
+            ibox += 1
+        else:
+            self.continuum = self.createGroup('Continuum', self.options)
         grid.addWidget(self.continuum, ibox, 0)
+        
         # Moments (should be connected to alter other two boxes)
         if self.moments:
             ibox += 1
             if 'Fit region' in set(self.options):
-                self.momentsbox = self.createGroup('Moments', ['No','Region','All'])
+                self.momentsbox = self.createGroup('', ['Region','All'])
             else:
-                self.momentsbox = self.createGroup('Moments', ['No','All'])                
+                self.momentsbox = self.createGroup('', ['All'])   
+            self.cbmoments = QCheckBox("Moments")
+            checkbuttons.addButton(self.cbmoments)
+            self.momentsbox.setEnabled(False)
+            self.cbmoments.stateChanged.connect(self.toggleMGroupBox)
+            grid.addWidget(self.cbmoments, ibox, 0)
+            ibox +=1
             grid.addWidget(self.momentsbox, ibox, 0)
             vsize += 50
         # Lines (should be connected to alter other two boxes)
         if self.lines:
             ibox += 1
             if 'Fit region' in set(self.options):
-                self.linesbox = self.createGroup('Lines', ['No','Region','All'])
+                self.linesbox = self.createGroup('Lines', ['Region','All'])
             else:
-                 self.linesbox = self.createGroup('Lines', ['No','All'])               
+                 self.linesbox = self.createGroup('Lines', ['All'])               
+            self.linesbox.setEnabled(False)
+            self.cblines = QCheckBox("Set active")
+            checkbuttons.addButton(self.cblines)
+            grid.addWidget(self.cblines, ibox,0)
+            ibox +=1
             grid.addWidget(self.linesbox, ibox, 0)
             vsize += 50
+            self.cblines.stateChanged.connect(self.toggleGroupBox)
         ibox += 1 
         grid.addWidget(hgroup, ibox, 0)
         self.setLayout(grid)
         self.setWindowTitle('Fitting the continuum')
         self.resize(400,vsize)
+        
+
+    def toggleGroupBox(self, state):
+        if state > 0:
+            self.linesbox.setEnabled(True)
+        else:
+            self.linesbox.setEnabled(False)
+            
+    def toggleMGroupBox(self, state):
+        if state > 0:
+            self.momentsbox.setEnabled(True)
+        else:
+            self.momentsbox.setEnabled(False)
+            
+    def toggleCGroupBox(self, state):
+        if state > 0:
+            self.continuum.setEnabled(True)
+        else:
+            self.continuum.setEnabled(False)
+        
 
     def createGroup(self, title, items, default=0):    
         """ creates a group of radio buttons  """
