@@ -637,8 +637,16 @@ class GUI (QMainWindow):
 
     def onRemoveContinuum(self, event):
         sc = self.sci[self.spectra.index('Pix')]
-        sc.guess.disconnect()
-        sc.guess = None
+        if event[:-2] == 'line deleted':
+            n = int(event[-2:])
+            sc.lines[n].disconnect
+            # TODO update guesses !!! TODO
+        else:
+            sc.guess.disconnect()
+            sc.guess = None
+            if sc.lines is not None:
+                for line in sc.lines:
+                    line.disconnect()
         sc.fig.canvas.draw_idle()
 
     def onRemoveAperture(self,event):
@@ -1362,13 +1370,15 @@ class GUI (QMainWindow):
         sc.guess = SI
         # Add lines
         if self.emslines > 0:
-            sc.emslines = self.addLines(self.emslines, x, 'emission')
+            sc.lines = self.addLines(self.emslines, x, 'emission')
         else:
-            sc.emslines = []
+            sc.lines = []
         if self.abslines > 0:
-            sc.abslines = self.addLines(self.abslines, x, 'absorption')
-        else:
-            sc.abslines = []
+            sc.lines.append(self.addLines(self.abslines, x, 'absorption', self.emslines))
+        if self.emslines + self.abslines > 0:
+            sc.lguess = []
+            for line in sc.lines:
+                sc.lguess.append([[line.x0, line.fwhm, line.A]] * self.ncells)        
         # Generate a list of limits connected to each Voronoi cell
         xg,yg = zip(*sc.guess.xy)
         sc.xguess = [xg] * self.ncells
@@ -1378,45 +1388,61 @@ class GUI (QMainWindow):
             sc.setLinesVisibility(sc.displayLines)
             sc.fig.canvas.draw_idle()
             
-    def addLines(self, n, x, type):
-        # TODO
-        # Modify this and update onModifiedGuess and onRemoveContinuum
+    def addLines(self, n, x, type, nstart=0):
         lines = []
         istab = self.stabs.currentIndex()
         sc = self.sci[istab]
+        nid = nstart
         for i in range(n):
             dx = (x[2] - x[1]) / (2 * n)
             x0 = x[1] + dx + i * 2 * dx
             fwhm = dx
-            idx = (sc.wave > (x0 - dx)) & (sc.wave < (x0 + dx))
+            idx = (sc.x > (x0 - dx)) & (sc.x < (x0 + dx))
             if type == 'emission':
-                A = np.nanmax(sc.flux[idx]) - sc.guess.intcpt - sc.guess.slope * x0
+                A = np.nanmax(sc.spectrum.flux[idx]) - sc.guess.intcpt - sc.guess.slope * x0
             else:
-                A = np.nanmin(sc.flux[idx]) - sc.guess.intcpt - sc.guess.slope * x0
-            LI = LineInteractor(sc.axes, sc.guess.intcpt,
-                                sc.guess.slope, x0, A, fwhm)
+                A = np.nanmin(sc.spectrum.flux[idx]) - sc.guess.intcpt - sc.guess.slope * x0
+            LI = LineInteractor(sc.axes, sc.guess.intcpt, sc.guess.slope, x0, A, fwhm, nid)
             LI.modSignal.connect(self.onModifiedGuess)
             LI.mySignal.connect(self.onRemoveContinuum)
             lines.append(LI)
+            nid += 1
         return lines
 
     def onModifiedGuess(self, event):
         """Pass modification to the xguess limits of the Voronoi cell."""
         istab = self.stabs.currentIndex()
         if istab == 1:
-            # Grab new values 
-            sc = self.sci[istab]
-            x, y = zip(*sc.guess.xy)
-            # Identify cursor position of pixel-aperture on image
-            aperture = self.ici[0].photApertures[0].aperture
-            xc, yc = aperture.xy
-            if self.ncells > 1:
-                ncell = self.regions[int(yc), int(xc)]
-            else:
-                ncell = 0
-            # Update the guess limits for cell
-            sc.xguess[ncell] = x
-            
+            if event == 'continuum guess modified':
+                # Grab new values 
+                sc = self.sci[istab]
+                x, y = zip(*sc.guess.xy)
+                # Identify cursor position of pixel-aperture on image
+                aperture = self.ici[0].photApertures[0].aperture
+                xc, yc = aperture.xy
+                if self.ncells > 1:
+                    ncell = self.regions[int(yc), int(xc)]
+                else:
+                    ncell = 0
+                # Update the guess limits for cell
+                sc.xguess[ncell] = x
+            elif event[:-2] == 'line guess modified':
+                # print('Modified line ', event[-2:])
+                # Grab new values 
+                sc = self.sci[istab]
+                # Identify cursor position of pixel-aperture on image
+                aperture = self.ici[0].photApertures[0].aperture
+                xc, yc = aperture.xy
+                if self.ncells > 1:
+                    ncell = self.regions[int(yc), int(xc)]
+                else:
+                    ncell = 0
+                # N line
+                nline = int(event[-2:])
+                line = sc.lines[nline]
+                sc.lguess[nline][ncell] = [line.x0, line.fwhm, line.A]
+                print("Line ", nline,' guess modified to: ', [line.x0, line.fwhm, line.A])
+
     def ContMomLines(self):
         """Dialog to select fit options for the cube."""
         print('fit cont is ', self.fitcont)
@@ -3766,6 +3792,8 @@ class GUI (QMainWindow):
             # Set default number of lines to fit across the cube
             self.abslines = 0
             self.emslines = 0
+            # Default to one region
+            self.ncells = 1
         except:
             self.sb.showMessage("ERROR: You have to load a file first", 2000)
             return

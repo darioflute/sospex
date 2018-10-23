@@ -55,7 +55,7 @@ class PixelInteractor(QObject):
         self.angle  = angle
         self.width  = width
         self.height = width
-        print('corner is ', corner)
+        # print('corner is ', corner)
         self.rect = Rectangle(corner,width,height,edgecolor='Lime',facecolor='none',angle=angle,fill=False,animated=True)
         self.ax.add_patch(self.rect)
         self.canvas = self.rect.figure.canvas

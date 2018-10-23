@@ -762,6 +762,7 @@ class SpectrumCanvas(MplCanvas):
         self.dred = None
         self.region = None
         self.guess = None
+        self.lines = None
         self.dragged = None
         
     def compute_initial_spectrum(self, spectrum=None,xmin=None,xmax=None):
@@ -1097,9 +1098,36 @@ class SpectrumCanvas(MplCanvas):
                        mask = ((self.x > x[0]) & (self.x < x[1])) | ((self.x > x[2]) & (self.x < x[3]))                        
                     med = np.nanmedian(f[mask])
                     ymed = np.nanmedian(y)
-                    y += med - ymed
+                    dy = med - ymed
+                    y += dy
                     g.xy = [(i,j) for (i,j) in zip(x,y)]
                     g.updateLinesMarkers()
+                    yc = np.nanmedian(y)
+                    # Update line guesses
+                    try:
+                        if len(self.lines) > 0:
+                            for line in self.lines:
+                                gg = self.lguess[line.n][ncell]
+                                # gg = guess[ncell]
+                                line.c0 += dy #  Update continuum
+                                line.x0 = gg[0]
+                                line.fwhm = gg[1]
+                                indmin = np.nanargmin(np.abs(self.x-line.x0))
+                                A = f[indmin]-yc
+                                if line.A > 0:
+                                    if A > 0:
+                                        line.A = A
+                                    else:
+                                        line.A = 0.01
+                                else:
+                                    if A < 0:
+                                        line.A = A
+                                    else:
+                                        line.A = -0.01
+                                # line.A = gg[2]
+                                line.updateCurves()
+                    except BaseException:
+                        pass
             if moments is not None:
                 # Update position, size, and dispersion from moments
                 x = moments[1]; y = np.nanmedian(cont)

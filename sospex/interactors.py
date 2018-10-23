@@ -75,7 +75,7 @@ class SliderInteractor(QObject):
 
     def button_press_callback(self, event):
         'whenever a mouse button is pressed'
-        print('event ', event.inaxes, event.button)
+        # print('event ', event.inaxes, event.button)
         if event.inaxes is None:
             return
         if event.button != 1:
@@ -688,11 +688,12 @@ class LineInteractor(QObject):
     mySignal = pyqtSignal(str)
     modSignal = pyqtSignal(str)
 
-    def __init__(self, ax, c0, cs, x0, A, fwhm, epsilon=10):
+    def __init__(self, ax, c0, cs, x0, A, fwhm, n, epsilon=10):
         super().__init__()
         # To avoid crashing with maximum recursion depth exceeded
         sys.setrecursionlimit(10000)  # 10000 is 10x the default value
         self.epsilon = epsilon
+        self.n = n  # ID of the line
         self.ax = ax
         self.fig = ax.figure
         self.canvas = ax.figure.canvas
@@ -711,6 +712,7 @@ class LineInteractor(QObject):
         self.line = Line2D(x, y, marker='o', linestyle=None, linewidth=0.,
                            markerfacecolor=color, animated=True)
         self.ax.add_line(self.line)
+        self.artists = [self.line, self.gauss]
         self._ind = None  # the active vert
         self.connect()
 
@@ -798,7 +800,7 @@ class LineInteractor(QObject):
             if not self.showverts:
                 self._ind = None
         elif event.key == 'd':
-            self.mySignal.emit('line deleted')
+            self.mySignal.emit('line deleted ' + str(self.n))
         self.canvas.draw_idle()
 
     def button_press_callback(self, event):
@@ -851,17 +853,25 @@ class LineInteractor(QObject):
             if x_ > x[1]:
                 self.fwhm = 2 * (x_ - x[1])
         self.updateCurves()
+        self.redraw()
         # Notify callback
-        self.modSignal.emit('line guess modified')
+        self.modSignal.emit('line guess modified ' + str(self.n))
 
     def updateCurves(self):
         self.computeGaussian()
         self.computeMarkers()
-        self.canvas.restore_region(self.background)
+        #self.canvas.restore_region(self.background)
         self.line.set_data(zip(*self.xy))
         self.gauss.xy = self.verts
-        self.ax.draw_artist(self.line)
-        self.ax.draw_artist(self.gauss)
+        #self.ax.draw_artist(self.line)
+        #self.ax.draw_artist(self.gauss)
+        #self.canvas.update()
+        #self.canvas.flush_events()
+        # self.canvas.draw_idle()
+        
+    def redraw(self):
+        self.canvas.restore_region(self.background)
+        for artist in self.artists:
+            self.ax.draw_artist(artist)
         self.canvas.update()
         self.canvas.flush_events()
-        # self.canvas.draw_idle()
