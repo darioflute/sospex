@@ -25,7 +25,8 @@ from sospex.graphics import  (NavigationToolbar, ImageCanvas, ImageHistoCanvas, 
 from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
 from sospex.specobj import specCube, Spectrum, ExtSpectrum
 from sospex.cloud import cloudImage
-from sospex.interactors import SliderInteractor, SliceInteractor, DistanceSelector, VoronoiInteractor
+from sospex.interactors import (SliderInteractor, SliceInteractor, DistanceSelector,
+                                VoronoiInteractor, LineInteractor)
 
 
 class UpdateTabs(QObject):
@@ -1151,7 +1152,7 @@ class GUI (QMainWindow):
         w0 = ic0.pixscale
         self.CP = ContParams(self.kernel)
         if self.CP.exec_() == QDialog.Accepted:
-            function, boundary, kernel, regions = self.CP.save()
+            function, boundary, kernel, regions, emlines, ablines = self.CP.save()
             if function == 'Constant':
                 self.zeroDeg = True
             else:
@@ -1182,6 +1183,8 @@ class GUI (QMainWindow):
             self.kernel9.setChecked(k9)
             self.ncells = int(regions)   # Number of Voronoi cells
             print('selected ', self.ncells, ' regions')
+            self.abslines = int(ablines)  # Number of absorption lines
+            self.emslines = int(emlines)  # Number of emission lines
             # Create sites
             nx = self.specCube.nx
             ny = self.specCube.ny
@@ -1357,6 +1360,15 @@ class GUI (QMainWindow):
         SI.modSignal.connect(self.onModifiedGuess)
         SI.mySignal.connect(self.onRemoveContinuum)
         sc.guess = SI
+        # Add lines
+        if self.emslines > 0:
+            sc.emslines = self.addLines(self.emslines, x, 'emission')
+        else:
+            sc.emslines = []
+        if self.abslines > 0:
+            sc.abslines = self.addLines(self.abslines, x, 'absorption')
+        else:
+            sc.abslines = []
         # Generate a list of limits connected to each Voronoi cell
         xg,yg = zip(*sc.guess.xy)
         sc.xguess = [xg] * self.ncells
@@ -1365,6 +1377,28 @@ class GUI (QMainWindow):
             sc.displayLines = True
             sc.setLinesVisibility(sc.displayLines)
             sc.fig.canvas.draw_idle()
+            
+    def addLines(self, n, x, type):
+        # TODO
+        # Modify this and update onModifiedGuess and onRemoveContinuum
+        lines = []
+        istab = self.stabs.currentIndex()
+        sc = self.sci[istab]
+        for i in range(n):
+            dx = (x[2] - x[1]) / (2 * n)
+            x0 = x[1] + dx + i * 2 * dx
+            fwhm = dx
+            idx = (sc.wave > (x0 - dx)) & (sc.wave < (x0 + dx))
+            if type == 'emission':
+                A = np.nanmax(sc.flux[idx]) - sc.guess.intcpt - sc.guess.slope * x0
+            else:
+                A = np.nanmin(sc.flux[idx]) - sc.guess.intcpt - sc.guess.slope * x0
+            LI = LineInteractor(sc.axes, sc.guess.intcpt,
+                                sc.guess.slope, x0, A, fwhm)
+            LI.modSignal.connect(self.onModifiedGuess)
+            LI.mySignal.connect(self.onRemoveContinuum)
+            lines.append(LI)
+        return lines
 
     def onModifiedGuess(self, event):
         """Pass modification to the xguess limits of the Voronoi cell."""
@@ -1394,7 +1428,10 @@ class GUI (QMainWindow):
                 moments = False
                 options = []
             if self.abslines + self.emslines > 0:
-                lines = True
+                if self.fitcont:
+                    lines = True
+                else:
+                    lines = False
             else:
                 lines = False
             if self.ncells > 1:
@@ -1408,25 +1445,26 @@ class GUI (QMainWindow):
         FCD = FitCubeDialog(options, moments, lines)
         if FCD.exec_() == QDialog.Accepted:
             coption, moption, loption = FCD.save()
-            if coption == 'Fit all cube':
-                self.fitContAll()
-            elif coption == 'Fit region':
-                self.fitContRegion()
-            elif coption == 'Set to medians':
-                self.setContinuumMedian()
-            elif coption == 'Set to zero':
-                self.setContinuumZero()
-            elif coption == 'No':
+            if coption is None:
                 pass
+            else:
+                if coption == 'Fit all cube':
+                    self.fitContAll()
+                elif coption == 'Fit region':
+                    self.fitContRegion()
+                elif coption == 'Set to medians':
+                    self.setContinuumMedian()
+                elif coption == 'Set to zero':
+                    self.setContinuumZero()
             if moption is None:
                 pass
             else:
                 if moption == 'Region':
-                    print('Fit region moments')
-                    pass
+                    print('Compute region moments')
+                    self.computeMomentsRegion()
                 elif moption == 'All':
-                    print('Fit all moments')
-                    pass
+                    print('Compute all cube moments')
+                    self.computeMomentsAll()
             if loption is None:
                 pass
             else:
@@ -1726,9 +1764,9 @@ class GUI (QMainWindow):
     def fitContRegion(self):
         """Fit continuum inside region occupied by the cursor."""
         # position of the cursor
-        aperture = self.ici[0].photApertures[0].aperture
-        xc, yc = aperture.xy
         if self.ncells > 1:
+            aperture = self.ici[0].photApertures[0].aperture
+            xc, yc = aperture.xy
             ncell = self.regions[int(yc), int(xc)]
             exp = np.nansum(self.specCube.exposure, axis=0)
             mask = (self.regions == ncell) & (exp > 0)
@@ -1738,13 +1776,13 @@ class GUI (QMainWindow):
             mask[:, -1] = False
             yi, xi = np.where(mask == True)
             points = np.c_[xi, yi]
+            # Create the mask for the continuum
+            self.continuumMask(points)
+            # Execute the fit
+            self.fitContinuum(points)
         else:
             print('There are no defined regions')
             return
-        # Create the mask for the continuum
-        self.continuumMask(points)
-        # Execute the fit
-        self.fitContinuum(points)
 
     def fitContAll(self):
         """Fit continuum all over the cube."""
@@ -1847,6 +1885,8 @@ class GUI (QMainWindow):
         points = np.array([np.ravel(xi),np.ravel(yi)]).transpose()
         # Define moments
         self.defineMoments()
+        # Compute moment mask
+        self.momentsMask(points)
         # Compute moments
         self.computeMoments(points)
 
@@ -1883,7 +1923,7 @@ class GUI (QMainWindow):
                     else:
                         ic.changed = True
 
-    def computeMomentsRegion(self, eclick, erelease):
+    def computeMomentsRegionOld(self, eclick, erelease):
         """Compute moments in a defined region."""
         # Select points in the region
         points = self.onFitRect(eclick,erelease)
@@ -1891,29 +1931,75 @@ class GUI (QMainWindow):
         self.defineMoments()
         # Compute moments
         self.computeMoments(points)
+        
+    def computeMomentsRegion(self):
+        """Fit continuum inside region occupied by the cursor."""
+        # position of the cursor
+        if self.ncells > 1:
+            aperture = self.ici[0].photApertures[0].aperture
+            xc, yc = aperture.xy
+            ncell = self.regions[int(yc), int(xc)]
+            print('region is ', ncell)
+            exp = np.nansum(self.specCube.exposure, axis=0)
+            mask = (self.regions == ncell) & (exp > 0)
+            mask[0, :] = False
+            mask[-1, :] = False
+            mask[:, 0] = False
+            mask[:, -1] = False
+            print('region has ',np.sum(mask),' points')
+            yi, xi = np.where(mask == True)
+            points = np.c_[xi, yi]
+            print('Points defined ... for computing moments, points: ', np.shape(points))
+            # Define moments
+            self.defineMoments()
+            # Compute moment mask
+            self.momentsMask(points)
+            # Compute moments inside the region
+            self.computeMoments(points)
+        else:
+            print('There are no defined regions')
+            return
+
+    def momentsMask(self, points):
+        # Update masks
+        if self.ncells < 1:
+            i0, i1, i2, i3 = self.getContinuumGuess()
+            for p in points:
+                i, j = p
+                self.Mmask[:,j,i] = 0
+                self.Mmask[i1:i2,j,i] = 1
+        else:
+            for p in points:
+                i, j = p
+                ncell = self.regions[j, i]
+                i0, i1, i2, i3 = self.getContinuumGuess(ncell)
+                self.Mmask[:,j,i] = 0
+                self.Mmask[i1:i2,j,i] = 1
+        print('Moment mask computed')
+        # Eventually apply smoothing on the borders of the xguess map to avoid sudden change of continuum
 
     def computeMoments(self, points):
         """Compute moments and velocities."""
         # Update moments mask (from shaded region on Pix tab)
-        sc = self.sci[self.spectra.index('Pix')]
-        x0,x1 = sc.regionlimits
-        i0 = np.argmin(np.abs(self.specCube.wave-x0))
-        i1 = np.argmin(np.abs(self.specCube.wave-x1))
-        for p in points:
-            i,j = p
-            self.Mmask[:,j,i] = 0
-            self.Mmask[i0:i1,j,i] = 1
+        #sc = self.sci[self.spectra.index('Pix')]
+        #x0, x1 = sc.regionlimits
+        #i0 = np.argmin(np.abs(self.specCube.wave - x0))
+        #i1 = np.argmin(np.abs(self.specCube.wave - x1))
+        #for p in points:
+        #    i, j = p
+        #    self.Mmask[:, j, i] = 0
+        #    self.Mmask[i0:i1, j, i] = 1
         # Compute moments
         m = self.Mmask
         moments = [self.M0, self.M1, self.M2, self.M3, self.M4]
         f = self.specCube.flux
         w = self.specCube.wave
         c = self.continuum
-        moments, self.noise = multiComputeMoments(m,w,f,c,moments,points)
+        moments, self.noise = multiComputeMoments(m, w, f, c, moments,points)
         self.M0, self.M1, self.M2, self.M3, self.M4 = moments
         # Refresh the plotted images
-        bands = ['M0','M1','M2','M3','M4']
-        sbands = [self.M0, self.M1, self.M2,self.M3,self.M4]
+        bands = ['M0', 'M1', 'M2', 'M3', 'M4']
+        sbands = [self.M0, self.M1, self.M2, self.M3, self.M4]
         for b,sb in zip(bands,sbands):
             itab = self.bands.index(b)
             ic = self.ici[itab]
@@ -1927,7 +2013,7 @@ class GUI (QMainWindow):
             else:
                 ic.image.format_cursor_data = lambda z: "{:.2e} ".format(float(z))
             ih = self.ihi[itab]
-            ih.compute_initial_figure(image = sb)
+            ih.compute_initial_figure(image=sb)
             self.addContours(ic)
             ic.image.set_clim(ih.limits)
             # Adopt same limits as flux image
@@ -1945,8 +2031,8 @@ class GUI (QMainWindow):
         ic = self.ici[0]
         xc,yc = ic.photApertures[0].xy[0]
         i = int(np.rint(xc)); j = int(np.rint(yc))
-        moments = [self.M0[j,i],self.M1[j,i],self.M2[j,i],self.M3[j,i],self.M4[j,i]]
-        sc.updateSpectrum(cont=self.continuum[:,j,i], moments=moments, noise=self.noise[j,i])
+        moments = [self.M0[j, i], self.M1[j, i], self.M2[j, i], self.M3[j, i], self.M4[j, i]]
+        sc.updateSpectrum(cont=self.continuum[:, j, i], moments=moments, noise=self.noise[j, i])
         sc.fig.canvas.draw_idle()
         # Compute Velocities
         self.computeVelocities()
@@ -2423,17 +2509,20 @@ class GUI (QMainWindow):
     def newImageTab(self, downloadedImage):
         """Open  a tab and display the new image."""
         image = downloadedImage.data
-        # Put to NaN values of mode if this is more common than 10%
-        ima = image.ravel()
-        (_, idx, counts) = np.unique(ima, return_index=True, return_counts=True)
-        index = idx[np.argmax(counts)]
-        mode = ima[index]
-        m0 = image == mode
-        n0 = np.sum(m0)
-        nx, ny = np.shape(image)
-        p0 = n0 / (nx * ny)
-        if p0 > 0.1:
-            image[m0] = np.nan
+        if np.issubdtype(image[0,0], int):
+            print('Image contains integers')
+        else:
+            # Put to NaN values of mode if this is more common than 10%
+            ima = image.ravel()
+            (_, idx, counts) = np.unique(ima, return_index=True, return_counts=True)
+            index = idx[np.argmax(counts)]
+            mode = ima[index]
+            m0 = image == mode
+            n0 = np.sum(m0)
+            nx, ny = np.shape(image)
+            p0 = n0 / (nx * ny)
+            if (p0 > 0.1):
+                image[m0] = np.nan
         mask = np.isfinite(image)
         if np.sum(mask) == 0:
             self.sb.showMessage("The selected survey does not cover the displayed image", 2000)
@@ -2458,7 +2547,7 @@ class GUI (QMainWindow):
             ih.compute_initial_figure(image=image)
             ic.image.set_clim(ih.limits)
             ic.changed = True
-           # Check rotation angle
+            # Check rotation angle
             # Align with spectral cube
             ic0 = self.ici[0]
             x = ic0.axes.get_xlim()

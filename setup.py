@@ -36,6 +36,7 @@ config = {
                 "Operating System :: OS Independent",
                 "Intended Audience :: Science/Research", 
                 "Development Status :: 4 - Beta",
+                "Topic :: Scientific/Engineering :: Visualization",
                 ],
      }
 

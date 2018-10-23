@@ -477,7 +477,9 @@ class ContParams(QDialog):
         boundary  = self.boundary.buttons.checkedButton().text()
         kernel    = self.kernel.buttons.checkedButton().text()
         regions   = self.regions.buttons.checkedButton().text()
-        return function, boundary, kernel, regions
+        emlines   = self.emlines.buttons.checkedButton().text()
+        ablines   = self.ablines.buttons.checkedButton().text()
+        return function, boundary, kernel, regions, emlines, ablines
             
     def Cancel(self):
         self.done(0)
@@ -556,11 +558,11 @@ class FitCubeDialog(QDialog):
         hgroup.setLayout(hbox)  
         ibox = 0
         vsize = 200
+        # Continuum
         if self.moments | self.lines:
             self.continuum = self.createGroup('', self.options)
             # Check buttons
             checkbuttons = QButtonGroup(self)
-            # Continuum (should be connected to alter other two boxes)
             self.checkcontinuum = QCheckBox('Continuum')
             self.continuum.setEnabled(False)
             checkbuttons.addButton(self.checkcontinuum)
@@ -570,10 +572,8 @@ class FitCubeDialog(QDialog):
         else:
             self.continuum = self.createGroup('Continuum', self.options)
         grid.addWidget(self.continuum, ibox, 0)
-        
-        # Moments (should be connected to alter other two boxes)
+        # Moments
         if self.moments:
-            ibox += 1
             if 'Fit region' in set(self.options):
                 self.momentsbox = self.createGroup('', ['Region','All'])
             else:
@@ -582,13 +582,13 @@ class FitCubeDialog(QDialog):
             checkbuttons.addButton(self.cbmoments)
             self.momentsbox.setEnabled(False)
             self.cbmoments.stateChanged.connect(self.toggleMGroupBox)
+            ibox += 1
             grid.addWidget(self.cbmoments, ibox, 0)
-            ibox +=1
+            ibox += 1
             grid.addWidget(self.momentsbox, ibox, 0)
             vsize += 50
-        # Lines (should be connected to alter other two boxes)
+        # Lines
         if self.lines:
-            ibox += 1
             if 'Fit region' in set(self.options):
                 self.linesbox = self.createGroup('Lines', ['Region','All'])
             else:
@@ -596,15 +596,16 @@ class FitCubeDialog(QDialog):
             self.linesbox.setEnabled(False)
             self.cblines = QCheckBox("Set active")
             checkbuttons.addButton(self.cblines)
+            ibox += 1
             grid.addWidget(self.cblines, ibox,0)
-            ibox +=1
+            ibox += 1
             grid.addWidget(self.linesbox, ibox, 0)
             vsize += 50
             self.cblines.stateChanged.connect(self.toggleGroupBox)
         ibox += 1 
         grid.addWidget(hgroup, ibox, 0)
         self.setLayout(grid)
-        self.setWindowTitle('Fitting the continuum')
+        self.setWindowTitle('Fitting actions')
         self.resize(400,vsize)
         
 
@@ -649,23 +650,24 @@ class FitCubeDialog(QDialog):
         self.done(1)
 
     def save(self):
-        continuum  = self.continuum.buttons.checkedButton().text()
+        if self.continuum.isEnabled():
+            continuum  = self.continuum.buttons.checkedButton().text()
+        else:
+            continuum = None
         if self.moments:
-            moments  = self.momentsbox.buttons.checkedButton().text()
-            if moments != 'No':
-                continuum = 'No'
+            if self.momentsbox.isEnabled():
+                moments  = self.momentsbox.buttons.checkedButton().text()
+            else:
+                moments = None
         else:
             moments = None
         if self.lines:
-            lines = self.linesbox.buttons.checkedButton().text()
-            if lines != 'No':
-                continuum = 'No'
-                moments = 'No'
+            if self.linesbox.isEnabled():
+                lines = self.linesbox.buttons.checkedButton().text()
+            else:
+                lines = None
         else:
             lines = None
-        if lines is not None and moments is not None:
-            if moments != 'No':
-                lines = 'No'
         return continuum, moments, lines
             
     def Cancel(self):
