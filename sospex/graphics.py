@@ -1107,25 +1107,30 @@ class SpectrumCanvas(MplCanvas):
                     try:
                         if len(self.lines) > 0:
                             for line in self.lines:
-                                gg = self.lguess[line.n][ncell]
-                                # gg = guess[ncell]
-                                line.c0 += dy #  Update continuum
-                                line.x0 = gg[0]
-                                line.fwhm = gg[1]
-                                indmin = np.nanargmin(np.abs(self.x-line.x0))
-                                A = f[indmin]-yc
-                                if line.A > 0:
-                                    if A > 0:
-                                        line.A = A
-                                    else:
-                                        line.A = 0.01
+                                if line is None:
+                                    pass
                                 else:
-                                    if A < 0:
-                                        line.A = A
+                                    # print('line is ', line)
+                                    gg = self.lguess[line.n][ncell]
+                                    # gg = guess[ncell]
+                                    # line.c0 += dy #  Update continuum
+                                    line.c0 = yc
+                                    line.x0 = gg[0]
+                                    line.fwhm = gg[1]
+                                    indmin = np.nanargmin(np.abs(self.x-line.x0))
+                                    A = f[indmin]-yc
+                                    if line.A > 0:
+                                        if A > 0:
+                                            line.A = A
+                                        else:
+                                            line.A = 0.01
                                     else:
-                                        line.A = -0.01
-                                # line.A = gg[2]
-                                line.updateCurves()
+                                        if A < 0:
+                                            line.A = A
+                                        else:
+                                            line.A = -0.01
+                                    # line.A = gg[2]
+                                    line.updateCurves()
                     except BaseException:
                         pass
             if moments is not None:

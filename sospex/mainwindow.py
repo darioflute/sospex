@@ -637,11 +637,16 @@ class GUI (QMainWindow):
 
     def onRemoveContinuum(self, event):
         sc = self.sci[self.spectra.index('Pix')]
+        print('remove continuum event: ', event)
         if event[:-2] == 'line deleted':
             n = int(event[-2:])
+            print('Disconnect line ', n)
             sc.lines[n].disconnect
-            # TODO update guesses !!! TODO
-        else:
+            sc.lines[n] = None
+            for line in sc.lines:
+                print('line ', line)
+            # No need to update guesses since each line has an ID (line.n)
+        elif event == 'segments deleted':
             sc.guess.disconnect()
             sc.guess = None
             if sc.lines is not None:
@@ -1196,38 +1201,41 @@ class GUI (QMainWindow):
             # Create sites
             nx = self.specCube.nx
             ny = self.specCube.ny
+            # area = nx * ny
             if self.ncells == 1:
                 self.sites = np.array([[nx // 2, ny // 2]])
             elif self.ncells == 4:
                 dx = nx // 3
                 dy = ny // 3
-                self.sites = np.array([[dx, dy], [dx * 1.01, 2 * dy],
-                                       [dx * 2, 2 * dy], [dx * 2.02, dy]
+                self.sites = np.array([[dx, dy], [dx * 2.02, dy],
+                                       [dx * 2, 2 * dy], [dx * 1.01, 2 * dy]
                                        ])
-            elif self.ncells == 7:
-                dx = nx // 4
-                dy3 = ny // 3
-                dy4 = ny // 4
-                self.sites = np.array([
-                        [dx * 2, 2 * dy4], [dx, dy3], [dx, 2 * dy3],
-                        [dx * 2, 3 * dy4], [dx * 3, 2 * dy3], [dx * 3,  dy3],
-                        [dx * 2, dy4]
-                        ])
-            elif self.ncells == 13:
-                dx = nx // 6
-                dy = ny // 8
-                self.sites = np.array([
-                        [3 * dx, 4 * dy],
-                        [2 * dx, 5 * dy], [2 * dx, 3 * dy],
-                        [3 * dx, 2 * dy],
-                        [4 * dx, 3 * dy], [4 * dx, 5 * dy],
-                        [3 * dx, 6 * dy],
-                        [2 * dx, 7 * dy],
-                        [1 * dx, 4 * dy],
-                        [2 * dx, 1 * dy], [4 * dx, 1 * dy],
-                        [5 * dx, 4 * dy],
-                        [4 * dx, 7 * dy]
-                        ])
+            elif self.ncells == 16:
+                self.computeSites(16)
+                #dx = nx // 4
+                #dy3 = ny // 3
+                #dy4 = ny // 4
+                #self.sites = np.array([
+                #        [dx * 2, 2 * dy4], [dx, dy3], [dx, 2 * dy3],
+                #        [dx * 2, 3 * dy4], [dx * 3, 2 * dy3], [dx * 3,  dy3],
+                #        [dx * 2, dy4]
+                #        ])
+            elif self.ncells == 64:
+                self.computeSites(64)
+                #dx = nx // 6
+                #dy = ny // 8
+                #self.sites = np.array([
+                #        [3 * dx, 4 * dy],
+                #        [2 * dx, 5 * dy], [2 * dx, 3 * dy],
+                #        [3 * dx, 2 * dy],
+                #        [4 * dx, 3 * dy], [4 * dx, 5 * dy],
+                #        [3 * dx, 6 * dy],
+                #        [2 * dx, 7 * dy],
+                #        [1 * dx, 4 * dy],
+                #        [2 * dx, 1 * dy], [4 * dx, 1 * dy],
+                #        [5 * dx, 4 * dy],
+                #        [4 * dx, 7 * dy]
+                #        ])
             if sc.displayLines == True:
                 sc.displayLines = False
                 sc.setLinesVisibility(sc.displayLines)
@@ -1279,7 +1287,35 @@ class GUI (QMainWindow):
             self.VI.modSignal.connect(self.updateKDTree)
         else:
             ic0.fig.canvas.draw_idle()
-        
+            
+    def computeSites(self, n):
+        nx = self.specCube.nx
+        ny = self.specCube.ny
+        area = nx * ny
+        l = np.sqrt(area  * 2 / (3 * np.sqrt(3) * self.ncells))
+        l2 = l * np.sqrt(3) / 2.
+        nxc = int((nx - 2 * l)// (3 * l))
+        nyc = int((ny - 2 * l2) // l2)
+        # Second estimate from sides
+        ly = ny / np.sqrt(3.) / (nyc / 2. + 1)
+        lx = nx / (3  * nxc + 2)
+        l = np.max(np.array([lx,ly]))
+        l2 = l * np.sqrt(3) / 2.
+        nxc = int(nx // (3 * l) + 1)
+        nyc = int(ny // l2)
+        self.sites = []
+        for j in range(nyc):
+            y = l2 * (j + 1)
+            for i in range(nxc):
+                if j % 2 == 1:
+                    x = l * (3 * i )
+                else:
+                    x = l * (1.5 + (nxc - 1 - i) * 3)
+                self.sites.append([x, y])   
+        self.sites = np.array(self.sites)
+        self.ncells = len(self.sites)
+        print('Computed ', self.ncells, ' regions')
+
     def updateKDTree(self, event):
         """React to modification of Voronoi cells."""
         sc = self.sci[self.spectra.index('Pix')]
@@ -1295,10 +1331,23 @@ class GUI (QMainWindow):
             # Add to the list the last value
             newguess = sc.xguess[-1]
             sc.xguess.append(newguess)
+            if len(sc.lines) > 0:
+                for line in sc.lines:
+                    if line is None:
+                        pass
+                    else:
+                        newguess = sc.lguess[line.n][-1]
+                        sc.lguess[line.n].append(newguess)
         else:
             print('Site '+event+' removed')
             ind = int(event)
             del sc.xguess[ind]
+            if len(sc.lines) > 0:
+                for line in sc.lines:
+                    if line is None:
+                        pass
+                    else:
+                        del sc.lguess[line.n][ind]
 
     def addBand(self, band):
         """Add a band and display it in a new tab."""
@@ -1427,7 +1476,6 @@ class GUI (QMainWindow):
                 # Update the guess limits for cell
                 sc.xguess[ncell] = x
             elif event[:-2] == 'line guess modified':
-                # print('Modified line ', event[-2:])
                 # Grab new values 
                 sc = self.sci[istab]
                 # Identify cursor position of pixel-aperture on image
@@ -1441,7 +1489,6 @@ class GUI (QMainWindow):
                 nline = int(event[-2:])
                 line = sc.lines[nline]
                 sc.lguess[nline][ncell] = [line.x0, line.fwhm, line.A]
-                print("Line ", nline,' guess modified to: ', [line.x0, line.fwhm, line.A])
 
     def ContMomLines(self):
         """Dialog to select fit options for the cube."""

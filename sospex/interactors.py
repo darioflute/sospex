@@ -592,7 +592,6 @@ class VoronoiInteractor(QObject):
         for s in self.segments + self.rays:
             s.remove()
         self.drawVoronoi()
-        # print('release ', self.sites)
         # Notify callback
         self.modSignal.emit('voronoi modified')
 
@@ -617,9 +616,17 @@ class VoronoiInteractor(QObject):
                     #self.line = None
                     self.mySignal.emit('voronoi deleted')
                 else:
-                    self.poly.xy = [tup
-                                    for i, tup in enumerate(self.poly.xy)
-                                    if i != ind]
+                    #self.poly.xy = np.array([tup
+                    #                for i, tup in enumerate(self.poly.xy)
+                    #                if i != ind])
+                    a = self.poly.get_xy().tolist()
+                    del a[ind]
+                    # If first point, remove it also at the end and close the loop
+                    if ind == 0:
+                        a.insert(-1,a[0])
+                        del a[-1]
+                    self.poly.set_xy(a)
+                    print('new lengths ', len(a), len(self.poly.xy))
                     self.line.set_data(zip(*self.poly.xy))
                     self.modSignal.emit(str(ind))  # Pass the index canceled
                 for s in self.segments + self.rays:
@@ -633,10 +640,13 @@ class VoronoiInteractor(QObject):
                 s1 = xys[i + 1]
                 d = dist_point_to_segment(p, s0, s1)
                 if d <= self.epsilon:
-                    self.poly.xy = np.array(
-                        list(self.poly.xy[:i+1]) +
-                        [(event.xdata, event.ydata)] +
-                        list(self.poly.xy[i+1:]))
+                    a = list(self.poly.get_xy())
+                    a.insert(i, (event.xdata, event.ydata))
+                    self.poly.set_xy(a)
+                    #self.poly.xy = np.array(
+                    #    list(self.poly.xy[:i+1]) +
+                    #    [(event.xdata, event.ydata)] +
+                    #    list(self.poly.xy[i+1:]))
                     self.line.set_data(zip(*self.poly.xy))
                     break
             self.modSignal.emit('one voronoi site added')
@@ -800,7 +810,9 @@ class LineInteractor(QObject):
             if not self.showverts:
                 self._ind = None
         elif event.key == 'd':
-            self.mySignal.emit('line deleted ' + str(self.n))
+            ind = self.get_ind_under_point(event)
+            if ind is not None:
+                self.mySignal.emit('line deleted ' + str(self.n))
         self.canvas.draw_idle()
 
     def button_press_callback(self, event):

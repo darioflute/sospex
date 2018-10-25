@@ -283,7 +283,9 @@ class SegmentsInteractor(QObject):
             if not self.showverts:
                 self._ind = None
         elif event.key == 'd':
-            self.mySignal.emit('segments deleted')
+            ind = self.get_ind_under_point(event)
+            if ind is not None:
+                self.mySignal.emit('segments deleted')
         self.canvas.draw_idle()
 
     def button_press_callback(self, event):
@@ -421,7 +423,7 @@ class ContParams(QDialog):
         self.function = self.createGroup('Continuum function', ['Constant', 'Slope'])
         self.boundary = self.createGroup('Continuum boundary', ['None', 'Non negative'])
         self.kernel   = self.createGroup('Kernel pixels', ['1', '5', '9'], default=self.k)
-        self.regions = self.createGroup('No of regions', ['1', '4', '7' ,'13'])
+        self.regions = self.createGroup('No of regions', ['1', '4', '16' ,'64'])
         self.emlines = self.createGroup('No of emission lines', ['0', '1', '2', '3'])
         self.ablines = self.createGroup('No of absorption lines', ['0', '1', '2'])
         # OK/Cancel line
