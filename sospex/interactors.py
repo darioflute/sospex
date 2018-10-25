@@ -848,22 +848,40 @@ class LineInteractor(QObject):
         # Update markers and Gaussian parameters
         x_, y_ = event.xdata, event.ydata
         x, y = zip(*self.xy)
-        if self._ind == 0:
-            if x_ < x[1]:
-                self.fwhm = 2 * (x[1] - x_)
-        elif self._ind == 1:
-            dx = x_ - x[1]
-            self.x0 += dx
-            dy = y_ - y[1]
-            if (self.A > 0) & (dy < -self.A):  # Emission line
-                pass
-            elif (self.A < 0) & (dy > -self.A):  # Absorption line
-                pass
-            else:
-                self.A += dy
-        elif self._ind == 2:
-            if x_ > x[1]:
-                self.fwhm = 2 * (x_ - x[1])
+        if x[-1] > x[0]:  # case wavelength
+            if self._ind == 0:
+                if x_ < x[1]:
+                    self.fwhm = 2 * (x[1] - x_)
+            elif self._ind == 1:
+                dx = x_ - x[1]
+                self.x0 += dx
+                dy = y_ - y[1]
+                if (self.A > 0) & (dy < -self.A):  # Emission line
+                    pass
+                elif (self.A < 0) & (dy > -self.A):  # Absorption line
+                    pass
+                else:
+                    self.A += dy
+            elif self._ind == 2:
+                if x_ > x[1]:
+                    self.fwhm = 2 * (x_ - x[1])
+        else:
+            if self._ind == 0:
+                if x_ > x[1]:
+                    self.fwhm = 2 * (x_ - x[1])
+            elif self._ind == 1:
+                dx = x_ - x[1]
+                self.x0 += dx
+                dy = y_ - y[1]
+                if (self.A > 0) & (dy < -self.A):  # Emission line
+                    pass
+                elif (self.A < 0) & (dy > -self.A):  # Absorption line
+                    pass
+                else:
+                    self.A += dy
+            elif self._ind == 2:
+                if x_ < x[1]:
+                    self.fwhm = 2 * (x[1] - x_)
         self.updateCurves()
         self.redraw()
         # Notify callback
@@ -872,14 +890,8 @@ class LineInteractor(QObject):
     def updateCurves(self):
         self.computeGaussian()
         self.computeMarkers()
-        #self.canvas.restore_region(self.background)
         self.line.set_data(zip(*self.xy))
         self.gauss.xy = self.verts
-        #self.ax.draw_artist(self.line)
-        #self.ax.draw_artist(self.gauss)
-        #self.canvas.update()
-        #self.canvas.flush_events()
-        # self.canvas.draw_idle()
         
     def redraw(self):
         self.canvas.restore_region(self.background)
@@ -887,3 +899,25 @@ class LineInteractor(QObject):
             self.ax.draw_artist(artist)
         self.canvas.update()
         self.canvas.flush_events()
+
+    def switchUnits(self):
+        """ Redraw segments in new units """
+        # Rebuild line collection
+        x, y = zip(*self.xy)
+        x = np.asarray(x)
+        y = np.asarray(y)
+        c = 299792458.0  # speed of light in m/s
+        x = c/x * 1.e-6  # um to THz or viceversa
+        self.xy = [(i, j) for (i, j) in zip(x, y)]
+        self.line.set_data(zip(*self.xy))
+        xy = self.gauss.get_xy()
+        x, y = zip(*xy)
+        x = np.asarray(x)
+        y = np.asarray(y)
+        x = c/x * 1.e-6
+        xy = [(i, j) for (i, j) in zip(x, y)]
+        self.gauss.set_xy(xy)
+        # change line parameters
+        self.x0 = c / self.x0 * 1.e-6
+        self.fwhm *= c / self.x0**2 * 1.e-6
+        

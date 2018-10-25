@@ -1340,6 +1340,11 @@ class SpectrumCanvas(MplCanvas):
                 x = c / np.array(x) * 1.e-6  # um to THz or viceversa
             # Switch guess
             self.guess.switchUnits()
+        # Lines
+        if self.lguess is not None:
+            for line in self.lines:
+                if line is not None:
+                    line.switchUnits()
         # Redrawing is maybe excessive
         self.drawSpectrum()
         self.fig.canvas.draw_idle()
