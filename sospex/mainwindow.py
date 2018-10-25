@@ -1877,15 +1877,16 @@ class GUI (QMainWindow):
         ## points = np.array([np.ravel(xi),np.ravel(yi)]).transpose()
         #points = np.c_[np.ravel(xi), np.ravel(yi)]
         # Continuum mask
-        self.continuumMask(points)
+        self.continuumMask(points, True)
         # Fit
         self.fitContinuum(points)
         # Set flag
         self.fitcont = True
 
-    def continuumMask(self, points):
+    def continuumMask(self, points, smooth=False):
+        from scipy.signal import convolve2d as convolve
         # Update masks
-        if self.ncells < 1:
+        if self.ncells <= 1:
             i0, i1, i2, i3 = self.getContinuumGuess()
             for p in points:
                 i, j = p
@@ -1893,13 +1894,48 @@ class GUI (QMainWindow):
                 self.Cmask[i0:i1,j,i] = 1
                 self.Cmask[i2:i3,j,i] = 1
         else:
-            for p in points:
-                i, j = p
-                ncell = self.regions[j, i]
-                i0, i1, i2, i3 = self.getContinuumGuess(ncell)
-                self.Cmask[:,j,i] = 0
-                self.Cmask[i0:i1,j,i] = 1
-                self.Cmask[i2:i3,j,i] = 1
+            # Do some smoothing before computing the Cmask
+            if smooth:
+                # A) Define the limits for each region
+                nx = self.specCube.nx
+                ny = self.specCube.ny
+                i0map = np.ones((ny,nx))
+                i1map = np.ones((ny,nx))
+                i2map = np.ones((ny,nx))
+                i3map = np.ones((ny,nx))
+                for cell in range(self.ncells):
+                    i0, i1, i2, i3 = self.getContinuumGuess(cell)
+                    idx = np.where(self.regions == cell)
+                    i0map[idx] = i0
+                    i1map[idx] = i1
+                    i2map[idx] = i2
+                    i3map[idx] = i3 
+                # B) Convolve each limit map with a kernel
+                kernel = np.array([[1/16., 1/8., 1/16.], 
+                                   [1/8., 1/4., 1/8.],
+                                   [1/16.,1/8.,1/16.]])
+                i0map = convolve(i0map, kernel, boundary='symm', mode='same')
+                i1map = convolve(i1map, kernel, boundary='symm', mode='same')
+                i2map = convolve(i2map, kernel, boundary='symm', mode='same')
+                i3map = convolve(i3map, kernel, boundary='symm', mode='same')
+                # C) Define the continuum mask
+                for p in points:
+                    i, j = p
+                    i0 = int(i0map[j, i])
+                    i1 = int(i1map[j, i])
+                    i2 = int(i2map[j, i])
+                    i3 = int(i3map[j, i])                   
+                    self.Cmask[:,j,i] = 0
+                    self.Cmask[i0:i1,j,i] = 1
+                    self.Cmask[i2:i3,j,i] = 1                
+            else:
+                for p in points:
+                    i, j = p
+                    ncell = self.regions[j, i]
+                    i0, i1, i2, i3 = self.getContinuumGuess(ncell)
+                    self.Cmask[:,j,i] = 0
+                    self.Cmask[i0:i1,j,i] = 1
+                    self.Cmask[i2:i3,j,i] = 1
         print('Continuum mask computed')
         # Eventually apply smoothing on the borders of the xguess map to avoid sudden change of continuum
 
