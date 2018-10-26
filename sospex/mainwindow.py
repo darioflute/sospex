@@ -160,11 +160,11 @@ class GUI (QMainWindow):
         file.addAction(QAction('Save image', self, shortcut='',triggered=self.saveFits))
         file.addAction(QAction('Save spectrum', self, shortcut='',triggered=self.saveSpectrum))
         aperture = file.addMenu("Aperture I/O")
-        aperture.addAction(QAction('Export',self,shortcut='',triggered=exportAperture))
-        aperture.addAction(QAction('Import',self,shortcut='',triggered=importAperture))
+        aperture.addAction(QAction('Export',self,shortcut='',triggered=self.exportApertureAction))
+        aperture.addAction(QAction('Import',self,shortcut='',triggered=self.importApertureAction))
         guesses = file.addMenu("Guesses I/O")
-        guesses.addAction(QAction('Export', self, shortcut='', triggered=exportGuesses))
-        guesses.addAction(QAction('Import', self, shortcut='', triggered=importGuesses))        
+        guesses.addAction(QAction('Export', self, shortcut='', triggered=self.exportGuessesAction))
+        guesses.addAction(QAction('Import', self, shortcut='', triggered=self.importGuessesAction))        
         # View
         view = bar.addMenu("View")
         slice = view.addMenu("Show slider")
@@ -244,6 +244,18 @@ class GUI (QMainWindow):
         help.addAction(QAction('Tutorials', self, shortcut='Ctrl+h',triggered=self.onHelp))
         help.addAction(QAction('Issues', self, shortcut='Ctrl+i',triggered=self.onIssue))
         bar.setNativeMenuBar(False)
+        
+    def exportApertureAction(self):
+        exportAperture(self)
+        
+    def importApertureAction(self):
+        importAperture(self)
+        
+    def exportGuessesAction(self):
+        exportGuesses(self)
+        
+    def importGuessesAction(self):
+        importGuesses(self)
 
     def showHeader(self):
         """ Show header of the spectral cube """
@@ -1206,10 +1218,9 @@ class GUI (QMainWindow):
             print('selected ', self.ncells, ' regions')
             self.abslines = int(ablines)  # Number of absorption lines
             self.emslines = int(emlines)  # Number of emission lines
-            # Create <
+            # Create tessellation
             nx = self.specCube.nx
             ny = self.specCube.ny
-            # area = nx * ny
             if self.ncells == 1:
                 self.sites = np.array([[nx // 2, ny // 2]])
             elif self.ncells == 4:
@@ -1218,51 +1229,14 @@ class GUI (QMainWindow):
                 self.sites = np.array([[dx, dy], [dx * 2.02, dy],
                                        [dx * 2, 2 * dy], [dx * 1.01, 2 * dy]
                                        ])
-            elif self.ncells == 16:
-                self.computeSites(16)
-                #dx = nx // 4
-                #dy3 = ny // 3
-                #dy4 = ny // 4
-                #self.sites = np.array([
-                #        [dx * 2, 2 * dy4], [dx, dy3], [dx, 2 * dy3],
-                #        [dx * 2, 3 * dy4], [dx * 3, 2 * dy3], [dx * 3,  dy3],
-                #        [dx * 2, dy4]
-                #        ])
-            elif self.ncells == 64:
-                self.computeSites(64)
-                #dx = nx // 6
-                #dy = ny // 8
-                #self.sites = np.array([
-                #        [3 * dx, 4 * dy],
-                #        [2 * dx, 5 * dy], [2 * dx, 3 * dy],
-                #        [3 * dx, 2 * dy],
-                #        [4 * dx, 3 * dy], [4 * dx, 5 * dy],
-                #        [3 * dx, 6 * dy],
-                #        [2 * dx, 7 * dy],
-                #        [1 * dx, 4 * dy],
-                #        [2 * dx, 1 * dy], [4 * dx, 1 * dy],
-                #        [5 * dx, 4 * dy],
-                #        [4 * dx, 7 * dy]
-                #        ])
-            elif self.ncells == 128:
-                self.computeSites(128)
+            else:
+                self.computeSites(self.ncells)
             if sc.displayLines == True:
                 sc.displayLines = False
                 sc.setLinesVisibility(sc.displayLines)
-                # print('replot spectrum after hiding lines ', sc.displayLines )
                 sc.fig.canvas.draw_idle()
         else:
             return
-        # Help on status bar
-        self.sb.showMessage("Drag the mouse over the spectrum to select two continuum regions ",
-                            2000)        
-        # Delete previous guess and select new one
-        if sc.guess is not None:
-            self.onRemoveContinuum('segments deleted')
-        # I don't know how to disactivate the draggable feature, so I hide the annotations
-        # when selecting the continuum
-        self.CS = SegmentsSelector(sc.axes, sc.fig, self.onContinuumSelect, zD=self.zeroDeg)
-        self.openContinuumTab()
         # Update the pixel marker with new kernel
         for ic in self.ici:
             w = w0/ic.pixscale;
@@ -1279,16 +1253,18 @@ class GUI (QMainWindow):
             y = yc - w/np.sqrt(2.) * np.cos((45.-theta)*np.pi/180.)
             pixel.rect.set_xy((x,y))
             ic.changed = True
+        # Help on status bar
+        self.sb.showMessage("Drag the mouse over the spectrum to select two continuum regions ",
+                            2000)        
+        # Delete previous guess and select new one
+        if sc.guess is not None:
+            self.onRemoveContinuum('segments deleted')
+        # I don't know how to disactivate the draggable feature, so I hide the annotations
+        # when selecting the continuum
+        self.CS = SegmentsSelector(sc.axes, sc.fig, self.onContinuumSelect, zD=self.zeroDeg)
+        self.openContinuumTab()
         # Create Voronoi sites, KDTree, plot Voronoi ridges on image
-        try:
-            self.VI.removeRidges()
-            self.VI.disconnect
-            self.VI.modSignal.disconnect()
-            self.VI = None
-        except BaseException:
-            pass
-        itab = self.itabs.currentIndex()
-        ic0 = self.ici[itab]
+        self.removeVI()
         if self.ncells > 1:
             tree = KDTree(self.sites)
             tq = tree.query(self.specCube.points)
@@ -1297,6 +1273,16 @@ class GUI (QMainWindow):
             self.VI.modSignal.connect(self.updateKDTree)
         else:
             ic0.fig.canvas.draw_idle()
+ 
+    def removeVI(self):
+        """Remove Voronoi tessellation if there."""
+        try:
+            self.VI.removeRidges()
+            self.VI.disconnect
+            self.VI.modSignal.disconnect()
+            self.VI = None
+        except BaseException:
+            pass
             
     def computeSites(self, n):
         nx = self.specCube.nx
