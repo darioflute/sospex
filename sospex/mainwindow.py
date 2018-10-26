@@ -160,6 +160,9 @@ class GUI (QMainWindow):
         aperture = file.addMenu("Aperture I/O")
         aperture.addAction(QAction('Export',self,shortcut='',triggered=self.exportAperture))
         aperture.addAction(QAction('Import',self,shortcut='',triggered=self.importAperture))
+        guesses = file.addMenu("Guesses I/O")
+        guesses.addAction(QAction('Export', self, shortcut='', triggered=self.exportGuesses))
+        guesses.addAction(QAction('Import', self, shortcut='', triggered=self.importGuesses))        
         # View
         view = bar.addMenu("View")
         slice = view.addMenu("Show slider")
@@ -1236,6 +1239,8 @@ class GUI (QMainWindow):
                 #        [5 * dx, 4 * dy],
                 #        [4 * dx, 7 * dy]
                 #        ])
+            elif self.ncells == 128:
+                self.computeSites(128)
             if sc.displayLines == True:
                 sc.displayLines = False
                 sc.setLinesVisibility(sc.displayLines)
@@ -1328,26 +1333,36 @@ class GUI (QMainWindow):
         if event == 'voronoi modified':
             pass
         elif event == 'one voronoi site added':
-            # Add to the list the last value
-            newguess = sc.xguess[-1]
-            sc.xguess.append(newguess)
-            if len(sc.lines) > 0:
-                for line in sc.lines:
-                    if line is None:
-                        pass
-                    else:
-                        newguess = sc.lguess[line.n][-1]
-                        sc.lguess[line.n].append(newguess)
+            try:
+                # Add to the list the last value
+                newguess = sc.xguess[-1]
+                sc.xguess.append(newguess)
+                if len(sc.lines) > 0:
+                    for line in sc.lines:
+                        if line is None:
+                            pass
+                        else:
+                            newguess = sc.lguess[line.n][-1]
+                            sc.lguess[line.n].append(newguess)
+            except BaseException:
+                message = 'Please, define the continuum guess !'
+                self.sb.showMessage(message, 4000)
+                print(message)
         else:
             print('Site '+event+' removed')
-            ind = int(event)
-            del sc.xguess[ind]
-            if len(sc.lines) > 0:
-                for line in sc.lines:
-                    if line is None:
-                        pass
-                    else:
-                        del sc.lguess[line.n][ind]
+            try:
+                ind = int(event)
+                del sc.xguess[ind]
+                if len(sc.lines) > 0:
+                    for line in sc.lines:
+                        if line is None:
+                            pass
+                        else:
+                            del sc.lguess[line.n][ind]
+            except BaseException:
+                message = 'Please, define the continuum guess !'
+                self.sb.showMessage(message, 4000)
+                print(message)
 
     def addBand(self, band):
         """Add a band and display it in a new tab."""
@@ -1445,7 +1460,7 @@ class GUI (QMainWindow):
         for i in range(n):
             dx = (x[2] - x[1]) / (2 * n)
             x0 = x[1] + dx + i * 2 * dx
-            fwhm = dx
+            fwhm = dx * 0.5
             idx = (sc.x > (x0 - dx)) & (sc.x < (x0 + dx))
             if type == 'emission':
                 A = np.nanmax(sc.spectrum.flux[idx]) - sc.guess.intcpt - sc.guess.slope * x0
@@ -3393,6 +3408,20 @@ class GUI (QMainWindow):
                 self.sb.showMessage("The file is not a valide aperture file.", 3000)
         else:
             self.sb.showMessage("To export an aperture, select the tab with the desired aperture ", 3000)
+
+    def exportGuesses(self):
+        "Export tessellation and guesses of continuum and lines."
+        # TODO
+        # Export in JSON:
+        # sites (in coordinates)
+        # limits of the continuum (x, y  in wavelengths, slope)
+        # lines (x0, fwhm, y0)
+        pass
+    
+    def importGuesses(self):
+        "Import previously defined tessellation and guesses of continuum and lines."
+        # TODO
+        pass
 
     def addExtension(self,data, extname, unit, hdr):
         from astropy.io import fits
