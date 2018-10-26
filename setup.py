@@ -25,7 +25,7 @@ config = {
                 'astropy>=3.0',
                 'lmfit',
                 'reproject',
-                'matplotlib>=2.1,<3.0'
+                'matplotlib>=3.0.1'
                 ],
         'include_package_data':True,
         'package_data':{'sospex':['copyright.txt','icons/*.png','icons/*.gif',

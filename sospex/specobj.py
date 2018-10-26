@@ -30,6 +30,8 @@ class specCube(object):
             self.readGREAT(hdl)
         elif self.instrument == 'PACS':
             self.readPACS(hdl)
+        elif self.instrument == 'FORCAST':
+            self.readFORCAST(hdl)
         else:
             print('This is not a supported spectral cube')
         hdl.close()
@@ -121,9 +123,25 @@ class specCube(object):
         self.flux *= self.Tb2Jy   # Transformed from temperature to S_nu [Jy]            
         nu0 = self.header['RESTFREQ']  # MHz
         l0 = c/nu0  # in micron
-        vel = -self.cdelt3*self.crpix3+self.cdelt3*np.arange(self.n)+self.crval3
+        vel = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3
         self.l0 = l0
         self.wave = l0 + l0*vel/c
+        
+    def readFORCAST(self, hdl): 
+        print('This is a FORCAST spectral cube')
+        wcs = WCS(self.header)
+        self.wcs = wcs.celestial
+        self.crpix3 = self.header['CRPIX3']
+        self.crval3 = self.header['CRVAL3']
+        self.cdelt3 = self.header['CDELT3']
+        self.objname = self.header['OBJECT']
+        self.redshift = 0 # in m/s
+        self.pixscale,ypixscale = proj_plane_pixel_scales(self.wcs)*3600. # Pixel scale in arcsec
+        self.n = self.header['NAXIS3']
+        self.flux = hdl['FLUX'].data
+        self.eflux = np.sqrt(hdl['VARIANCE'].data)
+        self.wave = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3
+        self.l0 = np.nanmedian(self.wave)
 
     def readPACS(self, hdl):
         """ Case of PACS spectral cubes """

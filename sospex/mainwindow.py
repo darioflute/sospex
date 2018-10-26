@@ -19,15 +19,17 @@ import warnings
 warnings.filterwarnings('ignore')
 
 from sospex.moments import (SegmentsSelector, SegmentsInteractor, multiFitContinuum,
-                            multiComputeMoments, ContParams, ContFitParams, SlicerDialog, FitCubeDialog)
+                            multiComputeMoments, ContParams, ContFitParams, SlicerDialog,
+                            FitCubeDialog)
 from sospex.graphics import  (NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas,
                        cmDialog, ds9cmap, ScrollMessageBox)
-from sospex.apertures import photoAperture,PolygonInteractor, EllipseInteractor, RectangleInteractor, PixelInteractor
+from sospex.apertures import (photoAperture, PolygonInteractor, EllipseInteractor,
+                              RectangleInteractor, PixelInteractor)
 from sospex.specobj import specCube, Spectrum, ExtSpectrum
 from sospex.cloud import cloudImage
 from sospex.interactors import (SliderInteractor, SliceInteractor, DistanceSelector,
                                 VoronoiInteractor, LineInteractor)
-
+from sospex.inout import exportAperture, importAperture, exportGuesses, importGuesses
 
 class UpdateTabs(QObject):
     newImage = pyqtSignal([cloudImage])
@@ -158,11 +160,11 @@ class GUI (QMainWindow):
         file.addAction(QAction('Save image', self, shortcut='',triggered=self.saveFits))
         file.addAction(QAction('Save spectrum', self, shortcut='',triggered=self.saveSpectrum))
         aperture = file.addMenu("Aperture I/O")
-        aperture.addAction(QAction('Export',self,shortcut='',triggered=self.exportAperture))
-        aperture.addAction(QAction('Import',self,shortcut='',triggered=self.importAperture))
+        aperture.addAction(QAction('Export',self,shortcut='',triggered=exportAperture))
+        aperture.addAction(QAction('Import',self,shortcut='',triggered=importAperture))
         guesses = file.addMenu("Guesses I/O")
-        guesses.addAction(QAction('Export', self, shortcut='', triggered=self.exportGuesses))
-        guesses.addAction(QAction('Import', self, shortcut='', triggered=self.importGuesses))        
+        guesses.addAction(QAction('Export', self, shortcut='', triggered=exportGuesses))
+        guesses.addAction(QAction('Import', self, shortcut='', triggered=importGuesses))        
         # View
         view = bar.addMenu("View")
         slice = view.addMenu("Show slider")
@@ -728,7 +730,7 @@ class GUI (QMainWindow):
                 fluxAll = np.nansum(s.flux[:, yy, xx], axis=1)
             sc.spectrum.flux = fluxAll
             # sc.spectrum.flux = fluxAll
-            if s.instrument == 'GREAT':
+            if s.instrument in ['GREAT', 'FORCAST']:
                 sc.updateSpectrum(f=fluxAll, cont=cont, moments=moments, noise=noise, ncell=ncell)
             elif s.instrument == 'PACS':
                 if istab == 1:
@@ -1163,9 +1165,12 @@ class GUI (QMainWindow):
         if self.stabs.currentIndex() != istab:
             self.stabs.setCurrentIndex(istab)
         sc = self.sci[istab]
-        # Dialog to select continuum fit paramenters
+        # Change to flux map
         ic0 = self.ici[0]
+        if self.itabs.currentIndex() != 0:
+            self.itabs.setCurrentIndex(0)
         w0 = ic0.pixscale
+        # Dialog to select continuum fit paramenters
         self.CP = ContParams(self.kernel)
         if self.CP.exec_() == QDialog.Accepted:
             function, boundary, kernel, regions, emlines, ablines = self.CP.save()
@@ -1201,7 +1206,7 @@ class GUI (QMainWindow):
             print('selected ', self.ncells, ' regions')
             self.abslines = int(ablines)  # Number of absorption lines
             self.emslines = int(emlines)  # Number of emission lines
-            # Create sites
+            # Create <
             nx = self.specCube.nx
             ny = self.specCube.ny
             # area = nx * ny
@@ -2010,7 +2015,7 @@ class GUI (QMainWindow):
         # Define moments
         self.defineMoments()
         # Compute moment mask
-        self.momentsMask(points)
+        self.momentsMask(points, True)
         # Compute moments
         self.computeMoments(points)
 
@@ -2084,7 +2089,8 @@ class GUI (QMainWindow):
             print('There are no defined regions')
             return
 
-    def momentsMask(self, points):
+    def momentsMask(self, points, smooth=False):
+        from scipy.signal import convolve2d as convolve
         # Update masks
         if self.ncells < 1:
             i0, i1, i2, i3 = self.getContinuumGuess()
@@ -2093,12 +2099,38 @@ class GUI (QMainWindow):
                 self.Mmask[:,j,i] = 0
                 self.Mmask[i1:i2,j,i] = 1
         else:
-            for p in points:
-                i, j = p
-                ncell = self.regions[j, i]
-                i0, i1, i2, i3 = self.getContinuumGuess(ncell)
-                self.Mmask[:,j,i] = 0
-                self.Mmask[i1:i2,j,i] = 1
+            # Do some smoothing before computing the Cmask
+            if smooth:
+                # A) Define the limits for each region
+                nx = self.specCube.nx
+                ny = self.specCube.ny
+                i1map = np.ones((ny,nx))
+                i2map = np.ones((ny,nx))
+                for cell in range(self.ncells):
+                    i0, i1, i2, i3 = self.getContinuumGuess(cell)
+                    idx = np.where(self.regions == cell)
+                    i1map[idx] = i1
+                    i2map[idx] = i2
+                # B) Convolve each limit map with a kernel
+                kernel = np.array([[1/16., 1/8., 1/16.], 
+                                   [1/8., 1/4., 1/8.],
+                                   [1/16.,1/8.,1/16.]])
+                i1map = convolve(i1map, kernel, boundary='symm', mode='same')
+                i2map = convolve(i2map, kernel, boundary='symm', mode='same')
+                # C) Define the continuum mask
+                for p in points:
+                    i, j = p
+                    i1 = int(i1map[j, i])
+                    i2 = int(i2map[j, i])
+                    self.Mmask[:,j,i] = 0
+                    self.Mmask[i1:i2,j,i] = 1
+            else:
+                for p in points:
+                    i, j = p
+                    ncell = self.regions[j, i]
+                    i0, i1, i2, i3 = self.getContinuumGuess(ncell)
+                    self.Mmask[:,j,i] = 0
+                    self.Mmask[i1:i2,j,i] = 1
         print('Moment mask computed')
         # Eventually apply smoothing on the borders of the xguess map to avoid sudden change of continuum
 
@@ -2294,7 +2326,7 @@ class GUI (QMainWindow):
         inpoints = s.points[npath.contains_points(s.points)]
         xx,yy = inpoints.T        
         fluxAll = np.nansum(s.flux[:,yy,xx], axis=1)
-        if s.instrument == 'GREAT':
+        if s.instrument in ['GREAT', 'FORCAST']:
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0 )
         elif s.instrument == 'FIFI-LS':
             ufluxAll = np.nansum(s.uflux[:,yy,xx], axis=1)
@@ -2305,7 +2337,7 @@ class GUI (QMainWindow):
                             redshift=s.redshift, baryshift=s.baryshift, l0=s.l0)
         elif s.instrument == 'PACS':
             expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
-            spec = Spectrum(s.wave, fluxAll, exposure=expAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0 )           
+            spec = Spectrum(s.wave, fluxAll, exposure=expAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0 )
         # Inherit the x-units of pix 
         istab = self.spectra.index('Pix')
         sc.xunit = self.sci[istab].xunit
@@ -2933,6 +2965,8 @@ class GUI (QMainWindow):
             self.specCube.exposure = self.specCube.exposure[:,bb[0][0]:bb[0][1]+1,bb[1][0]:bb[1][1]+1]
         elif self.specCube.instrument == 'PACS':
             self.specCube.exposure = self.specCube.exposure[:,bb[0][0]:bb[0][1]+1,bb[1][0]:bb[1][1]+1]
+        elif self.specCube.instrument == 'FORCAST':
+            self.specCube.eflux = self.specCube.eflux[:,bb[0][0]:bb[0][1]+1,bb[1][0]:bb[1][1]+1]
         # Create a grid of points
         nz,ny,nx = np.shape(self.specCube.flux)
         xi = np.arange(nx); yi = np.arange(ny)
@@ -2956,6 +2990,8 @@ class GUI (QMainWindow):
             self.specCube.response = self.specCube.response[xmin:xmax]
         if self.specCube.instrument == 'PACS':
             self.specCube.exposure = self.specCube.exposure[xmin:xmax,:,:]
+        if self.specCube.instrument == 'FORCAST':
+            self.specCube.eflux = self.specCube.eflux[xmin:xmax,:,:]
 
     def saveFits(self):
         """ Save the displayed image as a FITS file """
@@ -3099,6 +3135,9 @@ class GUI (QMainWindow):
                     hdlist.append(hdu4)
                     hdlist.append(hdu5)
                     hdlist.append(hdu6)
+                if self.specCube.instrument == 'FORCAST':
+                    hdu3 = self.addExtension(sc.spectrum.eflux,'FLUX_ERROR','Jy',None)
+                    hdlist.append(hdu3)
                 # Save file
                 hdul = fits.HDUList(hdlist)
                 #hdul.info()    
@@ -3281,6 +3320,19 @@ class GUI (QMainWindow):
                 hdul = fits.HDUList([hdu])
                 hdul.writeto(outfile,overwrite=True) 
                 hdul.close()
+            elif self.specCube.instrument == 'FORCAST':
+                header['OBJECT'] = (self.specCube.objname, 'Object Name')
+                c = 299792458.0  # speed of light in m/s 
+                header['CUNIT3'] = ('um','Units of the spectral axis')
+                # Primary header
+                hdu = fits.PrimaryHDU()
+                hdu.header.extend(header)
+                # Extensions
+                hdu1 = self.addExtension(flux,'Flux','Jy',header)
+                hdu2 = self.addExtension(self.specCube.eflux**2,'Variance','Jy2',header)
+                hdul = fits.HDUList([hdu, hdu1, hdu2])
+                hdul.writeto(outfile, overwrite=True) 
+                hdul.close()
             elif self.specCube.instrument == 'PACS':
                 """ Experimental """
                 header['NAXIS'] = (3,'Number of axis')
@@ -3309,119 +3361,6 @@ class GUI (QMainWindow):
                 hdul.close()
             else:
                 pass  
-
-    def exportAperture(self):
-        import json, io
-        """Export an aperture in Json format."""
-        # Check if tab with aperture is open
-        istab = self.stabs.currentIndex()
-        if istab > 1:
-            nap = istab-1
-            itab = self.itabs.currentIndex()
-            ic = self.ici[itab]
-            aperture = ic.photApertures[nap]
-            type = aperture.type
-            print('type is ', type)
-            if type == 'Polygon':
-                verts = aperture.poly.get_xy()
-                adverts = np.array([(ic.wcs.all_pix2world(x,y,1)) for (x,y) in verts])                
-                data = {
-                    'type': aperture.type,
-                    'verts': adverts.tolist()
-                }
-            elif (type == 'Square') | (type == 'Rectangle'):
-                x0,y0 = aperture.rect.get_xy()
-                r0,d0 = ic.wcs.all_pix2world(x0,y0,1)
-                data = {
-                    'type': aperture.type,
-                    'width': aperture.rect.get_width()*ic.pixscale,
-                    'height': aperture.rect.get_height()*ic.pixscale,
-                    'angle': aperture.rect.angle,
-                    'ra0': r0.tolist(),
-                    'dec0': d0.tolist()
-                }
-            elif  (type == 'Ellipse') | (type == 'Circle'):
-                x0,y0 = aperture.ellipse.center
-                r0,d0 = ic.wcs.all_pix2world(x0,y0,1)
-                data = {
-                    'type': aperture.type,
-                    'width':  aperture.ellipse.width*ic.pixscale,
-                    'height': aperture.ellipse.height*ic.pixscale,
-                    'angle':  aperture.ellipse.angle,
-                    'ra0': r0.tolist(),
-                    'dec0': d0.tolist()
-                }
-            else:
-                data = {}
-            # Open a dialog
-            fd = QFileDialog()
-            fd.setLabelText(QFileDialog.Accept, "Export as")
-            fd.setNameFilters(["Json Files (*.json)","All Files (*)"])
-            fd.setOptions(QFileDialog.DontUseNativeDialog)
-            fd.setViewMode(QFileDialog.List)
-            if (fd.exec()):
-                filenames= fd.selectedFiles()
-                filename = filenames[0]
-                if filename[-5:] != '.json':
-                    filename += '.json'              
-                print("Exporting aperture to file: ", filename)
-                with io.open(filename, mode='w') as f:
-                    str_= json.dumps(data,indent=2,sort_keys=True,separators=(',',': '),
-                                     ensure_ascii=False)
-                    # print(str_)
-                    f.write(str_)
-                self.sb.showMessage("Aperture exported in file "+filename, 3000)
-        else:
-            self.sb.showMessage("To export an aperture, select the tab with the desired aperture ",
-                                3000)
-
-    def importAperture(self):
-        import json
-        """Import an aperture defined in a Json file."""
-        # Open a dialog
-        fd = QFileDialog()
-        fd.setLabelText(QFileDialog.Accept, "Import")
-        fd.setNameFilters(["Json Files (*.json)","All Files (*)"])
-        fd.setOptions(QFileDialog.DontUseNativeDialog)
-        fd.setViewMode(QFileDialog.List)
-        fd.setFileMode(QFileDialog.ExistingFile)
-        if (fd.exec()):
-            filenames= fd.selectedFiles()
-            print("Loading aperture from file: ", filenames[0])
-            with open(filenames[0],'r') as f:
-                data = json.load(f)#, object_pairs_hook=OrderedDict)
-            # Decoding info and opening new tab
-            try:
-                type = data['type']
-                if type == 'Polygon':
-                    adverts = data['verts']
-                    #verts = np.array([(ic.wcs.all_world2pix(r,d,1)) for (r,d) in adverts])       
-                    self.drawNewPolygonAperture(adverts)
-                else:
-                    r0 = data['ra0']
-                    d0 = data['dec0']
-                    w = data['width']
-                    h = data['height']
-                    angle = data['angle']
-                    self.drawNewAperture(type,r0,d0,w,h,angle)
-            except:
-                self.sb.showMessage("The file is not a valide aperture file.", 3000)
-        else:
-            self.sb.showMessage("To export an aperture, select the tab with the desired aperture ", 3000)
-
-    def exportGuesses(self):
-        "Export tessellation and guesses of continuum and lines."
-        # TODO
-        # Export in JSON:
-        # sites (in coordinates)
-        # limits of the continuum (x, y  in wavelengths, slope)
-        # lines (x0, fwhm, y0)
-        pass
-    
-    def importGuesses(self):
-        "Import previously defined tessellation and guesses of continuum and lines."
-        # TODO
-        pass
 
     def addExtension(self,data, extname, unit, hdr):
         from astropy.io import fits
@@ -3927,7 +3866,7 @@ class GUI (QMainWindow):
             try:
                 self.initializeImages()
                 self.initializeSpectra()
-                if self.specCube.instrument == 'GREAT':
+                if self.specCube.instrument in ['GREAT','FORCAST']:
                     print('compute Exp from Nan')
                     self.specCube.computeExpFromNan
                 self.all = False
@@ -3987,6 +3926,9 @@ class GUI (QMainWindow):
         elif self.specCube.instrument == 'GREAT': 
             self.bands = ['Flux']
             self.spectra = ['All','Pix']
+        elif self.specCube.instrument == 'FORCAST':
+            self.bands = ['Flux']
+            self.spectra = ['All','Pix']            
         elif self.specCube.instrument == 'PACS':
             self.bands = ['Flux','Exp']
             self.spectra = ['All','Pix']
@@ -4124,6 +4066,9 @@ class GUI (QMainWindow):
         if s.instrument == 'GREAT':
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0 )
+        if s.instrument == 'FORCAST':
+            spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
+                            redshift=s.redshift, l0=s.l0 )
         elif s.instrument == 'PACS':
             expAll = s.exposure[:,y0,x0]
             spec = Spectrum(s.wave, fluxAll, exposure=expAll,instrument=s.instrument,
@@ -4249,7 +4194,7 @@ class GUI (QMainWindow):
             w = c / w * 1.e-6
         n = np.argmin(np.abs(self.specCube.wave - w))
        # Display channel n of the spectral cube
-        if self.specCube.instrument == 'GREAT':
+        if self.specCube.instrument in ['GREAT','FORCAST']:
             imas = ['Flux']
         elif self.specCube.instrument == 'PACS':
             imas = ['Flux','Exp']
