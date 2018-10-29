@@ -161,26 +161,27 @@ def exportGuesses(self):
                     'lines': lines
                     }
             data.move_to_end(i, last=True)  # Move element to the end
-        # Open a dialog
-        fd = QFileDialog()
-        fd.setLabelText(QFileDialog.Accept, "Export as")
-        fd.setNameFilters(["Json Files (*.json)","All Files (*)"])
-        fd.setOptions(QFileDialog.DontUseNativeDialog)
-        fd.setViewMode(QFileDialog.List)
-        if (fd.exec()):
-            filenames= fd.selectedFiles()
-            filename = filenames[0]
-            if filename[-5:] != '.json':
-                filename += '.json'              
-            print("Exporting guesses to file: ", filename)
-            with io.open(filename, mode='w') as f:
-                str_= json.dumps(data, indent=2, separators=(',', ': '),
-                                 ensure_ascii=False, cls=MyEncoder)
-                f.write(str_)
-            self.sb.showMessage("Guesses exported to file "+filename, 3000)
+    # Open a dialog
+    fd = QFileDialog()
+    fd.setLabelText(QFileDialog.Accept, "Export as")
+    fd.setNameFilters(["Json Files (*.json)","All Files (*)"])
+    fd.setOptions(QFileDialog.DontUseNativeDialog)
+    fd.setViewMode(QFileDialog.List)
+    if (fd.exec()):
+        filenames= fd.selectedFiles()
+        filename = filenames[0]
+        if filename[-5:] != '.json':
+            filename += '.json'              
+        print("Exporting guesses to file: ", filename)
+        with io.open(filename, mode='w') as f:
+            str_= json.dumps(data, indent=2, separators=(',', ': '),
+                             ensure_ascii=False, cls=MyEncoder)
+            f.write(str_)
+        self.sb.showMessage("Guesses exported to file "+filename, 3000)
     
 def importGuesses(self):
     "Import previously defined tessellation and guesses of continuum and lines."
+    from sospex.moments import SegmentsInteractor
     # Open a dialog
     fd = QFileDialog()
     fd.setLabelText(QFileDialog.Accept, "Import as")
@@ -195,36 +196,72 @@ def importGuesses(self):
         self.ncells = data['ncells']
         istab = self.spectra.index('Pix')
         sc = self.sci[istab]
+        self.stabs.setCurrentIndex(istab)
         imtab = self.bands.index('Flux')
         ic = self.ici[imtab]
-        self.stabs.setCurrentIndex(imtab)
+        self.itabs.setCurrentIndex(imtab)
+        # Delete previous guess and select new one
+        if sc.guess is not None:
+            self.onRemoveContinuum('segments deleted')
         if self.ncells == 1:
             x = data['x']
             y = data['y']
-            lines = data['lines']
-            xy = [(i,j) for (i,j) in zip(x,y)]
-            sc.guess = xy
-            sc.xguess = x
+            lines = data['lines'][0]
+            sc.xguess = [x]
+            # Add lines
             if len(lines) > 0:
                 sc.lguess = lines
-                sc.lines = lines
-            # Plot guess
         else:
             # Case with tessellation
             ra = []
             dec = []
-            if len(data[0].lines) > 0:
-                sc.lines = data[0].lines
-            sc.lguess = [sc.lines]
-            for ncell in range(self.ncells):
-                g = data[ncell]
-                ra.append(g.ra)
-                dec.append(g.dec)
-                if ncell > 0:
-                    for l,lin in  enumerate(g.lines):
-                        sc.lguess[l].append(lin[l])
+            sc.lguess = []
+            sc.xguess = []
+            for i in range(self.ncells):
+                g = data[str(i)]
+                sc.xguess.append(g['x'])
+                ra.append(g['ra'])
+                dec.append(g['dec'])
+                sc.lguess.append(g['lines'])
+            sc.lguess = [list(i) for i in zip(*sc.lguess)]  # Transposing
             x, y = ic.wcs.all_world2pix(ra, dec, 1)
             self.sites = [(i,j) for (i,j) in zip(x,y)]
+            x = data['0']['x']
+            y = data['0']['y']
+            lines = data['0']['lines']
+        # Plot continuum guess
+        if y[3] != y[0]:
+            self.zeroDeg = False
+        else:
+            self.zeroDeg = True
+        xy = [(i,j) for (i,j) in zip(x,y)]
+        SI = SegmentsInteractor(sc.axes, xy, self.zeroDeg)
+        SI.modSignal.connect(self.onModifiedGuess)
+        SI.mySignal.connect(self.onRemoveContinuum)
+        sc.guess = SI
+        # Plot lines
+        if sc.lguess is not None:
+            self.emslines = 0
+            self.abslines = 0
+            for line in lines:
+                print('line is ', line)
+                if line[2] >= 0:
+                    self.emslines += 1
+                else:
+                    self.abslines += 1
+            if self.emslines > 0:
+                sc.lines = self.addLines(self.emslines, x, 'emission')
+            else:
+                sc.lines = []
+            if self.abslines > 0:
+                sc.lines.append(self.addLines(self.abslines, x, 'absorption', self.emslines))
             # Then plot guess and activate tessellation
+        sc.fig.canvas.draw_idle()
+        # Create Voronoi sites, KDTree, plot Voronoi ridges on image
+        self.removeVI()
+        if self.ncells > 1:
+            self.createVI()
+        else:
+            ic.fig.canvas.draw_idle()
     else:
         print('Try again after exporting a set of guesses.')

@@ -654,7 +654,7 @@ class GUI (QMainWindow):
 
     def onRemoveContinuum(self, event):
         sc = self.sci[self.spectra.index('Pix')]
-        print('remove continuum event: ', event)
+        # print('remove continuum event: ', event)
         if event[:-2] == 'line deleted':
             n = int(event[-2:])
             print('Disconnect line ', n)
@@ -1178,9 +1178,10 @@ class GUI (QMainWindow):
             self.stabs.setCurrentIndex(istab)
         sc = self.sci[istab]
         # Change to flux map
-        ic0 = self.ici[0]
-        if self.itabs.currentIndex() != 0:
-            self.itabs.setCurrentIndex(0)
+        imtab = self.bands.index('Flux')
+        ic0 = self.ici[imtab]
+        if self.itabs.currentIndex() != imtab:
+            self.itabs.setCurrentIndex(imtab)
         w0 = ic0.pixscale
         # Dialog to select continuum fit paramenters
         self.CP = ContParams(self.kernel)
@@ -1266,11 +1267,7 @@ class GUI (QMainWindow):
         # Create Voronoi sites, KDTree, plot Voronoi ridges on image
         self.removeVI()
         if self.ncells > 1:
-            tree = KDTree(self.sites)
-            tq = tree.query(self.specCube.points)
-            self.regions = tq[1].reshape(ny, nx)
-            self.VI = VoronoiInteractor(ic0.axes, self.sites)
-            self.VI.modSignal.connect(self.updateKDTree)
+            self.createVI()
         else:
             ic0.fig.canvas.draw_idle()
  
@@ -1283,6 +1280,18 @@ class GUI (QMainWindow):
             self.VI = None
         except BaseException:
             pass
+        
+    def createVI(self):
+        """Create new Voronoi tessellation."""
+        nx = self.specCube.nx
+        ny = self.specCube.ny
+        imtab = self.bands.index('Flux')
+        ic0 = self.ici[imtab]
+        tree = KDTree(self.sites)
+        tq = tree.query(self.specCube.points)
+        self.regions = tq[1].reshape(ny, nx)
+        self.VI = VoronoiInteractor(ic0.axes, self.sites)
+        self.VI.modSignal.connect(self.updateKDTree)
             
     def computeSites(self, n):
         nx = self.specCube.nx
@@ -1445,7 +1454,8 @@ class GUI (QMainWindow):
             
     def addLines(self, n, x, type, nstart=0):
         lines = []
-        istab = self.stabs.currentIndex()
+        istab = self.spectra.index('Pix')
+        # istab = self.stabs.currentIndex()
         sc = self.sci[istab]
         nid = nstart
         for i in range(n):

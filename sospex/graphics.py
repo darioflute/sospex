@@ -1111,10 +1111,7 @@ class SpectrumCanvas(MplCanvas):
                                 if line is None:
                                     pass
                                 else:
-                                    # print('line is ', line)
                                     gg = self.lguess[line.n][ncell]
-                                    # gg = guess[ncell]
-                                    # line.c0 += dy #  Update continuum
                                     line.c0 = yc
                                     line.x0 = gg[0]
                                     line.fwhm = gg[1]
@@ -1130,7 +1127,6 @@ class SpectrumCanvas(MplCanvas):
                                             line.A = A
                                         else:
                                             line.A = -0.01
-                                    # line.A = gg[2]
                                     line.updateCurves()
                     except BaseException:
                         pass
