@@ -207,18 +207,24 @@ def importGuesses(self):
             sc.xguess = x
             if len(lines) > 0:
                 sc.lguess = lines
-                ra = []
-                dec = []
-                # Lunch line interactors
-                for ncell in range(self.ncells):
-                    g = data[ncell]
-                    ra.append(g.ra)
-                    dec.append(g.dec)
-                    
-                x, y = ic.wcs.all_world2pix(ra, dec, 1)
-                self.sites = [(i,j) for (i,j) in zip(x,y)]
+                sc.lines = lines
+            # Plot guess
         else:
             # Case with tessellation
-            pass
+            ra = []
+            dec = []
+            if len(data[0].lines) > 0:
+                sc.lines = data[0].lines
+            sc.lguess = [sc.lines]
+            for ncell in range(self.ncells):
+                g = data[ncell]
+                ra.append(g.ra)
+                dec.append(g.dec)
+                if ncell > 0:
+                    for l,lin in  enumerate(g.lines):
+                        sc.lguess[l].append(lin[l])
+            x, y = ic.wcs.all_world2pix(ra, dec, 1)
+            self.sites = [(i,j) for (i,j) in zip(x,y)]
+            # Then plot guess and activate tessellation
     else:
         print('Try again after exporting a set of guesses.')
