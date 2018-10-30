@@ -140,9 +140,9 @@ class specCube(object):
         self.n = self.header['NAXIS3']
         self.flux = hdl['FLUX'].data
         self.eflux = np.sqrt(hdl['VARIANCE'].data)
-        nz, ny, nx = np.shape(self.flux)
-        print('nz is ',nz)
-        exp = hdl['EXPOSURE'].data.astype(float) / nz
+        # nz, ny, nx = np.shape(self.flux)
+        # print('nz is ',nz)
+        exp = hdl['EXPOSURE'].data.astype(float) # / nz
         self.exposure = np.broadcast_to(exp, np.shape(self.flux))
         print('shape of exposure is ', np.shape(self.exposure))
         self.wave = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3
