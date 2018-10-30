@@ -554,7 +554,7 @@ class GUI (QMainWindow):
                     ap.line.set_visible(ap.showverts)
                 ima.changed = True
             if ima.changed:
-                print('redrawing figure .... ')
+                # print('redrawing figure .... ')
                 ima.fig.canvas.draw_idle()
                 ima.changed = False
             if self.blink == 'select':
@@ -742,9 +742,9 @@ class GUI (QMainWindow):
                 fluxAll = np.nansum(s.flux[:, yy, xx], axis=1)
             sc.spectrum.flux = fluxAll
             # sc.spectrum.flux = fluxAll
-            if s.instrument in ['GREAT', 'FORCAST']:
+            if s.instrument == 'GREAT':
                 sc.updateSpectrum(f=fluxAll, cont=cont, moments=moments, noise=noise, ncell=ncell)
-            elif s.instrument == 'PACS':
+            elif s.instrument in ['PACS','FORCAST']:
                 if istab == 1:
                     expAll = np.nanmean(s.exposure[:, yy, xx], axis=1)
                 else:
@@ -1400,8 +1400,7 @@ class GUI (QMainWindow):
         # Callback to propagate axes limit changes among images
         ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
         ih = self.ihi[self.bands.index(band)]
-        #clim = ic.image.get_clim()
-        ih.compute_initial_figure(image=None)#,xmin=clim[0],xmax=clim[1])
+        ih.compute_initial_figure(image=None)
         # Add apertures
         self.addApertures(ic)
         # Add contours
@@ -1875,12 +1874,6 @@ class GUI (QMainWindow):
 
     def fitContAll(self):
         """Fit continuum all over the cube."""
-        # Define region (excluding frame of 1 pixel)
-        #nx = self.specCube.nx
-        #ny = self.specCube.ny
-        #xi = np.arange(1,nx-1)
-        #yi = np.arange(1,ny-1)
-        #xi,yi = np.meshgrid(xi,yi)
         # For efficiency, points with no exposure should be masked
         exp = np.nansum(self.specCube.exposure, axis=0)
         mask = exp > 0
@@ -1890,8 +1883,6 @@ class GUI (QMainWindow):
         mask[:, -1] = False
         yi, xi = np.where(mask == True)
         points = np.c_[xi, yi]
-        ## points = np.array([np.ravel(xi),np.ravel(yi)]).transpose()
-        #points = np.c_[np.ravel(xi), np.ravel(yi)]
         # Continuum mask
         self.continuumMask(points, True)
         # Fit
@@ -1960,14 +1951,10 @@ class GUI (QMainWindow):
         sc = self.sci[self.spectra.index('Pix')]
         intcp = sc.guess.intcpt
         slope = sc.guess.slope
-        # For the moment we fix the exposure of GREAT data to 1 if they exist, 0 is they are NaNs
-        # if self.specCube.instrument == 'FIFI-LS':
         c, c0 = multiFitContinuum(self.Cmask, self.specCube.wave, self.specCube.flux,
                                   self.continuum, self.C0, self.specCube.l0,
                                   points, slope, intcp, self.positiveContinuum,
                                   self.kernel, exp=self.specCube.exposure)
-        # else:
-        # c,c0 = multiFitContinuum(m,w,f,c,c0,w0,points,slope,intcp,self.positiveContinuum, self.kernel)
         self.continuum = c
         print('max continuum is ',np.nanmax(self.continuum))
         self.C0 = c0
@@ -1987,10 +1974,6 @@ class GUI (QMainWindow):
         ic.image.axes.set_ylim(ic0.image.axes.get_ylim())
         # Differ the change
         ic.changed = True
-        # Refresh current image (if continuum)
-        #itab = self.itabs.currentIndex()
-        #if self.bands[itab] == 'C0':
-        #    ic = self.ici[itab]
         # Update continuum on pixel tab
         sc = self.sci[self.spectra.index('Pix')]
         ic = self.ici[0]
@@ -2039,8 +2022,6 @@ class GUI (QMainWindow):
                     self.addBand(new)
                 else:
                     itab = self.bands.index(new)
-                    #self.removeTab(itab)
-                    #self.addBand(new)
                     ic = self.ici[itab]
                     ic.showImage(sb)
                     if ic == ic0:
@@ -2132,16 +2113,6 @@ class GUI (QMainWindow):
 
     def computeMoments(self, points):
         """Compute moments and velocities."""
-        # Update moments mask (from shaded region on Pix tab)
-        #sc = self.sci[self.spectra.index('Pix')]
-        #x0, x1 = sc.regionlimits
-        #i0 = np.argmin(np.abs(self.specCube.wave - x0))
-        #i1 = np.argmin(np.abs(self.specCube.wave - x1))
-        #for p in points:
-        #    i, j = p
-        #    self.Mmask[:, j, i] = 0
-        #    self.Mmask[i0:i1, j, i] = 1
-        # Compute moments
         m = self.Mmask
         moments = [self.M0, self.M1, self.M2, self.M3, self.M4]
         f = self.specCube.flux
@@ -2322,7 +2293,7 @@ class GUI (QMainWindow):
         inpoints = s.points[npath.contains_points(s.points)]
         xx,yy = inpoints.T        
         fluxAll = np.nansum(s.flux[:,yy,xx], axis=1)
-        if s.instrument in ['GREAT', 'FORCAST']:
+        if s.instrument == 'GREAT':
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0 )
         elif s.instrument == 'FIFI-LS':
             ufluxAll = np.nansum(s.uflux[:,yy,xx], axis=1)
@@ -2331,7 +2302,7 @@ class GUI (QMainWindow):
             spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, uflux=ufluxAll,
                             exposure=expAll, atran = s.atran, instrument=s.instrument,
                             redshift=s.redshift, baryshift=s.baryshift, l0=s.l0)
-        elif s.instrument == 'PACS':
+        elif s.instrument in ['PACS','FORCAST']:
             expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
             spec = Spectrum(s.wave, fluxAll, exposure=expAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0 )
         # Inherit the x-units of pix 
@@ -2600,44 +2571,41 @@ class GUI (QMainWindow):
         """Download an image covering the cube."""
         # Compute center and size of image (in arcmin)
         nz,ny,nx = np.shape(self.specCube.flux)
-        lon,lat = self.specCube.wcs.celestial.all_pix2world(ny//2,nx//2, 0)
-        xsize = nx * self.specCube.pixscale /60. #size in arcmin
-        ysize = ny * self.specCube.pixscale /60. #size in arcmin
+        lon,lat = self.specCube.wcs.celestial.all_pix2world(ny//2, nx//2, 0)
+        xsize = nx * self.specCube.pixscale / 60. #size in arcmin
+        ysize = ny * self.specCube.pixscale / 60. #size in arcmin
         # Compute center and size (arcmin) of the displayed image 
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
         x = ic.axes.get_xlim()
         y = ic.axes.get_ylim()
-        ra,dec = ic.wcs.all_pix2world(x,y,1)
+        ra,dec = ic.wcs.all_pix2world(x, y, 1)
         lon = np.mean(ra)
         lat = np.mean(dec)
-        xsize = np.abs(ra[0]-ra[1])*np.cos(lat*np.pi/180.)*60.
-        ysize = np.abs(dec[0]-dec[1])*60.
+        xsize = np.abs(ra[0] - ra[1]) * np.cos(lat * np.pi / 180.) * 60.
+        ysize = np.abs(dec[0] - dec[1]) * 60.
         if band != 'local':
             # Here call the thread
-            self.downloadThread = DownloadThread(lon,lat,xsize,ysize,band,parent=self)
+            self.downloadThread = DownloadThread(lon, lat, xsize, ysize, band, parent=self)
             self.downloadThread.updateTabs.newImage.connect(self.newImage)
             self.downloadThread.sendMessage.connect(self.newImageMessage)
             self.downloadThread.start()
             # and start the spinning messagebox
             self.msgbox = QMessageBox()
-            #self.msgbox.setIcon(QMessageBox.Information)
             label = QLabel(self.msgbox)
-            pixmap = QPixmap(os.path.join(self.path0,'icons','niet.png'))
+            pixmap = QPixmap(os.path.join(self.path0, 'icons', 'niet.png'))
             label.setPixmap(pixmap)
-            movie = QMovie(os.path.join(self.path0,'icons','spinplane.gif'))
-            #movie = QMovie(self.path0+'/icons/loader.gif')
+            movie = QMovie(os.path.join(self.path0, 'icons', 'spinplane.gif'))
             label.setMovie(movie)
             movie.jumpToFrame(0)
             movie.start()
             label.resize(QSize(200,200))
             self.msgbox.setIconPixmap(pixmap)
-            self.msgbox.setText("Querying "+band+" ... ")
-            #retval = 
+            self.msgbox.setText("Querying " + band + " ... ")
             self.msgbox.exec_()
         else:
             # Download the local fits
-            downloadedImage = cloudImage(lon,lat,xsize,ysize,band)
+            downloadedImage = cloudImage(lon, lat, xsize, ysize, band)
             if downloadedImage.data is not None:
                 self.newImageTab(downloadedImage)
                 message = 'New image downloaded'
@@ -2705,8 +2673,6 @@ class GUI (QMainWindow):
             x = ic0.axes.get_xlim()
             y = ic0.axes.get_ylim()
             ra,dec = ic0.wcs.all_pix2world(x,y,1)
-            #print('Limits in RA are: ',ra)
-            #print('Limits in Dec are: ',dec)
             x,y = ic.wcs.all_world2pix(ra,dec,1)            
             ic.axes.set_xlim(x)
             ic.axes.set_ylim(y)
@@ -2757,7 +2723,6 @@ class GUI (QMainWindow):
         fd.setFileMode(QFileDialog.ExistingFile)
         if (fd.exec()):
             fileName= fd.selectedFiles()
-            #print(fileName[0])
             # Read external spectrum
             self.extSpectrum = ExtSpectrum(fileName[0])            
             # Plot over selected tab
@@ -2923,7 +2888,6 @@ class GUI (QMainWindow):
         center =  ((xlimits[0]+xlimits[1])*0.5,(ylimits[0]+ylimits[1])*0.5)
         size = (np.abs((ylimits[1]-ylimits[0]).astype(int)),np.abs((xlimits[1]-xlimits[0]).astype(int)))
         nz,nx,ny = np.shape(self.specCube.flux)
-        #print('Size is ',size,nx,ny)
         if size[0] == nx and size[1] == ny:
             self.sb.showMessage("No cropping needed ", 2000)
         else:
@@ -2963,6 +2927,7 @@ class GUI (QMainWindow):
             self.specCube.exposure = self.specCube.exposure[:,bb[0][0]:bb[0][1]+1,bb[1][0]:bb[1][1]+1]
         elif self.specCube.instrument == 'FORCAST':
             self.specCube.eflux = self.specCube.eflux[:,bb[0][0]:bb[0][1]+1,bb[1][0]:bb[1][1]+1]
+            self.specCube.exposure = self.specCube.exposure[:,bb[0][0]:bb[0][1]+1,bb[1][0]:bb[1][1]+1]
         # Create a grid of points
         nz,ny,nx = np.shape(self.specCube.flux)
         xi = np.arange(nx); yi = np.arange(ny)
@@ -2974,7 +2939,6 @@ class GUI (QMainWindow):
         self.specCube.flux = self.specCube.flux[xmin:xmax,:,:]
         self.specCube.wave = self.specCube.wave[xmin:xmax]
         nz,ny,nx = np.shape(self.specCube.flux)
-        #print('new cube z-size is ',nz)
         self.specCube.n = nz
         # Cut the cubes
         if self.specCube.instrument == 'FIFI-LS':
@@ -2988,6 +2952,7 @@ class GUI (QMainWindow):
             self.specCube.exposure = self.specCube.exposure[xmin:xmax,:,:]
         if self.specCube.instrument == 'FORCAST':
             self.specCube.eflux = self.specCube.eflux[xmin:xmax,:,:]
+            self.specCube.exposure = self.specCube.exposure[xmin:xmax,:,:]
 
     def saveFits(self):
         """ Save the displayed image as a FITS file """
@@ -3001,7 +2966,6 @@ class GUI (QMainWindow):
         fd.setViewMode(QFileDialog.List)
         if (fd.exec()):
             fileName = fd.selectedFiles()
-            #print(fileName[0])
             outfile = fileName[0]
             itab = self.itabs.currentIndex()
             ic = self.ici[itab]
@@ -3133,10 +3097,11 @@ class GUI (QMainWindow):
                     hdlist.append(hdu6)
                 if self.specCube.instrument == 'FORCAST':
                     hdu3 = self.addExtension(sc.spectrum.eflux,'FLUX_ERROR','Jy',None)
+                    hdu4 = self.addExtension(sc.spectrum.exposure,'EXPOSURE','s',None)
                     hdlist.append(hdu3)
+                    hdlist.append(hdu4)
                 # Save file
                 hdul = fits.HDUList(hdlist)
-                #hdul.info()    
                 hdul.writeto(outfile,overwrite=True) # clobber true  allows rewriting
                 hdul.close()
             elif file_extension == '.txt' or file_extension == '.csv':
@@ -3244,7 +3209,6 @@ class GUI (QMainWindow):
         fd.setViewMode(QFileDialog.List)            
         if (fd.exec()):
             fileName = fd.selectedFiles()
-            #print(fileName[0])
             outfile = fileName[0]
             # Update name in cube to allow automatical reloading
             self.specCube.filename = outfile
@@ -3252,7 +3216,6 @@ class GUI (QMainWindow):
                 flux = self.specCube.flux - self.continuum
             else:
                 flux = self.specCube.flux
-            #print('Saving the cube with z size: ',self.specCube.n)
             # Reusable header
             header = self.specCube.wcs.to_header()
             header.remove('WCSAXES')
@@ -3324,9 +3287,11 @@ class GUI (QMainWindow):
                 hdu = fits.PrimaryHDU()
                 hdu.header.extend(header)
                 # Extensions
-                hdu1 = self.addExtension(flux,'Flux','Jy',header)
-                hdu2 = self.addExtension(self.specCube.eflux**2,'Variance','Jy2',header)
-                hdul = fits.HDUList([hdu, hdu1, hdu2])
+                hdu1 = self.addExtension(flux,'FLUX','Jy',header)
+                hdu2 = self.addExtension(self.specCube.eflux**2,'VARIANCE','Jy2',header)
+                hdu3 = self.addExtension(self.specCube.exposure * self.specCube.nz,
+                                         'EXPOSURE', None, header)
+                hdul = fits.HDUList([hdu, hdu1, hdu2, hdu3])
                 hdul.writeto(outfile, overwrite=True) 
                 hdul.close()
             elif self.specCube.instrument == 'PACS':
@@ -3351,7 +3316,6 @@ class GUI (QMainWindow):
                 hdw = fits.BinTableHDU.from_columns(coldefs)
                 hdw.header['EXTNAME'] = 'wcs-tab'
                 hdw.header.extend(header)
-                #hdu3 = self.addExtension(wwave,'wcs-tab','um',None)
                 hdul = fits.HDUList([hdu, hdu1, hdu2, hdw])            
                 hdul.writeto(outfile,overwrite=True) 
                 hdul.close()
@@ -3371,8 +3335,6 @@ class GUI (QMainWindow):
         """Select part of the cube."""
         self.sb.showMessage("Define slice of the cube ", 1000)
         self.slice = 'on'
-        # istab = self.spectra.index('Pix')
-        # self.stabs.setCurrentIndex(istab)
         istab = self.stabs.currentIndex()
         sc = self.sci[istab]
         ## toggle off continuum
@@ -3474,13 +3436,8 @@ class GUI (QMainWindow):
                     image = ic0.oimage
                     image[yy,xx] = np.nan
                     cmin = ic0.cmin; cmax=ic0.cmax
-                    # Remove previous image before showing masked image
-                    # ic0.image.remove()
-                    # ic0.showImage(image)
-                    # New technique
                     ic0.updateImage(image)
                     ic0.updateScale(cmin,cmax)
-                    # self.addContours(ic0) 
                 # mask C0, Mi, v, sv
                 sbands = [self.C0, self.M0, self.M1, self.M2, self.M3, self.M4, self.v, self.sv]
                 bands = ['C0','M0','M1','M2','M3','M4','v','sv']
@@ -3491,8 +3448,6 @@ class GUI (QMainWindow):
                         ic = self.ici[itab]
                         ih = self.ihi[itab]
                         clim = ic.image.get_clim()
-                        # ic.showImage(sb)
-                        # self.addContours(ic)
                         ic.updateImage(sb)
                         ic.fig.canvas.draw_idle()
                         ih.axes.cla()
@@ -3517,7 +3472,6 @@ class GUI (QMainWindow):
             x = ic.axes.get_xlim()
             y = ic.axes.get_ylim()
             self.zoomlimits = [x,y]            
-        #self.LS = LassoSelector(ic.axes, onselect=self.onMask)
         self.LS = PolygonSelector(ic.axes, onselect=self.insideMask)
 
     def maskCubeOutsidePolygon(self):
@@ -3534,7 +3488,6 @@ class GUI (QMainWindow):
             x = ic.axes.get_xlim()
             y = ic.axes.get_ylim()
             self.zoomlimits = [x,y]            
-        #self.LS = LassoSelector(ic.axes, onselect=self.onMask)
         self.LS = PolygonSelector(ic.axes, onselect=self.outsideMask)
 
     def insideMask(self,verts):
@@ -3583,10 +3536,6 @@ class GUI (QMainWindow):
                 image = ic0.oimage
                 image[yy,xx] = np.nan
                 cmin = ic0.cmin; cmax=ic0.cmax
-                # Remove previous image before showing masked image
-                # ic0.image.remove()
-                # ic0.showImage(image)
-                # self.addContours(ic0)
                 ic0.updateImage(image)
                 ic0.updateScale(cmin,cmax)
             # mask C0, Mi, v, sv
@@ -3599,13 +3548,10 @@ class GUI (QMainWindow):
                     ic0 = self.ici[itab]
                     ih = self.ihi[itab]
                     clim = ic0.image.get_clim()
-                    # ic0.showImage(sb)
                     ic0.updateImage(sb)
                     ic0.updateScale(clim[0],clim[1])
-                    # ic0.fig.canvas.draw_idle()
                     ih.axes.cla()
                     ih.compute_initial_figure(image=sb, xmin=clim[0],xmax=clim[1])
-                    # self.addContours(ic0)
             x,y = self.zoomlimits
             ic.axes.set_xlim(x)
             ic.axes.set_ylim(y)
@@ -3680,7 +3626,6 @@ class GUI (QMainWindow):
                 ic.changed = False
             else:
                 pass
-                #print("No contours available")
             
     def overlapContours(self):
         """ Compute contours and overlap/remove them on images """
@@ -3861,8 +3806,10 @@ class GUI (QMainWindow):
             self.loadFile(fileName[0])
             try:
                 self.initializeImages()
+                print('images initialized ')
                 self.initializeSpectra()
-                if self.specCube.instrument in ['GREAT','FORCAST']:
+                print('spectra initialized ')
+                if self.specCube.instrument == 'GREAT':
                     print('compute Exp from Nan')
                     self.specCube.computeExpFromNan
                 self.all = False
@@ -3923,7 +3870,7 @@ class GUI (QMainWindow):
             self.bands = ['Flux']
             self.spectra = ['All','Pix']
         elif self.specCube.instrument == 'FORCAST':
-            self.bands = ['Flux']
+            self.bands = ['Flux','Exp']
             self.spectra = ['All','Pix']            
         elif self.specCube.instrument == 'PACS':
             self.bands = ['Flux','Exp']
@@ -3971,7 +3918,7 @@ class GUI (QMainWindow):
         #t = time.process_time()
         s = self.specCube
         # Compute initial images
-        print('Initialize images')
+        # print('Initialize images')
         for ima in self.bands:
             ts = time.process_time()
             ic = self.ici[self.bands.index(ima)]
@@ -3994,7 +3941,7 @@ class GUI (QMainWindow):
             t1 = time.process_time() 
             print('Image displayed in ', t1-ts,' s')
             if ima == 'Exp':
-                ic.image.format_cursor_data = lambda z: "{:10.0f} s".format(float(z))
+                ic.image.format_cursor_data = lambda z: "{:10.3f} s".format(float(z))
             else:
                 ic.image.format_cursor_data = lambda z: "{:10.4f} Jy".format(float(z))
             # Callback to propagate axes limit changes among images
@@ -4032,52 +3979,52 @@ class GUI (QMainWindow):
             
     def initializeSpectra(self):
         s = self.specCube
-        print("Initialize spectra")
         # Compute initial pixel spectrum
         spectrum = self.spectra[1]
         sc = self.sci[self.spectra.index(spectrum)]
-        nz,ny,nx = np.shape(s.flux)
         # Add pixel aperture
         ic0 = self.ici[0]
-        x0 = nx // 2
-        y0 = ny // 2
+        x0 = s.nx // 2
+        y0 = s.ny // 2
         r0,d0 = ic0.wcs.all_pix2world(x0,y0,1)
-        ws = ic0.pixscale  # ;hs = ic0.pixscale        
+        ws = ic0.pixscale       
         n = len(self.photoApertures)
         # Define pixel aperture
         data = [r0,d0,ws]
         self.photoApertures.append(photoAperture(n,'pixel',data))
         for ic in self.ici:
-            x0,y0 = ic.wcs.all_world2pix(r0,d0,1)
-            w = ws/ic.pixscale  # ;h = hs/ic.pixscale
-            pixel = PixelInteractor(ic.axes, (x0,y0), w)
+            x0, y0 = ic.wcs.all_world2pix(r0, d0, 1)
+            w = ws / ic.pixscale
+            pixel = PixelInteractor(ic.axes, (x0, y0), w)
             ic.photApertures.append(pixel)
             cidap=pixel.mySignal.connect(self.onRemoveAperture)
             ic.photApertureSignal.append(cidap)
             pixel.modSignal.connect(self.onModifiedAperture)
-        # print('Initialize spectrum')
-        x0 = nx // 2
-        y0 = ny // 2
+        x0 = s.nx // 2
+        y0 = s.ny // 2
         fluxAll = s.flux[:,y0,x0]
         if s.instrument == 'GREAT':
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0 )
-        if s.instrument == 'FORCAST':
-            spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
-                            redshift=s.redshift, l0=s.l0 )
         elif s.instrument == 'PACS':
-            expAll = s.exposure[:,y0,x0]
-            spec = Spectrum(s.wave, fluxAll, exposure=expAll,instrument=s.instrument,
-                            redshift=s.redshift, l0=s.l0 )
+            expAll = s.exposure[:, y0, x0]
+            spec = Spectrum(s.wave, fluxAll, exposure=expAll, instrument=s.instrument,
+                            redshift=s.redshift, l0=s.l0)
+        elif s.instrument == 'FORCAST':
+            expAll = s.exposure[:, y0, x0]
+            efluxAll = s.eflux[:, y0, x0]
+            spec = Spectrum(s.wave, fluxAll, eflux=efluxAll,
+                            exposure=expAll, instrument=s.instrument,
+                            redshift=s.redshift, l0=s.l0)
         elif s.instrument == 'FIFI-LS':
-            ufluxAll = s.uflux[:,y0,x0]
-            expAll = s.exposure[:,y0,x0]
-            efluxAll = s.eflux[:,y0,x0]
+            ufluxAll = s.uflux[:, y0, x0]
+            expAll = s.exposure[:, y0, x0]
+            efluxAll = s.eflux[:, y0, x0]
             spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, uflux= ufluxAll,
                             exposure=expAll, atran = s.atran, instrument=s.instrument,
-                            redshift=s.redshift, baryshift = s.baryshift, l0=s.l0)
+                            redshift=s.redshift, baryshift=s.baryshift, l0=s.l0)
         sc.compute_initial_spectrum(spectrum=spec)
-        self.specZoomlimits = [sc.xlimits,sc.ylimits]
+        self.specZoomlimits = [sc.xlimits, sc.ylimits]
         sc.cid = sc.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomSpec)
         sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
                                rectprops=dict(alpha=0.3, facecolor='LightGreen'))
@@ -4085,7 +4032,6 @@ class GUI (QMainWindow):
         wave0 = s.wave[s.n0]
         dwave = (s.wave[s.n0+1]-wave0)*0.5
         sc.regionlimits = wave0-dwave,wave0+dwave
-        # sc.shadeRegion()
         self.slider = None
         self.slicer = None
 
@@ -4190,9 +4136,9 @@ class GUI (QMainWindow):
             w = c / w * 1.e-6
         n = np.argmin(np.abs(self.specCube.wave - w))
        # Display channel n of the spectral cube
-        if self.specCube.instrument in ['GREAT','FORCAST']:
+        if self.specCube.instrument == 'GREAT':
             imas = ['Flux']
-        elif self.specCube.instrument == 'PACS':
+        elif self.specCube.instrument in ['PACS', 'FORCAST']:
             imas = ['Flux','Exp']
         elif self.specCube.instrument == 'FIFI-LS':
             imas = ['Flux','uFlux','Exp']
@@ -4266,7 +4212,7 @@ class GUI (QMainWindow):
         if s.instrument == 'GREAT':
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0 )
-        elif s.instrument == 'PACS':
+        elif s.instrument in ['PACS', 'FORCAST']:
             expAll = np.nansum(s.exposure, axis=(1,2))
             spec = Spectrum(s.wave, fluxAll, exposure=expAll,instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0 )
@@ -4361,7 +4307,7 @@ class GUI (QMainWindow):
         sc.regionlimits = [xmin,xmax]
         if self.specCube.instrument == 'GREAT':
             imas = ['Flux']
-        elif self.specCube.instrument == 'PACS':
+        elif self.specCube.instrument in ['PACS','FORCAST']:
             imas = ['Flux','Exp']
         elif self.specCube.instrument == 'FIFI-LS':
             imas = ['Flux','uFlux','Exp']
@@ -4441,7 +4387,7 @@ class GUI (QMainWindow):
         fluxAll = np.nansum(self.specCube.flux[:,y0:y1,x0:x1], axis=(1,2))
         if s.instrument == 'GREAT':
             sc.updateSpectrum(f=fluxAll)
-        elif s.instrument == 'PACS':
+        elif s.instrument in ['PACS','FORCAST']:
             expAll = np.nansum(s.exposure[:,y0:y1,x0:x1], axis=(1,2))
             sc.updateSpectrum(f=fluxAll,exp=expAll)            
         elif self.specCube.instrument == 'FIFI-LS':

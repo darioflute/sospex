@@ -766,7 +766,7 @@ class SpectrumCanvas(MplCanvas):
         self.lines = None
         self.dragged = None
         
-    def compute_initial_spectrum(self, spectrum=None,xmin=None,xmax=None):
+    def compute_initial_spectrum(self, spectrum=None, xmin=None, xmax=None):
         if spectrum is None:
             ''' initial definition when spectrum not yet available '''
         else:
@@ -874,14 +874,14 @@ class SpectrumCanvas(MplCanvas):
                                   direction='in', pad = -25, colors='red')
             else:
                 self.ax2.get_yaxis().set_tick_params(labelright='off',right='off')            
-        elif s.instrument in ['GREAT','FORCAST']:
+        elif s.instrument == 'GREAT':
             self.displayUFlux = False
             self.displayAtran = False
             self.displayExposure = False
             lns = self.fluxLine + self.linesLine
             lines = [self.fluxLayer,self.linesLayer]
             visibility = [self.displayFlux,self.displayLines]
-        elif s.instrument == 'PACS':
+        elif s.instrument in ['PACS', 'FORCAST']:
             try:
                 self.fig.delaxes(self.ax3)
             except:
@@ -889,7 +889,7 @@ class SpectrumCanvas(MplCanvas):
             self.ax3 = self.axes.twinx()
             self.exposureLine = self.ax3.step(self.x, s.exposure,
                                               color='orange',label='Exp',zorder=7)
-            self.ax3.set_ylim([0.5,np.nanmax(s.exposure)*1.54])
+            self.ax3.set_ylim([np.nanmin(s.exposure)*0.5,np.nanmax(s.exposure)*1.54])
             self.exposureLayer, = self.exposureLine
             self.displayUFlux = False
             self.displayAtran = False
@@ -902,7 +902,7 @@ class SpectrumCanvas(MplCanvas):
                 self.ax3.get_yaxis().set_tick_params(labelright='on', right='on',
                                       direction='out', pad=5, colors='orange')
             else:
-                self.ax3.get_yaxis().set_tick_params(labelright='off',right='off')
+                self.ax3.get_yaxis().set_tick_params(labelright='off', right='off')
         # Prepare legend                
         self.labs = [l.get_label() for l in lns]
         leg = self.axes.legend(lns, self.labs, loc='upper center', bbox_to_anchor=(0.5, -0.1),
@@ -996,6 +996,7 @@ class SpectrumCanvas(MplCanvas):
             return (vx2, vx1)
         else:
             return (vx1, vx2)
+        print('Velocity limits ', vx1, vx2)
 
     def updateXlim(self):
         """Update xlimits."""
@@ -1311,8 +1312,6 @@ class SpectrumCanvas(MplCanvas):
         return True
     
     def pickSwitch(self, artist, mouseevent):
-        # print('artist ', artist)
-        # print('switching units ... ', mouseevent)
         self.switchUnits()
         self.switchSignal.emit('switched x unit')
         
@@ -1323,13 +1322,6 @@ class SpectrumCanvas(MplCanvas):
         else:
             self.xunit = 'um'
             self.axes.format_coord = lambda x, y: "{:8.4f} um {:10.4f} Jy".format(x, y)
-        # self.axes.clear()
-        # try:
-        #   self.ax2.clear()
-        #    self.ax3.clear()
-        #    self.ax4.clear()
-        #except BaseException:
-        #    pass
         if self.guess is not None:
             # Switch xguess units
             c = 299792458.0  # speed of light in m/s

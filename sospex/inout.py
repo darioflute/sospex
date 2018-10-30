@@ -244,7 +244,6 @@ def importGuesses(self):
             self.emslines = 0
             self.abslines = 0
             for line in lines:
-                print('line is ', line)
                 if line[2] >= 0:
                     self.emslines += 1
                 else:

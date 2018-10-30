@@ -140,6 +140,11 @@ class specCube(object):
         self.n = self.header['NAXIS3']
         self.flux = hdl['FLUX'].data
         self.eflux = np.sqrt(hdl['VARIANCE'].data)
+        nz, ny, nx = np.shape(self.flux)
+        print('nz is ',nz)
+        exp = hdl['EXPOSURE'].data.astype(float) / nz
+        self.exposure = np.broadcast_to(exp, np.shape(self.flux))
+        print('shape of exposure is ', np.shape(self.exposure))
         self.wave = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3
         self.l0 = np.nanmedian(self.wave)
 
@@ -208,7 +213,8 @@ class ExtSpectrum(object):
 
 class Spectrum(object):
     """ class to define a spectrum """
-    def __init__(self, wave, flux, eflux=None, uflux=None, exposure=None, atran=None, instrument=None, baryshift=None, redshift=None, l0=None, area=None):
+    def __init__(self, wave, flux, eflux=None, uflux=None, exposure=None, atran=None,
+                 instrument=None, baryshift=None, redshift=None, l0=None, area=None):
         self.wave = wave
         self.flux = flux
         if eflux is not None:
@@ -229,5 +235,4 @@ class Spectrum(object):
             self.l0 = l0
         if area is not None:
             self.area = area
-        self.continuum = np.ones(len(wave))
-        self.continuum.fill(np.nan)
+        self.continuum =  np.full(len(wave), np.nan)

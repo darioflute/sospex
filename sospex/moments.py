@@ -925,3 +925,5 @@ def multiFitContinuum(m, w, f, c, c0, w0, points, slope, intcp, posCont, kernel,
             c_[:, j, i] = residuals(pars, w)
             c0_[j, i] = residuals(pars, w0)
     return c_, c0_
+
+# Fit of lines
