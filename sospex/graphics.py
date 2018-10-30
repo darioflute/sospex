@@ -576,7 +576,7 @@ class ImageHistoCanvas(MplCanvas):
         self.shade = self.axes.axvspan(self.limits[0], self.limits[1],
                                        facecolor='Lavender', alpha=0.5, linewidth=0)
         # Redefine limits
-        x1,x2 = self.axes.get_xlim()
+        x1, x2 = self.axes.get_xlim()
         x2 = self.limits[1] + 5 * self.sdev
         x1 = self.limits[0] - 3 * self.sdev
         self.axes.set_xlim((x1,x2))
@@ -889,7 +889,7 @@ class SpectrumCanvas(MplCanvas):
             self.ax3 = self.axes.twinx()
             self.exposureLine = self.ax3.step(self.x, s.exposure,
                                               color='orange',label='Exp',zorder=7)
-            self.ax3.set_ylim([np.nanmin(s.exposure)*0.5,np.nanmax(s.exposure)*1.54])
+            self.ax3.set_ylim([np.nanmin(s.exposure)*0.1,np.nanmax(s.exposure)*1.54])
             self.exposureLayer, = self.exposureLine
             self.displayUFlux = False
             self.displayAtran = False

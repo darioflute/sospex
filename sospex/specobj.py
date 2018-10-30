@@ -136,13 +136,14 @@ class specCube(object):
         self.cdelt3 = self.header['CDELT3']
         self.objname = self.header['OBJECT']
         self.redshift = 0 # in m/s
-        self.pixscale,ypixscale = proj_plane_pixel_scales(self.wcs)*3600. # Pixel scale in arcsec
+        self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
         self.n = self.header['NAXIS3']
         self.flux = hdl['FLUX'].data
         self.eflux = np.sqrt(hdl['VARIANCE'].data)
         # nz, ny, nx = np.shape(self.flux)
         # print('nz is ',nz)
-        exp = hdl['EXPOSURE'].data.astype(float) # / nz
+        exptime = self.header['EXPTIME']
+        exp = hdl['EXPOSURE'].data.astype(float) * exptime
         self.exposure = np.broadcast_to(exp, np.shape(self.flux))
         print('shape of exposure is ', np.shape(self.exposure))
         self.wave = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3
@@ -188,11 +189,11 @@ class specCube(object):
         hdu.header['CTYPE2']=header['CTYPE2']
         self.wcs = WCS(hdu.header).celestial
         # print('astrometry ', self.wcs)
-        self.pixscale,ypixscale = proj_plane_pixel_scales(self.wcs)*3600. # Pixel scale in arcsec
+        self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
         self.crpix3 = 1
         w = self.wave
         self.crval3 = w[0]
-        self.cdelt3 = np.median(w[1:]-w[:-1])
+        self.cdelt3 = np.median(w[1:] - w[:-1])
         
 
 class ExtSpectrum(object):

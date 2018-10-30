@@ -91,6 +91,8 @@ class GUI (QMainWindow):
         self.kernel = 1
         # Default number of cells
         self.ncells = 1
+        # Initial press setting 
+        self.press = None
         # Get the path of the package
         self.path0, file0 = os.path.split(__file__)
         # Define style
@@ -362,8 +364,8 @@ class GUI (QMainWindow):
         self.ctrlIsHeld = False
         return t, sc, scid1, scid2, scid3, scid4
 
-    def addImage(self,b):
-        ''' Add a tab with an image '''
+    def addImage(self, b):
+        '''Add a tab with an image.'''
         t = QWidget()
         t.layout = QVBoxLayout(t)
         t.setSizePolicy(QSizePolicy.Ignored,QSizePolicy.Ignored) # Avoid expansion
@@ -425,11 +427,11 @@ class GUI (QMainWindow):
         t.layout.addWidget(foot)
         self.itabs.resize(self.itabs.minimumSizeHint())  # Avoid expansion
         # connect image and histogram to  events
-        cidh=ih.limSignal.connect(self.onChangeIntensity)
-        cid1=ic.mpl_connect('button_release_event', self.onDraw)
-        cid2=ic.mpl_connect('scroll_event', self.onWheel)
-        cid3=ic.mpl_connect('motion_notify_event', self.onMotion)
-        cid4=ic.mpl_connect('button_press_event', self.onPress)        
+        cidh = ih.limSignal.connect(self.onChangeIntensity)
+        cid1 = ic.mpl_connect('button_release_event', self.onDraw)
+        cid2 = ic.mpl_connect('scroll_event', self.onWheel)
+        cid3 = ic.mpl_connect('motion_notify_event', self.onMotion)
+        cid4 = ic.mpl_connect('button_press_event', self.onPress)        
         return t, ic, ih, cidh, cid1, cid2, cid3, cid4
 
     def removeTab(self, itab, confirm=True):
@@ -581,25 +583,28 @@ class GUI (QMainWindow):
 
     def onPress(self, event):
         if event.inaxes:
-            self.press = event.x, event.y
+            self.press = event.xdata, event.ydata
         else:
             self.press = None
             return
 
     def onMotion(self, event):
         """ Update spectrum when moving an aperture on the image """
-        if event.button == 3 and self.press is not None:
-            xpress,ypress = self.press
-            dx = event.x - xpress
-            dy = event.y - ypress
-            self.press = event.x, event.y
+        # Update bias and contrast with third mouse button
+        if self.press is None:
+            return
+        if event.inaxes:
+            dx = event.xdata - self.press[0]
+            dy = event.ydata - self.press[1]
+            # self.press = (event.x, event.y)
+        else:
+            return
+        if event.button == 3:
             # Get current bias and contrast
             itab = self.itabs.currentIndex()
-            #ic = self.ici[itab]
             ih = self.ihi[itab]
             cmin = ih.limits[0]
             cmax = ih.limits[1]
-            #cmin = ic.cmin; cmax= ic.cmax
             if np.abs(dx) >= np.abs(dy):
                 percent = 0.01
                 diff = (cmax-cmin)*percent*np.sign(dx)
@@ -612,7 +617,25 @@ class GUI (QMainWindow):
                 cmin = mid - diff
                 cmax = mid + diff
             ih.onSelect(cmin,cmax)
-            
+        elif event.button == 2:
+            # Pan using the mouse middle button
+            itab = self.itabs.currentIndex()
+            ic = self.ici[itab]
+            xlim = np.asarray(ic.axes.get_xlim())
+            ylim = np.asarray(ic.axes.get_ylim())
+            x = xlim - dx
+            y = ylim - dy
+            ic.axes.set_xlim(x)
+            ic.axes.set_ylim(y)
+            ic.fig.canvas.draw_idle()
+            # Prepare for updating rest of the tabs
+            #ici = self.ici.copy()
+            #ici.remove(ic)
+            #for ima in ici:
+            #    ima.axes.set_xlim(x)
+            #    ima.axes.set_ylim(y)
+            #    ima.changed = True
+
     def updateAperture(self):
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
@@ -1368,7 +1391,7 @@ class GUI (QMainWindow):
         """Add a band and display it in a new tab."""
         # Open tab and display the image
         self.bands.append(band)
-        t,ic,ih,h,c1,c2,c3,c4 = self.addImage(band)
+        t, ic, ih, h, c1, c2, c3, c4 = self.addImage(band)
         self.tabi.append(t)
         self.ici.append(ic)
         self.ihi.append(ih)
@@ -1397,22 +1420,22 @@ class GUI (QMainWindow):
         ic.compute_initial_figure(image=image, wcs=self.specCube.wcs, title=band,
                                   cMap=self.colorMap, cMapDir=self.colorMapDirection,
                                   stretch=self.stretchMap)
-        # Callback to propagate axes limit changes among images
-        ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
         ih = self.ihi[self.bands.index(band)]
         ih.compute_initial_figure(image=None)
         # Add apertures
         self.addApertures(ic)
         # Add contours
         self.addContours(ic) 
-        # Align with spectral cube
+        # Align with flux cube
         ic0 = self.ici[0]
         x = ic0.axes.get_xlim()
         y = ic0.axes.get_ylim()
-        ra,dec = ic0.wcs.all_pix2world(x,y,1)
-        x,y = ic.wcs.all_world2pix(ra,dec,1)            
+        ra, dec = ic0.wcs.all_pix2world(x, y, 1)
+        x, y = ic.wcs.all_world2pix(ra, dec, 1)            
         ic.axes.set_xlim(x)
         ic.axes.set_ylim(y)
+        # Callback to propagate axes limit changes among images
+        ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
 
     def onContinuumSelect(self, verts):
         istab = self.stabs.currentIndex()
@@ -3880,7 +3903,7 @@ class GUI (QMainWindow):
             self.bands = []
         self.photoApertures = []
         for b in self.bands:
-            t,ic,ih,h,c1,c2,c3,c4 = self.addImage(b)
+            t, ic, ih, h, c1, c2, c3, c4 = self.addImage(b)
             self.tabi.append(t)
             self.ici.append(ic)
             self.ihi.append(ih)
@@ -3893,7 +3916,7 @@ class GUI (QMainWindow):
         self.itabs.tabBar().setTabButton(0,QTabBar.LeftSide,None)
         self.itabs.tabBar().setTabButton(0,QTabBar.RightSide,None)
         for s in self.spectra:
-            t,sc,scid1,scid2,scid3,scid4 = self.addSpectrum(s)
+            t, sc, scid1, scid2, scid3, scid4 = self.addSpectrum(s)
             self.stabi.append(t)
             self.sci.append(sc)
             self.scid1.append(scid1)
@@ -3945,7 +3968,7 @@ class GUI (QMainWindow):
             else:
                 ic.image.format_cursor_data = lambda z: "{:10.4f} Jy".format(float(z))
             # Callback to propagate axes limit changes among images
-            ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed',
+            ic.cid = ic.axes.callbacks.connect('xlim_changed' or 'ylim_changed',
                                                self.doZoomAll)
             ih = self.ihi[self.bands.index(ima)]
             ih.changed = False
@@ -4025,7 +4048,7 @@ class GUI (QMainWindow):
                             redshift=s.redshift, baryshift=s.baryshift, l0=s.l0)
         sc.compute_initial_spectrum(spectrum=spec)
         self.specZoomlimits = [sc.xlimits, sc.ylimits]
-        sc.cid = sc.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomSpec)
+        sc.cid = sc.axes.callbacks.connect('xlim_changed' or 'ylim_changed', self.doZoomSpec)
         sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
                                rectprops=dict(alpha=0.3, facecolor='LightGreen'))
         sc.span.active = False
@@ -4225,7 +4248,7 @@ class GUI (QMainWindow):
                             redshift=s.redshift, baryshift = s.baryshift, l0=s.l0)
         sc.compute_initial_spectrum(spectrum=spec)
         self.specZoomlimits = [sc.xlimits,sc.ylimits]
-        sc.cid = sc.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomSpec)
+        sc.cid = sc.axes.callbacks.connect('xlim_changed' or 'ylim_changed', self.doZoomSpec)
         # Start the span selector to show only part of the cube
         sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
                                rectprops=dict(alpha=0.3, facecolor='LightGreen'))
@@ -4360,16 +4383,18 @@ class GUI (QMainWindow):
             ic.toolbar.zoom()  # turn off zoom
         x = ic.axes.get_xlim()
         y = ic.axes.get_ylim()
-        ra,dec = ic.wcs.all_pix2world(x,y,1)
+        ra, dec = ic.wcs.all_pix2world(x, y, 1)
         # If not in the flux image, compute values for the flux image
         band = self.bands.index('Flux')
         if itab != band:
-            ic = self.ici[band]
-            x,y = ic.wcs.all_world2pix(ra,dec,1)            
-        self.zoomlimits = [x,y]
+            ic0 = self.ici[band]
+            x, y = ic0.wcs.all_world2pix(ra, dec, 1)            
+        self.zoomlimits = [x, y]
         # Compute limits for new total spectrum
-        x0 = int(np.min(x)); x1 = int(np.max(x))
-        y0 = int(np.min(y)); y1 = int(np.max(y))
+        x0 = int(np.min(x))
+        x1 = int(np.max(x))
+        y0 = int(np.min(y))
+        y1 = int(np.max(y))
         if x0 < 0: x0=0
         if y0 < 0: y0=0
         if x1 >= s.nx: x1 = s.nx-1
@@ -4378,22 +4403,22 @@ class GUI (QMainWindow):
         ici = self.ici.copy()
         ici.remove(ic)
         for ima in ici:
-            x,y = ima.wcs.all_world2pix(ra,dec,1)
+            x, y = ima.wcs.all_world2pix(ra, dec, 1)
             ima.axes.callbacks.disconnect(ima.cid)
             ima.axes.set_xlim(x)
             ima.axes.set_ylim(y)
             ima.changed = True
-            ima.cid = ima.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
-        fluxAll = np.nansum(self.specCube.flux[:,y0:y1,x0:x1], axis=(1,2))
+            ima.cid = ima.axes.callbacks.connect('xlim_changed' or 'ylim_changed', self.doZoomAll)
+        fluxAll = np.nansum(self.specCube.flux[:, y0:y1, x0:x1], axis=(1, 2))
         if s.instrument == 'GREAT':
             sc.updateSpectrum(f=fluxAll)
         elif s.instrument in ['PACS','FORCAST']:
-            expAll = np.nansum(s.exposure[:,y0:y1,x0:x1], axis=(1,2))
+            expAll = np.nansum(s.exposure[:, y0:y1, x0:x1], axis=(1, 2))
             sc.updateSpectrum(f=fluxAll,exp=expAll)            
         elif self.specCube.instrument == 'FIFI-LS':
-            ufluxAll = np.nansum(s.uflux[:,y0:y1,x0:x1], axis=(1,2))
-            expAll = np.nansum(s.exposure[:,y0:y1,x0:x1], axis=(1,2))
-            sc.updateSpectrum(f=fluxAll,uf=ufluxAll,exp=expAll)
+            ufluxAll = np.nansum(s.uflux[:, y0:y1, x0:x1], axis=(1, 2))
+            expAll = np.nansum(s.exposure[:, y0:y1, x0:x1], axis=(1, 2))
+            sc.updateSpectrum(f=fluxAll, uf=ufluxAll, exp=expAll)
 
     def doZoomSpec(self,event):
         """ In the future impose the same limits to all the spectral tabs """

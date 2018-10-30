@@ -338,5 +338,30 @@ def define_lines():
         ('o-H2O;2_12-1_01',['o-H'+_two+'O',179.5265]),                          
         ('o-H2O;2_21-2_12',['o-H'+_two+'O',180.4880]),                          
         ('o-H218O;2_12-1_01',['o-H'+_two18+'O',181.051]),                   
-        ('p-H2O;4_13-4_04',['p-H'+_two+'O',187.1104])           
+        ('p-H2O;4_13-4_04',['p-H'+_two+'O',187.1104]),
+        ('PAH  5.27', ['PAH',  5.27]),  # FRAC_FWHM: 0.034
+        ('PAH  5.70', ['PAH',  5.70]),  # FRAC_FWHM: 0.035
+        ('PAH  6.22', ['PAH',  6.22]),  # FRAC_FWHM: 0.030
+        ('PAH  6.69', ['PAH',  6.69]),  # FRAC_FWHM: 0.07
+        ('PAH  7.42', ['PAH',  7.42]),  # FRAC_FWHM: 0.126
+        ('PAH  7.60', ['PAH',  7.60]),  # FRAC_FWHM: 0.044
+        ('PAH  7.85', ['PAH',  7.85]),  # FRAC_FWHM: 0.053
+        ('PAH  8.33', ['PAH',  8.33]),  # FRAC_FWHM: 0.05
+        ('PAH  8.61', ['PAH',  8.61]),  # FRAC_FWHM: 0.039
+        ('PAH 10.68', ['PAH', 10.68]),  # FRAC_FWHM: 0.02
+        ('PAH 11.23', ['PAH', 11.23]),  # FRAC_FWHM: 0.012
+        ('PAH 11.33', ['PAH', 11.33]),  # FRAC_FWHM: 0.032
+        ('PAH 11.99', ['PAH', 11.99]),  # FRAC_FWHM: 0.045
+        ('PAH 12.62', ['PAH', 12.62]),  # FRAC_FWHM: 0.042
+        ('PAH 12.69', ['PAH', 12.69]),  # FRAC_FWHM: 0.013
+        ('PAH 13.48', ['PAH', 13.48]),  # FRAC_FWHM: 0.04
+        ('PAH 14.04', ['PAH', 14.04]),  # FRAC_FWHM: 0.016
+        ('PAH 14.19', ['PAH', 14.19]),  # FRAC_FWHM: 0.025
+        ('PAH 15.90', ['PAH', 15.90]),  # FRAC_FWHM: 0.02
+        ('PAH 16.45', ['PAH', 16.45]),  # FRAC_FWHM: 0.014
+        ('PAH 17.04', ['PAH', 17.04]),  # FRAC_FWHM: 0.065
+        ('PAH 17.37', ['PAH', 17.37]),  # FRAC_FWHM: 0.012
+        ('PAH 17.87', ['PAH', 17.87]),  # FRAC_FWHM: 0.016
+        ('PAH 18.92', ['PAH', 18.92]),  # FRAC_FWHM: 0.019
+        ('PAH 33.10', ['PAH', 33.10])   # FRAC_FWHM: 0.05           
     ])
