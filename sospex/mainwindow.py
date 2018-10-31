@@ -93,6 +93,7 @@ class GUI (QMainWindow):
         self.ncells = 1
         # Initial press setting 
         self.press = None
+        self.press2 = None
         # Get the path of the package
         self.path0, file0 = os.path.split(__file__)
         # Define style
@@ -357,12 +358,14 @@ class GUI (QMainWindow):
         t.layout.addWidget(foot)
         self.stabs.resize(self.stabs.minimumSizeHint())  # Avoid expansion
         # connect image and histogram to  events
-        scid1=sc.mpl_connect('button_release_event', self.onDraw2)
-        scid2=sc.mpl_connect('scroll_event', self.onWheel2)
-        scid3=sc.mpl_connect('key_press_event', self.onKeyPress2)
-        scid4=sc.mpl_connect('key_release_event', self.onKeyRelease2)
+        scid1 = sc.mpl_connect('button_release_event', self.onDraw2)
+        scid2 = sc.mpl_connect('scroll_event', self.onWheel2)
+        scid3 = sc.mpl_connect('key_press_event', self.onKeyPress2)
+        scid4 = sc.mpl_connect('key_release_event', self.onKeyRelease2)
+        scid5 = sc.mpl_connect('motion_notify_event', self.onMotion2)
+        scid6 = sc.mpl_connect('button_press_event', self.onPress2)
         self.ctrlIsHeld = False
-        return t, sc, scid1, scid2, scid3, scid4
+        return t, sc, scid1, scid2, scid3, scid4, scid5, scid6
 
     def addImage(self, b):
         '''Add a tab with an image.'''
@@ -519,16 +522,22 @@ class GUI (QMainWindow):
         c2 = self.scid2[stab]
         c3 = self.scid3[stab]
         c4 = self.scid4[stab]
+        c5 = self.scid5[stab]
+        c6 = self.scid6[stab]
         spec.mpl_disconnect(c1)
         spec.mpl_disconnect(c2)
         spec.mpl_disconnect(c3)
         spec.mpl_disconnect(c4)
+        spec.mpl_disconnect(c5)
+        spec.mpl_disconnect(c6)
         self.stabi.remove(tab)
         self.sci.remove(spec)
         self.scid1.remove(c1)
         self.scid2.remove(c2)
         self.scid3.remove(c3)
         self.scid4.remove(c4)
+        self.scid5.remove(c5)
+        self.scid6.remove(c6)
         spec = None
         # Rename aperture tabs
         if len(self.stabs) > 2:
@@ -628,13 +637,6 @@ class GUI (QMainWindow):
             ic.axes.set_xlim(x)
             ic.axes.set_ylim(y)
             ic.fig.canvas.draw_idle()
-            # Prepare for updating rest of the tabs
-            #ici = self.ici.copy()
-            #ici.remove(ic)
-            #for ima in ici:
-            #    ima.axes.set_xlim(x)
-            #    ima.axes.set_ylim(y)
-            #    ima.changed = True
 
     def updateAperture(self):
         itab = self.itabs.currentIndex()
@@ -968,15 +970,22 @@ class GUI (QMainWindow):
         if sc.toolbar._active == "ZOOM":
             sc.toolbar.zoom()
 
-    def onKeyPress2(self,event):
+    def onKeyPress2(self, event):
         if event.key in ['control', 'cmd', 'shift', 'alt']:
             self.ctrlIsHeld = True
+            
+    def onPress2(self, event):
+        if event.inaxes:
+            print('pressed key ')
+            self.press2 = event.xdata, event.ydata
+        else:
+            self.press2 = None
 
-    def onKeyRelease2(self,event):
+    def onKeyRelease2(self, event):
         if event.key in ['control', 'cmd', 'shift', 'alt']:
             self.ctrlIsHeld = False
 
-    def onWheel2(self,event):
+    def onWheel2(self, event):
         """Wheel zooms/unzooms spectrum."""
         itab = self.stabs.currentIndex()
         sc = self.sci[itab]
@@ -998,6 +1007,25 @@ class GUI (QMainWindow):
             sc.ylimits = (curr_y0-new_height,curr_y0+new_height)
             sc.updateYlim()
                
+    def onMotion2(self, event):
+        """Reacts to movements of the mouse."""
+        if self.press2 is None:
+            return
+        if event.inaxes:
+            dx = event.xdata - self.press2[0]
+            dy = event.ydata - self.press2[1]
+        else:
+            return
+        if event.button == 2:
+            itab = self.stabs.currentIndex()
+            sc = self.sci[itab]
+            if np.abs(dx) > 0:
+                sc.xlimits = (sc.xlimits[0] - dx, sc.xlimits[1] - dx)
+                sc.updateXlim()
+            if np.abs(dy) > 0:
+                sc.ylimits = (sc.ylimits[0] - dy, sc.ylimits[1] - dy)
+                sc.updateYlim()
+        
     def createSpectralPanel(self):
         """Panel to plot spectra."""
         #self.spectralPanel = QGroupBox("")
@@ -1017,6 +1045,8 @@ class GUI (QMainWindow):
         self.scid2 = []
         self.scid3 = []
         self.scid4 = []
+        self.scid5 = []
+        self.scid6 = []
         # Status bar
         self.sb = QStatusBar()
         self.sb.showMessage("Click the folder icon to load a cube !", 10000)
@@ -2300,13 +2330,15 @@ class GUI (QMainWindow):
         """Add tab with the flux inside the aperture."""
         apname = "{:d}".format(n)
         self.spectra.append(apname)
-        t,sc,scid1,scid2,scid3,scid4 = self.addSpectrum(apname)
+        t, sc, scid1, scid2, scid3, scid4, scid5, scid6 = self.addSpectrum(apname)
         self.stabi.append(t)
         self.sci.append(sc)
         self.scid1.append(scid1)
         self.scid2.append(scid2)
         self.scid3.append(scid3)
         self.scid4.append(scid4)
+        self.scid5.append(scid5)
+        self.scid6.append(scid6)
         # Draw spectrum from polygon
         aperture = self.ici[0].photApertures[n].aperture
         path = aperture.get_path()
@@ -3885,6 +3917,8 @@ class GUI (QMainWindow):
         self.scid2 = []
         self.scid3 = []
         self.scid4 = []
+        self.scid5 = []
+        self.scid6 = []
         # Open new tabs and display it
         if self.specCube.instrument == 'FIFI-LS':
             self.bands = ['Flux','uFlux','Exp']
@@ -3916,14 +3950,15 @@ class GUI (QMainWindow):
         self.itabs.tabBar().setTabButton(0,QTabBar.LeftSide,None)
         self.itabs.tabBar().setTabButton(0,QTabBar.RightSide,None)
         for s in self.spectra:
-            t, sc, scid1, scid2, scid3, scid4 = self.addSpectrum(s)
+            t, sc, scid1, scid2, scid3, scid4, scid5, scid6 = self.addSpectrum(s)
             self.stabi.append(t)
             self.sci.append(sc)
             self.scid1.append(scid1)
             self.scid2.append(scid2)
             self.scid3.append(scid3)
             self.scid4.append(scid4)
-        # Make tab 'All' unclosable
+            self.scid5.append(scid5)
+            self.scid6.append(scid6)
         self.stabs.tabBar().setTabButton(0,QTabBar.LeftSide,None)
         self.stabs.tabBar().setTabButton(0,QTabBar.RightSide,None)
         # Make tab 'Pix' unclosable
