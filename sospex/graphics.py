@@ -583,7 +583,6 @@ class ImageHistoCanvas(MplCanvas):
         self.fig.canvas.draw_idle()
 
     def connect(self):
-        """ When contours are present """
         self.cid_draw = self.fig.canvas.mpl_connect('draw_event', self.draw_callback)
         self.cid_press = self.fig.canvas.mpl_connect('button_press_event',
                                                      self.button_press_callback)
@@ -595,7 +594,6 @@ class ImageHistoCanvas(MplCanvas):
         self.fig.canvas.draw_idle()
 
     def disconnect(self):
-        """ When no contours are present """
         self.fig.canvas.mpl_disconnect(self.cid_draw)
         self.fig.canvas.mpl_disconnect(self.cid_press)
         self.fig.canvas.mpl_disconnect(self.cid_release)

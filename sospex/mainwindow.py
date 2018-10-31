@@ -13,6 +13,7 @@ matplotlib.use('Qt5Agg')
 from matplotlib.widgets import SpanSelector, PolygonSelector, RectangleSelector, EllipseSelector
 from matplotlib.patches import Polygon
 from scipy.spatial import cKDTree as KDTree  # cKDTree implementation in C++ (KDTree in pure Python)
+import scipy.ndimage as ndimage
 
 # To avoid excessive warning messages
 import warnings
@@ -133,7 +134,7 @@ class GUI (QMainWindow):
         self.welcomeMessage()
         # Menu
         self.createMenu()
-        
+
     def welcomeMessage(self):
         self.wbox = QMessageBox()
         pixmap = QPixmap(os.path.join(self.path0,'icons','sospex.png'))
@@ -144,7 +145,7 @@ class GUI (QMainWindow):
                                      '* Click on running men icon to exit\n\n'+\
                                      '* Click on question mark for further help')
         self.wbox.show()
-        
+
     def createMenu(self):
         """Menu with all the actions (more complete than the icons)."""
         # File import/save
@@ -399,6 +400,7 @@ class GUI (QMainWindow):
         ic = ImageCanvas(t, width=11, height=10.5, dpi=100)
         # No contours available
         ic.contours = None
+        ic.contour0 = None
         ih = ImageHistoCanvas(t, width=11, height=0.5, dpi=100)
         ih.setVisible(False)
         ic.toolbar = NavigationToolbar(ic, self)
@@ -565,7 +567,47 @@ class GUI (QMainWindow):
                     ap.line.set_visible(ap.showverts)
                 ima.changed = True
             if ima.changed:
-                # print('redrawing figure .... ')
+                # Compute contours the 1st time
+                if ima.contour0 is not None:
+                    if isinstance(ima.contour0, int):
+                        # print('Computing contours ...')
+                        from astropy.nddata import Cutout2D
+                        itab = ima.contour0
+                        ic0 = self.ici[itab]
+                        ih0 = self.ihi[itab]
+                        # Consider only the part visible in the image
+                        x = ima.axes.get_xlim()
+                        y = ima.axes.get_ylim()
+                        verts = [(i, j) for i, j in zip(x, y)]
+                        adverts = np.array([(ima.wcs.all_pix2world(x,y,1)) for (x,y) in verts])                
+                        verts = [(ic0.wcs.all_world2pix(ra,dec,1)) for (ra,dec) in adverts]
+                        x, y = zip(*verts)
+                        center =  ((x[0]+x[1])*0.5,(y[0]+y[1])*0.5)
+                        size = (np.abs((y[1]-y[0]).astype(int)),np.abs((x[1]-x[0]).astype(int)))
+                        co = Cutout2D(ic0.oimage, center, size, wcs=ic0.wcs, mode='partial')
+                        # If the contour image is much large, one should lower the resolution
+                        # to speed-up the computation
+                        ny0, nx0 = np.shape(co.data)
+                        ny ,nx = np.shape(ima.oimage)
+                        levs =  sorted(ih0.levels)
+                        # Smooth data
+                        ismo = ndimage.gaussian_filter(co.data, sigma=1.0, order=0)
+                        if nx0 > 2 * nx:
+                            # print('Reprojecting image for contours')
+                            from reproject import reproject_interp
+                            from astropy.io import fits
+                            hdu = fits.PrimaryHDU(ima.oimage)
+                            hdu.header.extend(ima.wcs.to_header())
+                            # print("header", hdu.header)
+                            hdu0 = fits.PrimaryHDU(ismo)
+                            hdu0.header.extend(co.wcs.to_header())
+                            array, footprint = reproject_interp(hdu0, hdu.header)
+                            ima.contour = ima.axes.contour(array, levs, colors=self.colorContour)
+                        else:
+                            ima.contour = ima.axes.contour(ismo, levs, colors=self.colorContour,
+                                                           transform=ima.axes.get_transform(co.wcs))
+                        ima.contour0 = None
+                # print('Redrawing figure ...')
                 ima.fig.canvas.draw_idle()
                 ima.changed = False
             if self.blink == 'select':
@@ -976,7 +1018,6 @@ class GUI (QMainWindow):
             
     def onPress2(self, event):
         if event.inaxes:
-            print('pressed key ')
             self.press2 = event.xdata, event.ydata
         else:
             self.press2 = None
@@ -2963,7 +3004,7 @@ class GUI (QMainWindow):
             else:
                 pass
 
-    def cropCube2D(self,center,size):
+    def cropCube2D(self, center, size):
         """ Generate cropped cube """
         from astropy.nddata import Cutout2D
         ic0 = self.ici[0]
@@ -3675,9 +3716,10 @@ class GUI (QMainWindow):
                     ih0 = ih
                     ic0 = ic_
             if ih0 is not None:
-                ic.contour = ic.axes.contour(ic0.oimage,ih0.levels, colors=self.colorContour,
-                                             transform=ic.axes.get_transform(ic0.wcs))
-                ic.fig.canvas.draw_idle()
+                itab = self.ici.index(ic0)
+                ic.contour0 = itab
+                #ic.contour = ic.axes.contour(ic0.oimage, ih0.levels, colors=self.colorContour,
+                #                             transform=ic.axes.get_transform(ic0.wcs))
                 ic.changed = False
             else:
                 pass
@@ -3685,7 +3727,6 @@ class GUI (QMainWindow):
     def overlapContours(self):
         """ Compute contours and overlap/remove them on images """
         if self.contours == 'off':
-            #self.ctab = [self.itabs.currentIndex(),0]
             self.sb.showMessage("Click again to remove contours", 2000)
             self.drawContours()
             self.contours = 'on'
@@ -3708,7 +3749,6 @@ class GUI (QMainWindow):
                     ic.changed = True
             # Update current tab
             itab = self.itabs.currentIndex()
-            #print('current tab is: ',itab)
             ic0 = self.ici[itab]
             ic0.fig.canvas.draw_idle()
             ic0.changed = False
@@ -3726,7 +3766,8 @@ class GUI (QMainWindow):
             mask = levels < ih0.max
             ih0.levels = list(levels[mask])
         #print('Contour levels are: ',ih0.levels)
-        ic0.contour = ic0.axes.contour(ic0.oimage,ih0.levels,colors=self.colorContour)
+        ismo = ndimage.gaussian_filter(ic0.oimage, sigma=1.0, order=0)
+        ic0.contour = ic0.axes.contour(ismo,ih0.levels,colors=self.colorContour)
         ic0.fig.canvas.draw_idle()
         # Add levels to histogram
         ih0.drawLevels()
@@ -3737,8 +3778,9 @@ class GUI (QMainWindow):
         ici = self.ici.copy()
         ici.remove(ic0)
         for ic in ici:
-            ic.contour = ic.axes.contour(ic0.oimage,ih0.levels, colors=self.colorContour,
-                                         transform=ic.axes.get_transform(ic0.wcs))
+            #ic.contour = ic.axes.contour(ic0.oimage,ih0.levels, colors=self.colorContour,
+            #                             transform=ic.axes.get_transform(ic0.wcs))
+            ic.contour0 = itab
             ic.changed = True
 
     def onModifyContours(self, n):
@@ -3753,7 +3795,8 @@ class GUI (QMainWindow):
             if n >= 1000:
                 # Add a brand new level
                 n -= 1000
-                new = ic0.axes.contour(ic0.oimage, [ih0.levels[n]], colors=self.colorContour)
+                ismo = ndimage.gaussian_filter(ic0.oimage, sigma=1.0, order=0)
+                new = ic0.axes.contour(ismo, [ih0.levels[n]], colors=self.colorContour)
                 # Insert new contour in the contour collection
                 ic0.contour.collections.insert(n, new.collections[0])                
             elif n <= -1000:
@@ -3772,7 +3815,7 @@ class GUI (QMainWindow):
     def modifyOtherImagesContours(self, i0):
         """ Once the new contours are computed, propagate them to other images """        
         ic0 = self.ici[i0]
-        ih0 = self.ihi[i0]
+        # ih0 = self.ihi[i0]
         ic0.fig.canvas.draw_idle()        
         ici = self.ici.copy()
         ici.remove(ic0)
@@ -3783,9 +3826,10 @@ class GUI (QMainWindow):
                     coll.remove()
                 ic.contour = None
                 # Compute new contours
-                levels =  sorted(ih0.levels)
-                ic.contour = ic.axes.contour(ic0.oimage, levels, colors=self.colorContour,
-                                             transform=ic.axes.get_transform(ic0.wcs))
+                ic.contour0 = i0
+                #levels =  sorted(ih0.levels)
+                #ic.contour = ic.axes.contour(ic0.oimage, levels, colors=self.colorContour,
+                #                             transform=ic.axes.get_transform(ic0.wcs))
                 # Differ drawing until changing tab
                 ic.changed = True
 
