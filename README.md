@@ -82,7 +82,7 @@ The question mark icon open a series of tutorials on your web browser.
 
 ### Tutorials
 
-[Load a spectral cube](sospex/help/start.ipynb)
+[Load a spectral cube](https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/start.ipynb)
 
 [Zoom and Pan](sospex/help/zoom.ipynb)
 
