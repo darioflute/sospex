@@ -84,28 +84,28 @@ The question mark icon open a series of tutorials on your web browser.
 
 [Load a spectral cube](https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/start.ipynb)
 
-[Zoom and Pan](sospex/help/zoom.ipynb)
+[Zoom and Pan](https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/zoom.ipynb)
 
-[Change image intensity levels](sospex/help/intensity.ipynb)
+[Change image intensity levels](https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/intensity.ipynb)
 
-[Using the spectral panel](sospex/help/specpanel.ipynb)
+[Using the spectral panel](https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/specpanel.ipynb)
 
-[Sliding along the spectral dimension](sospex/help/slider.ipynb)
+[Sliding along the spectral dimension](https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/slider.ipynb)
 
-[Select a slice of the cube](sospex/help/slice.ipynb)
+[Select a slice of the cube](https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/slice.ipynb)
 
-[Crop and cut the cubes](sospex/help/cutcrop.ipynb)
+[Crop and cut the cubes](https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/cutcrop.ipynb)
 
-[Select and modify apertures](sospex/help/apertures.ipynb)
+[Select and modify apertures](https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/apertures.ipynb)
 
-[Load external images](sospex/help/extimages.ipynb)
+[Load external images](https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/extimages.ipynb)
 
-[Blink between images](sospex/help/blink.ipynb)
+[Blink between images](https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/blink.ipynb)
 
-[Overlap contours](sospex/help/contours.ipynb)
+[Overlap contours](https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/contours.ipynb)
 
-[Save images and spectra](sospex/help/save.ipynb)
+[Save images and spectra](https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/save.ipynb)
 
-[Fit continuum and compute moments](sospex/help/moments.ipynb)
+[Fit continuum and compute moments](https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/moments.ipynb)
 
-[Erase part of the cube](sospex/help/erase.ipynb)
+[Erase part of the cube](https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/erase.ipynb)
