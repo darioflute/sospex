@@ -239,12 +239,23 @@ class cmDialog(QDialog):
         iconSize = QSize(144,10)
         self.clist.setIconSize(iconSize)
         self.clist.setSizePolicy(QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding))
-        self.clist.setMaximumSize(QSize(160,150))
+        self.clist.setMaximumSize(QSize(160,100))
         for col in clist:
             QListWidgetItem(QIcon(os.path.join(path0,"icons",col+".png")),'',self.clist)
-        n = clist.index(currentCC)
+        n = clist.index(currentCC[0])
         self.clist.setCurrentRow(n)
         self.clist.setStyleSheet(stylesheet)        
+        # Color 2
+        label4 = QLabel("Contour 2 color")        
+        self.clist2 = QListWidget(self)
+        self.clist2.setIconSize(iconSize)
+        self.clist2.setSizePolicy(QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding))
+        self.clist2.setMaximumSize(QSize(160,100))
+        for col in clist:
+            QListWidgetItem(QIcon(os.path.join(path0,"icons",col+".png")),'',self.clist2)
+        n = clist.index(currentCC[1])
+        self.clist2.setCurrentRow(n)
+        self.clist2.setStyleSheet(stylesheet)        
         # Button with OK to close dialog
         b2 = QPushButton("OK",self)
         b2.clicked.connect(self.end)
@@ -256,6 +267,8 @@ class cmDialog(QDialog):
         layout.addWidget(self.slist)
         layout.addWidget(label3)
         layout.addWidget(self.clist)
+        layout.addWidget(label4)
+        layout.addWidget(self.clist2)
         layout.addWidget(b2)
         self.setLayout(layout)
 

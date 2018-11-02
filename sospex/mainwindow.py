@@ -80,7 +80,8 @@ class GUI (QMainWindow):
         self.colorMap = 'gist_heat'
         self.colorMapDirection = '_r'
         self.stretchMap = 'linear'
-        self.colorContour = 'cyan'
+        self.colorContour = ['cyan', 'yellow']
+        self.tabContour = [None, None]
         # Set initial state of all spectral tab (all true is computed)
         self.all = False
         # Set status of continuum fit (all if continuum defined for the whole cube)
@@ -602,9 +603,9 @@ class GUI (QMainWindow):
                             hdu0 = fits.PrimaryHDU(ismo)
                             hdu0.header.extend(co.wcs.to_header())
                             array, footprint = reproject_interp(hdu0, hdu.header)
-                            ima.contour = ima.axes.contour(array, levs, colors=self.colorContour)
+                            ima.contour = ima.axes.contour(array, levs, colors=self.colorContour[0])
                         else:
-                            ima.contour = ima.axes.contour(ismo, levs, colors=self.colorContour,
+                            ima.contour = ima.axes.contour(ismo, levs, colors=self.colorContour[0],
                                                            transform=ima.axes.get_transform(co.wcs))
                         ima.contour0 = None
                 # print('Redrawing figure ...')
@@ -3733,6 +3734,7 @@ class GUI (QMainWindow):
             #self.menuContours.setChecked(True)
         else:
             self.contours = 'off'
+            self.tabContour[0] = None
             #self.menuContours.setChecked(False)
             # Remove level lines in histogram 
             for ih in self.ihi:
@@ -3759,6 +3761,8 @@ class GUI (QMainWindow):
         itab = self.itabs.currentIndex()
         ic0 = self.ici[itab]
         ih0 = self.ihi[itab]
+        # Conserve tab number
+        self.tabContour[0] = itab
         if self.bands[itab] == 'Cov':
             ih0.levels = list(np.arange(ih0.min,ih0.max,(ih0.max-ih0.min)/8))
         else:
@@ -3767,7 +3771,7 @@ class GUI (QMainWindow):
             ih0.levels = list(levels[mask])
         #print('Contour levels are: ',ih0.levels)
         ismo = ndimage.gaussian_filter(ic0.oimage, sigma=1.0, order=0)
-        ic0.contour = ic0.axes.contour(ismo,ih0.levels,colors=self.colorContour)
+        ic0.contour = ic0.axes.contour(ismo, ih0.levels, colors=self.colorContour[0])
         ic0.fig.canvas.draw_idle()
         # Add levels to histogram
         ih0.drawLevels()
@@ -3796,7 +3800,7 @@ class GUI (QMainWindow):
                 # Add a brand new level
                 n -= 1000
                 ismo = ndimage.gaussian_filter(ic0.oimage, sigma=1.0, order=0)
-                new = ic0.axes.contour(ismo, [ih0.levels[n]], colors=self.colorContour)
+                new = ic0.axes.contour(ismo, [ih0.levels[n]], colors=self.colorContour[0])
                 # Insert new contour in the contour collection
                 ic0.contour.collections.insert(n, new.collections[0])                
             elif n <= -1000:
@@ -3808,7 +3812,7 @@ class GUI (QMainWindow):
             else:
                 # Move level by removing contour and adding it at new level
                 ic0.axes.collections.remove(ic0.contour.collections[n])
-                new = ic0.axes.contour(ic0.oimage, [ih0.levels[n]], colors=self.colorContour)
+                new = ic0.axes.contour(ic0.oimage, [ih0.levels[n]], colors=self.colorContour[0])
                 ic0.contour.collections[n] = new.collections[0]
             self.modifyOtherImagesContours(itab)
                 
@@ -4444,6 +4448,8 @@ class GUI (QMainWindow):
                 print('There are ',len(ih.lev),len(ih.levels),' contour levels')
                 ih.levSignal.disconnect()
                 ih.removeLevels()
+        # Update tabContour
+        self.tabContour[0] = None
 
     def doZoomAll(self, event):
         """Propagate limit changes to all images."""
@@ -4551,6 +4557,7 @@ class GUI (QMainWindow):
             self.selectCM.list.currentRowChanged.connect(self.updateColorMap)
             self.selectCM.slist.currentRowChanged.connect(self.updateStretchMap)
             self.selectCM.clist.currentRowChanged.connect(self.updateColorContour)
+            self.selectCM.clist2.currentRowChanged.connect(self.updateColorContour2)
             self.selectCM.dirSignal.connect(self.reverseColorMap)
             self.selectCM.exec_()
         else:
@@ -4559,14 +4566,40 @@ class GUI (QMainWindow):
     def updateColorContour(self, newRow):
         """Update the stretch of the color map."""
         newColor = self.CClist[newRow]
-        if newColor != self.colorContour:
-            self.colorContour = newColor
+        if newColor != self.colorContour[0]:
+            self.colorContour[0] = newColor
             if self.contours == 'on':
                 for ic in self.ici:
-                    contours = ic.contour.collections
-                    for c in contours:
-                        c.set_color(self.colorContour)
-                    ic.fig.canvas.draw_idle()
+                    try:
+                        for c in ic.contour.collections:
+                            c.set_color(self.colorContour[0])
+                        ic.fig.canvas.draw_idle()
+                    except BaseException:
+                        pass
+                # Update color level ticks in histogram
+                ih = self.ihi[self.tabContour[0]]
+                for lev in ih.lev:
+                    lev.set_color(self.colorContour[0])
+                ih.fig.canvas.draw_idle()
+
+    def updateColorContour2(self, newRow):
+        """Update the stretch of the color map."""
+        newColor = self.CClist[newRow]
+        if newColor != self.colorContour[1]:
+            self.colorContour[1] = newColor
+            if self.contours2 == 'on':
+                for ic in self.ici:
+                    try:
+                        for c in ic.contour2.collections:
+                            c.set_color(self.colorContour[1])
+                        ic.fig.canvas.draw_idle()
+                    except BaseException:
+                        pass
+                # Update color level ticks in histogram
+                ih = self.ihi[self.tabContour[1]]
+                for lev in ih.lev:
+                    lev.set_color(self.colorContour[1])
+                ih.fig.canvas.draw_idle()
 
     def updateStretchMap(self, newRow):
         """ Update the stretch of the color map """
