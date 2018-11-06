@@ -72,7 +72,7 @@ class specCube(object):
         self.za = (self.header['ZA_START'], self.header['ZA_END'])
         self.altitude = (self.header['ALTI_STA'],self.header['ALTI_END'])
         try:
-            self.redshift = hdl['REDSHIFT'].data
+            self.redshift = self.header['REDSHIFT']
         except:
             self.redshift = 0.0
         self.flux = hdl['FLUX'].data

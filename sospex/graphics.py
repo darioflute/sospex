@@ -509,34 +509,46 @@ class ImageHistoCanvas(MplCanvas):
             ima = ima[mask]
             # print('image has size', len(ima))
             self.nh = len(ima)
-            ima = np.sort(ima)
-            s = np.size(ima)
-            smin = int(s*0.005)
-            smax = min(int(s*0.9995),s-1)
-            nbins=256
-            self.median = np.median(ima)
-            self.sdev = np.std(ima[smin:smax])
-            self.min = np.min(ima)
-            self.max = np.max(ima)
-            self.epsilon = self.sdev/3.            
-            # Define the interval containing 99% of the values
-            if xmin == None:
-                xmin = ima[int(s*0.01)]
-            if xmax == None:
-                xmax = ima[int(s*0.99)-1]
-            # Avoid excessively lower flux
-            if xmin < (self.median - 3 * self.sdev):
-                xmin = self.median - 3 * self.sdev
-            hmin = ima[smin]
-            hmax = ima[smax]
-            if (hmax - self.median) > 10 *self.sdev:
-                hmax = self.median+10*self.sdev
-            n, self.bins, patches = self.axes.hist(ima, bins=nbins,
-                                                   range=(hmin,hmax), fc='k', ec='k')            
-            if np.isfinite(xmin) and np.isfinite(xmax):
-                self.onSelect(xmin,xmax)
+            if self.nh > 0:
+                ima = np.sort(ima)
+                s = np.size(ima)
+                smin = int(s*0.005)
+                smax = min(int(s*0.9995),s-1)
+                nbins=256
+                self.median = np.median(ima)
+                self.sdev = np.std(ima[smin:smax])
+                self.min = np.min(ima)
+                self.max = np.max(ima)
+                self.epsilon = self.sdev/3.            
+                # Define the interval containing 99% of the values
+                if xmin == None:
+                    xmin = ima[int(s*0.01)]
+                if xmax == None:
+                    xmax = ima[int(s*0.99)-1]
+                # Avoid excessively lower flux
+                if xmin < (self.median - 3 * self.sdev):
+                    xmin = self.median - 3 * self.sdev
+                hmin = ima[smin]
+                hmax = ima[smax]
+                if (hmax - self.median) > 10 *self.sdev:
+                    hmax = self.median+10*self.sdev
+                n, self.bins, patches = self.axes.hist(ima, bins=nbins,
+                                                       range=(hmin,hmax), fc='k', ec='k')            
+                if np.isfinite(xmin) and np.isfinite(xmax):
+                    self.onSelect(xmin,xmax)
+                else:
+                    print('Problems with the image')
             else:
-                print('Problems with the image')
+                xmin = 0.
+                xmax = 0.
+                self.median = 0.
+                self.sdev = 0.
+                self.min = 0.
+                self.max = 0.
+                self.epsilon = 0.
+                hmin = 0
+                hmax = 0
+                self.onSelection(xmin, xmax)
             # Draw grid (median, median+n*sigma)
             x = self.median
             for i in range(10):
