@@ -507,7 +507,7 @@ class ImageHistoCanvas(MplCanvas):
             ima = image.ravel()
             mask = np.isfinite(ima)
             ima = ima[mask]
-            # print('image has size', len(ima))
+            #print('image has size', len(ima))
             self.nh = len(ima)
             if self.nh > 0:
                 ima = np.sort(ima)
@@ -546,9 +546,9 @@ class ImageHistoCanvas(MplCanvas):
                 self.min = 0.
                 self.max = 0.
                 self.epsilon = 0.
-                hmin = 0
-                hmax = 0
-                self.onSelection(xmin, xmax)
+                #hmin = 0
+                #hmax = 0
+                self.onSelect(xmin, xmax)
             # Draw grid (median, median+n*sigma)
             x = self.median
             for i in range(10):

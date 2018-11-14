@@ -4046,19 +4046,25 @@ class GUI (QMainWindow):
                                       instrument = s.instrument)
             t1 = time.process_time() 
             print('Image displayed in ', t1-ts,' s')
+            # print('select output format')
             if ima == 'Exp':
                 ic.image.format_cursor_data = lambda z: "{:10.3f} s".format(float(z))
             else:
                 ic.image.format_cursor_data = lambda z: "{:10.4f} Jy".format(float(z))
+            # print('callback for limits')
             # Callback to propagate axes limit changes among images
             ic.cid = ic.axes.callbacks.connect('xlim_changed' or 'ylim_changed',
                                                self.doZoomAll)
+            # print('Define histogram')
             ih = self.ihi[self.bands.index(ima)]
             ih.changed = False
-            clim = ic.image.get_clim()
-            ih.compute_initial_figure(image=image,xmin=clim[0],xmax=clim[1])
+            try:
+                clim = ic.image.get_clim()
+            except BaseException:
+                clim = [0, 0]
+            ih.compute_initial_figure(image=image, xmin=clim[0], xmax=clim[1])
             t2 = time.process_time() 
-            print('Histogram computed ', t2-t1,' s')
+            print('Histogram computed ', t2-t1, ' s')
             # temporary ...
             x = ic.axes.get_xlim()
             y = ic.axes.get_ylim()
