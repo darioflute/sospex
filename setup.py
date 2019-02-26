@@ -26,6 +26,13 @@ config = {
                 'astropy>=3.0',
                 'matplotlib>=3.0.2'
                 ],
+        'setup_requires':[
+                'python',
+                'numpy>=1.11',
+                'scipy',
+                'astropy>=3.0',
+                'matplotlib>=3.0.2'
+                ],
         'include_package_data':True,
         'package_data':{'sospex':['copyright.txt','icons/*.png','icons/*.gif',
                                   'help/*.html','yellow-stylesheet.css']},
