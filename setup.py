@@ -24,8 +24,6 @@ config = {
                 'numpy>=1.11',
                 'scipy',
                 'astropy>=3.0',
-                'lmfit',
-                'reproject',
                 'matplotlib>=3.0.2'
                 ],
         'include_package_data':True,
