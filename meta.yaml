@@ -9,9 +9,10 @@ source:
 build:
   
 requirements:
-  build:
+  host:
     - python
     - setuptools
+  build:
     - numpy >=1.11
     - matplotlib >=3.0.2
     - scipy
