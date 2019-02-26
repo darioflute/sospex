@@ -23,13 +23,15 @@ config = {
                 'numpy>=1.11',
                 'scipy',
                 'astropy>=3.0',
-                'matplotlib>=3.0.2'
+                'matplotlib>=3.0.2',
+                'python>=3.6'
                 ],
         'setup_requires':[
                 'numpy>=1.11',
                 'scipy',
                 'astropy>=3.0',
-                'matplotlib>=3.0.2'
+                'matplotlib>=3.0.2',
+                'python>=3.6'
                 ],
         'include_package_data':True,
         'package_data':{'sospex':['copyright.txt','icons/*.png','icons/*.gif',
