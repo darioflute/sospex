@@ -20,14 +20,12 @@ config = {
         'packages':['sospex'],
         'scripts':['bin/sospex'],
         'install_requires':[
-                'python',
                 'numpy>=1.11',
                 'scipy',
                 'astropy>=3.0',
                 'matplotlib>=3.0.2'
                 ],
         'setup_requires':[
-                'python',
                 'numpy>=1.11',
                 'scipy',
                 'astropy>=3.0',
