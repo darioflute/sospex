@@ -20,7 +20,8 @@ config = {
         'packages':['sospex'],
         'scripts':['bin/sospex'],
         'install_requires':[
-                'numpy',
+                'python>=3.6',
+                'numpy>=1.11',
                 'scipy',
                 'astropy>=3.0',
                 'lmfit',
