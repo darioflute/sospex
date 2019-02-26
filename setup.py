@@ -20,7 +20,7 @@ config = {
         'packages':['sospex'],
         'scripts':['bin/sospex'],
         'install_requires':[
-                'python>=3.6',
+                'python',
                 'numpy>=1.11',
                 'scipy',
                 'astropy>=3.0',
