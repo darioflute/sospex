@@ -1,23 +1,22 @@
+{% set name = "sospex" %}
+{% set version = "0.34b0" %}
+
 package:
-  name: sospex
-  version: 0.34.beta
+  name: "{{ name|lower }}"
+  version: "{{ version }}"
 
 source:
   git_tag: master
   git_url: https://github.com/darioflute/sospex.git
 
 build:
+  number: 0
   
 requirements:
   host:
-  
   build:
     - setuptools
     - python >=3.6
-    - numpy >=1.11
-    - matplotlib >=3.0.2
-    - scipy
-    - astropy >=3.0
 
   run:
     - python >=3.6
