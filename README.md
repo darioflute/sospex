@@ -12,12 +12,13 @@ External images can be uploaded and overplotted on the spectral cube.
 **The code runs with Python 3.**
 
 It has been developed and tested on Mac OS-X 10.11.6 (El Capitan) and Ubuntu Linux (14.04 LTS, Trusty Tahr).
+A version is provided for Windows with limited testing.
 
 ### Current version
 
-The current version released on anaconda is: 0.33.beta 
+The current version released on anaconda is: 0.34.beta 
 
-Release date:  October 4, 2018
+Release date:  February 26, 2019
 
 ### Install with anaconda
 
