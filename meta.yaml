@@ -7,14 +7,17 @@ source:
   git_url: https://github.com/darioflute/sospex.git
 
 build:
-  script: "{{ PYTHON }} -m pip install . --no-deps -vv"
   
 requirements:
   host:
-    - pip
     - python
     - setuptools
 
+  build:
+    - numpy >=1.11
+    - matplotlib >=3.0.2
+    - scipy
+    - astropy >=3.0
 
   run:
     - python
