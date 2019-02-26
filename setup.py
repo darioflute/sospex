@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Setup script to install sospex."""
 
-from setuptools import setup
+from distutils.core import setup
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
