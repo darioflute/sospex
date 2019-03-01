@@ -195,14 +195,14 @@ class cloudImage(object):
                 self.wcs = WCS(header).celestial
                 print(self.wcs)
                 # Check if coordinates are inside the image
-                x,y = self.wcs.all_world2pix(self.lon,self.lat,1)
+                x,y = self.wcs.wcs_world2pix(self.lon,self.lat,0)
                 print('x y ',x,y)
                 ny,nx = np.shape(self.data)
                 if x >= 0 and x< nx and y >= 0 and y  <= ny:
                     print('Source inside the FITS image')
                     # Check if N aligned with y, if not reproject image
                     try:
-                        h1 = self.wcs.to_header()
+                        h1 = self.to_header()
                         pc11=h1["PC1_1"]
                         pc12=h1["PC1_2"]
                         pc21=h1["PC2_1"]

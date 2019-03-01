@@ -449,7 +449,7 @@ class ImageCanvas(MplCanvas):
         def format_coord(x,y):
             """ Redefine how to show the coordinates """
             pixel = np.array([[x, y]], np.float_)
-            world = self.wcs.wcs_pix2world(pixel, 1)                    
+            world = self.wcs.wcs_pix2world(pixel, 0)                    
             xx = world[0][0]
             yy = world[0][1]
             " Transform coordinates in string "

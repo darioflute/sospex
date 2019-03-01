@@ -580,8 +580,8 @@ class GUI (QMainWindow):
                         x = ima.axes.get_xlim()
                         y = ima.axes.get_ylim()
                         verts = [(i, j) for i, j in zip(x, y)]
-                        adverts = np.array([(ima.wcs.all_pix2world(x,y,1)) for (x,y) in verts])                
-                        verts = [(ic0.wcs.all_world2pix(ra,dec,1)) for (ra,dec) in adverts]
+                        adverts = np.array([(ima.wcs.wcs_pix2world(x,y,0)) for (x,y) in verts])                
+                        verts = [(ic0.wcs.wcs_world2pix(ra,dec,0)) for (ra,dec) in adverts]
                         x, y = zip(*verts)
                         center =  ((x[0]+x[1])*0.5,(y[0]+y[1])*0.5)
                         size = (np.abs((y[1]-y[0]).astype(int)),np.abs((x[1]-x[0]).astype(int)))
@@ -690,17 +690,17 @@ class GUI (QMainWindow):
         aper0 = ic0.photApertures[nap]
         if aper.type == 'Polygon':
             verts = aper.poly.get_xy()
-            adverts = np.array([(ic.wcs.all_pix2world(x,y,1)) for (x,y) in verts])                
-            verts = [(ic0.wcs.all_world2pix(ra,dec,1)) for (ra,dec) in adverts]
+            adverts = np.array([(ic.wcs.wcs_pix2world(x,y,0)) for (x,y) in verts])                
+            verts = [(ic0.wcs.wcs_world2pix(ra,dec,0)) for (ra,dec) in adverts]
             aper0.poly.set_xy(verts)
         elif aper.type == 'Ellipse' or aper.type == 'Circle':
             x0,y0 = aper.ellipse.center
             w0    = aper.ellipse.width
             h0    = aper.ellipse.height
             angle = aper.ellipse.angle
-            ra0,dec0 = ic.wcs.all_pix2world(x0,y0,1)
+            ra0,dec0 = ic.wcs.wcs_pix2world(x0,y0,0)
             ws = w0 * ic.pixscale; hs = h0 * ic.pixscale
-            x0,y0 = ic0.wcs.all_world2pix(ra0,dec0,1)
+            x0,y0 = ic0.wcs.wcs_world2pix(ra0,dec0,0)
             w0 = ws/ic0.pixscale; h0 = hs/ic0.pixscale
             aper0.ellipse.center = x0,y0
             aper0.ellipse.width = w0
@@ -711,9 +711,9 @@ class GUI (QMainWindow):
             w0    = aper.rect.get_width()
             h0    = aper.rect.get_height()
             angle = aper.rect.angle
-            ra0,dec0 = ic.wcs.all_pix2world(x0,y0,1)
+            ra0,dec0 = ic.wcs.wcs_pix2world(x0,y0,0)
             ws = w0 * ic.pixscale; hs = h0 * ic.pixscale
-            x0,y0 = ic0.wcs.all_world2pix(ra0,dec0,1)
+            x0,y0 = ic0.wcs.wcs_world2pix(ra0,dec0,0)
             w0 = ws/ic0.pixscale; h0 = hs/ic0.pixscale
             aper0.rect.set_xy((x0,y0))
             aper0.rect.set_width(w0)
@@ -854,10 +854,10 @@ class GUI (QMainWindow):
                 w0    = aper.ellipse.width
                 h0    = aper.ellipse.height
                 angle = aper.ellipse.angle
-                ra0,dec0 = ic.wcs.all_pix2world(x0, y0, 1)
+                ra0,dec0 = ic.wcs.wcs_pix2world(x0, y0, 0)
                 ws = w0 * ic.pixscale; hs = h0 * ic.pixscale
                 for ima in ici:
-                    x0,y0 = ima.wcs.all_world2pix(ra0, dec0, 1)
+                    x0,y0 = ima.wcs.wcs_world2pix(ra0, dec0, 0)
                     w0 = ws/ima.pixscale; h0 = hs / ima.pixscale
                     ap = ima.photApertures[istab - 1]
                     ap.ellipse.center = x0, y0
@@ -871,10 +871,10 @@ class GUI (QMainWindow):
                 w0    = aper.rect.get_width()
                 h0    = aper.rect.get_height()
                 angle = aper.rect.angle
-                ra0,dec0 = ic.wcs.all_pix2world(x0, y0, 1)
+                ra0,dec0 = ic.wcs.wcs_pix2world(x0, y0, 0)
                 ws = w0 * ic.pixscale; hs = h0 * ic.pixscale
                 for ima in ici:
-                    x0,y0 = ima.wcs.all_world2pix(ra0, dec0, 1)
+                    x0,y0 = ima.wcs.wcs_world2pix(ra0, dec0, 0)
                     w0 = ws / ima.pixscale
                     h0 = hs / ima.pixscale
                     ap = ima.photApertures[istab-1]
@@ -886,9 +886,9 @@ class GUI (QMainWindow):
                     ima.changed = True
             elif aper.type == 'Polygon':
                 verts = aper.poly.get_xy()
-                adverts = np.array([(ic.wcs.all_pix2world(x, y, 1)) for (x, y) in verts])                
+                adverts = np.array([(ic.wcs.wcs_pix2world(x, y, 0)) for (x, y) in verts])                
                 for ima in ici:
-                    verts = [(ima.wcs.all_world2pix(ra, dec, 1)) for (ra, dec) in adverts]
+                    verts = [(ima.wcs.wcs_world2pix(ra, dec, 0)) for (ra, dec) in adverts]
                     ap = ima.photApertures[istab - 1]
                     ap.poly.set_xy(verts)
                     ap.updateMarkers()
@@ -925,9 +925,9 @@ class GUI (QMainWindow):
         ic.fig.canvas.draw_idle()
         ici = self.ici.copy()
         ici.remove(ic)
-        ra,dec = ic.wcs.all_pix2world(x,y,1)
+        ra,dec = ic.wcs.wcs_pix2world(x,y,0)
         for ima in ici:
-            x,y = ima.wcs.all_world2pix(ra,dec,1)
+            x,y = ima.wcs.wcs_world2pix(ra,dec,0)
             ima.axes.set_xlim(x)
             ima.axes.set_ylim(y)
             ima.changed = True
@@ -1502,8 +1502,8 @@ class GUI (QMainWindow):
         ic0 = self.ici[0]
         x = ic0.axes.get_xlim()
         y = ic0.axes.get_ylim()
-        ra, dec = ic0.wcs.all_pix2world(x, y, 1)
-        x, y = ic.wcs.all_world2pix(ra, dec, 1)            
+        ra, dec = ic0.wcs.wcs_pix2world(x, y, 0)
+        x, y = ic.wcs.wcs_world2pix(ra, dec, 0)            
         ic.axes.set_xlim(x)
         ic.axes.set_ylim(y)
         # Callback to propagate axes limit changes among images
@@ -1921,10 +1921,10 @@ class GUI (QMainWindow):
             # Transform into original cube coordinates
             ic = self.ici[itab]
             ic0 = self.ici[0]
-            ra1,dec1 = ic.wcs.all_pix2world(x1,y1,1)
-            ra2,dec2 = ic.wcs.all_pix2world(x2,y2,2)
-            x1,y1 = ic0.wcs.all_world2pix(ra1,dec1,1)
-            x2,y2 = ic0.wcs.all_world2pix(ra2,dec2,1)
+            ra1,dec1 = ic.wcs.wcs_pix2world(x1,y1,0)
+            ra2,dec2 = ic.wcs.wcs_pix2world(x2,y2,0)
+            x1,y1 = ic0.wcs.wcs_world2pix(ra1,dec1,0)
+            x2,y2 = ic0.wcs.wcs_world2pix(ra2,dec2,0)
         # Disactive the selector
         self.disactiveSelectors()
         # Untoggle pixel marker
@@ -2351,7 +2351,7 @@ class GUI (QMainWindow):
         # 1 vertices in RA,Dec coords
         itab = self.itabs.currentIndex()
         ic0 = self.ici[itab]
-        adverts = np.array([(ic0.wcs.all_pix2world(x,y,1)) for (x,y) in verts])
+        adverts = np.array([(ic0.wcs.wcs_pix2world(x,y,0)) for (x,y) in verts])
         self.drawNewPolygonAperture(adverts)
         
     def drawNewPolygonAperture(self, adverts):
@@ -2360,7 +2360,7 @@ class GUI (QMainWindow):
         self.photoApertures.append(photoAperture(n,'polygon',adverts))
         for ic in self.ici:
             # First adjust vertices to astrometry (they are in xy coords)
-            verts = [(ic.wcs.all_world2pix(ra,dec,1)) for (ra,dec) in adverts]
+            verts = [(ic.wcs.wcs_world2pix(ra,dec,0)) for (ra,dec) in adverts]
             poly  = PolygonInteractor(ic.axes, verts)
             ic.photApertures.append(poly)
             cidap=poly.mySignal.connect(self.onRemoveAperture)
@@ -2433,7 +2433,7 @@ class GUI (QMainWindow):
     def newSelectedAperture(self, x0, y0, w, h, selAp):       
         itab = self.itabs.currentIndex()
         ic0 = self.ici[itab]
-        r0, d0 = ic0.wcs.all_pix2world(x0, y0, 1)
+        r0, d0 = ic0.wcs.wcs_pix2world(x0, y0, 0)
         ws = w * ic0.pixscale
         hs = h * ic0.pixscale
         self.drawNewAperture(selAp, r0, d0, ws, hs, 0.)
@@ -2447,7 +2447,7 @@ class GUI (QMainWindow):
             data = [r0, d0, ws]
             self.photoApertures.append(photoAperture(n, 'square', data))
             for ic in self.ici:
-                x0, y0 = ic.wcs.all_world2pix(r0, d0, 1)
+                x0, y0 = ic.wcs.wcs_world2pix(r0, d0, 0)
                 w = ws / ic.pixscale
                 h = hs / ic.pixscale
                 square = RectangleInteractor(ic.axes, (x0, y0), w, angle=angle)
@@ -2461,7 +2461,7 @@ class GUI (QMainWindow):
             data = [r0, d0, ws, hs]
             self.photoApertures.append(photoAperture(n, 'rectangle', data))
             for ic in self.ici:
-                x0, y0 = ic.wcs.all_world2pix(r0, d0, 1)
+                x0, y0 = ic.wcs.wcs_world2pix(r0, d0, 0)
                 w = ws / ic.pixscale
                 h = hs / ic.pixscale
                 rectangle = RectangleInteractor(ic.axes, (x0, y0), w, h, angle=angle)
@@ -2476,7 +2476,7 @@ class GUI (QMainWindow):
             data = [r0, d0, ws]
             self.photoApertures.append(photoAperture(n, 'circle', data))
             for ic in self.ici:
-                x0, y0 = ic.wcs.all_world2pix(r0, d0, 1)
+                x0, y0 = ic.wcs.wcs_world2pix(r0, d0, 0)
                 w = ws / ic.pixscale
                 h = hs / ic.pixscale
                 circle = EllipseInteractor(ic.axes, (x0, y0), w)
@@ -2490,7 +2490,7 @@ class GUI (QMainWindow):
             data = [r0, d0, ws, hs]
             self.photoApertures.append(photoAperture(n, 'ellipse', data))
             for ic in self.ici:
-                x0, y0 = ic.wcs.all_world2pix(r0, d0, 1)
+                x0, y0 = ic.wcs.wcs_world2pix(r0, d0, 0)
                 w = ws / ic.pixscale
                 h = hs / ic.pixscale
                 ellipse = EllipseInteractor(ic.axes, (x0, y0), w, h, angle=angle)
@@ -2676,7 +2676,7 @@ class GUI (QMainWindow):
         ic = self.ici[itab]
         x = ic.axes.get_xlim()
         y = ic.axes.get_ylim()
-        ra,dec = ic.wcs.all_pix2world(x, y, 1)
+        ra,dec = ic.wcs.wcs_pix2world(x, y, 0)
         lon = np.mean(ra)
         lat = np.mean(dec)
         xsize = np.abs(ra[0] - ra[1]) * np.cos(lat * np.pi / 180.) * 60.
@@ -2769,8 +2769,8 @@ class GUI (QMainWindow):
             ic0 = self.ici[0]
             x = ic0.axes.get_xlim()
             y = ic0.axes.get_ylim()
-            ra,dec = ic0.wcs.all_pix2world(x,y,1)
-            x,y = ic.wcs.all_world2pix(ra,dec,1)            
+            ra,dec = ic0.wcs.wcs_pix2world(x,y,0)
+            x,y = ic.wcs.wcs_world2pix(ra,dec,0)            
             ic.axes.set_xlim(x)
             ic.axes.set_ylim(y)
             ic.changed = True
@@ -2838,10 +2838,10 @@ class GUI (QMainWindow):
                 w0    = aper.ellipse.width
                 h0    = aper.ellipse.height
                 angle = aper.ellipse.angle
-                ra0,dec0 = ic0.wcs.all_pix2world(x0,y0,1)
+                ra0,dec0 = ic0.wcs.wcs_pix2world(x0,y0,1)
                 ws = w0 * ic0.pixscale; hs = h0 * ic0.pixscale
                 # Add ellipse
-                x0,y0 = ic.wcs.all_world2pix(ra0,dec0,1)
+                x0,y0 = ic.wcs.wcs_world2pix(ra0,dec0,1)
                 w0 = ws/ic.pixscale; h0 = hs/ic.pixscale
                 ellipse = EllipseInteractor(ic.axes, (x0,y0),w0,h0,angle)
                 ellipse.type = aper.type
@@ -2855,10 +2855,10 @@ class GUI (QMainWindow):
                 h0    = aper.rect.get_height()
                 #print(type(h0))
                 angle = aper.rect.angle
-                ra0,dec0 = ic0.wcs.all_pix2world(x0,y0,1)
+                ra0,dec0 = ic0.wcs.wcs_pix2world(x0,y0,1)
                 ws = w0 * ic0.pixscale; hs = h0 * ic0.pixscale
                 # Add rectangle
-                x0,y0 = ic.wcs.all_world2pix(ra0,dec0,1)
+                x0,y0 = ic.wcs.wcs_world2pix(ra0,dec0,1)
                 w0 = ws/ic.pixscale; h0 = hs/ic.pixscale
                 rectangle = RectangleInteractor(ic.axes, (x0,y0),w0,h0,angle)
                 rectangle.type = aper.type
@@ -2870,8 +2870,8 @@ class GUI (QMainWindow):
                 ic.photApertureSignal.append(cidap)
             elif aper.type == 'Polygon':
                 verts = aper.poly.get_xy()
-                adverts = np.array([(ic0.wcs.all_pix2world(x,y,1)) for (x,y) in verts])
-                verts = [(ic.wcs.all_world2pix(ra,dec,1)) for (ra,dec) in adverts]
+                adverts = np.array([(ic0.wcs.wcs_pix2world(x,y,0)) for (x,y) in verts])
+                verts = [(ic.wcs.wcs_world2pix(ra,dec,0)) for (ra,dec) in adverts]
                 # Add polygon
                 poly = PolygonInteractor(ic.axes,verts)                
                 poly.showverts = aper.showverts
@@ -2883,10 +2883,10 @@ class GUI (QMainWindow):
                 w0    = aper.rect.get_width()
                 h0    = aper.rect.get_height()
                 angle = aper.rect.angle
-                ra0,dec0 = ic0.wcs.all_pix2world(x0,y0,1)
+                ra0,dec0 = ic0.wcs.wcs_pix2world(x0,y0,1)
                 ws = w0 * ic0.pixscale; hs = h0 * ic0.pixscale
                 # Add rectangle
-                x0,y0 = ic.wcs.all_world2pix(ra0,dec0,1)
+                x0,y0 = ic.wcs.wcs_world2pix(ra0,dec0,1)
                 w0 = ws/ic.pixscale; h0 = hs/ic.pixscale
                 pixel = PixelInteractor(ic.axes, (x0,y0), w0)
                 pixel.type = aper.type
@@ -3702,8 +3702,8 @@ class GUI (QMainWindow):
         ic0 = self.ici[0]
         x = ic0.axes.get_xlim()
         y = ic0.axes.get_ylim()
-        ra,dec = ic0.wcs.all_pix2world(x,y,1)
-        x,y = ic.wcs.all_world2pix(ra,dec,1)            
+        ra,dec = ic0.wcs.wcs_pix2world(x,y,0)
+        x,y = ic.wcs.wcs_world2pix(ra,dec,0)            
         ic.axes.set_xlim(x)
         ic.axes.set_ylim(y)
         ic.changed = True
@@ -4098,14 +4098,14 @@ class GUI (QMainWindow):
         ic0 = self.ici[0]
         x0 = s.nx // 2
         y0 = s.ny // 2
-        r0,d0 = ic0.wcs.all_pix2world(x0,y0,1)
+        r0,d0 = ic0.wcs.wcs_pix2world(x0,y0,1)
         ws = ic0.pixscale       
         n = len(self.photoApertures)
         # Define pixel aperture
         data = [r0,d0,ws]
         self.photoApertures.append(photoAperture(n,'pixel',data))
         for ic in self.ici:
-            x0, y0 = ic.wcs.all_world2pix(r0, d0, 1)
+            x0, y0 = ic.wcs.wcs_world2pix(r0, d0, 1)
             w = ws / ic.pixscale
             pixel = PixelInteractor(ic.axes, (x0, y0), w)
             ic.photApertures.append(pixel)
@@ -4474,12 +4474,12 @@ class GUI (QMainWindow):
             ic.toolbar.zoom()  # turn off zoom
         x = ic.axes.get_xlim()
         y = ic.axes.get_ylim()
-        ra, dec = ic.wcs.all_pix2world(x, y, 1)
+        ra, dec = ic.wcs.wcs_pix2world(x, y, 0)
         # If not in the flux image, compute values for the flux image
         band = self.bands.index('Flux')
         if itab != band:
             ic0 = self.ici[band]
-            x, y = ic0.wcs.all_world2pix(ra, dec, 1)            
+            x, y = ic0.wcs.wcs_world2pix(ra, dec, 0)            
         self.zoomlimits = [x, y]
         # Compute limits for new total spectrum
         x0 = int(np.min(x))
@@ -4494,7 +4494,7 @@ class GUI (QMainWindow):
         ici = self.ici.copy()
         ici.remove(ic)
         for ima in ici:
-            x, y = ima.wcs.all_world2pix(ra, dec, 1)
+            x, y = ima.wcs.wcs_world2pix(ra, dec, 0)
             ima.axes.callbacks.disconnect(ima.cid)
             ima.axes.set_xlim(x)
             ima.axes.set_ylim(y)

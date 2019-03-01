@@ -29,14 +29,14 @@ def exportAperture(self):
         print('type is ', type)
         if type == 'Polygon':
             verts = aperture.poly.get_xy()
-            adverts = np.array([(ic.wcs.all_pix2world(x,y,1)) for (x,y) in verts])                
+            adverts = np.array([(ic.wcs.wcs_pix2world(x,y,0)) for (x,y) in verts])                
             data = {
                 'type': aperture.type,
                 'verts': adverts.tolist()
             }
         elif (type == 'Square') | (type == 'Rectangle'):
             x0,y0 = aperture.rect.get_xy()
-            r0,d0 = ic.wcs.all_pix2world(x0,y0,1)
+            r0,d0 = ic.wcs.wcs_pix2world(x0,y0,0)
             data = {
                 'type': aperture.type,
                 'width': aperture.rect.get_width()*ic.pixscale,
@@ -47,7 +47,7 @@ def exportAperture(self):
                 }
         elif  (type == 'Ellipse') | (type == 'Circle'):
             x0,y0 = aperture.ellipse.center
-            r0,d0 = ic.wcs.all_pix2world(x0,y0,1)
+            r0,d0 = ic.wcs.wcs_pix2world(x0,y0,0)
             data = {
                     'type': aperture.type,
                     'width':  aperture.ellipse.width*ic.pixscale,
@@ -137,7 +137,7 @@ def exportGuesses(self):
         imtab = self.bands.index('Flux')
         ic = self.ici[imtab]
         x, y = zip(*self.sites)
-        ra, dec = ic.wcs.all_pix2world(x, y, 1)
+        ra, dec = ic.wcs.wcs_pix2world(x, y, 0)
         data = OrderedDict(info)
         # Check deleted lines
         idx = [i for i, x in enumerate(sc.lines) if x == None]
@@ -224,7 +224,7 @@ def importGuesses(self):
                 dec.append(g['dec'])
                 sc.lguess.append(g['lines'])
             sc.lguess = [list(i) for i in zip(*sc.lguess)]  # Transposing
-            x, y = ic.wcs.all_world2pix(ra, dec, 1)
+            x, y = ic.wcs.wcs_world2pix(ra, dec, 0)
             self.sites = [(i,j) for (i,j) in zip(x,y)]
             x = data['0']['x']
             y = data['0']['y']
