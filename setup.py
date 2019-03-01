@@ -8,7 +8,7 @@ with open("README.md", "r") as fh:
 
 config = {
         'name':'sospex',
-        'version':'0.34.b0',
+        'version':'0.35.b0',
         'description':'SOFIA SPectral EXplorer',
         'long_description':long_description,
         'long_description_type':"text/markdown",

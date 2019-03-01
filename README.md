@@ -16,9 +16,9 @@ A version is provided for Windows with limited testing.
 
 ### Current version
 
-The current version released on anaconda is: 0.34.beta 
+The current version released on anaconda is: 0.35.beta 
 
-Release date:  February 26, 2019
+Release date:  March 1, 2019
 
 ### Install with anaconda
 

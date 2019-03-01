@@ -1,5 +1,5 @@
 {% set name = "sospex" %}
-{% set version = "0.34b0" %}
+{% set version = "0.35b0" %}
 
 package:
   name: "{{ name|lower }}"
