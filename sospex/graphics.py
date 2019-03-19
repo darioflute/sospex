@@ -775,6 +775,7 @@ class SpectrumCanvas(MplCanvas):
         self.shade = False
         self.regionlimits = None
         self.xunit = 'um'  # Alternatives are THz or km/s
+        self.yunit = 'Jy'  # Alternative for GREAT is K (Temperature)
         self.xlimits = None
         self.ylimits = None        
         self.axes.spines['top'].set_visible(False)
@@ -808,7 +809,13 @@ class SpectrumCanvas(MplCanvas):
         self.axes.xaxis.set_major_formatter(ScalarFormatter(useOffset=False))
         self.axes.yaxis.set_major_formatter(ScalarFormatter(useOffset=False))
         # Write labels
-        self.axes.set_ylabel('Flux [Jy]')
+        if self.spectrum.instrument == 'GREAT':
+            if self.yunit == 'Jy':
+                self.axes.set_ylabel('Flux [Jy]', picker=True)
+            else:
+                self.axes.set_ylabel('Temperature [K]', picker=True)
+        else:
+            self.axes.set_ylabel('Flux [Jy]')
         s = self.spectrum        
         if self.xunit == 'um':
             self.axes.fmt_xdata = lambda x: "{:.4f}".format(x)        
@@ -1327,6 +1334,9 @@ class SpectrumCanvas(MplCanvas):
                 if text == 'Wavelength [$\mu$m]' or text == 'Frequency [THz]':
                     self.switchUnits()
                     self.switchSignal.emit('switched x unit')
+                elif text == 'Flux [Jy]' or text == 'Temperature [K]':
+                    self.switchFluxUnits()
+                    self.switchSignal.emit('switched y unit')
                 else:
                     self.dragged = event.artist
                     self.pick_pos = event.mouseevent.xdata
@@ -1341,10 +1351,16 @@ class SpectrumCanvas(MplCanvas):
     def switchUnits(self):
         if self.xunit == 'um':
             self.xunit = 'THz'
-            self.axes.format_coord = lambda x, y: "{:6.4f} THz {:10.4f} Jy".format(x, y)
+            if self.yunit == 'Jy':
+                self.axes.format_coord = lambda x, y: "{:6.4f} THz {:10.4f} Jy".format(x, y)
+            else:
+                self.axes.format_coord = lambda x, y: "{:6.4f} THz {:10.4f} K".format(x, y)
         else:
             self.xunit = 'um'
-            self.axes.format_coord = lambda x, y: "{:8.4f} um {:10.4f} Jy".format(x, y)
+            if self.yunit == 'Jy':
+                self.axes.format_coord = lambda x, y: "{:8.4f} um {:10.4f} Jy".format(x, y)
+            else:
+                self.axes.format_coord = lambda x, y: "{:8.4f} um {:10.4f} K".format(x, y)
         if self.guess is not None:
             # Switch xguess units
             c = 299792458.0  # speed of light in m/s
@@ -1358,6 +1374,33 @@ class SpectrumCanvas(MplCanvas):
                 if line is not None:
                     line.switchUnits()
         # Redrawing is maybe excessive
+        self.drawSpectrum()
+        self.fig.canvas.draw_idle()
+        
+    def switchFluxUnits(self):
+        if self.yunit == 'Jy':
+            self.yunit = 'K'
+            if self.xunit == 'THz':
+                self.axes.format_coord = lambda x, y: "{:6.4f} THz {:10.4f} K".format(x, y)
+            else:
+                self.axes.format_coord = lambda x, y: "{:8.4f} um {:10.4f} K".format(x, y)
+            self.spectrum.flux /= self.spectrum.Tb2Jy 
+            y0, y1 = self.ylimits
+            y0 /= self.spectrum.Tb2Jy
+            y1 /= self.spectrum.Tb2Jy
+            self.ylimits = (y0, y1)
+        else:
+            self.yunit = 'Jy'
+            if self.xunit == 'THz':
+                self.axes.format_coord = lambda x, y: "{:6.4f} THz {:10.4f} Jy".format(x, y)
+            else:
+                self.axes.format_coord = lambda x, y: "{:8.4f} um {:10.4f} Jy".format(x, y)
+            self.spectrum.flux *= self.spectrum.Tb2Jy 
+            y0, y1 = self.ylimits
+            y0 *= self.spectrum.Tb2Jy
+            y1 *= self.spectrum.Tb2Jy
+            self.ylimits = (y0, y1)
+        # Redraw
         self.drawSpectrum()
         self.fig.canvas.draw_idle()
 

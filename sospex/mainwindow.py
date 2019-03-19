@@ -205,6 +205,8 @@ class GUI (QMainWindow):
         # Tools
         tools = bar.addMenu("Tools")
         flux = tools.addMenu("Recompute flux")
+        flux.addAction(QAction('.. with atm. transmission at ref. wavelength',self,shortcut='',
+                               triggered=self.fluxRefWavAT))        
         flux.addAction(QAction('.. with median atm. transmission',self,shortcut='',
                                triggered=self.fluxMedianAT))        
         flux.addAction(QAction('.. with new atm. transmission',self,shortcut='',
@@ -2391,7 +2393,8 @@ class GUI (QMainWindow):
         xx,yy = inpoints.T        
         fluxAll = np.nansum(s.flux[:,yy,xx], axis=1)
         if s.instrument == 'GREAT':
-            spec = Spectrum(s.wave, fluxAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0 )
+            spec = Spectrum(s.wave, fluxAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0,
+                            Tb2Jy = s.Tb2Jy)
         elif s.instrument == 'FIFI-LS':
             ufluxAll = np.nansum(s.uflux[:,yy,xx], axis=1)
             expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
@@ -3847,10 +3850,13 @@ class GUI (QMainWindow):
                 atmed = np.nanmedian(at)
                 atran = self.specCube.atran*0.+atmed
                 #self.specCube.atran[:] = atmed
-                self.specCube.flux = self.specCube.uflux/atmed
+                # The uncorrected flux should be interpolated over the corrected flux wavelength
+                # grid after applying the baryshift correction ...
+                self.computeFluxAtm(atmed)
+                # self.specCube.flux = self.specCube.uflux/atmed
                 # Redraw the spectrum
                 for sc in self.sci:
-                    sc.updateSpectrum(atran=atran)
+                    sc.updateSpectrum(atran=atran, f=self.specCube.flux)
                 # tab with total flux
                 self.doZoomAll('new AT')
                 # tabs with apertures
@@ -3859,6 +3865,42 @@ class GUI (QMainWindow):
                 self.sb.showMessage("This operation is possible with FIFI-LS cubes only", 2000)    
         except:
             self.sb.showMessage("First choose a cube ", 1000)
+            
+            
+    def fluxRefWavAT(self):
+        try:
+            # Check if FIFI-LS cube
+            if self.specCube.instrument == 'FIFI-LS':
+                # substitute flux with uncorrected flux divided by the atm transmission at ref wav
+                at = self.specCube.atran
+                idx = np.argmin(np.abs(self.specCube.wave-self.specCube.l0))
+                atran = self.specCube.atran*0.+at[idx]
+                #self.specCube.atran[:] = atmed
+                # The uncorrected flux should be interpolated over the corrected flux wavelength
+                # grid after applying the baryshift correction ...
+                self.computeFluxAtm(at[idx])
+                # self.specCube.flux = self.specCube.uflux/atmed
+                # Redraw the spectrum
+                for sc in self.sci:
+                    sc.updateSpectrum(atran=atran, f=self.specCube.flux)
+                # tab with total flux
+                self.doZoomAll('new AT')
+                # tabs with apertures
+                self.onModifiedAperture('new AT')
+            else:
+                self.sb.showMessage("This operation is possible with FIFI-LS cubes only", 2000)    
+        except:
+            self.sb.showMessage("First choose a cube ", 1000)
+         
+        
+    def computeFluxAtm(self, atmed):
+        nz, ny, nx = np.shape(self.specCube.uflux)
+        x = self.specCube.wave
+        xr = x * (1+self.specCube.baryshift)
+        for i in range(ny):
+            for j in range(nx):
+                ufi = np.interp(x, xr, self.specCube.uflux[:, i, j])
+                self.specCube.flux[:, i, j] = ufi / atmed
         
     def fluxNewAT(self):
         try:
@@ -3881,7 +3923,7 @@ class GUI (QMainWindow):
             self.initializeSlider()
             if self.specCube.instrument == 'GREAT':
                 print('compute Exp from Nan')
-                self.specCube.computeExpFromNan
+                self.specCube.computeExpFromNan()
             self.all = False
             self.fitcont = False
             # Set default number of lines to fit across the cube
@@ -3914,7 +3956,7 @@ class GUI (QMainWindow):
                 print('spectra initialized ')
                 if self.specCube.instrument == 'GREAT':
                     print('compute Exp from Nan')
-                    self.specCube.computeExpFromNan
+                    self.specCube.computeExpFromNan()
                 self.all = False
                 self.fitcont = False
                 # Set default number of lines to fit across the cube
@@ -4117,7 +4159,7 @@ class GUI (QMainWindow):
         fluxAll = s.flux[:,y0,x0]
         if s.instrument == 'GREAT':
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
-                            redshift=s.redshift, l0=s.l0 )
+                            redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy )
         elif s.instrument == 'PACS':
             expAll = s.exposure[:, y0, x0]
             spec = Spectrum(s.wave, fluxAll, exposure=expAll, instrument=s.instrument,
@@ -4281,22 +4323,37 @@ class GUI (QMainWindow):
             ih = self.ihi[self.bands.index(ima)]
             ih.changed = True
 
-    def switchUnits(self):
+    def switchUnits(self, event):
         """React to switch in units of the spectrum canvas."""
-        if self.slider is not None:
-            self.sliderSwitchUnits()
-        if self.slicer is not None:
-            self.slicerSwitchUnits()
-        # change units in other tabs
-        stab = self.stabs.currentIndex()
-        sc0 = self.sci[stab]
-        sci = self.sci.copy()
-        sci.remove(sc0)
-        if self.all == False:
-            sci.remove(self.sci[0])
-            self.sci[0].xunit = 'THz'
-        for sc in sci:
-            sc.switchUnits()
+        print('event is ', event)
+        if event == 'switched x unit':
+            if self.slider is not None:
+                self.sliderSwitchUnits()
+            if self.slicer is not None:
+                self.slicerSwitchUnits()
+            # change units in other tabs
+            stab = self.stabs.currentIndex()
+            sc0 = self.sci[stab]
+            sci = self.sci.copy()
+            sci.remove(sc0)
+            if self.all == False:
+                sci.remove(self.sci[0])
+                self.sci[0].xunit = 'THz'
+            for sc in sci:
+                sc.switchUnits()
+        elif event == 'switched y unit':
+            print('Switch Jy/K')
+            # Change units in other tabs
+            stab = self.stabs.currentIndex()
+            sc0 = self.sci[stab]
+            sci = self.sci.copy()
+            sci.remove(sc0)
+            if self.all == False:
+                sci.remove(self.sci[0])
+                self.sci[0].yunit = 'K'
+            for sc in sci:
+                sc.switchFluxUnits()
+            
 
     def sliderSwitchUnits(self):
         c = 299792458.0  # speed of light in m/s
@@ -4323,7 +4380,7 @@ class GUI (QMainWindow):
         fluxAll = np.nansum(s.flux, axis=(1,2))
         if s.instrument == 'GREAT':
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
-                            redshift=s.redshift, l0=s.l0 )
+                            redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy)
         elif s.instrument in ['PACS', 'FORCAST']:
             expAll = np.nansum(s.exposure, axis=(1,2))
             spec = Spectrum(s.wave, fluxAll, exposure=expAll,instrument=s.instrument,

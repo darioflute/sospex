@@ -98,6 +98,7 @@ class specCube(object):
         self.exposure = hdl['EXPOSURE_MAP'].data
           
     def readGREAT(self, hdl):
+        from scipy.special import erf
         print('This is a GREAT spectral cube')
         #self.cmin = header['DATAMIN']
         #self.cmax = header['DATAMAX']
@@ -109,7 +110,8 @@ class specCube(object):
         self.redshift = self.header['VELO-LSR'] # in m/s
         c = 299792458.0  # speed of light in m/s 
         self.redshift /= c
-        self.pixscale,ypixscale = proj_plane_pixel_scales(self.wcs)*3600. # Pixel scale in arcsec
+        self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
+        print('pixel scale', )
         self.n = self.header['NAXIS3']
         naxes = self.header['NAXIS']
         if naxes == 4:
@@ -120,9 +122,18 @@ class specCube(object):
         eta_mb =0.67
         calib = 971.
         self.Tb2Jy = calib*eta_fss*eta_mb
-        self.flux *= self.Tb2Jy   # Transformed from temperature to S_nu [Jy]            
+        self.flux *= self.Tb2Jy   # Transformed from temperature to S_nu [Jy] 
         nu0 = self.header['RESTFREQ']  # MHz
         l0 = c/nu0  # in micron
+        # Transform in Jy/pixel
+        # Compute the beam size at the wavelength
+        bmaj = self.header['BMAJ'] * 3600. # Beam major axis in arcsec
+        bmin = self.header['BMIN'] * 3600. # Beam minor axis in arcsec
+        print('Bmaj and Bmin ', bmaj, bmin)
+        # Multiply by the flux fraction in the pixel assuming a 2D Gaussian curve                    
+        pixfraction = 0.5 * erf(self.pixscale*0.5/bmaj) * erf(ypixscale*0.5/bmin)
+        print('Beam fraction on pixel ', pixfraction)
+        self.flux *= pixfraction
         vel = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3
         self.l0 = l0
         self.wave = l0 + l0*vel/c
@@ -215,7 +226,7 @@ class ExtSpectrum(object):
 class Spectrum(object):
     """ class to define a spectrum """
     def __init__(self, wave, flux, eflux=None, uflux=None, exposure=None, atran=None,
-                 instrument=None, baryshift=None, redshift=None, l0=None, area=None):
+                 instrument=None, baryshift=None, redshift=None, l0=None, area=None, Tb2Jy=None):
         self.wave = wave
         self.flux = flux
         if eflux is not None:
@@ -236,4 +247,6 @@ class Spectrum(object):
             self.l0 = l0
         if area is not None:
             self.area = area
+        if Tb2Jy is not None:
+            self.Tb2Jy = Tb2Jy
         self.continuum =  np.full(len(wave), np.nan)
