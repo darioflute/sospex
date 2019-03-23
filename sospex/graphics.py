@@ -1353,14 +1353,14 @@ class SpectrumCanvas(MplCanvas):
             self.xunit = 'THz'
             if self.yunit == 'Jy':
                 self.axes.format_coord = lambda x, y: "{:6.4f} THz {:10.4f} Jy".format(x, y)
-            else:
-                self.axes.format_coord = lambda x, y: "{:6.4f} THz {:10.4f} K".format(x, y)
+            #else:
+            #    self.axes.format_coord = lambda x, y: "{:6.4f} THz {:10.4f} K".format(x, y)
         else:
             self.xunit = 'um'
             if self.yunit == 'Jy':
                 self.axes.format_coord = lambda x, y: "{:8.4f} um {:10.4f} Jy".format(x, y)
-            else:
-                self.axes.format_coord = lambda x, y: "{:8.4f} um {:10.4f} K".format(x, y)
+            #else:
+            #    self.axes.format_coord = lambda x, y: "{:8.4f} um {:10.4f} K".format(x, y)
         if self.guess is not None:
             # Switch xguess units
             c = 299792458.0  # speed of light in m/s

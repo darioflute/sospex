@@ -263,6 +263,7 @@ class GUI (QMainWindow):
         
     def importGuessesAction(self):
         importGuesses(self)
+        print('Imported ', self.ncells, ' cells.')
 
     def showHeader(self):
         """ Show header of the spectral cube """
@@ -594,7 +595,7 @@ class GUI (QMainWindow):
                         ny ,nx = np.shape(ima.oimage)
                         levs =  sorted(ih0.levels)
                         # Smooth data
-                        ismo = ndimage.gaussian_filter(co.data, sigma=1.0, order=0)
+                        ismo = ndimage.gaussian_filter(co.data, sigma=0.5, order=0)
                         if nx0 > 2 * nx:
                             # print('Reprojecting image for contours')
                             from reproject import reproject_interp
@@ -1548,22 +1549,45 @@ class GUI (QMainWindow):
             sc.setLinesVisibility(sc.displayLines)
             sc.fig.canvas.draw_idle()
             
-    def addLines(self, n, x, type, nstart=0):
+    def getLineVelocity(self):
+        czline, okPressed = QInputDialog.getDouble(self, "Velocity of line ", "cz", 0, -10000., 50000., 2)
+        if okPressed:
+            return czline
+        else:
+            return None
+            
+    def addLines(self, n, x, type, nstart=0, x0s=None, fwhms=None, As=None):
         lines = []
         istab = self.spectra.index('Pix')
         # istab = self.stabs.currentIndex()
         sc = self.sci[istab]
         nid = nstart
+        colors = np.array(['orange','forestgreen','dodgerblue','violet','salmon','peru'])
         for i in range(n):
-            dx = (x[2] - x[1]) / (2 * n)
-            x0 = x[1] + dx + i * 2 * dx
-            fwhm = dx * 0.5
-            idx = (sc.x > (x0 - dx)) & (sc.x < (x0 + dx))
-            if type == 'emission':
-                A = np.nanmax(sc.spectrum.flux[idx]) - sc.guess.intcpt - sc.guess.slope * x0
+            if fwhms is None:
+                dx = (x[2] - x[1]) / (2 * n)
+                fwhm = dx * 0.5
             else:
-                A = np.nanmin(sc.spectrum.flux[idx]) - sc.guess.intcpt - sc.guess.slope * x0
-            LI = LineInteractor(sc.axes, sc.guess.intcpt, sc.guess.slope, x0, A, fwhm, nid)
+                fwhm = fwhms
+            #x0 = x[1] + dx + i * 2 * dx
+            #print('x0 precomputed is ', x0)
+            # Ask for cz 
+            if x0s is None:
+                czline = self.getLineVelocity()
+                w0 = self.specCube.l0
+                c =  299792.458 # km/s
+                x0 = w0 * (czline / c + self.specCube.redshift + 1)
+            else:
+                x0 = x0s * ( 1 + self.specCube.redshift)
+            if As is None:
+                idx = (sc.x > (x0 - dx)) & (sc.x < (x0 + dx))
+                if type == 'emission':
+                    A = np.nanmax(sc.spectrum.flux[idx]) - sc.guess.intcpt - sc.guess.slope * x0
+                else:
+                    A = np.nanmin(sc.spectrum.flux[idx]) - sc.guess.intcpt - sc.guess.slope * x0
+            else:
+                A = As
+            LI = LineInteractor(sc.axes, sc.guess.intcpt, sc.guess.slope, x0, A, fwhm, nid,color=colors[i])
             LI.modSignal.connect(self.onModifiedGuess)
             LI.mySignal.connect(self.onRemoveContinuum)
             lines.append(LI)
@@ -1604,8 +1628,9 @@ class GUI (QMainWindow):
 
     def ContMomLines(self):
         """Dialog to select fit options for the cube."""
-        print('fit cont is ', self.fitcont)
-        if self.continuum is not None:
+        #if self.continuum is not None:
+        sc = self.sci[self.spectra.index('Pix')]
+        if sc.guess is not None:
             if self.fitcont:
                 moments = True
                 options = []
@@ -3769,7 +3794,7 @@ class GUI (QMainWindow):
         if self.bands[itab] == 'Cov':
             ih0.levels = list(np.arange(ih0.min,ih0.max,(ih0.max-ih0.min)/8))
         else:
-            levels = ih0.median + np.array([1,2,3,5,10]) * ih0.sdev
+            levels = ih0.median + np.array([-1,0,1,2,3,5,10]) * ih0.sdev
             mask = levels < ih0.max
             ih0.levels = list(levels[mask])
         #print('Contour levels are: ',ih0.levels)
@@ -3802,7 +3827,7 @@ class GUI (QMainWindow):
             if n >= 1000:
                 # Add a brand new level
                 n -= 1000
-                ismo = ndimage.gaussian_filter(ic0.oimage, sigma=1.0, order=0)
+                ismo = ndimage.gaussian_filter(ic0.oimage, sigma=0.5, order=0)
                 new = ic0.axes.contour(ismo, [ih0.levels[n]], colors=self.colorContour[0])
                 # Insert new contour in the contour collection
                 ic0.contour.collections.insert(n, new.collections[0])                
@@ -4519,6 +4544,7 @@ class GUI (QMainWindow):
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
         if ic.axes == event: # only consider axes on screen (not other tabs)
+            print('limits changed ....')
             self.zoomAll(itab)
 
     def zoomAll(self, itab):

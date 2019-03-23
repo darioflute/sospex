@@ -123,7 +123,9 @@ def exportGuesses(self):
             ('waveUnit', 'micrometers'),
             ('fluxUnit', 'Jy/pixel'),
             ('raUnit', 'deg'),
-            ('decUnit', 'deg')
+            ('decUnit', 'deg'),
+            ('redshift', self.specCube.redshift),
+            ('wavref', self.specCube.l0)
             ]
     if self.ncells == 1:
         xg,yg = zip(*sc.guess.xy)
@@ -144,7 +146,7 @@ def exportGuesses(self):
         idx.reverse()
         g = sc.guess
         xg, yg = zip(*g.xy)
-        for i, site in enumerate(self.sites):
+        for i in range(self.ncells):
             xg = sc.xguess[i]
             lines = []
             if sc.lguess is not None:
@@ -194,6 +196,12 @@ def importGuesses(self):
         with open(filename) as f:
             data = json.load(f, object_pairs_hook=OrderedDict)
         self.ncells = data['ncells']
+        stab = self.stabs.currentIndex()        
+        sc = self.sci[stab]
+        sc.spectrum.redshift = data['redshift']
+        sc.spectrum.l0 = data['wavref']
+        # Update 
+        self.onDraw2(1)
         istab = self.spectra.index('Pix')
         sc = self.sci[istab]
         self.stabs.setCurrentIndex(istab)
@@ -239,6 +247,9 @@ def importGuesses(self):
         SI.modSignal.connect(self.onModifiedGuess)
         SI.mySignal.connect(self.onRemoveContinuum)
         sc.guess = SI
+        # Initialize continuum
+        self.openContinuumTab()
+        self.positiveContinuum = False  # Default value
         # Plot lines
         if sc.lguess is not None:
             self.emslines = 0
@@ -249,11 +260,12 @@ def importGuesses(self):
                 else:
                     self.abslines += 1
             if self.emslines > 0:
-                sc.lines = self.addLines(self.emslines, x, 'emission')
+                sc.lines = self.addLines(self.emslines, x, 'emission', x0s=line[0], fwhms=line[1], As=line[2])
             else:
                 sc.lines = []
             if self.abslines > 0:
-                sc.lines.append(self.addLines(self.abslines, x, 'absorption', self.emslines))
+                sc.lines.append(self.addLines(self.abslines, x, 'absorption', nstart=self.emslines, 
+                                              x0s=line[0], fwhms=line[1], As=line[2]))
             # Then plot guess and activate tessellation
         sc.fig.canvas.draw_idle()
         # Create Voronoi sites, KDTree, plot Voronoi ridges on image

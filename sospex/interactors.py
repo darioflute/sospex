@@ -698,7 +698,7 @@ class LineInteractor(QObject):
     mySignal = pyqtSignal(str)
     modSignal = pyqtSignal(str)
 
-    def __init__(self, ax, c0, cs, x0, A, fwhm, n, epsilon=10):
+    def __init__(self, ax, c0, cs, x0, A, fwhm, n, color='#7ec0ee', epsilon=10):
         super().__init__()
         # To avoid crashing with maximum recursion depth exceeded
         sys.setrecursionlimit(10000)  # 10000 is 10x the default value
@@ -710,17 +710,17 @@ class LineInteractor(QObject):
         self.c0 = c0  # Value of continuum at origin
         self.cs = cs  # Slope of the continuum
         self.type = 'Line'
-        color = '#7ec0ee'
+        self.color = color
         self.x0 = x0
         self.A = A
         self.fwhm = fwhm
         self.computeMarkers()
         self.computeGaussian()
-        self.gauss = Polygon(self.verts, animated=True, fill=False, closed=False, color=color)
+        self.gauss = Polygon(self.verts, animated=True, fill=False, closed=False, color=self.color)
         self.ax.add_patch(self.gauss)
         x, y = zip(*self.xy)
         self.line = Line2D(x, y, marker='o', linestyle=None, linewidth=0.,
-                           markerfacecolor=color, animated=True)
+                           markerfacecolor=self.color, animated=True)
         self.ax.add_line(self.line)
         self.artists = [self.line, self.gauss]
         self._ind = None  # the active vert
