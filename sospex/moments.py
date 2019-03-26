@@ -596,7 +596,7 @@ class FitCubeDialog(QDialog):
             else:
                  self.linesbox = self.createGroup('Lines', ['All'])               
             self.linesbox.setEnabled(False)
-            self.cblines = QCheckBox("Set active")
+            self.cblines = QCheckBox("Lines")
             checkbuttons.addButton(self.cblines)
             ibox += 1
             grid.addWidget(self.cblines, ibox,0)
@@ -927,3 +927,116 @@ def multiFitContinuum(m, w, f, c, c0, w0, points, slope, intcp, posCont, kernel,
     return c_, c0_
 
 # Fit of lines
+
+def fitLines(p, m,w,f,lines):
+    """Fit the lines defined in the guess."""
+    from lmfit.models import PseudoVoigtModel
+    # f is flux without continuum
+    # lines is the list of parameters for each line
+    mf = np.isnan(f)
+    m[mf] = 0
+    if np.sum(m) > 5:
+        y = f[m]
+        x = w[m]
+        # Transform into S(lambda)
+        c = 299792458. # m/s
+        #  W/m2 = Jy*Hz*1.e-26 and c -> c*1.e6 um ...
+        y  = c * y / (x * x ) *1.e-20 # Jy * Hz / um --> W/m2 after integration in um
+        # Normalization
+        norm = np.abs(np.median(y))
+        #print('Normalization factor ', norm)
+        y /= norm
+        # Define lines
+        for i, line in enumerate(lines):
+            li = 'l' + str(i) + '_'
+            vmodel = PseudoVoigtModel(prefix=li)
+            if i == 0:
+                params = vmodel.make_params()
+                model = vmodel
+            else:
+                params += vmodel.make_params()
+                model += vmodel
+            x0 = line[0]
+            sigma = line[1] / 2.355
+            A = line[2] * c / (x0*x0) * 1.e-20 / norm # same units as flux
+            params[li+'center'].set(x0, min=(x0 - sigma/3.), max=(x0 + sigma/3.))
+            if A > 0:
+                params[li+'amplitude'].set(A, min=0.1 * A, max=A * 2)
+            else:
+                params[li+'amplitude'].set(A, min=2 * A, max=A * 0.1)
+            params[li+'sigma'].set(sigma, min=sigma / 2., max=sigma * 2)
+            params[li + 'fraction'].set(0.3, max = 0.4)
+        # Minimize
+        out = model.fit(y, params, x=x)
+        #               kws={'data': y, 'eps': e}, method='leastsq')
+        # Return lines fitted parameters
+        pars = out.params#.valuesdict()
+        nlines = len(lines)
+        #print("Number of lines fitted: ", nlines)
+        linepars = []
+        for i in range(nlines):
+            li = 'l' + str(i) + '_'
+            center = pars[li + 'center'].value  # Observed
+            #centerErr = pars[li + 'center'].stderr  # Observed
+            sigma = pars[li + 'sigma'] .value   # Observed
+            #sigmaErr = pars[li + 'sigma'] .stderr   # Observed
+            A =  pars[li+'amplitude'].value
+            #Aerr = pars[li+'amplitude'].stderr
+            amplitude = A * norm
+            #amplitudeErr = amplitude * (Aerr/A + sigmaErr/sigma)
+            alpha = pars[li+'fraction'].value
+            linepars.append([center, sigma, amplitude, alpha])
+        return p, linepars
+    else:
+        nlines = len(lines)
+        return p, np.full((nlines, 4), np.nan)
+
+def multiFitLines(m, w, f, c, lineguesses, linefits, points):
+
+    # To avoid forking error in MAC OS-X
+    try:
+        mp.set_start_method('spawn')
+    except RuntimeError:
+        pass
+
+    with mp.Pool(processes=mp.cpu_count()) as pool:
+        res = [pool.apply_async(fitLines, 
+                                (p, 
+                                 m[:, p[1],p[0]], 
+                                 w, 
+                                 f[:,p[1],p[0]]-c[:,p[1],p[0]], 
+                                 lineguesses)
+                                ) for p in points]
+        results = [r.get() for r in res]
+
+    n = len(lineguesses)
+    for p, linepars in results:
+        i,j = p
+        for k in range(n):
+            linefits[k][0][j,i] = linepars[k][0]
+            linefits[k][1][j,i] = linepars[k][1]
+            linefits[k][2][j,i] = linepars[k][2]
+            linefits[k][3][j,i] = linepars[k][3]
+            
+    return 1
+
+def multiFitLines2(m, w, f, c, lineguesses, linefits, points):
+
+    for p in points:
+        res = fitLines(p, 
+                       m[:, p[1],p[0]], 
+                       w, 
+                       f[:,p[1],p[0]]-c[:,p[1],p[0]], 
+                       lineguesses)
+
+        n = len(lineguesses)
+        pp, linepars = res
+        i,j = pp
+        print(np.shape(linepars), np.shape(linefits))
+        for k in range(n):
+            linefits[k][0][j,i] = linepars[k][0]
+            linefits[k][1][j,i] = linepars[k][1]
+            linefits[k][2][j,i] = linepars[k][2]
+            linefits[k][3][j,i] = linepars[k][3]
+                
+    return 1

@@ -125,7 +125,8 @@ def exportGuesses(self):
             ('raUnit', 'deg'),
             ('decUnit', 'deg'),
             ('redshift', self.specCube.redshift),
-            ('wavref', self.specCube.l0)
+            ('wavref', self.specCube.l0),
+            ('kernel', self.kernel)
             ]
     if self.ncells == 1:
         xg,yg = zip(*sc.guess.xy)
@@ -267,6 +268,7 @@ def importGuesses(self):
                 sc.lines.append(self.addLines(self.abslines, x, 'absorption', nstart=self.emslines, 
                                               x0s=line[0], fwhms=line[1], As=line[2]))
             # Then plot guess and activate tessellation
+            
         sc.fig.canvas.draw_idle()
         # Create Voronoi sites, KDTree, plot Voronoi ridges on image
         self.removeVI()
@@ -274,5 +276,7 @@ def importGuesses(self):
             self.createVI()
         else:
             ic.fig.canvas.draw_idle()
+        # Set kernel
+        self.setKernel(data['kernel'])
     else:
         print('Try again after exporting a set of guesses.')

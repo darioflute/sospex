@@ -21,7 +21,7 @@ warnings.filterwarnings('ignore')
 
 from sospex.moments import (SegmentsSelector, SegmentsInteractor, multiFitContinuum,
                             multiComputeMoments, ContParams, ContFitParams, SlicerDialog,
-                            FitCubeDialog)
+                            FitCubeDialog, multiFitLines)
 from sospex.graphics import  (NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas,
                        cmDialog, ds9cmap, ScrollMessageBox)
 from sospex.apertures import (photoAperture, PolygonInteractor, EllipseInteractor,
@@ -487,6 +487,8 @@ class GUI (QMainWindow):
         elif b == 'M4': self.M4 = None
         elif b == 'v' : self.v  = None
         elif b == 'sv': self.sv = None
+        elif b == 'L0': self.L0 = None
+        elif b == 'L1': self.L1 = None
         # Remove band from band list
         del self.bands[itab]
 
@@ -553,6 +555,8 @@ class GUI (QMainWindow):
                 
     def onITabChange(self, itab):
         ''' When tab changes check if latest update of ellipse are implemented '''
+        if len(self.ici) == 0:
+            return
         if itab < len(self.ici):
             ima = self.ici[itab]
             if len(self.stabs) > 1:
@@ -799,14 +803,22 @@ class GUI (QMainWindow):
                     except:
                         moments = None
                         noise = None
+                    try:
+                        lines = []
+                        for line in self.lines:
+                            lines.append([line[0][j, i], line[1][j, i], line[2][j, i], line[3][j, i]])
+                    except:
+                        lines = None
                 except:
                     cont = None
                     moments = None
                     noise = None
+                    lines = None
             else:
                 cont = None
                 moments = None
                 noise = None
+                lines = None
             if istab == 1: # case of pixel (with different kernels)
                 fluxAll = np.nanmean(s.flux[:, yy, xx], axis=1)
             else:
@@ -814,13 +826,13 @@ class GUI (QMainWindow):
             sc.spectrum.flux = fluxAll
             # sc.spectrum.flux = fluxAll
             if s.instrument == 'GREAT':
-                sc.updateSpectrum(f=fluxAll, cont=cont, moments=moments, noise=noise, ncell=ncell)
+                sc.updateSpectrum(f=fluxAll, cont=cont, moments=moments, lines=lines, noise=noise, ncell=ncell)
             elif s.instrument in ['PACS','FORCAST']:
                 if istab == 1:
                     expAll = np.nanmean(s.exposure[:, yy, xx], axis=1)
                 else:
                     expAll = np.nansum(s.exposure[:, yy, xx], axis=1)
-                sc.updateSpectrum(f=fluxAll, exp=expAll, cont=cont, moments=moments,
+                sc.updateSpectrum(f=fluxAll, exp=expAll, cont=cont, moments=moments, lines=lines,
                                   noise=noise, ncell=ncell)
             elif s.instrument == 'FIFI-LS':
                 if istab == 1:
@@ -836,7 +848,7 @@ class GUI (QMainWindow):
                 sc.spectrum.eflux = efluxAll
                 sc.spectrum.exposure = expAll
                 sc.updateSpectrum(f=fluxAll, uf=ufluxAll, exp=expAll,
-                                  cont=cont, moments=moments, noise=noise, ncell=ncell)
+                                  cont=cont, moments=moments, lines=lines, noise=noise, ncell=ncell)
             
     def onDraw(self,event):        
         itab = self.itabs.currentIndex()
@@ -1492,6 +1504,10 @@ class GUI (QMainWindow):
             image = self.v
         elif band == 'sv':
             image = self.sv   
+        elif band == 'L0':
+            image = self.L0
+        elif band == 'L1':
+            image = self.L1
         ic.compute_initial_figure(image=image, wcs=self.specCube.wcs, title=band,
                                   cMap=self.colorMap, cMapDir=self.colorMapDirection,
                                   stretch=self.stretchMap)
@@ -1573,10 +1589,11 @@ class GUI (QMainWindow):
             #print('x0 precomputed is ', x0)
             # Ask for cz 
             if x0s is None:
-                czline = self.getLineVelocity()
-                w0 = self.specCube.l0
-                c =  299792.458 # km/s
-                x0 = w0 * (czline / c + self.specCube.redshift + 1)
+                #czline = self.getLineVelocity()
+                #w0 = self.specCube.l0
+                #c =  299792.458 # km/s
+                #x0 = w0 * (czline / c + self.specCube.redshift + 1)
+                x0 = x[1] + dx + i * 2 * dx
             else:
                 x0 = x0s * ( 1 + self.specCube.redshift)
             if As is None:
@@ -1679,9 +1696,9 @@ class GUI (QMainWindow):
                 pass
             else:
                 if loption == 'Region':
-                    pass
+                    self.fitLinesRegion()
                 elif loption == 'All':
-                    pass
+                    self.fitLinesAll()
         else:
             message = 'Define a guess for the continuum on the spectrum panel'
             self.sb.showMessage(message, 4000)
@@ -2120,6 +2137,7 @@ class GUI (QMainWindow):
         # Compute moments
         self.computeMoments(points)
 
+
     def defineMoments(self):
         """Define mask, moments, and velocities."""
         # In the case they are not already defined ...
@@ -2150,6 +2168,34 @@ class GUI (QMainWindow):
                         ic.fig.canvas.draw_idle()
                     else:
                         ic.changed = True
+                        
+    def defineLines(self):
+        """Define line structure."""
+        if self.L0 is None:
+            s = self.specCube
+            self.Mmask = np.zeros((s.nz,s.ny,s.nx), dtype=bool) # Spectral cube mask (for computing the moments)
+            self.L0 = np.full((s.ny,s.nx), np.nan) #  1st line integral
+            self.L1 = np.full((s.ny,s.nx), np.nan) #  2nd line integral
+            sc = self.sci[self.spectra.index('Pix')]
+            nlines = len(sc.lguess)
+            self.lines = np.full((nlines, 4, s.ny, s.nx), np.nan) # Fitted parameters of lines
+            # Current canvas
+            itab = self.itabs.currentIndex()
+            ic0 = self.ici[itab]
+            # Create/update moment tabs
+            newbands = ['L0','L1']
+            sbands = [self.L0, self.L1]
+            for new,sb in zip(newbands,sbands):
+                if new not in self.bands:
+                    self.addBand(new)
+                else:
+                    itab = self.bands.index(new)
+                    ic = self.ici[itab]
+                    ic.showImage(sb)
+                    if ic == ic0:
+                        ic.fig.canvas.draw_idle()
+                    else:
+                        ic.changed = True            
 
     def computeMomentsRegionOld(self, eclick, erelease):
         """Compute moments in a defined region."""
@@ -2187,6 +2233,57 @@ class GUI (QMainWindow):
         else:
             print('There are no defined regions')
             return
+        
+    def fitLinesAll(self):
+        """Fit defined lines in the cell occupied by the cursor."""
+            
+        for ncell in range(self.ncells):
+            exp = np.nansum(self.specCube.exposure, axis=0)
+            mask = (self.regions == ncell) & (exp > 0)
+            mask[0, :] = False
+            mask[-1, :] = False
+            mask[:, 0] = False
+            mask[:, -1] = False
+            print('Cell ', ncell, ' has ',np.sum(mask),' points')
+            if np.sum(mask) > 0:
+                yi, xi = np.where(mask == True)
+                points = np.c_[xi, yi]
+                print('Points defined ... for computing moments, points: ', np.shape(points))
+                # Define line fit results
+                self.defineLines()
+                # Compute the mask
+                self.momentsMask(points)
+                # Fit the lines inside the cell
+                self.fitLines(points)        
+        
+        
+    def fitLinesRegion(self):
+        """Fit defined lines in the cell occupied by the cursor."""
+        if self.ncells > 1:
+            aperture = self.ici[0].photApertures[0].aperture
+            xc, yc = aperture.xy
+            ncell = self.regions[int(yc), int(xc)]
+            print('region is ', ncell)
+            exp = np.nansum(self.specCube.exposure, axis=0)
+            mask = (self.regions == ncell) & (exp > 0)
+            mask[0, :] = False
+            mask[-1, :] = False
+            mask[:, 0] = False
+            mask[:, -1] = False
+            print('region has ',np.sum(mask),' points')
+            yi, xi = np.where(mask == True)
+            points = np.c_[xi, yi]
+            print('Points defined ... for computing moments, points: ', np.shape(points))
+            # Define line fit results
+            self.defineLines()
+            # Compute the mask
+            self.momentsMask(points)
+            # Fit the lines inside the cell
+            self.fitLines(points)
+        else:
+            print('There are no defined regions')
+            return
+           
 
     def momentsMask(self, points, smooth=False):
         from scipy.signal import convolve2d as convolve
@@ -2281,6 +2378,60 @@ class GUI (QMainWindow):
         sc.fig.canvas.draw_idle()
         # Compute Velocities
         self.computeVelocities()
+        
+    def fitLines(self, points):
+        """Fit lines inside a defined region."""
+        m = self.Mmask
+        # Find cell and guesses
+        sc = self.sci[self.spectra.index('Pix')]
+        # Select cell          
+        aperture = self.ici[0].photApertures[0].aperture
+        xc, yc = aperture.xy
+        ncell = self.regions[int(yc), int(xc)]
+        lineguesses = []
+        for guess in sc.lguess:
+            g = guess[ncell]
+            lineguesses.append(g)
+        f = self.specCube.flux
+        w = self.specCube.wave
+        c = self.continuum
+        multiFitLines(m, w, f, c, lineguesses, self.lines, points)
+        # Update L0 and L1 (first two lines)
+        self.L0 = self.lines[0][2] # the plane no 2 corresponds to the amplitude
+        self.L1 = self.lines[1][2]
+        # Then display them
+        bands = ['L0', 'L1']
+        sbands = [self.L0, self.L1]
+        for b, sb in zip(bands, sbands):
+            itab = self.bands.index(b)
+            ic = self.ici[itab]
+            ic.showImage(image=sb)
+            ic.image.format_cursor_data = lambda z: "{:.2e} W/m2".format(float(z))
+            ih = self.ihi[itab]
+            ih.compute_initial_figure(image=sb)
+            self.addContours(ic)
+            ic.image.set_clim(ih.limits)
+            # Adopt same limits as flux image
+            ic0 = self.ici[0]
+            ic.image.axes.set_xlim(ic0.image.axes.get_xlim())
+            ic.image.axes.set_ylim(ic0.image.axes.get_ylim())
+            ic.changed = True
+        # Refresh current image (if a moment)
+        itab = self.itabs.currentIndex()
+        if self.bands[itab] in bands:
+            ic = self.ici[itab]
+            ic.fig.canvas.draw_idle()
+        # Update lines on pixel tab
+        # sc = self.sci[self.spectra.index('Pix')]
+        ic = self.ici[0]
+        xc,yc = ic.photApertures[0].xy[0]
+        i = int(np.rint(xc)); j = int(np.rint(yc))
+        lines = []
+        for line in self.lines:
+            lines.append([line[0][j, i], line[1][j, i], line[2][j, i], line[3][j, i]])
+        sc.updateSpectrum(cont=self.continuum[:, j, i], lines=lines)
+        sc.fig.canvas.draw_idle()
+        
 
     def createAction(self,icon,text,shortcut,action):
         act = QAction(QIcon(icon),text, self)
@@ -3564,8 +3715,9 @@ class GUI (QMainWindow):
                     ic0.updateImage(image)
                     ic0.updateScale(cmin,cmax)
                 # mask C0, Mi, v, sv
-                sbands = [self.C0, self.M0, self.M1, self.M2, self.M3, self.M4, self.v, self.sv]
-                bands = ['C0','M0','M1','M2','M3','M4','v','sv']
+                sbands = [self.C0, self.M0, self.M1, self.M2, self.M3, self.M4, 
+                          self.v, self.sv,self.L0, self.L1]
+                bands = ['C0','M0','M1','M2','M3','M4','v','sv','L0','L1']
                 for b,sb in zip(bands,sbands):
                     if sb is not None:
                         itab = self.bands.index(b)
@@ -3588,7 +3740,7 @@ class GUI (QMainWindow):
         # Start a Selector to define a polygon aperture
         itab = self.itabs.currentIndex()
         band = self.bands[itab]
-        if band not in ['Flux','uFlux','Exp','C0','M0','M1','M2','M3','M4','v','sv']:
+        if band not in ['Flux','uFlux','Exp','C0','M0','M1','M2','M3','M4','v','sv','L0','L1']:
             itab = 0
             self.itabs.setCurrentIndex(itab)            
         ic = self.ici[itab]
@@ -3604,7 +3756,7 @@ class GUI (QMainWindow):
         # Start a Selector to define a polygon aperture
         itab = self.itabs.currentIndex()
         band = self.bands[itab]
-        if band not in ['Flux','uFlux','Exp','C0','M0','M1','M2','M3','M4','v','sv']:
+        if band not in ['Flux','uFlux','Exp','C0','M0','M1','M2','M3','M4','v','sv','L0','L1']:
             itab = 0
             self.itabs.setCurrentIndex(itab)            
         ic = self.ici[itab]
@@ -3664,8 +3816,8 @@ class GUI (QMainWindow):
                 ic0.updateImage(image)
                 ic0.updateScale(cmin,cmax)
             # mask C0, Mi, v, sv
-            sbands = [self.C0, self.M0, self.M1, self.M2, self.M3, self.M4, self.v, self.sv]
-            bands = ['C0','M0','M1','M2','M3','M4','v','sv']
+            sbands = [self.C0, self.M0, self.M1, self.M2, self.M3, self.M4, self.v, self.sv,self.L0,self.L1]
+            bands = ['C0','M0','M1','M2','M3','M4','v','sv','L0','L1']
             for b,sb in zip(bands,sbands):
                 if sb is not None:
                     itab = self.bands.index(b)
@@ -4142,6 +4294,8 @@ class GUI (QMainWindow):
         self.slice = 'off'
         self.trimcube = 'off'
         self.continuum = None
+        self.L0 = None
+        self.L1 = None
         self.M0 = None
         self.M1 = None
         self.M2 = None

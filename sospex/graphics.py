@@ -1085,12 +1085,19 @@ class SpectrumCanvas(MplCanvas):
         self.fig.canvas.draw_idle()
 
     def updateSpectrum(self, f=None, uf=None, exp=None, cont=None,
-                       moments=None, noise=None, atran=None, ncell=0):
+                       moments=None, noise=None, atran=None, lines=None, ncell=0):
         try:
+            # Remove moments
             try:
                 self.arrow1.remove()
                 self.arrow2.remove()
                 self.gauss.remove()
+            except:
+                pass
+            # Remove fitted lines
+            try:
+                for voigt in self.voigt:
+                    voigt.remove()
             except:
                 pass
             if atran is not None:
@@ -1187,6 +1194,31 @@ class SpectrumCanvas(MplCanvas):
                 verts = list(zip(xx,gauss))
                 self.gauss = Polygon(verts, fill=False, closed=False,color='skyblue')
                 self.axes.add_patch(self.gauss)
+            if lines is not None:
+                self.voigt = []
+                for line in lines:
+                    #print('line is ', line)
+                    x, sigma, A, alpha = line
+                    c = 299792458. # m/s
+                    A = A * 1.e20  * x * x / c  # Retransform in Jy
+                    # Add redshift
+                    #z = self.spectrum.redshift
+                    #x /= (1 + z)
+                    #sigma /= (1 + z)
+                    # Voigt patch 
+                    xx = np.arange(x-4*sigma,x+4*sigma,sigma/10.) 
+                    sigmag = sigma/np.sqrt(2*np.log(2.))
+                    xx2 = (xx-x)**2
+                    gauss = np.exp(-xx2/(2*sigmag*sigmag))/(np.sqrt(2*np.pi) * sigmag)
+                    cauchy = sigma/np.pi/(xx2+sigma*sigma)
+                    y = np.nanmedian(cont) # Better put the real continuum here (works only if constant)
+                    model = y + A * ((1-alpha)* gauss + alpha*cauchy)
+                    #model = y + A * np.exp(-(xx-x)**2/(2*sigma*sigma))
+                    verts = list(zip(xx,model))
+                    voigt = Polygon(verts, fill=False, closed=False,color='purple')
+                    self.axes.add_patch(voigt)
+                    self.voigt.append(voigt)
+                    #print('Voigt appended')
         except:
             pass
             
