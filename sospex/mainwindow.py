@@ -825,7 +825,7 @@ class GUI (QMainWindow):
                 fluxAll = np.nansum(s.flux[:, yy, xx], axis=1)
             sc.spectrum.flux = fluxAll
             # sc.spectrum.flux = fluxAll
-            if s.instrument == 'GREAT':
+            if s.instrument in ['GREAT','HI']:
                 sc.updateSpectrum(f=fluxAll, cont=cont, moments=moments, lines=lines, noise=noise, ncell=ncell)
             elif s.instrument in ['PACS','FORCAST']:
                 if istab == 1:
@@ -2254,7 +2254,8 @@ class GUI (QMainWindow):
                 # Compute the mask
                 self.momentsMask(points)
                 # Fit the lines inside the cell
-                self.fitLines(points)        
+                self.fitLinesOnly(points, ncell)  
+        self.fitLinesDisplay()
         
         
     def fitLinesRegion(self):
@@ -2271,15 +2272,16 @@ class GUI (QMainWindow):
             mask[:, 0] = False
             mask[:, -1] = False
             print('region has ',np.sum(mask),' points')
-            yi, xi = np.where(mask == True)
-            points = np.c_[xi, yi]
-            print('Points defined ... for computing moments, points: ', np.shape(points))
-            # Define line fit results
-            self.defineLines()
-            # Compute the mask
-            self.momentsMask(points)
-            # Fit the lines inside the cell
-            self.fitLines(points)
+            if np.sum(mask) > 0:
+                yi, xi = np.where(mask == True)
+                points = np.c_[xi, yi]
+                print('Points defined ... for computing moments, points: ', np.shape(points))
+                # Define line fit results
+                self.defineLines()
+                # Compute the mask
+                self.momentsMask(points)
+                # Fit the lines inside the cell
+                self.fitLines(points)
         else:
             print('There are no defined regions')
             return
@@ -2416,7 +2418,7 @@ class GUI (QMainWindow):
             ic.image.axes.set_xlim(ic0.image.axes.get_xlim())
             ic.image.axes.set_ylim(ic0.image.axes.get_ylim())
             ic.changed = True
-        # Refresh current image (if a moment)
+        # Refresh current image (if a line)
         itab = self.itabs.currentIndex()
         if self.bands[itab] in bands:
             ic = self.ici[itab]
@@ -2432,6 +2434,58 @@ class GUI (QMainWindow):
         sc.updateSpectrum(cont=self.continuum[:, j, i], lines=lines)
         sc.fig.canvas.draw_idle()
         
+    def fitLinesOnly(self, points, ncell):
+        """Fit lines inside a defined region."""
+        m = self.Mmask
+        # Find cell and guesses
+        sc = self.sci[self.spectra.index('Pix')]
+        lineguesses = []
+        for guess in sc.lguess:
+            g = guess[ncell]
+            lineguesses.append(g)
+        f = self.specCube.flux
+        w = self.specCube.wave
+        c = self.continuum
+        multiFitLines(m, w, f, c, lineguesses, self.lines, points)
+        # Update L0 and L1 (first two lines)
+        self.L0 = self.lines[0][2] # the plane no 2 corresponds to the amplitude
+        self.L1 = self.lines[1][2]
+        
+    def fitLinesDisplay(self):
+        # Display images after fitting
+        bands = ['L0', 'L1']
+        sbands = [self.L0, self.L1]
+        for b, sb in zip(bands, sbands):
+            itab = self.bands.index(b)
+            ic = self.ici[itab]
+            ic.showImage(image=sb)
+            ic.image.format_cursor_data = lambda z: "{:.2e} W/m2".format(float(z))
+            ih = self.ihi[itab]
+            ih.compute_initial_figure(image=sb)
+            self.addContours(ic)
+            ic.image.set_clim(ih.limits)
+            # Adopt same limits as flux image
+            ic0 = self.ici[0]
+            ic.image.axes.set_xlim(ic0.image.axes.get_xlim())
+            ic.image.axes.set_ylim(ic0.image.axes.get_ylim())
+            ic.changed = True
+        # Refresh current image (if a line)
+        itab = self.itabs.currentIndex()
+        if self.bands[itab] in bands:
+            ic = self.ici[itab]
+            ic.fig.canvas.draw_idle()
+        # Update lines on pixel tab
+        ic = self.ici[0]
+        xc,yc = ic.photApertures[0].xy[0]
+        i = int(np.rint(xc)); j = int(np.rint(yc))
+        lines = []
+        for line in self.lines:
+            lines.append([line[0][j, i], line[1][j, i], line[2][j, i], line[3][j, i]])
+        sc = self.sci[self.spectra.index('Pix')]
+        sc.updateSpectrum(cont=self.continuum[:, j, i], lines=lines)
+        sc.fig.canvas.draw_idle()
+ 
+
 
     def createAction(self,icon,text,shortcut,action):
         act = QAction(QIcon(icon),text, self)
@@ -2571,6 +2625,8 @@ class GUI (QMainWindow):
         if s.instrument == 'GREAT':
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0,
                             Tb2Jy = s.Tb2Jy)
+        elif s.instrument == 'HI':
+            spec = Spectrum(s.wave, fluxAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0)
         elif s.instrument == 'FIFI-LS':
             ufluxAll = np.nansum(s.uflux[:,yy,xx], axis=1)
             expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
@@ -4098,7 +4154,7 @@ class GUI (QMainWindow):
             self.initializeImages()
             self.initializeSpectra()
             self.initializeSlider()
-            if self.specCube.instrument == 'GREAT':
+            if self.specCube.instrument in ['GREAT','HI']:
                 print('compute Exp from Nan')
                 self.specCube.computeExpFromNan()
             self.all = False
@@ -4128,10 +4184,10 @@ class GUI (QMainWindow):
             self.loadFile(fileName[0])
             try:
                 self.initializeImages()
-                print('images initialized ')
+                print('imaes initialized ')
                 self.initializeSpectra()
                 print('spectra initialized ')
-                if self.specCube.instrument == 'GREAT':
+                if self.specCube.instrument in ['GREAT','HI']:
                     print('compute Exp from Nan')
                     self.specCube.computeExpFromNan()
                 self.all = False
@@ -4190,7 +4246,7 @@ class GUI (QMainWindow):
         if self.specCube.instrument == 'FIFI-LS':
             self.bands = ['Flux','uFlux','Exp']
             self.spectra = ['All','Pix']
-        elif self.specCube.instrument == 'GREAT': 
+        elif self.specCube.instrument in ['GREAT','HI']: 
             self.bands = ['Flux']
             self.spectra = ['All','Pix']
         elif self.specCube.instrument == 'FORCAST':
@@ -4339,6 +4395,9 @@ class GUI (QMainWindow):
         if s.instrument == 'GREAT':
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy )
+        elif s.instrument == 'HI':
+            spec = Spectrum(s.wave, fluxAll,instrument=s.instrument,
+                            redshift=s.redshift, l0=s.l0)
         elif s.instrument == 'PACS':
             expAll = s.exposure[:, y0, x0]
             spec = Spectrum(s.wave, fluxAll, exposure=expAll, instrument=s.instrument,
@@ -4469,7 +4528,7 @@ class GUI (QMainWindow):
             w = c / w * 1.e-6
         n = np.argmin(np.abs(self.specCube.wave - w))
        # Display channel n of the spectral cube
-        if self.specCube.instrument == 'GREAT':
+        if self.specCube.instrument in ['GREAT','HI']:
             imas = ['Flux']
         elif self.specCube.instrument in ['PACS', 'FORCAST']:
             imas = ['Flux','Exp']
@@ -4560,6 +4619,9 @@ class GUI (QMainWindow):
         if s.instrument == 'GREAT':
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy)
+        elif s.instrument == 'HI':
+            spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
+                            redshift=s.redshift, l0=s.l0)
         elif s.instrument in ['PACS', 'FORCAST']:
             expAll = np.nansum(s.exposure, axis=(1,2))
             spec = Spectrum(s.wave, fluxAll, exposure=expAll,instrument=s.instrument,
@@ -4653,7 +4715,7 @@ class GUI (QMainWindow):
         indmin, indmax = np.searchsorted(self.specCube.wave, (xmin, xmax))
         indmax = min(len(self.specCube.wave) - 1, indmax)
         sc.regionlimits = [xmin,xmax]
-        if self.specCube.instrument == 'GREAT':
+        if self.specCube.instrument in ['GREAT','HI']:
             imas = ['Flux']
         elif self.specCube.instrument in ['PACS','FORCAST']:
             imas = ['Flux','Exp']
@@ -4738,7 +4800,7 @@ class GUI (QMainWindow):
             ima.changed = True
             ima.cid = ima.axes.callbacks.connect('xlim_changed' or 'ylim_changed', self.doZoomAll)
         fluxAll = np.nansum(self.specCube.flux[:, y0:y1, x0:x1], axis=(1, 2))
-        if s.instrument == 'GREAT':
+        if s.instrument in ['GREAT','HI']:
             sc.updateSpectrum(f=fluxAll)
         elif s.instrument in ['PACS','FORCAST']:
             expAll = np.nansum(s.exposure[:, y0:y1, x0:x1], axis=(1, 2))

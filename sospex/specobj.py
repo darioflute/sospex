@@ -19,6 +19,9 @@ class specCube(object):
             origin = header['ORIGIN']
             if origin == 'GILDAS Consortium':
                 self.instrument = 'GREAT'
+            elif origin[0:6] == 'Miriad':
+                print('Origin is ', origin)
+                self.instrument = 'HI'
         try:
             self.obsdate = header['DATE-OBS']
         except:
@@ -32,6 +35,8 @@ class specCube(object):
             self.readPACS(hdl)
         elif self.instrument == 'FORCAST':
             self.readFORCAST(hdl)
+        elif self.instrument == 'HI':
+            self.readHI(hdl)
         else:
             print('This is not a supported spectral cube')
         hdl.close()
@@ -202,6 +207,35 @@ class specCube(object):
         # print('astrometry ', self.wcs)
         self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
         self.crpix3 = 1
+        w = self.wave
+        self.crval3 = w[0]
+        self.cdelt3 = np.median(w[1:] - w[:-1])
+        
+    def readHI(self, hdl):
+        """Case of generic radio cube (in this case HI cubes from Westerbrock)."""
+        self.objname = self.header['OBJECT']
+        print('Object of HI is ',self.objname)
+        self.header = hdl['PRIMARY'].header
+        self.redshift = 0.
+        self.flux = hdl['PRIMARY'].data
+        nz, ny, nx = np.shape(self.flux)
+        self.n = nz
+        wcs = WCS(self.header)
+        self.wcs = wcs.celestial
+        self.crpix3 = self.header['CRPIX3']
+        self.crval3 = self.header['CRVAL3']
+        self.cdelt3 = self.header['CDELT3']
+        if self.header['CTYPE3'] == 'VELO-HEL':
+            velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3 # m/s
+            # Neutral Hydrogen (HI)
+            nu0 = self.header['RESTFREQ']
+            c = 299792458.0 # m/s
+            # self.l0 = 21.1061140542 * 1.e4 #um
+            self.l0 = c/nu0 * 1.e6 #um
+            self.wave = self.l0 * (1 + velocity/c) #um
+        self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
+        print('scale is ', self.pixscale)
+        # Back to wavelength
         w = self.wave
         self.crval3 = w[0]
         self.cdelt3 = np.median(w[1:] - w[:-1])

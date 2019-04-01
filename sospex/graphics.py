@@ -904,7 +904,7 @@ class SpectrumCanvas(MplCanvas):
                                   direction='in', pad = -25, colors='red')
             else:
                 self.ax2.get_yaxis().set_tick_params(labelright='off',right='off')            
-        elif s.instrument == 'GREAT':
+        elif s.instrument in ['GREAT','HI']:
             self.displayUFlux = False
             self.displayAtran = False
             self.displayExposure = False

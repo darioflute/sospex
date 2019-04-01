@@ -363,5 +363,6 @@ def define_lines():
         ('PAH 17.37', ['PAH', 17.37]),  # FRAC_FWHM: 0.012
         ('PAH 17.87', ['PAH', 17.87]),  # FRAC_FWHM: 0.016
         ('PAH 18.92', ['PAH', 18.92]),  # FRAC_FWHM: 0.019
-        ('PAH 33.10', ['PAH', 33.10])   # FRAC_FWHM: 0.05           
+        ('PAH 33.10', ['PAH', 33.10]),  # FRAC_FWHM: 0.05    
+        ('HI 21cm', ['HI', 211061.140542])
     ])
