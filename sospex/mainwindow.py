@@ -806,7 +806,8 @@ class GUI (QMainWindow):
                     try:
                         lines = []
                         for line in self.lines:
-                            lines.append([line[0][j, i], line[1][j, i], line[2][j, i], line[3][j, i]])
+                            lines.append([line[0][j, i], line[1][j, i], 
+                                          line[2][j, i], line[3][j, i]])
                     except:
                         lines = None
                 except:
@@ -821,19 +822,41 @@ class GUI (QMainWindow):
                 lines = None
             if istab == 1: # case of pixel (with different kernels)
                 fluxAll = np.nanmean(s.flux[:, yy, xx], axis=1)
+                if sc.displayAuxFlux:
+                    # Get the pixel of the auxiliary cube from aperture pixel in an image
+                    x0, y0 = aperture.get_xy()
+                    ic = self.ici[itab]
+                    ra0, dec0 = ic.wcs.wcs_pix2world(x0, y0, 0) 
+                    xxa, yya = self.auxSpecCube.wcs.wcs_world2pix(ra0, dec0, 0)
+                    xxa = int (xxa // 1)
+                    yya = int (yya // 1)
+                    afluxAll = self.auxSpecCube.flux[:, yya, xxa]
+                    # Normalization
+                    afluxAll *= np.nanmax(fluxAll)/np.nanmax(afluxAll)
+                    sc.spectrum.aflux = afluxAll
             else:
                 fluxAll = np.nansum(s.flux[:, yy, xx], axis=1)
             sc.spectrum.flux = fluxAll
-            # sc.spectrum.flux = fluxAll
             if s.instrument in ['GREAT','HI']:
-                sc.updateSpectrum(f=fluxAll, cont=cont, moments=moments, lines=lines, noise=noise, ncell=ncell)
+                if sc.displayAuxFlux:
+                    sc.updateSpectrum(f=fluxAll, af=afluxAll, cont=cont, moments=moments, 
+                                      lines=lines, noise=noise, ncell=ncell)
+                else:
+                    sc.updateSpectrum(f=fluxAll, cont=cont, moments=moments, 
+                                      lines=lines, noise=noise, ncell=ncell)
             elif s.instrument in ['PACS','FORCAST']:
                 if istab == 1:
                     expAll = np.nanmean(s.exposure[:, yy, xx], axis=1)
                 else:
                     expAll = np.nansum(s.exposure[:, yy, xx], axis=1)
-                sc.updateSpectrum(f=fluxAll, exp=expAll, cont=cont, moments=moments, lines=lines,
-                                  noise=noise, ncell=ncell)
+                if sc.displayAuxFlux:
+                    sc.updateSpectrum(f=fluxAll, af=afluxAll, exp=expAll, cont=cont, 
+                                      moments=moments, lines=lines,
+                                      noise=noise, ncell=ncell)
+                else:
+                    sc.updateSpectrum(f=fluxAll, exp=expAll, cont=cont, 
+                                      moments=moments, lines=lines,
+                                      noise=noise, ncell=ncell)
             elif s.instrument == 'FIFI-LS':
                 if istab == 1:
                     ufluxAll = np.nanmean(s.uflux[:, yy, xx], axis=1)
@@ -847,9 +870,16 @@ class GUI (QMainWindow):
                 sc.spectrum.uflux = ufluxAll
                 sc.spectrum.eflux = efluxAll
                 sc.spectrum.exposure = expAll
-                sc.updateSpectrum(f=fluxAll, uf=ufluxAll, exp=expAll,
-                                  cont=cont, moments=moments, lines=lines, noise=noise, ncell=ncell)
-            
+                if sc.displayAuxFlux:
+                    sc.updateSpectrum(f=fluxAll, af=afluxAll, uf=ufluxAll, exp=expAll,
+                                      cont=cont, moments=moments, lines=lines, 
+                                      noise=noise, ncell=ncell)
+                else:
+                    sc.updateSpectrum(f=fluxAll, uf=ufluxAll, exp=expAll,
+                                      cont=cont, moments=moments, lines=lines, 
+                                      noise=noise, ncell=ncell)
+
+           
     def onDraw(self,event):        
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
@@ -2888,7 +2918,7 @@ class GUI (QMainWindow):
         selectDI.setOption(QInputDialog.UseListViewForComboBoxItems)
         selectDI.setWindowTitle("Select image to download")
         selectDI.setLabelText("Selection")
-        imagelist = ['local',
+        imagelist = ['local fits file', 'local spectral cube',
                      'sdss-u','sdss-g','sdss-r','sdss-i','sdss-z',
                      'panstarrs-g','panstarrs-r','panstarrs-i','panstarrs-z','panstarrs-y',
                      '2mass-j','2mass-h','2mass-k',
@@ -2916,7 +2946,32 @@ class GUI (QMainWindow):
         lat = np.mean(dec)
         xsize = np.abs(ra[0] - ra[1]) * np.cos(lat * np.pi / 180.) * 60.
         ysize = np.abs(dec[0] - dec[1]) * 60.
-        if band != 'local':
+        if band == 'local fits file':
+            # Download the local fits
+            downloadedImage = cloudImage(lon, lat, xsize, ysize, band)
+            if downloadedImage.data is not None:
+                self.newImageTab(downloadedImage)
+                message = 'New image downloaded'
+            else:
+                message = 'The selected survey does not cover the displayed image'
+            self.newImageMessage(message)
+        elif band == 'local spectral cube':
+            print('Uploading auxiliary spectral cube')
+            downloadedCube = cloudImage(lon, lat, xsize, ysize, band)
+            self.auxSpecCube = downloadedCube.data
+            if self.auxSpecCube is not None:
+                message = 'Auxiliary spectral cube downloaded'
+                # Add the spectrum to the Pix tab
+                istab = self.spectra.index('Pix')
+                sc = self.sci[istab]
+                sc.displayAuxFlux = True
+                sc.auxl0 = self.auxSpecCube.l0
+                sc.auxw = self.auxSpecCube.wave
+                self.onModifiedAperture('Auxiliary spectrum')  # Update the spectrum plot
+            else:
+                message = 'The selected survey does not cover the displayed image'
+            self.newImageMessage(message)
+        else:
             # Here call the thread
             self.downloadThread = DownloadThread(lon, lat, xsize, ysize, band, parent=self)
             self.downloadThread.updateTabs.newImage.connect(self.newImage)
@@ -2935,15 +2990,6 @@ class GUI (QMainWindow):
             self.msgbox.setIconPixmap(pixmap)
             self.msgbox.setText("Querying " + band + " ... ")
             self.msgbox.exec_()
-        else:
-            # Download the local fits
-            downloadedImage = cloudImage(lon, lat, xsize, ysize, band)
-            if downloadedImage.data is not None:
-                self.newImageTab(downloadedImage)
-                message = 'New image downloaded'
-            else:
-                message = 'The selected survey does not cover the displayed image'
-            self.newImageMessage(message)
        
     def newImageMessage(self, message):
         """Message sent from download thread."""       
@@ -4184,7 +4230,7 @@ class GUI (QMainWindow):
             self.loadFile(fileName[0])
             try:
                 self.initializeImages()
-                print('imaes initialized ')
+                print('images initialized ')
                 self.initializeSpectra()
                 print('spectra initialized ')
                 if self.specCube.instrument in ['GREAT','HI']:

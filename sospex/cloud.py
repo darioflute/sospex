@@ -10,6 +10,7 @@ from reproject import reproject_interp
 import numpy as np
 from html.parser import HTMLParser
 from PyQt5.QtWidgets import QFileDialog
+from sospex.specobj import specCube
 
 
 class MyHTMLParser(HTMLParser):
@@ -51,48 +52,50 @@ class cloudImage(object):
         self.data = None
         self.wcs = None
 
-        if source == 'local':
-            image_file = self.openLocal()
+        if source == 'local fits image':
+            self.openLocal()
+        elif source == 'local spectral cube':
+            self.openLocalCube()
         elif source == 'wise1':
-            image_file = self.downloadWise(1)
+            self.downloadWise(1)
         elif source == 'wise2':
-            image_file = self.downloadWise(2)
+            self.downloadWise(2)
         elif source == 'wise3':
-            image_file = self.downloadWise(3)
+            self.downloadWise(3)
         elif source == 'wise4':
-            image_file = self.downloadWise(4)
+            self.downloadWise(4)
         elif source == '2mass-j':
-            image_file = self.download2MASS('J')
+            self.download2MASS('J')
         elif source == '2mass-h':
-            image_file = self.download2MASS('H')
+            self.download2MASS('H')
         elif source == '2mass-k':
-            image_file = self.download2MASS('K')
+            self.download2MASS('K')
         elif source == 'panstarrs-g':
-            image_file = self.downloadPanSTARRS('g')
+            self.downloadPanSTARRS('g')
         elif source == 'panstarrs-r':
-            image_file = self.downloadPanSTARRS('r')
+            self.downloadPanSTARRS('r')
         elif source == 'panstarrs-i':
-            image_file = self.downloadPanSTARRS('i')
+            self.downloadPanSTARRS('i')
         elif source == 'panstarrs-z':
-            image_file = self.downloadPanSTARRS('z')
+            self.downloadPanSTARRS('z')
         elif source == 'panstarrs-y':
-            image_file = self.downloadPanSTARRS('y')
+            self.downloadPanSTARRS('y')
         elif source == 'sdss-u':
-            image_file = self.downloadSDSS('u')
+            self.downloadSDSS('u')
         elif source == 'sdss-r':
-            image_file = self.downloadSDSS('g')
+            self.downloadSDSS('g')
         elif source == 'sdss-g':
-            image_file = self.downloadSDSS('r')
+            self.downloadSDSS('r')
         elif source == 'sdss-i':
-            image_file = self.downloadSDSS('i')
+            self.downloadSDSS('i')
         elif source == 'sdss-z':
-            image_file = self.downloadSDSS('z')
+            self.downloadSDSS('z')
         elif source == 'first':
-            image_file = self.downloadFIRST()
+            self.downloadFIRST()
         elif source == 'nvss':
-            image_file = self.downloadNVSS()
+            self.downloadNVSS()
         elif source == 'sumss':
-            image_file = self.downloadSUMSS()
+            self.downloadSUMSS()
         else:
             print('Source not supported')
 
@@ -158,6 +161,40 @@ class cloudImage(object):
             print('Coordinates out of the 2MASS survey')
 
 
+    def openLocalCube(self):
+        """ Open local spectral cube."""
+        
+        # Open a dialog
+        fd = QFileDialog()
+        fd.setLabelText(QFileDialog.Accept, "Import")
+        fd.setNameFilters(["Fits Files (*.fits)","All Files (*)"])
+        fd.setOptions(QFileDialog.DontUseNativeDialog)
+        fd.setViewMode(QFileDialog.List)
+        fd.setFileMode(QFileDialog.ExistingFile)
+
+        if (fd.exec()):
+            filenames= fd.selectedFiles()
+            cube_file = filenames[0]
+            print("File selected is: ", filenames[0])
+            try:           
+                print('opening ', cube_file)
+                self.data = specCube(cube_file)
+                self.wcs = self.data.wcs
+                # Check if coordinates are inside the image
+                x,y = self.wcs.wcs_world2pix(self.lon,self.lat,0)
+                print('x y ',x,y)
+                if x >= 0 and x <= self.data.nx and y >= 0 and y  <= self.data.ny:
+                    print('Source inside the FITS cube')
+                else:
+                    self.data = None
+                    self.wcs = None
+                    print('The selected  FITS is not a valid file')
+            except:
+                self.data = None
+                self.wcs = None
+                print('The selected  FITS is not a valid file')
+                
+
     def openLocal(self):
         """ Open a local FITS / check if coordinates fall into the FITS """
 
@@ -198,7 +235,7 @@ class cloudImage(object):
                 x,y = self.wcs.wcs_world2pix(self.lon,self.lat,0)
                 print('x y ',x,y)
                 ny,nx = np.shape(self.data)
-                if x >= 0 and x< nx and y >= 0 and y  <= ny:
+                if x >= 0 and x <= nx and y >= 0 and y  <= ny:
                     print('Source inside the FITS image')
                     # Check if N aligned with y, if not reproject image
                     try:

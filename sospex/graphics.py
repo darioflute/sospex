@@ -772,6 +772,7 @@ class SpectrumCanvas(MplCanvas):
         self.displayAtran = True
         self.displayExposure = True
         self.displayLines = True
+        self.displayAuxFlux = False # Auxiliary spectral cube
         self.shade = False
         self.regionlimits = None
         self.xunit = 'um'  # Alternatives are THz or km/s
@@ -816,21 +817,22 @@ class SpectrumCanvas(MplCanvas):
                 self.axes.set_ylabel('Temperature [K]', picker=True)
         else:
             self.axes.set_ylabel('Flux [Jy]')
-        s = self.spectrum        
+        s = self.spectrum   
+        c = 299792.458  # speed of light in km/s
+        cz = c/(s.redshift + 1)
         if self.xunit == 'um':
+            self.axes.format_coord = lambda x, y: "{:8.4f} um ({:5.0f} km/s)  {:10.4f} Jy".format(x,(x-s.l0)/s.l0*cz,y)
             self.axes.fmt_xdata = lambda x: "{:.4f}".format(x)        
             self.axes.set_xlabel('Wavelength [$\\mu$m]', picker=True)
             self.x = s.wave
             if s.instrument == 'FIFI-LS':
                 self.xr = self.x * (1+s.baryshift)
         elif self.xunit == 'THz':
-            self.axes.format_coord = lambda x, y: "{:6.4f} THz {:10.4f} Jy".format(x, y)
-            c = 299792458.0  # speed of light in m/s
+            self.axes.format_coord = lambda x, y: "{:6.4f} THz ({:5.0f} km/s)  {:10.4f} Jy".format(x, (c/x-s.l0)/s.l0*cz, y)
             self.axes.set_xlabel('Frequency [THz]', picker=True)
-            self.x = c/s.wave * 1.e-6
+            self.x = c/s.wave * 1.e-3
             if s.instrument == 'FIFI-LS':
                 self.xr = self.x / (1 + s.baryshift)             
-        #self.fluxLine = self.axes.step(self.x,s.flux,color='blue',label='Flux',zorder=10)
         self.fluxLine = self.axes.step(self.x, s.flux, color='blue', label='F', zorder=10)
         self.fluxLayer, = self.fluxLine
         self.contLine = self.axes.plot(self.x, s.continuum, color='skyblue', label='Cont', zorder=9)
@@ -944,6 +946,31 @@ class SpectrumCanvas(MplCanvas):
             legline.set_picker(5) # 5pts tolerance
             self.lined[legline] = origline
             self.labed[legline] = txt            
+        # Check if vel is defined and draw velocity axis
+        try:
+            vlims = self.computeVelLimits()         
+            try:
+                self.fig.delaxes(self.vaxes)
+            except:
+                pass
+            self.vaxes = self.axes.twiny()
+            self.vaxes.xaxis.set_major_formatter(ScalarFormatter(useOffset=False))
+            self.vaxes.set_xlim(vlims)
+            self.vaxes.set_xlabel("Velocity [km/s]")
+            # Elevate zorder of first axes (to guarantee axes gets the events)
+            self.axes.set_zorder(self.vaxes.get_zorder()+1) # put axes in front of vaxes
+            self.axes.patch.set_visible(False) # hide the 'canvas' 
+            if self.displayAuxFlux:
+                # Draw auxiliary flux
+                c =  299792.458 # km/s
+                v = (self.auxw - self.auxl0) / self.auxl0 * c /(1 + s.redshift)
+                self.afluxLine = self.vaxes.step(v, s.aflux, color='pink', label='F$_{x}$', zorder=12)
+                self.afluxLayer, = self.afluxLine
+                lns += self.afluxLine
+                lines.append(self.afluxLayer)
+                visibility.append(self.displayAuxFlux)
+        except:
+            print('l0 is not defined')        
         # Hide lines
         for line, legline, vis in zip(lines, leg.get_lines(), visibility):
             line.set_visible(vis)
@@ -958,22 +985,6 @@ class SpectrumCanvas(MplCanvas):
         # Shade region considered for the images
         if self.shade == True:
             self.shadeRegion()
-        # Check if vel is defined and draw velocity axis
-        try:
-            vlims = self.computeVelLimits()            
-            try:
-                self.fig.delaxes(self.vaxes)
-            except:
-                pass
-            self.vaxes = self.axes.twiny()
-            self.vaxes.xaxis.set_major_formatter(ScalarFormatter(useOffset=False))
-            self.vaxes.set_xlim(vlims)
-            self.vaxes.set_xlabel("Velocity [km/s]")
-            # Elevate zorder of first axes (to guarantee axes gets the events)
-            self.axes.set_zorder(self.vaxes.get_zorder()+1) # put axes in front of vaxes
-            self.axes.patch.set_visible(False) # hide the 'canvas' 
-        except:
-            print('l0 is not defined')        
         # Add spectral lines
         self.annotations = []
         font = FontProperties(family='DejaVu Sans', size=12)
@@ -1084,7 +1095,7 @@ class SpectrumCanvas(MplCanvas):
            pass
         self.fig.canvas.draw_idle()
 
-    def updateSpectrum(self, f=None, uf=None, exp=None, cont=None,
+    def updateSpectrum(self, f=None, uf=None, exp=None, cont=None, af=None,
                        moments=None, noise=None, atran=None, lines=None, ncell=0):
         try:
             # Remove moments
@@ -1113,6 +1124,9 @@ class SpectrumCanvas(MplCanvas):
             if exp is not None:
                 self.exposureLine[0].set_ydata(exp)
                 self.ax3.draw_artist(self.exposureLine[0])
+            if af is not None:
+                self.afluxLine[0].set_ydata(af)
+                self.vaxes.draw_artist(self.afluxLine[0])
             if f is not None:
                 self.fluxLine[0].set_ydata(f)
                 # self.spectrum.flux = f
