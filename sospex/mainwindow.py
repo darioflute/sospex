@@ -2965,6 +2965,7 @@ class GUI (QMainWindow):
                 istab = self.spectra.index('Pix')
                 sc = self.sci[istab]
                 sc.displayAuxFlux = True
+                sc.auxiliary = True
                 sc.auxl0 = self.auxSpecCube.l0
                 sc.auxw = self.auxSpecCube.wave
                 self.onModifiedAperture('Auxiliary spectrum')  # Update the spectrum plot

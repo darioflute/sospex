@@ -790,6 +790,7 @@ class SpectrumCanvas(MplCanvas):
         self.lguess = None
         self.lines = None
         self.dragged = None
+        self.auxiliary = None
         
     def compute_initial_spectrum(self, spectrum=None, xmin=None, xmax=None):
         if spectrum is None:
@@ -935,17 +936,6 @@ class SpectrumCanvas(MplCanvas):
                                       direction='out', pad=5, colors='orange')
             else:
                 self.ax3.get_yaxis().set_tick_params(labelright='off', right='off')
-        # Prepare legend                
-        self.labs = [l.get_label() for l in lns]
-        leg = self.axes.legend(lns, self.labs, loc='upper center', bbox_to_anchor=(0.5, -0.1),
-                               fancybox=True, shadow=True, ncol=5)
-        # leg.set_draggable(True)  # works only in matplotlib 3.0.0      
-        self.lined = dict()
-        self.labed = dict()
-        for legline, origline, txt in zip(leg.get_lines(), lines, leg.texts):
-            legline.set_picker(5) # 5pts tolerance
-            self.lined[legline] = origline
-            self.labed[legline] = txt            
         # Check if vel is defined and draw velocity axis
         try:
             vlims = self.computeVelLimits()         
@@ -960,17 +950,29 @@ class SpectrumCanvas(MplCanvas):
             # Elevate zorder of first axes (to guarantee axes gets the events)
             self.axes.set_zorder(self.vaxes.get_zorder()+1) # put axes in front of vaxes
             self.axes.patch.set_visible(False) # hide the 'canvas' 
-            if self.displayAuxFlux:
+            if self.auxiliary:
                 # Draw auxiliary flux
                 c =  299792.458 # km/s
-                v = (self.auxw - self.auxl0) / self.auxl0 * c /(1 + s.redshift)
-                self.afluxLine = self.vaxes.step(v, s.aflux, color='pink', label='F$_{x}$', zorder=12)
+                v = (self.auxw/self.auxl0 - 1. - s.redshift) * c
+                self.afluxLine = self.vaxes.step(v, s.aflux, color='cyan', label='F$_{x}$', zorder=12)
                 self.afluxLayer, = self.afluxLine
                 lns += self.afluxLine
                 lines.append(self.afluxLayer)
                 visibility.append(self.displayAuxFlux)
         except:
-            print('l0 is not defined')        
+            print('l0 is not defined') 
+        # Prepare legend                
+        self.labs = [l.get_label() for l in lns]
+        leg = self.axes.legend(lns, self.labs, loc='upper center', bbox_to_anchor=(0.5, -0.1),
+                               fancybox=True, shadow=True, ncol=5)
+        # leg.set_draggable(True)  # works only in matplotlib 3.0.0      
+        self.lined = dict()
+        self.labed = dict()
+        for legline, origline, txt in zip(leg.get_lines(), lines, leg.texts):
+            legline.set_picker(5) # 5pts tolerance
+            self.lined[legline] = origline
+            self.labed[legline] = txt            
+
         # Hide lines
         for line, legline, vis in zip(lines, leg.get_lines(), visibility):
             line.set_visible(vis)
@@ -981,7 +983,8 @@ class SpectrumCanvas(MplCanvas):
                 alpha=0.2
                 #txt.set_text('')
             legline.set_alpha(alpha)
-            txt.set_alpha(alpha)            
+            txt.set_alpha(alpha)       
+
         # Shade region considered for the images
         if self.shade == True:
             self.shadeRegion()
