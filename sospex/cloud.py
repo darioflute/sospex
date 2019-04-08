@@ -52,7 +52,7 @@ class cloudImage(object):
         self.data = None
         self.wcs = None
 
-        if source == 'local fits image':
+        if source == 'local image':
             self.openLocal()
         elif source == 'local spectral cube':
             self.openLocalCube()

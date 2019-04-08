@@ -80,12 +80,22 @@ class specCube(object):
             self.redshift = self.header['REDSHIFT']
         except:
             self.redshift = 0.0
+        try:
+            channel = self.header['DETCHAN']
+            if channel == 'RED':
+                filegp = self.header['FILEGP_R']
+            else:
+                filegp = self.header['FILEGP_B']
+            name, wr = filegp.split('_')
+            print('wr is ',wr)
+            self.l0 = float(wr)
+        except:
+            self.l0 = np.nanmedian(self.wave)
         self.flux = hdl['FLUX'].data
         self.eflux = hdl['ERROR'].data
         self.uflux = hdl['UNCORRECTED_FLUX'].data
         self.euflux = hdl['UNCORRECTED_ERROR'].data
         self.wave = hdl['WAVELENGTH'].data
-        self.l0 = np.nanmedian(self.wave)
         self.n = len(self.wave)
         #self.vel = np.zeros(self.n)  # prepare array of velocities
         self.x = hdl['X'].data
@@ -217,18 +227,26 @@ class specCube(object):
         print('Object of HI is ',self.objname)
         self.header = hdl['PRIMARY'].header
         self.redshift = 0.
-        self.flux = hdl['PRIMARY'].data
+        data = hdl['PRIMARY'].data
+        naxis = self.header['NAXIS']
+        if naxis == 3:
+            self.flux = data
+        elif naxis == 4: # polarization
+            self.flux = data[0,:,:,:]
         nz, ny, nx = np.shape(self.flux)
         self.n = nz
+        print('nz: ',nz, self.header['NAXIS3'])
         wcs = WCS(self.header)
         self.wcs = wcs.celestial
         self.crpix3 = self.header['CRPIX3']
         self.crval3 = self.header['CRVAL3']
         self.cdelt3 = self.header['CDELT3']
-        if self.header['CTYPE3'] == 'VELO-HEL':
+        ctype3 = self.header['CTYPE3']
+        if (ctype3 == 'VELO-HEL') or (ctype3 == 'VELO-LSR'):
             velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3 # m/s
             # Neutral Hydrogen (HI)
             nu0 = self.header['RESTFREQ']
+            print('reference frequency', nu0)
             c = 299792458.0 # m/s
             # self.l0 = 21.1061140542 * 1.e4 #um
             self.l0 = c/nu0 * 1.e6 #um

@@ -822,23 +822,23 @@ class GUI (QMainWindow):
                 lines = None
             if istab == 1: # case of pixel (with different kernels)
                 fluxAll = np.nanmean(s.flux[:, yy, xx], axis=1)
-                if sc.displayAuxFlux:
+                if sc.auxiliary:
                     # Get the pixel of the auxiliary cube from aperture pixel in an image
                     x0, y0 = aperture.get_xy()
-                    ic = self.ici[itab]
-                    ra0, dec0 = ic.wcs.wcs_pix2world(x0, y0, 0) 
+                    ic0 = self.ici[0]
+                    ra0, dec0 = ic0.wcs.wcs_pix2world(x0, y0, 0) 
                     xxa, yya = self.auxSpecCube.wcs.wcs_world2pix(ra0, dec0, 0)
                     xxa = int (xxa // 1)
                     yya = int (yya // 1)
                     afluxAll = self.auxSpecCube.flux[:, yya, xxa]
                     # Normalization
                     afluxAll *= np.nanmax(fluxAll)/np.nanmax(afluxAll)
-                    sc.spectrum.aflux = afluxAll
+                    sc.aflux = afluxAll
             else:
                 fluxAll = np.nansum(s.flux[:, yy, xx], axis=1)
             sc.spectrum.flux = fluxAll
             if s.instrument in ['GREAT','HI']:
-                if sc.displayAuxFlux:
+                if sc.auxiliary:
                     sc.updateSpectrum(f=fluxAll, af=afluxAll, cont=cont, moments=moments, 
                                       lines=lines, noise=noise, ncell=ncell)
                 else:
@@ -849,7 +849,7 @@ class GUI (QMainWindow):
                     expAll = np.nanmean(s.exposure[:, yy, xx], axis=1)
                 else:
                     expAll = np.nansum(s.exposure[:, yy, xx], axis=1)
-                if sc.displayAuxFlux:
+                if sc.auxiliary:
                     sc.updateSpectrum(f=fluxAll, af=afluxAll, exp=expAll, cont=cont, 
                                       moments=moments, lines=lines,
                                       noise=noise, ncell=ncell)
@@ -870,7 +870,7 @@ class GUI (QMainWindow):
                 sc.spectrum.uflux = ufluxAll
                 sc.spectrum.eflux = efluxAll
                 sc.spectrum.exposure = expAll
-                if sc.displayAuxFlux:
+                if sc.auxiliary:
                     sc.updateSpectrum(f=fluxAll, af=afluxAll, uf=ufluxAll, exp=expAll,
                                       cont=cont, moments=moments, lines=lines, 
                                       noise=noise, ncell=ncell)
@@ -2918,7 +2918,7 @@ class GUI (QMainWindow):
         selectDI.setOption(QInputDialog.UseListViewForComboBoxItems)
         selectDI.setWindowTitle("Select image to download")
         selectDI.setLabelText("Selection")
-        imagelist = ['local fits file', 'local spectral cube',
+        imagelist = ['local image', 'local spectral cube',
                      'sdss-u','sdss-g','sdss-r','sdss-i','sdss-z',
                      'panstarrs-g','panstarrs-r','panstarrs-i','panstarrs-z','panstarrs-y',
                      '2mass-j','2mass-h','2mass-k',
@@ -2946,7 +2946,7 @@ class GUI (QMainWindow):
         lat = np.mean(dec)
         xsize = np.abs(ra[0] - ra[1]) * np.cos(lat * np.pi / 180.) * 60.
         ysize = np.abs(dec[0] - dec[1]) * 60.
-        if band == 'local fits file':
+        if band == 'local image':
             # Download the local fits
             downloadedImage = cloudImage(lon, lat, xsize, ysize, band)
             if downloadedImage.data is not None:
@@ -2968,7 +2968,11 @@ class GUI (QMainWindow):
                 sc.auxiliary = True
                 sc.auxl0 = self.auxSpecCube.l0
                 sc.auxw = self.auxSpecCube.wave
+                #sc.drawSpectrum()
                 self.onModifiedAperture('Auxiliary spectrum')  # Update the spectrum plot
+                sc.spectrum.l0 = self.specCube.l0
+                sc.drawSpectrum()
+                sc.fig.canvas.draw_idle()
             else:
                 message = 'The selected survey does not cover the displayed image'
             self.newImageMessage(message)
@@ -3020,6 +3024,8 @@ class GUI (QMainWindow):
             n0 = np.sum(m0)
             nx, ny = np.shape(image)
             p0 = n0 / (nx * ny)
+            print('Mode of image is ', mode)
+            image = np.array(image, dtype=float)
             if (p0 > 0.1):
                 image[m0] = np.nan
         mask = np.isfinite(image)
@@ -3120,10 +3126,10 @@ class GUI (QMainWindow):
                 w0    = aper.ellipse.width
                 h0    = aper.ellipse.height
                 angle = aper.ellipse.angle
-                ra0,dec0 = ic0.wcs.wcs_pix2world(x0,y0,1)
+                ra0,dec0 = ic0.wcs.wcs_pix2world(x0,y0,0)
                 ws = w0 * ic0.pixscale; hs = h0 * ic0.pixscale
                 # Add ellipse
-                x0,y0 = ic.wcs.wcs_world2pix(ra0,dec0,1)
+                x0,y0 = ic.wcs.wcs_world2pix(ra0,dec0,0)
                 w0 = ws/ic.pixscale; h0 = hs/ic.pixscale
                 ellipse = EllipseInteractor(ic.axes, (x0,y0),w0,h0,angle)
                 ellipse.type = aper.type
@@ -3137,10 +3143,10 @@ class GUI (QMainWindow):
                 h0    = aper.rect.get_height()
                 #print(type(h0))
                 angle = aper.rect.angle
-                ra0,dec0 = ic0.wcs.wcs_pix2world(x0,y0,1)
+                ra0,dec0 = ic0.wcs.wcs_pix2world(x0,y0,0)
                 ws = w0 * ic0.pixscale; hs = h0 * ic0.pixscale
                 # Add rectangle
-                x0,y0 = ic.wcs.wcs_world2pix(ra0,dec0,1)
+                x0,y0 = ic.wcs.wcs_world2pix(ra0,dec0,0)
                 w0 = ws/ic.pixscale; h0 = hs/ic.pixscale
                 rectangle = RectangleInteractor(ic.axes, (x0,y0),w0,h0,angle)
                 rectangle.type = aper.type
@@ -3165,10 +3171,10 @@ class GUI (QMainWindow):
                 w0    = aper.rect.get_width()
                 h0    = aper.rect.get_height()
                 angle = aper.rect.angle
-                ra0,dec0 = ic0.wcs.wcs_pix2world(x0,y0,1)
+                ra0,dec0 = ic0.wcs.wcs_pix2world(x0,y0,0)
                 ws = w0 * ic0.pixscale; hs = h0 * ic0.pixscale
                 # Add rectangle
-                x0,y0 = ic.wcs.wcs_world2pix(ra0,dec0,1)
+                x0,y0 = ic.wcs.wcs_world2pix(ra0,dec0,0)
                 w0 = ws/ic.pixscale; h0 = hs/ic.pixscale
                 pixel = PixelInteractor(ic.axes, (x0,y0), w0)
                 pixel.type = aper.type
@@ -3417,7 +3423,7 @@ class GUI (QMainWindow):
                     if aper.type == 'Ellipse':
                         x0,y0 = aper.ellipse.center
                         pixel = np.array([[x0, y0]], np.float_)
-                        world = ic.wcs.wcs_pix2world(pixel, 1)
+                        world = ic.wcs.wcs_pix2world(pixel, 0)
                         hdu.header['APERTURE']=('Ellipse','Type of photometric aperture')
                         hdu.header['RA'] = (world[0][0], 'RA of aperture center')
                         hdu.header['DEC'] = (world[0][1], 'Dec of aperture center')
@@ -3427,7 +3433,7 @@ class GUI (QMainWindow):
                     elif aper.type == 'Circle':
                         x0,y0 = aper.ellipse.center
                         pixel = np.array([[x0, y0]], np.float_)
-                        world = ic.wcs.wcs_pix2world(pixel, 1)
+                        world = ic.wcs.wcs_pix2world(pixel, 0)
                         hdu.header['APERTURE']=('Circle','Type of photometric aperture')
                         hdu.header['RA'] = (world[0][0]/15., 'RA of aperture center [hours]')
                         hdu.header['DEC'] = (world[0][1], 'Dec of aperture center [degs]')
@@ -3435,7 +3441,7 @@ class GUI (QMainWindow):
                     elif aper.type == 'Square':
                         x0,y0 = aper.xy[0]
                         pixel = np.array([[x0, y0]], np.float_)
-                        world = ic.wcs.wcs_pix2world(pixel, 1)
+                        world = ic.wcs.wcs_pix2world(pixel, 0)
                         hdu.header['APERTURE']=('Square','Type of photometric aperture')
                         hdu.header['RA'] = (world[0][0]/15., 'RA of aperture center [hours]')
                         hdu.header['DEC'] = (world[0][1], 'Dec of aperture center [degs]')
@@ -3444,7 +3450,7 @@ class GUI (QMainWindow):
                     elif aper.type == 'Rectangle':
                         x0,y0 = aper.xy[0]
                         pixel = np.array([[x0, y0]], np.float_)
-                        world = ic.wcs.wcs_pix2world(pixel, 1)
+                        world = ic.wcs.wcs_pix2world(pixel, 0)
                         hdu.header['APERTURE']=('Rectangle','Type of photometric aperture')
                         hdu.header['RA'] = (world[0][0]/15., 'RA of aperture center [hours]')
                         hdu.header['DEC'] = (world[0][1], 'Dec of aperture center [degs]')
@@ -3454,7 +3460,7 @@ class GUI (QMainWindow):
                     elif aper.type == 'Polygon':
                         hdu.header['APERTURE']=('Polygon','Type of photometric aperture')
                         xy = np.asarray(aper.poly.xy)
-                        world = ic.wcs.wcs_pix2world(xy, 1)
+                        world = ic.wcs.wcs_pix2world(xy, 0)
                         i = 0
                         for w in world:
                             hdu.header['RA_PT'+"{:03d}".format(i)] = (w[0]/15.,'RA [hours] of polygon aperture point no {:d}'.format(i))
@@ -3493,7 +3499,7 @@ class GUI (QMainWindow):
                     if aper.type == 'Ellipse':
                         x0,y0 = aper.ellipse.center
                         pixel = np.array([[x0, y0]], np.float_)
-                        world = ic.wcs.wcs_pix2world(pixel, 1)                    
+                        world = ic.wcs.wcs_pix2world(pixel, 0)                    
                         header += '\n# Aperture: Ellipse'
                         header += '\n# Center: {:.5f} {:.6f}'.format(world[0][0], world[0][1])
                         header += '\n# Angle: {:.1f} degs'.format(aper.ellipse.angle)
@@ -3501,14 +3507,14 @@ class GUI (QMainWindow):
                     elif aper.type == 'Circle':
                         x0,y0 = aper.ellipse.center
                         pixel = np.array([[x0, y0]], np.float_)
-                        world = ic.wcs.wcs_pix2world(pixel, 1)                    
+                        world = ic.wcs.wcs_pix2world(pixel, 0)                    
                         header += '\n# Aperture: Circle'
                         header += '\n# Center: {:.5f} {:.6f}'.format(world[0][0], world[0][1])
                         header += '\n# Radius: {:.1f} [arcsec]'.format(aper.ellipse.height*ic.pixscale)
                     elif aper.type == 'Square':
                         x0,y0 = aper.xy[0]
                         pixel = np.array([[x0, y0]], np.float_)
-                        world = ic.wcs.wcs_pix2world(pixel, 1)
+                        world = ic.wcs.wcs_pix2world(pixel, 0)
                         header += '\n# Aperture: Square'
                         header += '\n# Center: {:.5f} {:.6f}'.format(world[0][0], world[0][1])
                         header += '\n# Side: {:.1f} [arcsec]'.format(aper.rect.get_height()*ic.pixscale)
@@ -3516,7 +3522,7 @@ class GUI (QMainWindow):
                     elif aper.type == 'Rectangle':
                         x0,y0 = aper.xy[0]
                         pixel = np.array([[x0, y0]], np.float_)
-                        world = ic.wcs.wcs_pix2world(pixel, 1)
+                        world = ic.wcs.wcs_pix2world(pixel, 0)
                         header += '\n# Aperture: Rectangle'
                         header += '\n# Center: {:.5f} {:.6f}'.format(world[0][0], world[0][1])
                         header += '\n# Height: {:.1f} [arcsec]'.format(aper.rect.get_height()*ic.pixscale)
@@ -3525,7 +3531,7 @@ class GUI (QMainWindow):
                     elif aper.type == 'Polygon':
                         header += '\n# Aperture: Polygon'
                         xy = np.asarray(aper.poly.xy)
-                        world = ic.wcs.wcs_pix2world(xy, 1)
+                        world = ic.wcs.wcs_pix2world(xy, 0)
                         i = 0
                         for w in world:
                             header += '\n# Point {:03d}: {:.5f}h {:.6f}d'.format(i,w[0]/15.,w[1])
@@ -4078,6 +4084,7 @@ class GUI (QMainWindow):
         itab = self.itabs.currentIndex()
         ic0 = self.ici[itab]
         ih0 = self.ihi[itab]
+        ncontours = len(ic0.contour.collections)
         if ic0.contour is not None:
             if n >= 1000:
                 # Add a brand new level
@@ -4089,14 +4096,20 @@ class GUI (QMainWindow):
             elif n <= -1000:
                 n += 1000
                 # Remove contour from image
-                ic0.axes.collections.remove(ic0.contour.collections[n])
-                # Delete element from contour collection list
-                del ic0.contour.collections[n]
+                if n < ncontours:
+                    ic0.axes.collections.remove(ic0.contour.collections[n])
+                    # Delete element from contour collection list
+                    del ic0.contour.collections[n]
+                else:
+                    print('contour ',n,' does not exist')
             else:
                 # Move level by removing contour and adding it at new level
-                ic0.axes.collections.remove(ic0.contour.collections[n])
-                new = ic0.axes.contour(ic0.oimage, [ih0.levels[n]], colors=self.colorContour[0])
-                ic0.contour.collections[n] = new.collections[0]
+                if n < ncontours:
+                    ic0.axes.collections.remove(ic0.contour.collections[n])
+                    new = ic0.axes.contour(ic0.oimage, [ih0.levels[n]], colors=self.colorContour[0])
+                    ic0.contour.collections[n] = new.collections[0]
+                else:
+                    print('contour ',n,' does not exist')
             self.modifyOtherImagesContours(itab)
                 
     def modifyOtherImagesContours(self, i0):
@@ -4422,14 +4435,14 @@ class GUI (QMainWindow):
         ic0 = self.ici[0]
         x0 = s.nx // 2
         y0 = s.ny // 2
-        r0,d0 = ic0.wcs.wcs_pix2world(x0,y0,1)
+        r0,d0 = ic0.wcs.wcs_pix2world(x0,y0,0)
         ws = ic0.pixscale       
         n = len(self.photoApertures)
         # Define pixel aperture
         data = [r0,d0,ws]
         self.photoApertures.append(photoAperture(n,'pixel',data))
         for ic in self.ici:
-            x0, y0 = ic.wcs.wcs_world2pix(r0, d0, 1)
+            x0, y0 = ic.wcs.wcs_world2pix(r0, d0, 0)
             w = ws / ic.pixscale
             pixel = PixelInteractor(ic.axes, (x0, y0), w)
             ic.photApertures.append(pixel)
@@ -4610,7 +4623,7 @@ class GUI (QMainWindow):
 
     def switchUnits(self, event):
         """React to switch in units of the spectrum canvas."""
-        print('event is ', event)
+        #print('event is ', event)
         if event == 'switched x unit':
             if self.slider is not None:
                 self.sliderSwitchUnits()
@@ -4793,6 +4806,10 @@ class GUI (QMainWindow):
                 ic.contour = None
                 ic.changed = True
         self.contours = 'off'
+        # Redraw current image
+        itab = self.itabs.currentIndex()
+        ic = self.ici[itab]
+        ic.fig.canvas.draw_idle()
         # Remove contour lines in the histogram
         for ih in self.ihi:
             if len(ih.lev) > 0:
@@ -4812,6 +4829,7 @@ class GUI (QMainWindow):
 
     def zoomAll(self, itab):
         """Update total spectrum."""
+        print('zoomall called')
         s = self.specCube
         spectrum = self.spectra.index('All')
         sc = self.sci[spectrum]

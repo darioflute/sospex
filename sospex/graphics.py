@@ -791,6 +791,8 @@ class SpectrumCanvas(MplCanvas):
         self.lines = None
         self.dragged = None
         self.auxiliary = None
+        self.moments = False
+        self.fittedlines = False
         
     def compute_initial_spectrum(self, spectrum=None, xmin=None, xmax=None):
         if spectrum is None:
@@ -860,7 +862,10 @@ class SpectrumCanvas(MplCanvas):
                                               xy=(-0.15,-0.07), picker=5, xycoords='axes fraction')
         # Add reference wavelength value on the plot
         self.lannotation = self.axes.annotate(" $\\lambda_0$ = {:.4f} $\\mu$m".format(s.l0),
-                                              xy=(-0.15,-0.12), picker=5, xycoords='axes fraction')        
+                                              xy=(-0.15,-0.12), picker=5, xycoords='axes fraction')
+        if self.auxiliary:
+            self.xlannotation = self.axes.annotate(" $\\lambda_x$ = {:.4f} $\\mu$m".format(self.auxl0),
+                                              xy=(-0.15,-0.17), picker=5, xycoords='axes fraction')
         if s.instrument == 'FIFI-LS':
             try:
                 self.fig.delaxes(self.ax2)
@@ -950,11 +955,13 @@ class SpectrumCanvas(MplCanvas):
             # Elevate zorder of first axes (to guarantee axes gets the events)
             self.axes.set_zorder(self.vaxes.get_zorder()+1) # put axes in front of vaxes
             self.axes.patch.set_visible(False) # hide the 'canvas' 
+            # print('l0: ', s.l0)
             if self.auxiliary:
                 # Draw auxiliary flux
                 c =  299792.458 # km/s
                 v = (self.auxw/self.auxl0 - 1. - s.redshift) * c
-                self.afluxLine = self.vaxes.step(v, s.aflux, color='cyan', label='F$_{x}$', zorder=12)
+                print('auxl0 ', self.auxl0)
+                self.afluxLine = self.vaxes.step(v, self.aflux, color='cyan', label='F$_{x}$', zorder=12)
                 self.afluxLayer, = self.afluxLine
                 lns += self.afluxLine
                 lines.append(self.afluxLayer)
@@ -964,7 +971,7 @@ class SpectrumCanvas(MplCanvas):
         # Prepare legend                
         self.labs = [l.get_label() for l in lns]
         leg = self.axes.legend(lns, self.labs, loc='upper center', bbox_to_anchor=(0.5, -0.1),
-                               fancybox=True, shadow=True, ncol=5)
+                               fancybox=False, shadow=True, ncol=6)
         # leg.set_draggable(True)  # works only in matplotlib 3.0.0      
         self.lined = dict()
         self.labed = dict()
@@ -1186,6 +1193,7 @@ class SpectrumCanvas(MplCanvas):
                     except BaseException:
                         pass
             if moments is not None:
+                self.moments = True
                 # Update position, size, and dispersion from moments
                 x = moments[1]; y = np.nanmedian(cont)
                 # FWHM of the distribution (assuming Gaussian)
@@ -1212,6 +1220,7 @@ class SpectrumCanvas(MplCanvas):
                 self.gauss = Polygon(verts, fill=False, closed=False,color='skyblue')
                 self.axes.add_patch(self.gauss)
             if lines is not None:
+                self.fittedlines = True
                 self.voigt = []
                 for line in lines:
                     #print('line is ', line)
@@ -1230,12 +1239,14 @@ class SpectrumCanvas(MplCanvas):
                     cauchy = sigma/np.pi/(xx2+sigma*sigma)
                     y = np.nanmedian(cont) # Better put the real continuum here (works only if constant)
                     model = y + A * ((1-alpha)* gauss + alpha*cauchy)
+                    # Case of Frequency
+                    if self.xunit == 'THz':
+                        xx = c/xx * 1.e-6
                     #model = y + A * np.exp(-(xx-x)**2/(2*sigma*sigma))
                     verts = list(zip(xx,model))
                     voigt = Polygon(verts, fill=False, closed=False,color='purple')
                     self.axes.add_patch(voigt)
                     self.voigt.append(voigt)
-                    #print('Voigt appended')
         except:
             pass
             
@@ -1328,6 +1339,9 @@ class SpectrumCanvas(MplCanvas):
                 elif label == 'Lines':
                     self.displayLines = True
                     txt.set_text('Lines')
+                elif label == 'F$_{x}$':
+                    self.displayAuxFlux = True
+                    txt.set_text('F$_{x}$')                    
             else:
                 legline.set_alpha(0.2)
                 txt.set_alpha(0.2)
@@ -1344,6 +1358,8 @@ class SpectrumCanvas(MplCanvas):
                     self.displayFlux = False
                 elif label == 'Lines':
                     self.displayLines = False
+                elif label == 'F$_{x}$':
+                    self.displayAuxFlux = False
             if self.shade == True:
                 self.shadeRegion()
             if label == 'Lines':
@@ -1362,6 +1378,8 @@ class SpectrumCanvas(MplCanvas):
                             annotation.remove()
                         self.zannotation.remove()
                         self.lannotation.remove()
+                        if self.auxiliary:
+                            self.xlannotation.remove()
                         self.drawSpectrum()
                         self.fig.canvas.draw_idle()
                         # Simulate a release to activate the update of redshift in main program
@@ -1380,15 +1398,33 @@ class SpectrumCanvas(MplCanvas):
                         # Simulate a release to activate the update of ref.wavelength in main
                         QTest.mouseRelease(self, Qt.LeftButton)
             else:
-                if text == 'Wavelength [$\mu$m]' or text == 'Frequency [THz]':
-                    self.switchUnits()
-                    self.switchSignal.emit('switched x unit')
-                elif text == 'Flux [Jy]' or text == 'Temperature [K]':
-                    self.switchFluxUnits()
-                    self.switchSignal.emit('switched y unit')
-                else:
-                    self.dragged = event.artist
-                    self.pick_pos = event.mouseevent.xdata
+                goNext = True
+                if self.auxiliary is not None:
+                    if event.artist == self.xlannotation:
+                        lnew = self.getlDouble(self.auxl0)
+                        if lnew is not None:
+                            if lnew != self.auxl0:
+                                self.auxl0 = lnew
+                                for annotation in self.annotations:
+                                    annotation.remove()
+                                self.xlannotation.remove()
+                                self.lannotation.remove()
+                                self.zannotation.remove()
+                                self.drawSpectrum()
+                                self.fig.canvas.draw_idle()
+                                # Simulate a release to activate the update of ref.wavelength in main
+                                QTest.mouseRelease(self, Qt.LeftButton)
+                        goNext = False
+                if goNext:
+                    if text == 'Wavelength [$\mu$m]' or text == 'Frequency [THz]':
+                        self.switchUnits()
+                        self.switchSignal.emit('switched x unit')
+                    elif text == 'Flux [Jy]' or text == 'Temperature [K]':
+                        self.switchFluxUnits()
+                        self.switchSignal.emit('switched y unit')
+                    else:
+                        self.dragged = event.artist
+                        self.pick_pos = event.mouseevent.xdata
         else:
             pass
         return True
@@ -1398,6 +1434,7 @@ class SpectrumCanvas(MplCanvas):
         self.switchSignal.emit('switched x unit')
         
     def switchUnits(self):
+        c = 299792458.0  # speed of light in m/s
         if self.xunit == 'um':
             self.xunit = 'THz'
             if self.yunit == 'Jy':
@@ -1412,7 +1449,6 @@ class SpectrumCanvas(MplCanvas):
             #    self.axes.format_coord = lambda x, y: "{:8.4f} um {:10.4f} K".format(x, y)
         if self.guess is not None:
             # Switch xguess units
-            c = 299792458.0  # speed of light in m/s
             for x in self.xguess:
                 x = c / np.array(x) * 1.e-6  # um to THz or viceversa
             # Switch guess
@@ -1422,6 +1458,23 @@ class SpectrumCanvas(MplCanvas):
             for line in self.lines:
                 if line is not None:
                     line.switchUnits()
+        # Moments computed
+        if self.moments:
+            xy = self.gauss.get_xy()
+            x, y = zip(*xy)
+            x = np.asarray(x)
+            y = np.asarray(y)
+            x = c / x * 1.e-6
+            self.gauss.set_xy(list(zip(x, y)))
+        # Line fits computed
+        if self.fittedlines:
+            for voigt in self.voigt:
+                xy = voigt.get_xy()
+                x, y = zip(*xy)
+                x = np.asarray(x)
+                y = np.asarray(y)
+                x = c / x * 1.e-6
+                voigt.set_xy(list(zip(x, y)))
         # Redrawing is maybe excessive
         self.drawSpectrum()
         self.fig.canvas.draw_idle()
@@ -1466,7 +1519,7 @@ class SpectrumCanvas(MplCanvas):
 
     def getlDouble(self, l):
         lnew, okPressed = QInputDialog.getDouble(self, "Reference wavelength",
-                                                 "Ref. wavelength [um]", l, 0., 500., 4)
+                                                 "Ref. wavelength [um]", l, 0., 1000000., 4)
         if okPressed:
             return lnew
         else:
