@@ -70,6 +70,7 @@ class specCube(object):
         try:
             self.filegpid = self.header['FILEGPID']
         except:
+            print('File group ID not defined')
             self.filegpid = 'Unknown'
         self.baryshift = self.header['BARYSHFT']
         self.pixscale = self.header['PIXSCAL']
@@ -79,7 +80,18 @@ class specCube(object):
         try:
             self.redshift = self.header['REDSHIFT']
         except:
+            print('No redshift present')
             self.redshift = 0.0
+        self.flux = hdl['FLUX'].data
+        self.eflux = hdl['ERROR'].data
+        self.uflux = hdl['UNCORRECTED_FLUX'].data
+        self.euflux = hdl['UNCORRECTED_ERROR'].data
+        self.wave = hdl['WAVELENGTH'].data
+        self.n = len(self.wave)
+        #self.vel = np.zeros(self.n)  # prepare array of velocities
+        self.x = hdl['X'].data
+        self.y = hdl['Y'].data
+        #self.atran = hdl['TRANSMISSION'].data
         try:
             channel = self.header['DETCHAN']
             if channel == 'RED':
@@ -91,16 +103,7 @@ class specCube(object):
             self.l0 = float(wr)
         except:
             self.l0 = np.nanmedian(self.wave)
-        self.flux = hdl['FLUX'].data
-        self.eflux = hdl['ERROR'].data
-        self.uflux = hdl['UNCORRECTED_FLUX'].data
-        self.euflux = hdl['UNCORRECTED_ERROR'].data
-        self.wave = hdl['WAVELENGTH'].data
-        self.n = len(self.wave)
-        #self.vel = np.zeros(self.n)  # prepare array of velocities
-        self.x = hdl['X'].data
-        self.y = hdl['Y'].data
-        #self.atran = hdl['TRANSMISSION'].data
+            print('No file group present, assumed central wavelength ', self.l0)
         try:
             utran = hdl['UNSMOOTHED_TRANSMISSION'].data
             w = utran[0,:]
