@@ -615,7 +615,6 @@ class GUI (QMainWindow):
                             ima.contour = ima.axes.contour(ismo, levs, colors=self.colorContour[0],
                                                            transform=ima.axes.get_transform(co.wcs))
                         ima.contour0 = None
-                # print('Redrawing figure ...')
                 ima.fig.canvas.draw_idle()
                 ima.changed = False
             if self.blink == 'select':
@@ -833,7 +832,12 @@ class GUI (QMainWindow):
                     try:
                         afluxAll = self.auxSpecCube.flux[:, yya, xxa]
                         # Normalization
-                        afluxAll *= np.nanmax(fluxAll)/np.nanmax(afluxAll)
+                        fmax = np.nanmax(fluxAll)
+                        fmin = np.nanmedian(fluxAll)
+                        afmax = np.nanmax(afluxAll)
+                        afmin = np.nanmedian(afluxAll)
+                        afluxAll = (afluxAll - afmin) / (afmax - afmin) * (fmax - fmin) + fmin
+                        # afluxAll *= np.nanmax(fluxAll)/np.nanmax(afluxAll)
                     except:
                         afluxAll = self.auxSpecCube.flux[:,0,0] * np.nan
                         print('Pixel out of map')
@@ -1556,12 +1560,14 @@ class GUI (QMainWindow):
         ic0 = self.ici[0]
         x = ic0.axes.get_xlim()
         y = ic0.axes.get_ylim()
-        ra, dec = ic0.wcs.wcs_pix2world(x, y, 0)
-        x, y = ic.wcs.wcs_world2pix(ra, dec, 0)            
+        #ra, dec = ic0.wcs.wcs_pix2world(x, y, 0)
+        #x, y = ic.wcs.wcs_world2pix(ra, dec, 0)            
         ic.axes.set_xlim(x)
         ic.axes.set_ylim(y)
+        ic.zoomlimits(x,y)
         # Callback to propagate axes limit changes among images
-        ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
+        #ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
+        ic.cid = ic.axes.callbacks.connect('ylim_changed', self.doZoomAll)
 
     def onContinuumSelect(self, verts):
         istab = self.stabs.currentIndex()
@@ -3083,7 +3089,8 @@ class GUI (QMainWindow):
             # Add existing contours
             self.addContours(ic)
             # Callback to propagate axes limit changes to other images
-            ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
+            # ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
+            ic.cid = ic.axes.callbacks.connect( 'ylim_changed', self.doZoomAll)
 
     def saveDownloadedFits(self, downloadedImage):
         """Save the downloaded FITS image."""
@@ -3871,6 +3878,7 @@ class GUI (QMainWindow):
         ic = self.ici[itab]
         if ic.toolbar._active == 'ZOOM':
             ic.toolbar.zoom()  # turn off zoom
+            #self.doZoomAll()
             x = ic.axes.get_xlim()
             y = ic.axes.get_ylim()
             self.zoomlimits = [x,y]            
@@ -3954,7 +3962,7 @@ class GUI (QMainWindow):
                     ic0.updateScale(clim[0],clim[1])
                     ih.axes.cla()
                     ih.compute_initial_figure(image=sb, xmin=clim[0],xmax=clim[1])
-            x,y = self.zoomlimits
+            x,y = ic.zoomlimits
             ic.axes.set_xlim(x)
             ic.axes.set_ylim(y)
             ic.fig.canvas.draw_idle()
@@ -3995,7 +4003,8 @@ class GUI (QMainWindow):
         ic.compute_initial_figure(image=self.M0,wcs=self.specCube.wcs,title=band,
                                   cMap=self.colorMap,cMapDir=self.colorMapDirection,stretch=self.stretchMap)
         # Callback to propagate axes limit changes among images
-        ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
+        #ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
+        ic.cid = ic.axes.callbacks.connect('ylim_changed', self.doZoomAll)
         ih = self.ihi[self.bands.index(band)]
         clim = ic.image.get_clim()
         ih.compute_initial_figure(image=self.M0,xmin=clim[0],xmax=clim[1])
@@ -4404,7 +4413,9 @@ class GUI (QMainWindow):
                 ic.image.format_cursor_data = lambda z: "{:10.4f} Jy".format(float(z))
             # print('callback for limits')
             # Callback to propagate axes limit changes among images
-            ic.cid = ic.axes.callbacks.connect('xlim_changed' or 'ylim_changed',
+            #ic.cid = ic.axes.callbacks.connect('xlim_changed' or 'ylim_changed',
+            #                                   self.doZoomAll)
+            ic.cid = ic.axes.callbacks.connect('ylim_changed',
                                                self.doZoomAll)
             # print('Define histogram')
             ih = self.ihi[self.bands.index(ima)]
@@ -4419,7 +4430,7 @@ class GUI (QMainWindow):
             # temporary ...
             x = ic.axes.get_xlim()
             y = ic.axes.get_ylim()
-            self.zoomlimits = [x,y]
+            ic.zoomlimits = [x,y]
         # Re-initialize variables
         self.contours = 'off'
         self.blink = 'off'
@@ -4610,7 +4621,7 @@ class GUI (QMainWindow):
             imas = ['Flux','Exp']
         elif self.specCube.instrument == 'FIFI-LS':
             imas = ['Flux','uFlux','Exp']
-        x,y = self.zoomlimits
+        # x,y = self.zoomlimits
         itab = self.itabs.currentIndex()
         ic0 = self.ici[itab]
         for ima in imas:
@@ -4797,7 +4808,7 @@ class GUI (QMainWindow):
             imas = ['Flux','Exp']
         elif self.specCube.instrument == 'FIFI-LS':
             imas = ['Flux','uFlux','Exp']
-        x,y = self.zoomlimits
+        # x,y = self.zoomlimits
         for ima in imas:
             ic = self.ici[self.bands.index(ima)]
             #ih = self.ihi[self.bands.index(ima)]
@@ -4845,22 +4856,27 @@ class GUI (QMainWindow):
 
     def zoomAll(self, itab):
         """Update total spectrum."""
-        print('zoomall called')
+        #print('zoomall called')
         s = self.specCube
         spectrum = self.spectra.index('All')
         sc = self.sci[spectrum]
         ic = self.ici[itab]
         if ic.toolbar._active == 'ZOOM':
+            print('called from toolbar', self.bands[itab])
             ic.toolbar.zoom()  # turn off zoom
-        x = ic.axes.get_xlim()
-        y = ic.axes.get_ylim()
+        ymin, ymax = ic.axes.get_ylim()
+        xmin, xmax = ic.axes.get_xlim()
+        ic.zoomlimits = [(xmin, xmax), (ymin, ymax)]
+        x = [xmin, xmax, xmin, xmax]
+        y = [ymin, ymin, ymax, ymax]
         ra, dec = ic.wcs.wcs_pix2world(x, y, 0)
         # If not in the flux image, compute values for the flux image
         band = self.bands.index('Flux')
         if itab != band:
             ic0 = self.ici[band]
-            x, y = ic0.wcs.wcs_world2pix(ra, dec, 0)            
-        self.zoomlimits = [x, y]
+            x, y = ic0.wcs.wcs_world2pix(ra, dec, 0)
+        x = [np.min(x), np.max(x)]
+        y = [np.min(y), np.max(y)]
         # Compute limits for new total spectrum
         x0 = int(np.min(x))
         x1 = int(np.max(x))
@@ -4875,11 +4891,14 @@ class GUI (QMainWindow):
         ici.remove(ic)
         for ima in ici:
             x, y = ima.wcs.wcs_world2pix(ra, dec, 0)
+            x = [np.min(x), np.max(x)]
+            y = [np.min(y), np.max(y)]
             ima.axes.callbacks.disconnect(ima.cid)
             ima.axes.set_xlim(x)
             ima.axes.set_ylim(y)
+            ima.zoomlimits = (x, y) 
             ima.changed = True
-            ima.cid = ima.axes.callbacks.connect('xlim_changed' or 'ylim_changed', self.doZoomAll)
+            ima.cid = ima.axes.callbacks.connect('ylim_changed', self.doZoomAll)
         fluxAll = np.nansum(self.specCube.flux[:, y0:y1, x0:x1], axis=(1, 2))
         if s.instrument in ['GREAT','HI']:
             sc.updateSpectrum(f=fluxAll)
@@ -5098,6 +5117,8 @@ class GUI (QMainWindow):
             u1 = np.nanmax(spec.uflux)
             if u0 < ylim0: ylim0 = u0
             if u1 > ylim1: ylim1 = u1
+        if sc.displayAuxFlux:
+            sc.vaxes.set_ylim(np.nanmin(sc.aflux), np.nanmax(sc.aflux))
         # Slightly higher maximum
         sc.ylimits = (ylim0,ylim1*1.1)
         sc.updateYlim()     

@@ -216,19 +216,31 @@ class cloudImage(object):
                 hdu = hdulist['PRIMARY']
                 hdulist.info()
                 header = hdulist['PRIMARY'].header
+                try:
+                    instrument = header['INSTRUME']
+                    self.source = instrument
+                    try:
+                        if instrument == 'PACS':
+                            w = header['WAVELNTH']
+                            self.source += str(int(w // 1))
+                    except:
+                        pass
+                except:
+                    self.source = 'unknown'
+                print('Instrument ',self.source)
                 naxis = header['NAXIS']
                 if naxis == 2:
                     self.data = hdulist['PRIMARY'].data
                 elif naxis > 2:
                     self.data = hdulist['PRIMARY'].data[0,0,:,:]
-                else:
-                    print('This is not an image')
-                try:
-                    instrument = header['INSTRUME']
-                    self.source = instrument
-                except:
-                    self.source = 'unknown'
-                print('Instrument ',self.source)
+                elif naxis == 0:
+                    # Switch to image extensions if exists.
+                    try:
+                        hdu = hdulist['IMAGE']
+                        header = hdu.header
+                        self.data = hdu.data
+                    except:
+                        print('This is not an image')
                 self.wcs = WCS(header).celestial
                 print(self.wcs)
                 # Check if coordinates are inside the image

@@ -913,7 +913,7 @@ class SpectrumCanvas(MplCanvas):
                 self.ax2.get_yaxis().set_tick_params(labelright='on',right='on',
                                   direction='in', pad = -25, colors='red')
             else:
-                self.ax2.get_yaxis().set_tick_params(labelright='off',right='off')            
+                self.ax2.get_yaxis().set_tick_params(labelright='off',right='off')   
         elif s.instrument in ['GREAT','HI']:
             self.displayUFlux = False
             self.displayAtran = False
@@ -970,6 +970,7 @@ class SpectrumCanvas(MplCanvas):
                 visibility.append(self.displayAuxFlux)
         except:
             print('l0 is not defined') 
+
         # Prepare legend                
         self.labs = [l.get_label() for l in lns]
         leg = self.axes.legend(lns, self.labs, loc='upper center', bbox_to_anchor=(0.5, -0.1),
