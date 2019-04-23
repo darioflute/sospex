@@ -425,7 +425,9 @@ class ImageCanvas(MplCanvas):
                 # Check if too many zeros
                 vmed0=np.nanmedian(image)
                 d0 = np.nanstd(image)
-                cmin = vmed0-2*d0
+                cmin = vmed0-1*d0
+                if cmin < 0:
+                    cmin = 0
                 cmax = vmed0+5*d0
             self.cmin = cmin
             self.cmax = cmax        

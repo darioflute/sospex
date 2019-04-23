@@ -613,13 +613,14 @@ class cloudImage(object):
         c = SkyCoord(ra=self.lon*u.degree, dec=self.lat*u.degree, frame='icrs')
         cra = c.ra.hms
         cdec = c.dec.dms
-        url0="https://dr12.sdss.org/fields/raDec?ra="
+        url0="https://dr14.sdss.org/fields/raDec?ra="
         ras = "{:02.0f}+{:.0f}+{:.1f}".format(cra[0],cra[1],cra[2])
         if self.lat > 0:
             url = url0+ras+"+&dec=+{:02.0f}+{:.0f}+{:.0f}".format(cdec[0],cdec[1],cdec[2])
         else:
             url = url0+ras+"+&dec=-{:02.0f}+{:.0f}+{:.0f}".format(-cdec[0],-cdec[1],-cdec[2])
 
+        #print('request ', url)
         request = urllib.request.Request(url)
         response = urllib.request.urlopen(request)
         html = response.read()
@@ -633,7 +634,7 @@ class cloudImage(object):
         file = None
         for v in values:
             if 'frame-'+band+'-' in v:
-                file = 'https://dr12.sdss.org/'+v
+                file = 'https://dr14.sdss.org/'+v
                 
         if file is not None:
             #idx = data.index(band+'-band FITS')

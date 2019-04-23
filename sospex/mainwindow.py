@@ -830,9 +830,14 @@ class GUI (QMainWindow):
                     xxa, yya = self.auxSpecCube.wcs.wcs_world2pix(ra0, dec0, 0)
                     xxa = int (xxa // 1)
                     yya = int (yya // 1)
-                    afluxAll = self.auxSpecCube.flux[:, yya, xxa]
+                    try:
+                        afluxAll = self.auxSpecCube.flux[:, yya, xxa]
+                        # Normalization
+                        afluxAll *= np.nanmax(fluxAll)/np.nanmax(afluxAll)
+                    except:
+                        afluxAll = self.auxSpecCube.flux[:,0,0] * np.nan
+                        print('Pixel out of map')
                     # Normalization
-                    afluxAll *= np.nanmax(fluxAll)/np.nanmax(afluxAll)
                     sc.aflux = afluxAll
             else:
                 fluxAll = np.nansum(s.flux[:, yy, xx], axis=1)
@@ -3057,10 +3062,21 @@ class GUI (QMainWindow):
             ic0 = self.ici[0]
             x = ic0.axes.get_xlim()
             y = ic0.axes.get_ylim()
+            xmin = np.min(x)
+            xmax = np.max(x)
+            ymin = np.min(y)
+            ymax = np.max(y)
+            x = (xmin, xmax, xmin, xmax)
+            y = (ymin, ymin, ymax, ymax)
             ra,dec = ic0.wcs.wcs_pix2world(x,y,0)
-            x,y = ic.wcs.wcs_world2pix(ra,dec,0)            
-            ic.axes.set_xlim(x)
-            ic.axes.set_ylim(y)
+            x,y = ic.wcs.wcs_world2pix(ra, dec, 0)            
+            xmin = np.min(x)
+            xmax = np.max(x)
+            ymin = np.min(y)
+            ymax = np.max(y)
+            ic.axes.set_xlim(xmin, xmax)
+            ic.axes.set_ylim(ymin, ymax)
+            ic.zoomlimits = [(xmin,xmax),(ymin,ymax)]
             ic.changed = True
             # Add existing apertures
             self.addApertures(ic)
