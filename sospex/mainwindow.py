@@ -832,15 +832,17 @@ class GUI (QMainWindow):
                     try:
                         afluxAll = self.auxSpecCube.flux[:, yya, xxa]
                         # Normalization
-                        fmax = np.nanmax(fluxAll)
+                        nmax = len(fluxAll) // 3
+                        fmax = np.nanmax(fluxAll[nmax:-nmax]) # Avoid borders
                         fmin = np.nanmedian(fluxAll)
-                        afmax = np.nanmax(afluxAll)
+                        anmax = len(afluxAll) // 3
+                        afmax = np.nanmax(afluxAll[anmax:-anmax]) # Avoid borders
                         afmin = np.nanmedian(afluxAll)
                         afluxAll = (afluxAll - afmin) / (afmax - afmin) * (fmax - fmin) + fmin
                         # afluxAll *= np.nanmax(fluxAll)/np.nanmax(afluxAll)
                     except:
                         afluxAll = self.auxSpecCube.flux[:,0,0] * np.nan
-                        print('Pixel out of map')
+                        #print('Pixel out of map')
                     # Normalization
                     sc.aflux = afluxAll
             else:
@@ -1564,7 +1566,7 @@ class GUI (QMainWindow):
         #x, y = ic.wcs.wcs_world2pix(ra, dec, 0)            
         ic.axes.set_xlim(x)
         ic.axes.set_ylim(y)
-        ic.zoomlimits(x,y)
+        ic.zoomlimits = (x,y)
         # Callback to propagate axes limit changes among images
         #ic.cid = ic.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomAll)
         ic.cid = ic.axes.callbacks.connect('ylim_changed', self.doZoomAll)
@@ -2439,12 +2441,18 @@ class GUI (QMainWindow):
         w = self.specCube.wave
         c = self.continuum
         multiFitLines(m, w, f, c, lineguesses, self.lines, points)
+        print('Number of lines ',len(self.lines))
         # Update L0 and L1 (first two lines)
         self.L0 = self.lines[0][2] # the plane no 2 corresponds to the amplitude
-        self.L1 = self.lines[1][2]
+        if len(self.lines) == 2:
+            self.L1 = self.lines[1][2]
         # Then display them
-        bands = ['L0', 'L1']
-        sbands = [self.L0, self.L1]
+        if len(self.lines) == 2:
+            bands = ['L0', 'L1']
+            sbands = [self.L0, self.L1]
+        else:
+            bands = ['L0']
+            sbands = [self.L0]
         for b, sb in zip(bands, sbands):
             itab = self.bands.index(b)
             ic = self.ici[itab]
@@ -2490,12 +2498,17 @@ class GUI (QMainWindow):
         multiFitLines(m, w, f, c, lineguesses, self.lines, points)
         # Update L0 and L1 (first two lines)
         self.L0 = self.lines[0][2] # the plane no 2 corresponds to the amplitude
-        self.L1 = self.lines[1][2]
+        if len(self.lines) == 2:
+            self.L1 = self.lines[1][2]
         
     def fitLinesDisplay(self):
         # Display images after fitting
-        bands = ['L0', 'L1']
-        sbands = [self.L0, self.L1]
+        if len(self.lines) == 2:
+            bands = ['L0', 'L1']
+            sbands = [self.L0, self.L1]
+        else:
+            bands = ['L0']
+            sbands = [self.L0]
         for b, sb in zip(bands, sbands):
             itab = self.bands.index(b)
             ic = self.ici[itab]
@@ -4851,7 +4864,7 @@ class GUI (QMainWindow):
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
         if ic.axes == event: # only consider axes on screen (not other tabs)
-            print('limits changed ....')
+            #print('limits changed ....')
             self.zoomAll(itab)
 
     def zoomAll(self, itab):

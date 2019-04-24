@@ -454,7 +454,7 @@ class VoronoiInteractor(QObject):
     mySignal = pyqtSignal(str)
     modSignal = pyqtSignal(str)
 
-    def __init__(self, ax, sites, epsilon=10, showsites=True):
+    def __init__(self, ax, sites, epsilon=10, showsites=False):
         super().__init__()
         from matplotlib.patches import Polygon
         from matplotlib.lines import Line2D
@@ -473,6 +473,8 @@ class VoronoiInteractor(QObject):
                            markerfacecolor='red', animated=True)
         self.ax.add_line(self.line)
         #self.canvas = self.line.figure.canvas
+        self.line.set_visible(self.showsites)
+        self.poly.set_visible(self.showsites)
 
         # self.sites = self.sites
         self.sites = sites
