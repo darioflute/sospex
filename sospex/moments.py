@@ -965,7 +965,7 @@ def fitLines(p, m,w,f,lines):
             else:
                 params[li+'amplitude'].set(A, min=2 * A, max=A * 0.1)
             params[li+'sigma'].set(sigma, min=sigma / 2., max=sigma * 2)
-            params[li + 'fraction'].set(0.3, max = 0.4)
+            params[li + 'fraction'].set(0.1, max = 0.3)
         # Minimize
         out = model.fit(y, params, x=x)
         #               kws={'data': y, 'eps': e}, method='leastsq')

@@ -792,27 +792,24 @@ class GUI (QMainWindow):
 
             if istab == 1 and self.continuum is not None:
                 xc=np.median(xx); yc = np.median(yy)
+                i = int(np.rint(xc)); j = int(np.rint(yc))
                 try:
-                    i = int(np.rint(xc)); j = int(np.rint(yc))
                     cont = self.continuum[:, j, i]
-                    try:
-                        moments = [self.M0[j, i], self.M1[j, i], self.M2[j, i],
-                                   self.M3[j, i], self.M4[j, i]]
-                        noise = self.noise[j, i]
-                    except:
-                        moments = None
-                        noise = None
-                    try:
-                        lines = []
-                        for line in self.lines:
-                            lines.append([line[0][j, i], line[1][j, i], 
-                                          line[2][j, i], line[3][j, i]])
-                    except:
-                        lines = None
                 except:
                     cont = None
+                try:
+                    moments = [self.M0[j, i], self.M1[j, i], self.M2[j, i],
+                               self.M3[j, i], self.M4[j, i]]
+                    noise = self.noise[j, i]
+                except:
                     moments = None
                     noise = None
+                try:
+                    lines = []
+                    for line in self.lines:
+                        lines.append([line[0][j, i], line[1][j, i], 
+                                      line[2][j, i], line[3][j, i]])
+                except:
                     lines = None
             else:
                 cont = None
@@ -2226,8 +2223,12 @@ class GUI (QMainWindow):
             itab = self.itabs.currentIndex()
             ic0 = self.ici[itab]
             # Create/update moment tabs
-            newbands = ['L0','L1']
-            sbands = [self.L0, self.L1]
+            if nlines == 1:
+                newbands = ['L0']
+                sbands = [self.L0]                
+            elif nlines == 2:
+                newbands = ['L0','L1']
+                sbands = [self.L0, self.L1]
             for new,sb in zip(newbands,sbands):
                 if new not in self.bands:
                     self.addBand(new)
