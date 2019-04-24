@@ -975,7 +975,7 @@ class SpectrumCanvas(MplCanvas):
         self.labs = [l.get_label() for l in lns]
         leg = self.axes.legend(lns, self.labs, loc='upper center', bbox_to_anchor=(0.5, -0.1),
                                fancybox=False, shadow=True, ncol=6)
-        # leg.set_draggable(True)  # works only in matplotlib 3.0.0      
+        leg.set_draggable(True)   
         self.lined = dict()
         self.labed = dict()
         for legline, origline, txt in zip(leg.get_lines(), lines, leg.texts):

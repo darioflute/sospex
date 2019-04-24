@@ -423,7 +423,7 @@ class ContParams(QDialog):
         self.function = self.createGroup('Continuum function', ['Constant', 'Slope'])
         self.boundary = self.createGroup('Continuum boundary', ['None', 'Non negative'])
         self.kernel   = self.createGroup('Kernel pixels', ['1', '5', '9'], default=self.k)
-        self.regions = self.createGroup('No of regions', ['1', '4', '16' ,'64', '128'])
+        self.regions = self.createGroup('No of regions', ['4', '16' ,'64', '128', '256'])
         self.emlines = self.createGroup('No of emission lines', ['0', '1', '2', '3'])
         self.ablines = self.createGroup('No of absorption lines', ['0', '1', '2'])
         # OK/Cancel line

@@ -576,6 +576,8 @@ class GUI (QMainWindow):
                 ima.changed = True
             if ima.changed:
                 # Compute contours the 1st time
+                if self.contours == 'off':
+                    ima.contour0 = None
                 if ima.contour0 is not None:
                     if isinstance(ima.contour0, int):
                         # print('Computing contours ...')
