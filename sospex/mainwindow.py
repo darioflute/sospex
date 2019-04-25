@@ -4233,20 +4233,80 @@ class GUI (QMainWindow):
         xr = x * (1+self.specCube.baryshift)
         for i in range(ny):
             for j in range(nx):
-                ufi = np.interp(x, xr, self.specCube.uflux[:, i, j])
-                self.specCube.flux[:, i, j] = ufi / atmed
+                self.specCube.flux[:, i, j] = np.interp(x, xr, self.specCube.uflux[:, i, j] / atmed)
         
+    def readAtran(self, detchan, order):
+        import os
+        from astropy.io import fits
+        path0, file0 = os.path.split(__file__)
+        print('Path for Atran is ', path0)
+        if detchan == 'BLUE':
+            file = 'AtranBlue'+str(order)+'.fits.gz'
+        else:
+            file = 'AtranRed.fits.gz'
+        path = path0+'/data/'
+        hdl = fits.open(path+file)
+        wt = hdl['WAVELENGTH'].data
+        atran = hdl['ATRAN'].data
+        altitudes = hdl['ALTITUDE'].data
+        wvzs = hdl['WVZ'].data
+        hdl.close()
+        return (wt, atran, altitudes, wvzs)
+            
     def fluxNewAT(self):
         try:
             # Check if FIFI-LS cube
             if self.specCube.instrument == 'FIFI-LS':
-                # This should ask for new values of water vapor, download a new AT curve and apply it to the uflux
-                pass
+                # Call a dialog showing the altitude and elevation angle in the header and asking for zenithal water vapor
+                za = 0.5 * (self.specCube.za[0] + self.specCube.za[1])
+                altitude = 0.5 * (self.specCube.altitude[0] + self.specCube.altitude[1])
+                wvz = self.getWVZ(altitude,za)
+                # Download a new AT curve and apply it to the uflux
+                channel = self.specCube.header["DETCHAN"]
+                if channel == 'BLUE':
+                    order = self.specCube.header["G_ORD_B"]
+                else:
+                    order = 1
+                print('Channel ', channel, ' Order', order)
+                atrandata = self.readAtran(channel, order)
+                wt, atran, altitudes, wvs = atrandata
+                print('WVS ', wvs)
+                imin = np.argmin(np.abs(altitudes-altitude))
+                at = atran[imin]
+                angle = za * np.pi/180.
+                cos_angle = np.cos(angle)
+                #depth = 1. / cos_angle  # Flat Earth approximation
+                r = 6383.5/50.  # assuming r_earth = 6371 km, altitude = 12.5 km, and 50 km of more stratosphere
+                rcos = r * cos_angle
+                depth = -rcos + np.sqrt(rcos * rcos + 1 + 2 * r) # Taking into account Earth curvature
+                imin = np.argmin(np.abs(wvs-wvz))
+                print('Chosen wvz is: ', wvs[imin])
+                at = at[imin]**depth
+                print(np.shape(at), np.shape(wt))
+                atmed = np.interp(self.specCube.wave, wt , at)
+                print(np.shape(atmed))
+                atran = atmed
+                self.computeFluxAtm(atmed)
+                for sc in self.sci:
+                    sc.updateSpectrum(atran=atran, f=self.specCube.flux)
+                # tab with total flux
+                self.doZoomAll('new AT')
+                # tabs with apertures
+                self.onModifiedAperture('new AT')
             else:
                 self.sb.showMessage("This operation is possible with FIFI-LS cubes only", 2000)    
         except:
             self.sb.showMessage("First choose a cube ", 1000)
         
+    def getWVZ(self, alt, za):
+        wvzline, okPressed = QInputDialog.getDouble(self, "Altitude: " + str(alt) + 
+                                                    " Zenithal Angle: " + str(za),
+                                                    "Water vapor at zenith", 5, 1.5, 10., 2)
+        if okPressed:
+            return wvzline
+        else:
+            return None
+
     def reloadFile(self):
         """Reload the file."""        
         try:
