@@ -21,7 +21,8 @@ config = {
         'scripts':['bin/sospex'],
         'include_package_data':True,
         'package_data':{'sospex':['copyright.txt','icons/*.png','icons/*.gif',
-                                  'help/*.html','yellow-stylesheet.css']},
+                                  'help/*.html','yellow-stylesheet.css',
+                                  'data/*.gz']},
         'classifiers':[
                 "Programming Language :: Python :: 3",
                 "License :: OSI Approved :: GPLv3+ License",
