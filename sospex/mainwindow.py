@@ -4233,7 +4233,9 @@ class GUI (QMainWindow):
         xr = x * (1+self.specCube.baryshift)
         for i in range(ny):
             for j in range(nx):
-                self.specCube.flux[:, i, j] = np.interp(x, xr, self.specCube.uflux[:, i, j] / atmed)
+                uflux = self.specCube.uflux[:, i, j]
+                offset = np.nanmedian(uflux)
+                self.specCube.flux[:, i, j] = np.interp(x, xr, (uflux - offset)/ atmed + offset)
         
     def readAtran(self, detchan, order):
         import os
@@ -4284,8 +4286,8 @@ class GUI (QMainWindow):
                 at = at[imin]**depth
                 print(np.shape(at), np.shape(wt))
                 atmed = np.interp(self.specCube.wave, wt , at)
-                print(np.shape(atmed))
                 atran = atmed
+                atmed[atmed < 0.3] = np.nan   # Do not correct for too low atmospheric transmission
                 self.computeFluxAtm(atmed)
                 for sc in self.sci:
                     sc.updateSpectrum(atran=atran, f=self.specCube.flux)
