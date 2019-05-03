@@ -784,9 +784,12 @@ class GUI (QMainWindow):
             # If tab is pix, then compute the center to decide which Voronoi cells it belongs
             if istab == 1:
                 if self.ncells > 1:
-                    xc = int(np.median(xx))
-                    yc = int(np.median(yy))
-                    ncell = self.regions[yc,xc]
+                    xc = np.median(xx)
+                    yc = np.median(yy)
+                    if np.isfinite(xc) & np.isfinite(yc):
+                        ncell = self.regions[int(yc), int(xc)]
+                    else:
+                        ncell = 0
                 else:
                     ncell = 0
             else:
@@ -4234,7 +4237,8 @@ class GUI (QMainWindow):
         for i in range(ny):
             for j in range(nx):
                 uflux = self.specCube.uflux[:, i, j]
-                offset = np.nanmedian(uflux)
+                offset = 0
+                #offset = np.nanmedian(uflux)
                 self.specCube.flux[:, i, j] = np.interp(x, xr, (uflux - offset)/ atmed + offset)
         
     def readAtran(self, detchan, order):
@@ -4333,6 +4337,11 @@ class GUI (QMainWindow):
         
     def newFile(self):
         """Display a new image."""
+        # First remove contours
+        try:
+            self.removeContours()
+        except:
+            pass
         fd = QFileDialog()
         fd.setLabelText(QFileDialog.Accept, "Import")
         fd.setNameFilters(["Fits Files (*.fits)", "All Files (*)"])
