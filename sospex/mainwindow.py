@@ -787,6 +787,13 @@ class GUI (QMainWindow):
                     xc = np.median(xx)
                     yc = np.median(yy)
                     if np.isfinite(xc) & np.isfinite(yc):
+                        yc = int(yc)
+                        xc = int(xc)
+                        ny, nx = np.shape(self.regions)
+                        if yc == ny:
+                            yc = ny - 1
+                        if xc == nx:
+                            xc = nx - 1
                         ncell = self.regions[int(yc), int(xc)]
                     else:
                         ncell = 0
@@ -797,25 +804,31 @@ class GUI (QMainWindow):
 
             if istab == 1 and self.continuum is not None:
                 xc=np.median(xx); yc = np.median(yy)
-                i = int(np.rint(xc)); j = int(np.rint(yc))
-                try:
-                    cont = self.continuum[:, j, i]
-                except:
+                if np.isfinite(xc) & np.isfinite(yc):
+                    i = int(np.rint(xc)); j = int(np.rint(yc))
+                    try:
+                        cont = self.continuum[:, j, i]
+                    except:
+                        cont = None
+                    try:
+                        moments = [self.M0[j, i], self.M1[j, i], self.M2[j, i],
+                                   self.M3[j, i], self.M4[j, i]]
+                        noise = self.noise[j, i]
+                    except:
+                        moments = None
+                        noise = None
+                    try:
+                        lines = []
+                        for line in self.lines:
+                            lines.append([line[0][j, i], line[1][j, i], 
+                                          line[2][j, i], line[3][j, i]])
+                    except:
+                        lines = None
+                else:
                     cont = None
-                try:
-                    moments = [self.M0[j, i], self.M1[j, i], self.M2[j, i],
-                               self.M3[j, i], self.M4[j, i]]
-                    noise = self.noise[j, i]
-                except:
                     moments = None
                     noise = None
-                try:
-                    lines = []
-                    for line in self.lines:
-                        lines.append([line[0][j, i], line[1][j, i], 
-                                      line[2][j, i], line[3][j, i]])
-                except:
-                    lines = None
+                    lines = None                    
             else:
                 cont = None
                 moments = None
@@ -1759,6 +1772,7 @@ class GUI (QMainWindow):
             options = ['Set to zero', 'Set to medians']
         CFP = ContFitParams(options)
         if CFP.exec_() == QDialog.Accepted:
+
             option = CFP.save()
             if option == 'Fit all cube':
                 self.fitContAll()
@@ -1768,6 +1782,7 @@ class GUI (QMainWindow):
                 self.setContinuumMedian()
             elif option == 'Set to zero':
                 self.setContinuumZero()
+
             else:
                 pass
         else:
@@ -1780,6 +1795,7 @@ class GUI (QMainWindow):
     def setContinuumZero(self):
         """Set continuum to zero."""
         self.openContinuumTab()        
+
         self.continuum[:]=0.
         self.C0[:]=0.
         self.refreshContinuum()
@@ -1795,6 +1811,7 @@ class GUI (QMainWindow):
             xg,yg = zip(*xy)
             xg = np.array(xg); yg = np.array(yg)
             if sc.xunit == 'THz':
+
                 c = 299792458.0  # speed of light in m/s
                 xg = c/xg * 1.e-6  # THz to um
         else:
@@ -1813,6 +1830,7 @@ class GUI (QMainWindow):
     def setContinuumMedian(self):
         """Compute continuum by using the median signal per pixel."""
         self.openContinuumTab()
+
         sc = self.sci[self.spectra.index('Pix')]
         print('ncells ', self.ncells)
         if sc.guess is None:
