@@ -2,7 +2,8 @@
 
 [![Anaconda-Server Badge](https://anaconda.org/darioflute/sospex/badges/version.svg)](https://anaconda.org/darioflute/sospex)
 [![Anaconda-Server Badge](https://anaconda.org/darioflute/sospex/badges/latest_release_date.svg)](https://anaconda.org/darioflute/sospex)
-
+[![Anaconda-Server Badge](https://anaconda.org/darioflute/sospex/badges/license.svg)](https://anaconda.org/darioflute/sospex)
+[![Anaconda-Server Badge](https://anaconda.org/darioflute/sospex/badges/platforms.svg)](https://anaconda.org/darioflute/sospex)
 
 **sospex** displays FIFI-LS, PACS, and GREAT spectral cubes and allows interactions with them.
 The cube is shown as a 2D image (spatial image at a given wavelength) and a spectrum (plot of single
