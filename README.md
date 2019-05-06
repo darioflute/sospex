@@ -16,9 +16,10 @@ A version is provided for Windows with limited testing.
 
 ### Current version
 
-The current version released on anaconda is: 0.36.beta 
+The current version released on anaconda is: 0.37.beta 
+[The current version released on anaconda is:](sospex/version.json)
 
-Release date:  April 26, 2019
+Release date:  May 6, 2019
 
 ### Install with anaconda
 
