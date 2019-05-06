@@ -1,6 +1,6 @@
 # <img alt="SoSpEx" src="sospex/icons/sospexlogo.png" height="100">
 
-The sospex code displays FIFI-LS and GREAT spectral cubes and allows interactions with them.
+SoSpEx displays FIFI-LS, PACS, and GREAT spectral cubes and allows interactions with them.
 In particular, the cube is shown as a 2D image (spatial image obtained as
 average along the wavelength dimension) and a spectrum (sum of spatial pixels
 of the original cube).
@@ -9,19 +9,21 @@ It is possible also to crop the cube over the spatial image or cut it along
 the wavelength dimension.
 External images and cubes can be uploaded and overplotted on the spectral cube.
 
-- **Source:** https://github.com/darioflute/numpy
+- **Source:** https://github.com/darioflute/sospex
 - **Bug reports:** https://github.com/darioflute/sospex/issues
-
-**The code runs with Python 3.**
-
-It has been developed and tested on Mac OS-X 10.11.6 (El Capitan) and Ubuntu Linux (14.04 LTS, Trusty Tahr).
-A version is provided for Windows with limited testing.
 
 ### Current version
 
 The current version released on anaconda is: 0.37.beta  
 
 Release date:  May 6, 2019
+
+It has been developed and tested on Mac OS-X 10.11.6 (El Capitan) and 
+Ubuntu Linux (14.04 LTS, Trusty Tahr).
+A version is provided for Windows with limited testing.
+
+
+[Installation]](https://github.com/darioflute/sospex/INSTALL.md)
 
 ### Install with anaconda
 
