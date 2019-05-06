@@ -7,12 +7,10 @@ range to show the spatial average emission. The cube can be manipolated (cropped
 moments of the emission can be computed and displayed. 
 External images and cubes can be uploaded and overplotted on the spectral cube.
 
-Developed and tested on Mac OS-X 10.11.6 (El Capitan) and 
-Ubuntu Linux (14.04 LTS, Trusty Tahr). An untested anaconda version is provided for Windows.
-
 - **Version:** 0.37.beta  (May 6, 2019)
 - **Source:** https://github.com/darioflute/sospex
 - **Bug reports:** https://github.com/darioflute/sospex/issues
+- **Anaconda:** https://anaconda.org/darioflute/sospex
 - **How to install:** https://github.com/darioflute/sospex/blob/master/INSTALL.md
 - **Tutorials:** https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/tutorials.html
 
