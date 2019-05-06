@@ -7,7 +7,10 @@ of the original cube).
 The user can define apertures to compute the spectrum on the 2D image.
 It is possible also to crop the cube over the spatial image or cut it along
 the wavelength dimension.
-External images can be uploaded and overplotted on the spectral cube.
+External images and cubes can be uploaded and overplotted on the spectral cube.
+
+- **Source:** https://github.com/darioflute/numpy
+- **Bug reports:** https://github.com/darioflute/sospex/issues
 
 **The code runs with Python 3.**
 
@@ -16,7 +19,7 @@ A version is provided for Windows with limited testing.
 
 ### Current version
 
-The current version released on anaconda is: 0.37.beta
+The current version released on anaconda is: 0.37.beta  
 
 Release date:  May 6, 2019
 
