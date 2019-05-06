@@ -305,9 +305,11 @@ class GUI (QMainWindow):
             self.sb.showMessage("First load a spectral cube ", 1000)
 
     def about(self):
+        from sospex import __version__
         # Get path of the package
         file=open(os.path.join(self.path0,"copyright.txt"),"r")
         message=file.read()
+        message = 'SOSPEX - version: ' + __version__ + '\n' + message
         QMessageBox.about(self, "About", message)
 
     def createImagePanel(self):
@@ -5229,7 +5231,9 @@ class GUI (QMainWindow):
         sc.updateYlim()     
         
 def main():
+    from sospex import __version__
     # QApplication.setStyle('Fusion')
+    print('sospex version: ', __version__)
     app = QApplication(sys.argv)
     gui = GUI()    
     # Adjust geometry to size of the screen
@@ -5240,5 +5244,5 @@ def main():
     # Add an icon for the application
     app.setWindowIcon(QIcon(os.path.join(gui.path0,'icons','sospex.png')))
     app.setApplicationName('SOSPEX')
-    app.setApplicationVersion('0.36-beta')
+    app.setApplicationVersion(__version__)
     sys.exit(app.exec_())
