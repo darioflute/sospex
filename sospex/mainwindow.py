@@ -4265,7 +4265,7 @@ class GUI (QMainWindow):
         import os
         from astropy.io import fits
         path0, file0 = os.path.split(__file__)
-        print('Path for Atran is ', path0)
+        # print('Path for Atran is ', path0)
         if detchan == 'BLUE':
             file = 'AtranBlue'+str(order)+'.fits.gz'
         else:
@@ -4296,7 +4296,7 @@ class GUI (QMainWindow):
                 print('Channel ', channel, ' Order', order)
                 atrandata = self.readAtran(channel, order)
                 wt, atran, altitudes, wvs = atrandata
-                print('WVS ', wvs)
+                # print('WVS ', wvs)
                 imin = np.argmin(np.abs(altitudes-altitude))
                 at = atran[imin]
                 angle = za * np.pi/180.
@@ -4306,9 +4306,9 @@ class GUI (QMainWindow):
                 rcos = r * cos_angle
                 depth = -rcos + np.sqrt(rcos * rcos + 1 + 2 * r) # Taking into account Earth curvature
                 imin = np.argmin(np.abs(wvs-wvz))
-                print('Chosen wvz is: ', wvs[imin])
+                # print('Chosen wvz is: ', wvs[imin])
                 at = at[imin]**depth
-                print(np.shape(at), np.shape(wt))
+                # print(np.shape(at), np.shape(wt))
                 atmed = np.interp(self.specCube.wave, wt , at)
                 atran = atmed
                 atmed[atmed < 0.3] = np.nan   # Do not correct for too low atmospheric transmission
