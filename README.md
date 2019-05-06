@@ -16,6 +16,12 @@ A version is provided for Windows with limited testing.
 
 ### Current version
 
+"standard-version": {
+    "scripts": {
+      "postchangelog": "cat sospex/version.json | grep '\"version\"' > VERSION"
+    }
+  }
+
 [The current version released on anaconda is:](https://github.com/darioflute/sospex/sospex/version.json)
 
 Release date:  May 6, 2019
