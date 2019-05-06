@@ -9,24 +9,17 @@ It is possible also to crop the cube over the spatial image or cut it along
 the wavelength dimension.
 External images and cubes can be uploaded and overplotted on the spectral cube.
 
-- **Source:** https://github.com/darioflute/sospex
-- **Bug reports:** https://github.com/darioflute/sospex/issues
-- **Install instructions:** https://github.com/darioflute/sospex/blob/master/INSTALL.md
-- **Tutorials:** https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/tutorials.html
-
-### Current version
-
-The current version released on anaconda is: 0.37.beta  
-
-Release date:  May 6, 2019
+The current version on anaconda is: 0.37.beta  (May 6, 2019)
 
 Developed and tested on Mac OS-X 10.11.6 (El Capitan) and 
 Ubuntu Linux (14.04 LTS, Trusty Tahr). An untested version is provided for Windows.
 
+- **Source:** https://github.com/darioflute/sospex
+- **Bug reports:** https://github.com/darioflute/sospex/issues
+- **How to install:** https://github.com/darioflute/sospex/blob/master/INSTALL.md
+- **Tutorials:** https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/tutorials.html
 
-### How to start the program
-
-Start by typing in a window:
+Once installed, start it by typing in a window:
 
 sospex
 
