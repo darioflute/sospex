@@ -12,7 +12,7 @@ External images and cubes can be uploaded and overplotted on the spectral cube.
 - **Bug reports:** https://github.com/darioflute/sospex/issues
 - **Anaconda:** https://anaconda.org/darioflute/sospex
 - **How to install:** https://github.com/darioflute/sospex/blob/master/INSTALL.md
-- **Tutorials:** https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/tutorials.html
+- **Tutorials:** https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/tutorials.ipynb
 
 Once installed, start it by typing in a terminal window:
 ```bash
