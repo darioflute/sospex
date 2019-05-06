@@ -12,6 +12,7 @@ External images and cubes can be uploaded and overplotted on the spectral cube.
 - **Source:** https://github.com/darioflute/sospex
 - **Bug reports:** https://github.com/darioflute/sospex/issues
 - **Install instructions:** https://github.com/darioflute/sospex/blob/master/INSTALL.md
+- **Tutorials:** https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/tutorials.html
 
 ### Current version
 
@@ -19,14 +20,13 @@ The current version released on anaconda is: 0.37.beta
 
 Release date:  May 6, 2019
 
-It has been developed and tested on Mac OS-X 10.11.6 (El Capitan) and 
-Ubuntu Linux (14.04 LTS, Trusty Tahr).
-A version is provided for Windows with limited testing.
+Developed and tested on Mac OS-X 10.11.6 (El Capitan) and 
+Ubuntu Linux (14.04 LTS, Trusty Tahr). An untested version is provided for Windows.
 
 
 ### How to start the program
 
-To start simply type:
+Start by typing in a window:
 
 sospex
 
@@ -41,33 +41,3 @@ tree and select a file.
 To quit the program, click on the icon shaped as an exiting person.
 
 The question mark icon open a series of tutorials on your web browser.
-
-### Tutorials
-
-[Load a spectral cube](https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/start.ipynb)
-
-[Zoom and Pan](https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/zoom.ipynb)
-
-[Change image intensity levels](https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/intensity.ipynb)
-
-[Using the spectral panel](https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/specpanel.ipynb)
-
-[Sliding along the spectral dimension](https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/slider.ipynb)
-
-[Select a slice of the cube](https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/slice.ipynb)
-
-[Crop and cut the cubes](https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/cutcrop.ipynb)
-
-[Select and modify apertures](https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/apertures.ipynb)
-
-[Load external images](https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/extimages.ipynb)
-
-[Blink between images](https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/blink.ipynb)
-
-[Overlap contours](https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/contours.ipynb)
-
-[Save images and spectra](https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/save.ipynb)
-
-[Fit continuum and compute moments](https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/moments.ipynb)
-
-[Erase part of the cube](https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/erase.ipynb)
