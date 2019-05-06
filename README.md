@@ -1,5 +1,9 @@
 # <img alt="SoSpEx" src="sospex/icons/sospexlogo.png" height="100">
 
+[![Anaconda-Server Badge](https://anaconda.org/darioflute/sospex/badges/version.svg)](https://anaconda.org/darioflute/sospex)
+[![Anaconda-Server Badge](https://anaconda.org/darioflute/sospex/badges/latest_release_date.svg)](https://anaconda.org/darioflute/sospex)
+
+
 **sospex** displays FIFI-LS, PACS, and GREAT spectral cubes and allows interactions with them.
 The cube is shown as a 2D image (spatial image at a given wavelength) and a spectrum (plot of single
 spatial pixel). The user can define apertures to compute the spectrum on the 2D image or a wavelength
@@ -7,7 +11,6 @@ range to show the spatial average emission. The cube can be manipolated (cropped
 moments of the emission can be computed and displayed. 
 External images and cubes can be uploaded and overplotted on the spectral cube.
 
-- **Version:** 0.37.beta  -  May 6, 2019
 - **Source:** https://github.com/darioflute/sospex
 - **Bug reports:** https://github.com/darioflute/sospex/issues
 - **Anaconda:** https://anaconda.org/darioflute/sospex
