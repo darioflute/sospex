@@ -16,8 +16,7 @@ A version is provided for Windows with limited testing.
 
 ### Current version
 
-The current version released on anaconda is: 0.37.beta 
-[The current version released on anaconda is:](sospex/version.json)
+[The current version released on anaconda is:](https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/version.json)
 
 Release date:  May 6, 2019
 
