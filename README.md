@@ -15,9 +15,9 @@ External images and cubes can be uploaded and overplotted on the spectral cube.
 - **Tutorials:** https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/tutorials.html
 
 Once installed, start it by typing in a window::
-
-   | *sospex*
-
+```bash
+    sospex
+```
 This will open a window with a few instructions and a series of buttons.
 Each button has a tooltip help, i.e. hovering over the button will make appear
 a succinct explanation of what the button is supposed to do.
