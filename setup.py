@@ -2,13 +2,17 @@
 """Setup script to install sospex."""
 
 from distutils.core import setup
+import json
+
+with open('sospex/version.json') as fp:
+    _info = json.load(fp)
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 config = {
         'name':'sospex',
-        'version':'0.36.b0',
+        'version':_info['version'],
         'description':'SOFIA SPectral EXplorer',
         'long_description':long_description,
         'long_description_type':"text/markdown",
@@ -22,7 +26,7 @@ config = {
         'include_package_data':True,
         'package_data':{'sospex':['copyright.txt','icons/*.png','icons/*.gif',
                                   'help/*.html','yellow-stylesheet.css',
-                                  'data/*.gz']},
+                                  'data/*.gz','version.json']},
         'classifiers':[
                 "Programming Language :: Python :: 3",
                 "License :: OSI Approved :: GPLv3+ License",
