@@ -16,7 +16,7 @@ External images and cubes can be uploaded and overplotted on the spectral cube.
 
 Once installed, start it by typing in a window:
 
-   sospex
+   |*sospex*
 
 This will open a window with a few instructions and a series of buttons.
 Each button has a tooltip help, i.e. hovering over the button will make appear
