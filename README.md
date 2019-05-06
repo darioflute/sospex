@@ -23,7 +23,7 @@ Ubuntu Linux (14.04 LTS, Trusty Tahr).
 A version is provided for Windows with limited testing.
 
 
-[Installation]](https://github.com/darioflute/sospex/INSTALL.md)
+[Installation](https://github.com/darioflute/sospex/INSTALL.md)
 
 ### Install with anaconda
 
