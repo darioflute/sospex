@@ -7,6 +7,8 @@ range to show the spatial average emission. The cube can be manipolated (cropped
 moments of the emission can be computed and displayed. 
 External images and cubes can be uploaded and overplotted on the spectral cube.
 
+<link rel="import" href="sospex/version.json">
+
 - **Version:** 0.37.beta  (May 6, 2019)
 - **Source:** https://github.com/darioflute/sospex
 - **Bug reports:** https://github.com/darioflute/sospex/issues
