@@ -8,7 +8,7 @@
 
 **sospex** displays and analyses FIFI-LS, PACS, and GREAT spectral cubes.
 Cubes are shown as 2D images (spatial image at a given wavelength) and spectra (plot of single
-spatial pixel). The user can explore them by moving the mouse on the image or a cursor on the spectrum.
+spatial pixel). The user can explore them by moving the cursor on the image or a bar on the spectrum.
 Apertures can be defined to compute the spectrum on the 2D image or a wavelength
 range can be selected to show the spatial average emission. The cube can be manipolated (cropped and trimmed) and
 moments of the emission can be computed and displayed. 
