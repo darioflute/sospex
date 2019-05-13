@@ -509,11 +509,11 @@ class VoronoiInteractor(QObject):
                 n = np.array([-t[1], t[0]]) # normal
                 midpoint = self.sites[pointidx].mean(axis=0)
                 far_point = vor.vertices[i] + np.sign(np.dot(midpoint - center, n)) * n * 100
-                x = [vor.vertices[i,0], far_point[0]]
-                y = [vor.vertices[i,1], far_point[1]]
-                ray = Line2D(x, y, color='black', linestyle='--')#, animated=True)
-                self.ax.add_line(ray)
-                self.rays.append(ray)
+                #x = [vor.vertices[i,0], far_point[0]]
+                #y = [vor.vertices[i,1], far_point[1]]
+                #ray = Line2D(x, y, color='black', linestyle='--')#, animated=True)
+                #self.ax.add_line(ray)
+                #self.rays.append(ray)
 
     def connect(self):
         self.cid_draw = self.canvas.mpl_connect('draw_event', self.draw_callback)
