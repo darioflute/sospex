@@ -508,7 +508,7 @@ class VoronoiInteractor(QObject):
                 t = t / np.linalg.norm(t)
                 n = np.array([-t[1], t[0]]) # normal
                 midpoint = self.sites[pointidx].mean(axis=0)
-                far_point = vor.vertices[i] + np.sign(np.dot(midpoint - center, n)) * n * 100
+                #far_point = vor.vertices[i] + np.sign(np.dot(midpoint - center, n)) * n * 100
                 #x = [vor.vertices[i,0], far_point[0]]
                 #y = [vor.vertices[i,1], far_point[1]]
                 #ray = Line2D(x, y, color='black', linestyle='--')#, animated=True)

@@ -792,9 +792,9 @@ class GUI (QMainWindow):
                         yc = int(yc)
                         xc = int(xc)
                         ny, nx = np.shape(self.regions)
-                        if yc == ny:
+                        if yc >= ny:
                             yc = ny - 1
-                        if xc == nx:
+                        if xc >= nx:
                             xc = nx - 1
                         ncell = self.regions[int(yc), int(xc)]
                     else:
@@ -1498,7 +1498,9 @@ class GUI (QMainWindow):
         tree = KDTree(self.sites)
         tq = tree.query(self.specCube.points)
         self.regions = tq[1].reshape(ny, nx)
+        self.ncells = len(self.sites)
         if event == 'voronoi modified':
+            print('number of cells is now ', self.ncells)
             pass
         elif event == 'one voronoi site added':
             try:
@@ -2188,6 +2190,11 @@ class GUI (QMainWindow):
 
     def computeMomentsAll(self):
         """Compute moments all over the cube."""
+        # Remove contours
+        try:
+            self.removeContours()
+        except:
+            pass
         # Define region (whole image)
         nx = self.specCube.nx
         ny = self.specCube.ny
