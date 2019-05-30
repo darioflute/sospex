@@ -4,8 +4,37 @@ from PyQt5.QtCore import pyqtSignal, QObject
 from matplotlib.lines import Line2D
 import matplotlib.transforms as transforms
 from matplotlib.patches import Rectangle, Polygon
-from matplotlib.mlab import dist_point_to_segment
+#from matplotlib.mlab import dist_point_to_segment
 from matplotlib.artist import Artist
+
+
+def dist_point_to_segment(p, s0, s1):
+    """
+    Get the distance of a point to a segment.
+
+      *p*, *s0*, *s1* are *xy* sequences
+
+    This algorithm from
+    http://geomalgorithms.com/a02-_lines.html
+    """
+    p = np.asarray(p, float)
+    s0 = np.asarray(s0, float)
+    s1 = np.asarray(s1, float)
+    v = s1 - s0
+    w = p - s0
+
+    c1 = np.dot(w, v)
+    if c1 <= 0:
+        return np.hypot(p, s0)
+
+    c2 = np.dot(v, v)
+    if c2 <= c1:
+        return np.hypot(p, s1)
+
+    b = c1 / c2
+    pb = s0 + b * v
+    return np.hypot(p, pb)
+
 
 
 class SliderInteractor(QObject):
