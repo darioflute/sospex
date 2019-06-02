@@ -175,7 +175,9 @@ class NavigationToolbar(NavigationToolbar2QT):
         # Select only a few buttons
         self.iconDir = os.path.join(os.path.dirname(os.path.abspath(__file__)),"icons")
         self.toolitems = [
-            ('Home','Go back to original limits','home','home'),
+            #('Home','Go back to original limits','home','home'),
+            ('Backward','Go back','back','back'),
+            ('Forward','Go forward','forward','forward'),
             ('Pan','Pan figure','move','pan'),
             ('Zoom','Zoom in','zoom_to_rect','zoom'),
         ]
