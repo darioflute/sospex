@@ -1,7 +1,7 @@
 # <img alt="SoSpEx" src="sospex/icons/sospexlogo.png" height="100">
 
 [![Anaconda-Server Badge](https://anaconda.org/darioflute/sospex/badges/version.svg?branch=master&service=github)](https://anaconda.org/darioflute/sospex)
-[![Anaconda-Server Badge](https://anaconda.org/darioflute/sospex/badges/latest_release_date.svg?branch=master&kill_cache=1&service=github)](https://anaconda.org/darioflute/sospex)
+[![Anaconda-Server Badge](https://anaconda.org/darioflute/sospex/badges/latest_release_date.svg?branch=master&service=github)](https://anaconda.org/darioflute/sospex)
 [![PyPI version](https://badge.fury.io/py/sospex.svg?branch=master&kill_cache=1)](https://badge.fury.io/py/sospex)
 [![Anaconda-Server Badge](https://anaconda.org/darioflute/sospex/badges/license.svg)](https://anaconda.org/darioflute/sospex)
 [![Anaconda-Server Badge](https://anaconda.org/darioflute/sospex/badges/platforms.svg)](https://anaconda.org/darioflute/sospex)
