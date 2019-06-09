@@ -834,17 +834,19 @@ def computeMoments(p,m,w,dw,f):
             Slambda = c*Snu[pos]/(w[pos]*w[pos])*1.e6   # [Jy * Hz / um]
             w  = w[pos]
             dw = dw[pos]
-            M0 = np.sum(Slambda*dw) # [Jy Hz]  
-            M1 = np.sum(w*Slambda*dw)/M0 # [um]
-            M2 = np.sum(np.power(w-M1,2)*Slambda*dw)/M0 # [um*um]
+            M0 = np.nansum(Slambda*dw) # [Jy Hz]  
+            M1 = np.nansum(w*Slambda*dw)/M0 # [um]
+            M2 = np.nansum(np.power(w-M1,2)*Slambda*dw)/M0 # [um*um]
             SD = np.sqrt(M2)
-            M3 = np.sum(np.power(w-M1,3)*Slambda*dw)/M0/np.power(SD,3)
-            M4 = np.sum(np.power(w-M1,4)*Slambda*dw)/M0/np.power(SD,4)-3. # Relative to Gaussian which is 3
+            M3 = np.nansum(np.power(w-M1,3)*Slambda*dw)/M0/np.power(SD,3)
+            M4 = np.nansum(np.power(w-M1,4)*Slambda*dw)/M0/np.power(SD,4)-3. # Relative to Gaussian which is 3
             M0 *= 1.e-26 # [W/m2]  (W/m2 = Jy*Hz*1.e-26)
         else:
-            M0 = M1 = M2 = M3 = M4 = np.nan
+            M0 = 0.
+            M1 = M2 = M3 = M4 = np.nan
     else:
-        M0 = M1 = M2 = M3 = M4 = np.nan
+        M0 = 0.
+        M1 = M2 = M3 = M4 = np.nan
         sigma = np.nan
             
     return p, M0, M1, M2, M3, M4, sigma
