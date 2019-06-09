@@ -6,7 +6,7 @@
 [![Anaconda-Server Badge](https://anaconda.org/darioflute/sospex/badges/license.svg)](https://anaconda.org/darioflute/sospex)
 [![Anaconda-Server Badge](https://anaconda.org/darioflute/sospex/badges/platforms.svg)](https://anaconda.org/darioflute/sospex)
 
-**sospex** displays and analyses FIFI-LS, PACS, and GREAT spectral cubes.
+**sospex** is a GUI tool to display and analyse FIFI-LS, PACS, and GREAT spectral cubes.
 Cubes are shown as 2D images (spatial image at a given wavelength) and spectra (plot of single
 spatial pixel). The user can explore them by moving the cursor on the image or a bar on the spectrum.
 Apertures can be defined to compute the spectrum on the 2D image or a wavelength
