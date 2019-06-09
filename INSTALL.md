@@ -11,7 +11,7 @@ conda update --all -y
 
 The packages *lmfit* and *reproject* have to be installed from the astropy channel:
 
-conda install -c astropy lmfit -y
+conda install -c cprescher lmfit -y
 
 conda install -c astropy reproject -y
 
