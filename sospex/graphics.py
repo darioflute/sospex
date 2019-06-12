@@ -1154,15 +1154,16 @@ class SpectrumCanvas(MplCanvas):
                     atm = self.spectrum.atran
                     mask = atm > 0.5
                 else:
-                    mask = np.ones(n)
+                    mask = np.ones(n, dtype=bool)
                 mask[0:n5] = 0
                 mask[-n5:] = 0
                 maxf = np.nanmax(f[mask])
                 minf = np.nanmin(f[mask])
-                if uf is not None:
-                    n = len(uf) // 5
-                    umaxf = np.nanmax(uf[n:-n])
-                    if umaxf > maxf: maxf = umaxf
+                if self.spectrum.instrument == 'FIFI-LS':
+                    if uf is not None:
+                        n = len(uf) // 5
+                        umaxf = np.nanmax(uf[n:-n])
+                        if umaxf > maxf: maxf = umaxf
                 self.axes.set_ylim(minf, maxf*1.1)
                 self.ylimits = (minf,maxf*1.1)
                 self.updateYlim(f=f)
