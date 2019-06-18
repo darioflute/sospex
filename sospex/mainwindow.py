@@ -4237,7 +4237,7 @@ class GUI (QMainWindow):
             if self.specCube.instrument == 'FIFI-LS':
                 # substitute flux with uncorrected flux divided by the atm transmission at ref wav
                 at = self.specCube.atran
-                idx = np.argmin(np.abs(self.specCube.wave-self.specCube.l0))
+                idx = np.argmin(np.abs(self.specCube.wave-self.specCube.l0 * (1+self.specCube.redshift)))
                 atran = self.specCube.atran*0.+at[idx]
                 #self.specCube.atran[:] = atmed
                 # The uncorrected flux should be interpolated over the corrected flux wavelength
