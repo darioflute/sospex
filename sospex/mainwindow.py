@@ -5224,8 +5224,12 @@ class GUI (QMainWindow):
         istab = self.stabs.currentIndex()
         sc = self.sci[istab]
         spec = sc.spectrum
-        ylim0 = np.nanmin(spec.flux)
-        ylim1 = np.nanmax(spec.flux)
+        mask = np.isfinite(spec.flux)
+        if np.sum(mask) > 10:
+            ylim0 = np.nanmin(spec.flux)
+            ylim1 = np.nanmax(spec.flux)
+        else:
+            ylim0, ylim1 = sc.axes.get_ylim()
         if sc.instrument == 'FIFI-LS':
             u0 = np.nanmin(spec.uflux)
             u1 = np.nanmax(spec.uflux)

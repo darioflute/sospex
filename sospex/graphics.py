@@ -1069,7 +1069,6 @@ class SpectrumCanvas(MplCanvas):
         """Update ylimits."""
         # Grab new limits and update flux and 
         ylims = self.ylimits
-        # print('update y limits', ylims)
         self.axes.set_ylim(ylims)
         s = self.spectrum            
         if self.instrument == 'FIFI-LS':
@@ -1157,8 +1156,13 @@ class SpectrumCanvas(MplCanvas):
                     mask = np.ones(n, dtype=bool)
                 mask[0:n5] = 0
                 mask[-n5:] = 0
-                maxf = np.nanmax(f[mask])
-                minf = np.nanmin(f[mask])
+                if np.sum(mask) > 0:    
+                    maxf = np.nanmax(f[mask])
+                    minf = np.nanmin(f[mask])
+                else:
+                    dy = ylim1 - ylim0
+                    maxf = ylim1 / 1.1
+                    minf = ylim0 
                 if self.spectrum.instrument == 'FIFI-LS':
                     if uf is not None:
                         n = len(uf) // 5
