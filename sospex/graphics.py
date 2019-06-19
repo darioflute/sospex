@@ -882,6 +882,7 @@ class SpectrumCanvas(MplCanvas):
             self.ax4 = self.axes.twinx()
             self.ax2.set_ylim([0.01,1.1])
             self.ax4.tick_params(labelright='off',right='off')
+            self.ax4.set_yticklabels([]) # remove tick labels on the left
             self.atranLine = self.ax2.step(self.xr, s.atran, color='red', label='Atm', zorder=12)
             self.exposureLine = self.ax3.step(self.x, s.exposure,
                                               color='orange', label='E', zorder=13)
@@ -923,6 +924,14 @@ class SpectrumCanvas(MplCanvas):
             lns = self.fluxLine + self.linesLine
             lines = [self.fluxLayer,self.linesLayer]
             visibility = [self.displayFlux,self.displayLines]
+            try:
+                self.fig.delaxes(self.ax4)
+            except:
+                pass
+            self.ax4 = self.axes.twinx()
+            self.ax4.tick_params(labelright='off',right='off')
+            self.ax4.set_label('T$_b$ [K]')
+            self.ax4.set_ylim(self.axes.get_ylim()/self.Tb2Jy)
         elif s.instrument in ['PACS', 'FORCAST']:
             try:
                 self.fig.delaxes(self.ax3)
@@ -1151,7 +1160,7 @@ class SpectrumCanvas(MplCanvas):
                 if self.spectrum.instrument == 'FIFI-LS':
                     # Ignore regions with atm transmission < 0.5
                     atm = self.spectrum.atran
-                    mask = atm > 0.5
+                    mask = (atm > 0.5) & np.isfinite(f)
                 else:
                     mask = np.ones(n, dtype=bool)
                 mask[0:n5] = 0

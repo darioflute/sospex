@@ -151,6 +151,7 @@ class specCube(object):
         # Multiply by the flux fraction in the pixel assuming a 2D Gaussian curve                    
         pixfraction = 0.5 * erf(self.pixscale*0.5/bmaj) * erf(ypixscale*0.5/bmin)
         print('Beam fraction on pixel ', pixfraction)
+        self.Tb2Jy *= pixfraction
         self.flux *= pixfraction
         vel = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3
         self.l0 = l0
