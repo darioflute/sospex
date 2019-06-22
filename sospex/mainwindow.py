@@ -849,13 +849,14 @@ class GUI (QMainWindow):
                     try:
                         afluxAll = self.auxSpecCube.flux[:, yya, xxa]
                         # Normalization
-                        nmax = len(fluxAll) // 3
-                        fmax = np.nanmax(fluxAll[nmax:-nmax]) # Avoid borders
-                        fmin = np.nanmedian(fluxAll)
-                        anmax = len(afluxAll) // 3
-                        afmax = np.nanmax(afluxAll[anmax:-anmax]) # Avoid borders
-                        afmin = np.nanmedian(afluxAll)
-                        afluxAll = (afluxAll - afmin) / (afmax - afmin) * (fmax - fmin) + fmin
+                        # I should pass the cube and show the scale on the right
+                        #nmax = len(fluxAll) // 3
+                        #fmax = np.nanmax(fluxAll[nmax:-nmax]) # Avoid borders
+                        #fmin = np.nanmedian(fluxAll)
+                        #anmax = len(afluxAll) // 3
+                        #afmax = np.nanmax(afluxAll[anmax:-anmax]) # Avoid borders
+                        #afmin = np.nanmedian(afluxAll)
+                        #afluxAll = (afluxAll - afmin) / (afmax - afmin) * (fmax - fmin) + fmin
                         # afluxAll *= np.nanmax(fluxAll)/np.nanmax(afluxAll)
                     except:
                         afluxAll = self.auxSpecCube.flux[:,0,0] * np.nan

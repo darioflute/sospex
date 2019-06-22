@@ -969,12 +969,20 @@ class SpectrumCanvas(MplCanvas):
             self.axes.set_zorder(self.vaxes.get_zorder()+1) # put axes in front of vaxes
             self.axes.patch.set_visible(False) # hide the 'canvas' 
             # print('l0: ', s.l0)
+            try:
+                self.fig.delaxes(self.axu)
+            except:
+                pass
             if self.auxiliary:
                 # Draw auxiliary flux
+                self.axu = self.vaxes.twinx()
                 c =  299792.458 # km/s
                 v = (self.auxw/self.auxl0 - 1. - s.redshift) * c
                 print('auxl0 ', self.auxl0)
-                self.afluxLine = self.vaxes.step(v, self.aflux, color='cyan', label='F$_{x}$', zorder=12)
+                self.afluxLine = self.axu.step(v, self.aflux, color='cyan', label='F$_{x}$', zorder=12)
+                # Add scale on the right ?
+                self.axu.get_yaxis().set_tick_params(labelright='on', right='on',
+                                          direction='out', pad=5, colors='cyan')
                 self.afluxLayer, = self.afluxLine
                 lns += self.afluxLine
                 lines.append(self.afluxLayer)
@@ -1150,6 +1158,9 @@ class SpectrumCanvas(MplCanvas):
             if af is not None:
                 self.afluxLine[0].set_ydata(af)
                 self.vaxes.draw_artist(self.afluxLine[0])
+                minf = np.nanmin(af)
+                maxf = np.nanmax(af)
+                self.axu.set_ylim(minf, maxf*1.1)
             if f is not None:
                 self.fluxLine[0].set_ydata(f)
                 # self.spectrum.flux = f
