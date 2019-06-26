@@ -47,6 +47,13 @@ class specCube(object):
         self.nz, self.ny, self.nx = np.shape(self.flux)
         xi = np.arange(self.nx); yi = np.arange(self.ny)
         xi,yi = np.meshgrid(xi, yi)
+        # Compute rotation angle
+        h1 = self.wcs.to_header()
+        try:
+            self.crota2 = np.arctan2(-h1["PC2_1"], h1["PC2_2"]) * 180./np.pi
+        except:
+            self.crota2 = 0.
+        print('rotation angle ', self.crota2)
         # Alternative way
         # self.points = np.array([np.ravel(xi), np.ravel(yi)]).transpose()
         self.points = np.c_[np.ravel(xi), np.ravel(yi)]

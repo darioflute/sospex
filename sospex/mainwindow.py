@@ -404,6 +404,8 @@ class GUI (QMainWindow):
         else:
             self.itabs.addTab(t, b)
         ic = ImageCanvas(t, width=11, height=10.5, dpi=100)
+        if b in ['Flux','uFlux','Exp','C0','M0','M1','M2','M3','M4','L0','L1']:
+            ic.crota2 = self.specCube.crota2
         # No contours available
         ic.contours = None
         ic.contour0 = None
@@ -937,7 +939,7 @@ class GUI (QMainWindow):
                     ap.ellipse.center = x0, y0
                     ap.ellipse.width = w0
                     ap.ellipse.height = h0
-                    ap.ellipse.angle = angle
+                    ap.ellipse.angle = angle - ic.crota2 + ima.crota2
                     ap.updateMarkers()
                     ima.changed = True
             if aper.type == 'Rectangle' or aper.type == 'Square' or aper.type == 'Pixel':
@@ -955,7 +957,7 @@ class GUI (QMainWindow):
                     ap.rect.set_xy((x0,y0))
                     ap.rect.set_width(w0)
                     ap.rect.set_height(h0)
-                    ap.rect.angle = angle
+                    ap.rect.angle = angle  - ic.crota2 + ima.crota2
                     ap.updateMarkers()
                     ima.changed = True
             elif aper.type == 'Polygon':
@@ -1572,6 +1574,8 @@ class GUI (QMainWindow):
         ic.compute_initial_figure(image=image, wcs=self.specCube.wcs, title=band,
                                   cMap=self.colorMap, cMapDir=self.colorMapDirection,
                                   stretch=self.stretchMap)
+        if band in ['M0','M1','M2','M3','M4','C0','v','sv','L0','L1']:
+            ic.crota2 = self.specCube.crota2
         ih = self.ihi[self.bands.index(band)]
         ih.compute_initial_figure(image=None)
         # Add apertures
@@ -2764,6 +2768,8 @@ class GUI (QMainWindow):
     def drawNewAperture(self, selAp, r0, d0, ws, hs, angle):
         """Draw new selected aperture."""
         n = len(self.photoApertures)
+        itab = self.itabs.currentIndex()
+        ic0 = self.ici[itab]
         if selAp == 'Square':
             self.disactiveSelectors()
             # Define square
@@ -2773,7 +2779,8 @@ class GUI (QMainWindow):
                 x0, y0 = ic.wcs.wcs_world2pix(r0, d0, 0)
                 w = ws / ic.pixscale
                 h = hs / ic.pixscale
-                square = RectangleInteractor(ic.axes, (x0, y0), w, angle=angle)
+                square = RectangleInteractor(ic.axes, (x0, y0), w, 
+                                             angle=angle - ic0.crota2 + ic.crota2)
                 ic.photApertures.append(square)
                 cidap = square.mySignal.connect(self.onRemoveAperture)
                 ic.photApertureSignal.append(cidap)
@@ -2787,7 +2794,8 @@ class GUI (QMainWindow):
                 x0, y0 = ic.wcs.wcs_world2pix(r0, d0, 0)
                 w = ws / ic.pixscale
                 h = hs / ic.pixscale
-                rectangle = RectangleInteractor(ic.axes, (x0, y0), w, h, angle=angle)
+                rectangle = RectangleInteractor(ic.axes, (x0, y0), w, h, 
+                                                angle=angle - ic0.crota2 + ic.crota2)
                 ic.photApertures.append(rectangle)
                 cidap=rectangle.mySignal.connect(self.onRemoveAperture)
                 ic.photApertureSignal.append(cidap)
@@ -2816,7 +2824,8 @@ class GUI (QMainWindow):
                 x0, y0 = ic.wcs.wcs_world2pix(r0, d0, 0)
                 w = ws / ic.pixscale
                 h = hs / ic.pixscale
-                ellipse = EllipseInteractor(ic.axes, (x0, y0), w, h, angle=angle)
+                ellipse = EllipseInteractor(ic.axes, (x0, y0), w, h,
+                                            angle=angle - ic0.crota2 + ic.crota2)
                 ic.photApertures.append(ellipse)
                 cidap=ellipse.mySignal.connect(self.onRemoveAperture)
                 ic.photApertureSignal.append(cidap)
@@ -3107,6 +3116,10 @@ class GUI (QMainWindow):
             ic.compute_initial_figure(image=image,wcs=wcs,title=band,
                                       cMap=self.colorMap,cMapDir=self.colorMapDirection,
                                       stretch=self.stretchMap)
+            try:
+                ic.crota2 = downloadedImage.crota2
+            except:
+                ic.crota2 = 0.
             ih.compute_initial_figure(image=image)
             ic.image.set_clim(ih.limits)
             ic.changed = True
@@ -3195,7 +3208,7 @@ class GUI (QMainWindow):
                 x0,y0 = aper.ellipse.center
                 w0    = aper.ellipse.width
                 h0    = aper.ellipse.height
-                angle = aper.ellipse.angle
+                angle = aper.ellipse.angle - ic0.crota2 + ic.crota2
                 ra0,dec0 = ic0.wcs.wcs_pix2world(x0,y0,0)
                 ws = w0 * ic0.pixscale; hs = h0 * ic0.pixscale
                 # Add ellipse
@@ -3212,7 +3225,7 @@ class GUI (QMainWindow):
                 w0    = aper.rect.get_width()
                 h0    = aper.rect.get_height()
                 #print(type(h0))
-                angle = aper.rect.angle
+                angle = aper.rect.angle - ic0.crota2 + ic.crota2
                 ra0,dec0 = ic0.wcs.wcs_pix2world(x0,y0,0)
                 ws = w0 * ic0.pixscale; hs = h0 * ic0.pixscale
                 # Add rectangle
@@ -3240,7 +3253,7 @@ class GUI (QMainWindow):
                 x0,y0 = aper.rect.get_xy()
                 w0    = aper.rect.get_width()
                 h0    = aper.rect.get_height()
-                angle = aper.rect.angle
+                angle = aper.rect.angle - ic0.crota2 + ic.crota2
                 ra0,dec0 = ic0.wcs.wcs_pix2world(x0,y0,0)
                 ws = w0 * ic0.pixscale; hs = h0 * ic0.pixscale
                 # Add rectangle

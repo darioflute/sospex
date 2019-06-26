@@ -250,6 +250,9 @@ class cloudImage(object):
                 if x >= 0 and x <= nx and y >= 0 and y  <= ny:
                     print('Source inside the FITS image')
                     # Check if N aligned with y, if not reproject image
+                    h1 = self.wcs.to_header()
+                    self.crota2 = np.arctan2(-h1["PC2_1"], h1["PC2_2"]) * 180./np.pi
+                    print('rotation angle ', self.crota2)
                     try:
                         h1 = self.to_header()
                         pc11=h1["PC1_1"]
@@ -665,6 +668,9 @@ class cloudImage(object):
             self.wcs = None
             print('Coordinates out of the SDSS survey')
   
-    
+        h1 = self.wcs.to_header()
+        self.crota2 = np.arctan2(-h1["PC2_1"], h1["PC2_2"]) * 180./np.pi
+        print('rotation angle ', self.crota2)
+
         
             

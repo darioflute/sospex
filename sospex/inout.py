@@ -27,6 +27,7 @@ def exportAperture(self):
         aperture = ic.photApertures[nap]
         type = aperture.type
         print('type is ', type)
+        print('rotation angle ', ic.crota2)
         if type == 'Polygon':
             verts = aperture.poly.get_xy()
             adverts = np.array([(ic.wcs.wcs_pix2world(x,y,0)) for (x,y) in verts])                
@@ -41,7 +42,7 @@ def exportAperture(self):
                 'type': aperture.type,
                 'width': aperture.rect.get_width()*ic.pixscale,
                 'height': aperture.rect.get_height()*ic.pixscale,
-                'angle': aperture.rect.angle,
+                'angle': aperture.rect.angle - ic.crota2,
                 'ra0': r0.tolist(),
                 'dec0': d0.tolist()
                 }
@@ -52,7 +53,7 @@ def exportAperture(self):
                     'type': aperture.type,
                     'width':  aperture.ellipse.width*ic.pixscale,
                     'height': aperture.ellipse.height*ic.pixscale,
-                    'angle':  aperture.ellipse.angle,
+                    'angle':  aperture.ellipse.angle - ic.crota2,
                     'ra0': r0.tolist(),
                     'dec0': d0.tolist()
                     }
@@ -102,16 +103,19 @@ def importAperture(self):
                 #verts = np.array([(ic.wcs.all_world2pix(r,d,1)) for (r,d) in adverts])       
                 self.drawNewPolygonAperture(adverts)
             else:
+                itab = self.itabs.currentIndex()
+                ic = self.ici[itab]
+                print('rotation angle ', ic.crota2)
                 r0 = data['ra0']
                 d0 = data['dec0']
                 w = data['width']
                 h = data['height']
-                angle = data['angle']
+                angle = data['angle'] + ic.crota2
                 self.drawNewAperture(type,r0,d0,w,h,angle)
         except:
             self.sb.showMessage("The file is not a valide aperture file.", 3000)
     else:
-        self.sb.showMessage("To export an aperture, select the tab with the desired aperture ", 3000)
+        self.sb.showMessage("To import an aperture, select a tab ", 3000)
         
 def exportGuesses(self):
     "Export tessellation and guesses of continuum and lines."
