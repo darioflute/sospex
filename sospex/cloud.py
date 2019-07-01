@@ -251,7 +251,10 @@ class cloudImage(object):
                     print('Source inside the FITS image')
                     # Check if N aligned with y, if not reproject image
                     h1 = self.wcs.to_header()
-                    self.crota2 = np.arctan2(-h1["PC2_1"], h1["PC2_2"]) * 180./np.pi
+                    try:
+                        self.crota2 = np.arctan2(-h1["PC2_1"], h1["PC2_2"]) * 180./np.pi
+                    except:
+                        self.crota2 = 0.
                     print('rotation angle ', self.crota2)
                     try:
                         h1 = self.to_header()
