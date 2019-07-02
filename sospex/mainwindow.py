@@ -3706,6 +3706,7 @@ class GUI (QMainWindow):
                 header['ALTI_END'] = (self.specCube.altitude[1],'Equivalent aircraft pressure altitude [feet]')
                 header['PIXSCAL'] = (self.specCube.pixscale,'Pixel scale [arcsec]' )
                 header['RESOLUN'] = (self.specCube.resolution,'Spectral resolution')
+                header['DETCHAN'] = (self.specCube.header['DETCHAN'],'Data comes from ..')
                 header['NAXIS'] = (3,'Number of axis')                
                 # Primary header
                 hdu = fits.PrimaryHDU()
@@ -4303,11 +4304,13 @@ class GUI (QMainWindow):
     def fluxNewAT(self):
         try:
             # Check if FIFI-LS cube
+            print('instrument is ', self.specCube.instrument)
             if self.specCube.instrument == 'FIFI-LS':
                 # Call a dialog showing the altitude and elevation angle in the header and asking for zenithal water vapor
                 za = 0.5 * (self.specCube.za[0] + self.specCube.za[1])
                 altitude = 0.5 * (self.specCube.altitude[0] + self.specCube.altitude[1])
                 wvz = self.getWVZ(altitude,za)
+                print('Selected Zenithal Water Vapor: ', wvz)
                 # Download a new AT curve and apply it to the uflux
                 channel = self.specCube.header["DETCHAN"]
                 if channel == 'BLUE':
@@ -4317,7 +4320,6 @@ class GUI (QMainWindow):
                 print('Channel ', channel, ' Order', order)
                 atrandata = self.readAtran(channel, order)
                 wt, atran, altitudes, wvs = atrandata
-                # print('WVS ', wvs)
                 imin = np.argmin(np.abs(altitudes-altitude))
                 at = atran[imin]
                 angle = za * np.pi/180.
@@ -4327,9 +4329,7 @@ class GUI (QMainWindow):
                 rcos = r * cos_angle
                 depth = -rcos + np.sqrt(rcos * rcos + 1 + 2 * r) # Taking into account Earth curvature
                 imin = np.argmin(np.abs(wvs-wvz))
-                # print('Chosen wvz is: ', wvs[imin])
                 at = at[imin]**depth
-                # print(np.shape(at), np.shape(wt))
                 atmed = np.interp(self.specCube.wave, wt , at)
                 atran = atmed
                 atmed[atmed < 0.3] = np.nan   # Do not correct for too low atmospheric transmission
