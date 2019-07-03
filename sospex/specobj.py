@@ -198,11 +198,17 @@ class specCube(object):
             self.redshift = 0.
         print('Object is ',self.objname)
         self.flux = hdl['image'].data
-        # print('Flux read')
-        self.exposure = hdl['coverage'].data
-        # print('Coverage read')
+        #print('Flux read')
+        try:
+            self.exposure = hdl['coverage'].data
+            print('Coverage read')
+        except:
+            print('No coverage available - range observation')
+            self.computeExpFromNan()
+            print('New exposure computed')
+            
         wave = hdl['wcs-tab'].data
-        # print('Wvl read')
+        #print('Wvl read')
         nwave = len(np.shape(wave['wavelen']))
         if nwave == 3:
             self.wave = np.concatenate(wave['wavelen'][0])
@@ -210,7 +216,9 @@ class specCube(object):
             self.wave = np.concatenate(wave['wavelen'])
         self.l0 = np.nanmedian(self.wave)
         self.n = len(self.wave)
-        # print('Length of wavelength ',self.n)
+        print('Length of wavelength ',self.n)
+        print('Min and max wavelengths: ', np.nanmin(self.wave), np.nanmax(self.wave))
+        print(np.shape(self.wave))
         header = hdl['IMAGE'].header
         self.header = header
         # print('Header ',header)
@@ -225,7 +233,7 @@ class specCube(object):
         hdu.header['CTYPE1']=header['CTYPE1']
         hdu.header['CTYPE2']=header['CTYPE2']
         self.wcs = WCS(hdu.header).celestial
-        # print('astrometry ', self.wcs)
+        print('astrometry ', self.wcs)
         self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
         self.crpix3 = 1
         w = self.wave
