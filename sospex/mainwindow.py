@@ -218,22 +218,24 @@ class GUI (QMainWindow):
                                 triggered=self.maskCubeInsidePolygon))
         erase.addAction(QAction('.. outside a polygon',self,shortcut='',
                                 triggered=self.maskCubeOutsidePolygon))
-        continuum = tools.addMenu("Fit continuum")
-        continuum.addAction(QAction('Define guess',self,shortcut='',
+        continuum = tools.addMenu("Continuum and moments")
+        continuum.addAction(QAction('Define guesses',self,shortcut='',
                                     triggered=self.guessContinuum))
-        continuum.addAction(QAction('Fit all cube',self,shortcut='',triggered=self.fitContAll))
-        continuum.addAction(QAction('Fit inside region',self,shortcut='',
-                                    triggered=self.fitContRegion))
-        continuum.addAction(QAction('Set continuum to zero ',self,shortcut='',
-                                    triggered=self.setContinuumZero))        
-        continuum.addAction(QAction('Set continuum to medians ',self,shortcut='',
-                                    triggered=self.setContinuumMedian))        
-        moments = tools.addMenu("Compute moments")
+        continuum.addAction(QAction('Compute',self,shortcut='',
+                                    triggered=self.ContMomLines))
+        #continuum.addAction(QAction('Fit all cube',self,shortcut='',triggered=self.fitContAll))
+        #continuum.addAction(QAction('Fit inside region',self,shortcut='',
+        #                            triggered=self.fitContRegion))
+        #continuum.addAction(QAction('Set continuum to zero ',self,shortcut='',
+        #                            triggered=self.setContinuumZero))        
+        #continuum.addAction(QAction('Set continuum to medians ',self,shortcut='',
+        #                            triggered=self.setContinuumMedian))        
+        #moments = tools.addMenu("Compute moments")
         # moments.addAction(QAction('Define slice',self,shortcut='',triggered=self.sliceCube))
-        moments.addAction(QAction('Compute all cube',self,shortcut='',
-                                  triggered=self.computeMomentsAll))
-        moments.addAction(QAction('Compute inside region',self,shortcut='',
-                                  triggered=self.computeRegion))
+        #moments.addAction(QAction('Compute all cube',self,shortcut='',
+         #                         triggered=self.computeMomentsAll))
+        #moments.addAction(QAction('Compute inside region',self,shortcut='',
+         #                         triggered=self.computeRegion))
         tools.addAction(QAction(u'Recompute C\u2080, v, \u03c3\u1d65',self,shortcut='',
                                 triggered=self.computeVelocities))
         apertures = tools.addMenu("Select aperture")
