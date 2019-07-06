@@ -760,7 +760,7 @@ class LineInteractor(QObject):
     def computeMarkers(self):
         'Compute position of markers.'
         x = self.x0 + 0.5 * self.fwhm * np.array([-1, 0, 1])
-        y = self.c0 + x * self.cs + self.A * np.array([0.5, 1., 0.5])
+        y = self.c0 + (x - self.x0) * self.cs + self.A * np.array([0.5, 1., 0.5])
         self.xy = [(i, j) for (i, j) in zip(x, y)]
 
     def computeGaussian(self):
@@ -769,7 +769,7 @@ class LineInteractor(QObject):
         # Create an array of x values and compute the value of the Gaussian on it
         x = np.linspace(self.x0 - self.fwhm, self.x0 + self.fwhm, 30)
         dx = (x - self.x0) / self.sigma / np.sqrt(2.)
-        y = self.c0 + x * self.cs + self.A * np.exp(-dx * dx)
+        y = self.c0 + (x - self.x0) * self.cs + self.A * np.exp(-dx * dx)
         self.verts = [(x_, y_) for x_, y_ in zip(x, y)]
         return
 

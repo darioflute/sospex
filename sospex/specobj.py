@@ -45,6 +45,8 @@ class specCube(object):
         print('ref wavelength at n: ', self.n0)
         # Create a grid of points
         self.nz, self.ny, self.nx = np.shape(self.flux)
+        if self.n0 <= 0:
+            self.n0 = self.nz // 2
         xi = np.arange(self.nx); yi = np.arange(self.ny)
         xi,yi = np.meshgrid(xi, yi)
         # Compute rotation angle
@@ -99,9 +101,14 @@ class specCube(object):
         self.x = hdl['X'].data
         self.y = hdl['Y'].data
         #self.atran = hdl['TRANSMISSION'].data
+        self.channel = self.header['DETCHAN']
+        if self.channel == 'BLUE':
+            self.order = self.header["G_ORD_B"]
+        else:
+            self.order = '1'
+        # Read reference wavelength from file group name
         try:
-            channel = self.header['DETCHAN']
-            if channel == 'RED':
+            if self.channel == 'RED':
                 filegp = self.header['FILEGP_R']
             else:
                 filegp = self.header['FILEGP_B']
@@ -159,6 +166,7 @@ class specCube(object):
         pixfraction = 0.5 * erf(self.pixscale*0.5/bmaj) * erf(ypixscale*0.5/bmin)
         print('Beam fraction on pixel ', pixfraction)
         self.Tb2Jy *= pixfraction
+        print('Tb2Jy ', self.Tb2Jy)
         self.flux *= pixfraction
         vel = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3
         self.l0 = l0
@@ -277,6 +285,22 @@ class specCube(object):
         self.crval3 = w[0]
         self.cdelt3 = np.median(w[1:] - w[:-1])
         
+    
+    def getResolutionFIFI(self):
+        """Compute resolution at reference wavelength for FIFI-LS"""
+        if self.instrument != 'FIFI-LS':
+            return
+        l0 = self.l0
+        z = self.redshift
+        l = l0 * (1.+z)
+        if self.channel == 'RED':
+            return 0.062423 * l * l - 6.6595 * l + 647.65
+        else:
+            if self.order == '1':
+                return 0.16864 * l * l - 22.831 * l + 1316.6 
+            else:
+                return 1.9163 * l * l - 187.35 * l + 5496.9
+
 
 class ExtSpectrum(object):
     """ class for external spectrum """

@@ -870,6 +870,26 @@ class SpectrumCanvas(MplCanvas):
         if self.auxiliary:
             self.xlannotation = self.axes.annotate(" $\\lambda_x$ = {:.4f} $\\mu$m".format(self.auxl0),
                                               xy=(-0.15,-0.17), picker=5, xycoords='axes fraction')
+            
+            
+        # Check if vel is defined and draw velocity axis            
+        try:
+            vlims = self.computeVelLimits()         
+            try:
+                self.fig.delaxes(self.vaxes)
+            except:
+                pass
+            self.vaxes = self.axes.twiny()
+            self.vaxes.xaxis.set_major_formatter(ScalarFormatter(useOffset=False))
+            self.vaxes.set_xlim(vlims)
+            self.vaxes.set_xlabel("Velocity [km/s]")
+            # Elevate zorder of first axes (to guarantee axes gets the events)
+            self.axes.set_zorder(self.vaxes.get_zorder()+1) # put axes in front of vaxes
+            self.axes.patch.set_visible(False) # hide the 'canvas' 
+            # print('l0: ', s.l0)
+        except:
+            print('l0 is not defined')
+
         if s.instrument == 'FIFI-LS':
             try:
                 self.fig.delaxes(self.ax2)
@@ -924,14 +944,15 @@ class SpectrumCanvas(MplCanvas):
             lns = self.fluxLine + self.linesLine
             lines = [self.fluxLayer,self.linesLayer]
             visibility = [self.displayFlux,self.displayLines]
-            try:
-                self.fig.delaxes(self.ax4)
-            except:
-                pass
-            self.ax4 = self.axes.twinx()
-            self.ax4.tick_params(labelright='off',right='off')
-            self.ax4.set_label('T$_b$ [K]')
-            self.ax4.set_ylim(self.axes.get_ylim()/self.Tb2Jy)
+            if s.instrument == 'GREAT':
+                try:
+                    self.fig.delaxes(self.Tax)
+                except:
+                    pass
+                self.Taxes = self.axes.twinx()
+                self.Taxes.tick_params(labelright='off',right='off')
+                self.Taxes.set_ylabel('T$_b$ [K]')
+                self.Taxes.set_ylim(self.axes.get_ylim()/self.spectrum.Tb2Jy)
         elif s.instrument in ['PACS', 'FORCAST']:
             try:
                 self.fig.delaxes(self.ax3)
@@ -954,21 +975,8 @@ class SpectrumCanvas(MplCanvas):
                                       direction='out', pad=5, colors='orange')
             else:
                 self.ax3.get_yaxis().set_tick_params(labelright='off', right='off')
-        # Check if vel is defined and draw velocity axis
+        # It is possible to draw an external cube only if the vaxis is defined
         try:
-            vlims = self.computeVelLimits()         
-            try:
-                self.fig.delaxes(self.vaxes)
-            except:
-                pass
-            self.vaxes = self.axes.twiny()
-            self.vaxes.xaxis.set_major_formatter(ScalarFormatter(useOffset=False))
-            self.vaxes.set_xlim(vlims)
-            self.vaxes.set_xlabel("Velocity [km/s]")
-            # Elevate zorder of first axes (to guarantee axes gets the events)
-            self.axes.set_zorder(self.vaxes.get_zorder()+1) # put axes in front of vaxes
-            self.axes.patch.set_visible(False) # hide the 'canvas' 
-            # print('l0: ', s.l0)
             try:
                 self.fig.delaxes(self.axu)
             except:
@@ -1092,6 +1100,8 @@ class SpectrumCanvas(MplCanvas):
             self.ax4.set_ylim(ylims)
             self.ax3.set_ylim([0.5, np.nanmax(s.exposure) * 1.54])
             self.ax2.set_ylim([0.01, 1.1])
+        if self.instrument == 'GREAT':
+            self.Taxes.set_ylim(ylims/s.Tb2Jy)
         # Adjust line labels if they exist
         try:
            ylim0, ylim1 = ylims
@@ -1126,7 +1136,7 @@ class SpectrumCanvas(MplCanvas):
            pass
         self.fig.canvas.draw_idle()
 
-    def updateSpectrum(self, f=None, uf=None, exp=None, cont=None, af=None,
+    def updateSpectrum(self, f=None, uf=None, exp=None, cont=None, cslope=None, af=None,
                        moments=None, noise=None, atran=None, lines=None, ncell=0):
         try:
             # Remove moments
@@ -1147,6 +1157,7 @@ class SpectrumCanvas(MplCanvas):
                 self.axes.draw_artist(self.atranLine[0])
             if cont is not None:
                 self.spectrum.continuum = cont
+                self.spectrum.cslope = cslope
                 self.contLine[0].set_ydata(cont)
                 self.axes.draw_artist(self.contLine[0])
             if uf is not None:
@@ -1180,7 +1191,7 @@ class SpectrumCanvas(MplCanvas):
                     maxf = np.nanmax(f[mask])
                     minf = np.nanmin(f[mask])
                 else:
-                    dy = ylim1 - ylim0
+                    #dy = ylim1 - ylim0
                     maxf = ylim1 / 1.1
                     minf = ylim0 
                 if self.spectrum.instrument == 'FIFI-LS':
@@ -1191,52 +1202,13 @@ class SpectrumCanvas(MplCanvas):
                 self.axes.set_ylim(minf, maxf*1.1)
                 self.ylimits = (minf,maxf*1.1)
                 self.updateYlim(f=f)
-                if self.guess is not None:
-                    # Reposition the guess to see the markers
-                    g = self.guess
-                    x, y = zip(*g.xy)
-                    x = self.xguess[ncell]
-                    if self.xunit == 'THz':
-                       mask = ((self.x < x[0]) & (self.x > x[1])) | ((self.x < x[2]) & (self.x > x[3]))
-                    else:   
-                       mask = ((self.x > x[0]) & (self.x < x[1])) | ((self.x > x[2]) & (self.x < x[3]))                        
-                    med = np.nanmedian(f[mask])
-                    ymed = np.nanmedian(y)
-                    dy = med - ymed
-                    y += dy
-                    g.xy = [(i,j) for (i,j) in zip(x,y)]
-                    g.updateLinesMarkers()
-                    yc = np.nanmedian(y)
-                    # Update line guesses
-                    try:
-                        if len(self.lines) > 0:
-                            for line in self.lines:
-                                if line is None:
-                                    pass
-                                else:
-                                    gg = self.lguess[line.n][ncell]
-                                    line.c0 = yc
-                                    line.x0 = gg[0]
-                                    line.fwhm = gg[1]
-                                    indmin = np.nanargmin(np.abs(self.x-line.x0))
-                                    A = f[indmin]-yc
-                                    if line.A > 0:
-                                        if A > 0:
-                                            line.A = A
-                                        else:
-                                            line.A = 0.01
-                                    else:
-                                        if A < 0:
-                                            line.A = A
-                                        else:
-                                            line.A = -0.01
-                                    line.updateCurves()
-                    except BaseException:
-                        pass
+                self.updateGuess(f, ncell)
             if moments is not None:
                 self.moments = True
                 # Update position, size, and dispersion from moments
-                x = moments[1]; y = np.nanmedian(cont)
+                x = moments[1]
+                # print('cont ', self.spectrum.continuum)
+                y = np.nanmedian(cont) # self.spectrum.continuum
                 # FWHM of the distribution (assuming Gaussian)
                 dx = np.sqrt(2.*np.log(2))* np.sqrt(moments[2])
                 # Amplitude of a Gaussian ...
@@ -1256,6 +1228,8 @@ class SpectrumCanvas(MplCanvas):
                 # Gauss patch
                 sig = dx / (np.sqrt(2.*np.log(2)))
                 xx = np.arange(x-4*sig,x+4*sig,dx/10.)    
+                # Alternatively we can compute the continuum on the range
+                y = np.interp(xx, self.contLine[0].get_xdata(), cont)
                 gauss = y + A * np.exp(-(xx-x)**2/(2*sig*sig))
                 verts = list(zip(xx,gauss))
                 self.gauss = Polygon(verts, fill=False, closed=False,color='skyblue')
@@ -1278,7 +1252,8 @@ class SpectrumCanvas(MplCanvas):
                     xx2 = (xx-x)**2
                     gauss = np.exp(-xx2/(2*sigmag*sigmag))/(np.sqrt(2*np.pi) * sigmag)
                     cauchy = sigma/np.pi/(xx2+sigma*sigma)
-                    y = np.nanmedian(cont) # Better put the real continuum here (works only if constant)
+                    #y = np.nanmedian(cont) # Better put the real continuum here (works only if constant)
+                    y = np.interp(xx, self.contLine[0].get_xdata(), cont)
                     model = y + A * ((1-alpha)* gauss + alpha*cauchy)
                     # Case of Frequency
                     if self.xunit == 'THz':
@@ -1290,6 +1265,59 @@ class SpectrumCanvas(MplCanvas):
                     self.voigt.append(voigt)
         except:
             pass
+        
+    def updateGuess(self, f, ncell):
+        if self.guess is not None:
+            # Reposition the guess to see the markers
+            g = self.guess
+            x, y = zip(*g.xy)
+            x = self.xguess[ncell]
+            if self.xunit == 'THz':
+                mask = ((self.x < x[0]) & (self.x > x[1])) | ((self.x < x[2]) & (self.x > x[3]))
+            else:   
+                mask = ((self.x > x[0]) & (self.x < x[1])) | ((self.x > x[2]) & (self.x < x[3]))                        
+            med = np.nanmedian(f[mask])
+            ymed = np.nanmedian(y)
+            dy = med - ymed
+            y += dy
+            g.xy = [(i,j) for (i,j) in zip(x,y)]
+            g.updateLinesMarkers()
+            yc = np.nanmedian(y)
+            #print('cont y is ', yc)
+            # Update line guesses
+            try:
+                if len(self.lines) > 0:
+                    for line in self.lines:
+                        if line is None:
+                            pass
+                        else:
+                            gg = self.lguess[line.n][ncell]
+                            line.x0 = gg[0]
+                            line.fwhm = gg[1]
+                            indmin = np.nanargmin(np.abs(self.x-line.x0))
+                            yc = self.spectrum.continuum[indmin]
+                            if np.isfinite(yc):
+                                line.c0 = yc
+                                line.cs = self.spectrum.cslope
+                            else:
+                                # compute continuum from median of regions
+                                line.c0 = med
+                                line.cs = 0.
+                            A = f[indmin]-line.c0
+                            if line.A > 0:
+                                if A > 0:
+                                    line.A = A
+                                else:
+                                    line.A = 0.01
+                            else:
+                                if A < 0:
+                                    line.A = A
+                                else:
+                                    line.A = -0.01
+                            line.updateCurves()
+            except BaseException:
+                pass
+
             
     def shadeRegion(self, limits = None, color=None):
         if limits == None:

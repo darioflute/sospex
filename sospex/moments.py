@@ -424,8 +424,10 @@ class ContParams(QDialog):
         self.boundary = self.createGroup('Continuum boundary', ['None', 'Non negative'])
         self.kernel   = self.createGroup('Kernel pixels', ['1', '5', '9'], default=self.k)
         self.regions = self.createGroup('No of regions', ['4', '16' ,'64', '128', '256'])
-        self.emlines = self.createGroup('No of emission lines', ['0', '1', '2', '3'])
-        self.ablines = self.createGroup('No of absorption lines', ['0', '1', '2'])
+        #self.emlines = self.createGroup('No of emission lines', ['0', '1', '2', '3'])
+        #self.ablines = self.createGroup('No of absorption lines', ['0', '1', '2'])
+        self.emlines = self.createGroup('No of emission lines', ['0', '1', '2'])
+        self.ablines = self.createGroup('No of absorption lines', ['0'])
         # OK/Cancel line
         hgroup = QGroupBox()
         hbox = QHBoxLayout()
@@ -920,13 +922,18 @@ def multiFitContinuum(m, w, f, c, c0, w0, points, slope, intcp, posCont, kernel,
             results = [r.get() for r in res] 
     print('c is writeable ', c.flags)
     c_ = c.copy()
-    c0_ = c0.copy()
+    c0_ = c0.copy()  # continuum at ref wav
+    cs_ = c0.copy()  # slope of cont
     for p, pars in results:
         if pars is not None:
             i, j = p
             c_[:, j, i] = residuals(pars, w)
             c0_[j, i] = residuals(pars, w0)
-    return c_, c0_
+            try:
+                cs_[j, i] = pars['m'].value
+            except:
+                cs_[j, i] = 0.
+    return c_, c0_, cs_
 
 # Fit of lines
 
@@ -961,15 +968,15 @@ def fitLines(p, m,w,f,lines):
             x0 = line[0]
             sigma = line[1] / 2.355
             A = line[2] * c / (x0*x0) * 1.e-20 / norm # same units as flux
-            params[li+'center'].set(x0, min=(x0 - sigma/3.), max=(x0 + sigma/3.))
+            params[li+'center'].set(x0, min=(x0 - sigma/2.), max=(x0 + sigma/2.))
             if A > 0:
                 params[li+'amplitude'].set(A, min=0.1 * A, max=A * 2)
             else:
                 params[li+'amplitude'].set(A, min=2 * A, max=A * 0.1)
             params[li+'sigma'].set(sigma, min=sigma / 2., max=sigma * 2)
-            params[li + 'fraction'].set(0.1, max = 0.3)
+            params[li + 'fraction'].set(0.0, vary=False, max = 0.3)  # No Cauchy part (i.e. Gauss)
         # Minimize
-        out = model.fit(y, params, x=x)
+        out = model.fit(y, params, x=x, method='nelder')
         #               kws={'data': y, 'eps': e}, method='leastsq')
         # Return lines fitted parameters
         pars = out.params#.valuesdict()

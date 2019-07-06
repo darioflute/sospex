@@ -814,8 +814,10 @@ class GUI (QMainWindow):
                     i = int(np.rint(xc)); j = int(np.rint(yc))
                     try:
                         cont = self.continuum[:, j, i]
+                        cslope=self.Cs[j,i]
                     except:
                         cont = None
+                        cslope=None
                     try:
                         moments = [self.M0[j, i], self.M1[j, i], self.M2[j, i],
                                    self.M3[j, i], self.M4[j, i]]
@@ -832,11 +834,13 @@ class GUI (QMainWindow):
                         lines = None
                 else:
                     cont = None
+                    cslope=None
                     moments = None
                     noise = None
                     lines = None                    
             else:
                 cont = None
+                cslope=None
                 moments = None
                 noise = None
                 lines = None
@@ -872,10 +876,10 @@ class GUI (QMainWindow):
             sc.spectrum.flux = fluxAll
             if s.instrument in ['GREAT','HI']:
                 if sc.auxiliary:
-                    sc.updateSpectrum(f=fluxAll, af=afluxAll, cont=cont, moments=moments, 
+                    sc.updateSpectrum(f=fluxAll, af=afluxAll, cont=cont, cslope=cslope, moments=moments, 
                                       lines=lines, noise=noise, ncell=ncell)
                 else:
-                    sc.updateSpectrum(f=fluxAll, cont=cont, moments=moments, 
+                    sc.updateSpectrum(f=fluxAll, cont=cont,cslope=cslope, moments=moments, 
                                       lines=lines, noise=noise, ncell=ncell)
             elif s.instrument in ['PACS','FORCAST']:
                 if istab == 1:
@@ -883,11 +887,11 @@ class GUI (QMainWindow):
                 else:
                     expAll = np.nansum(s.exposure[:, yy, xx], axis=1)
                 if sc.auxiliary:
-                    sc.updateSpectrum(f=fluxAll, af=afluxAll, exp=expAll, cont=cont, 
+                    sc.updateSpectrum(f=fluxAll, af=afluxAll, exp=expAll, cont=cont, cslope=cslope,
                                       moments=moments, lines=lines,
                                       noise=noise, ncell=ncell)
                 else:
-                    sc.updateSpectrum(f=fluxAll, exp=expAll, cont=cont, 
+                    sc.updateSpectrum(f=fluxAll, exp=expAll, cont=cont, cslope=cslope,
                                       moments=moments, lines=lines,
                                       noise=noise, ncell=ncell)
             elif s.instrument == 'FIFI-LS':
@@ -905,11 +909,11 @@ class GUI (QMainWindow):
                 sc.spectrum.exposure = expAll
                 if sc.auxiliary:
                     sc.updateSpectrum(f=fluxAll, af=afluxAll, uf=ufluxAll, exp=expAll,
-                                      cont=cont, moments=moments, lines=lines, 
+                                      cont=cont,cslope=cslope, moments=moments, lines=lines, 
                                       noise=noise, ncell=ncell)
                 else:
                     sc.updateSpectrum(f=fluxAll, uf=ufluxAll, exp=expAll,
-                                      cont=cont, moments=moments, lines=lines, 
+                                      cont=cont,cslope=cslope, moments=moments, lines=lines, 
                                       noise=noise, ncell=ncell)
 
            
@@ -1673,7 +1677,8 @@ class GUI (QMainWindow):
                     A = np.nanmin(sc.spectrum.flux[idx]) - sc.guess.intcpt - sc.guess.slope * x0
             else:
                 A = As
-            LI = LineInteractor(sc.axes, sc.guess.intcpt, sc.guess.slope, x0, A, fwhm, nid,color=colors[i])
+            c0 = sc.guess.intcpt + x0 * sc.guess.slope  # continuum at line center
+            LI = LineInteractor(sc.axes, c0, sc.guess.slope, x0, A, fwhm, nid,color=colors[i])
             LI.modSignal.connect(self.onModifiedGuess)
             LI.mySignal.connect(self.onRemoveContinuum)
             lines.append(LI)
@@ -1716,6 +1721,7 @@ class GUI (QMainWindow):
         """Dialog to select fit options for the cube."""
         #if self.continuum is not None:
         sc = self.sci[self.spectra.index('Pix')]
+        print('fitcont: ', self.fitcont)
         if sc.guess is not None:
             if self.fitcont:
                 moments = True
@@ -1807,10 +1813,12 @@ class GUI (QMainWindow):
         """Set continuum to zero."""
         self.openContinuumTab()        
 
-        self.continuum[:]=0.
-        self.C0[:]=0.
+        nz,ny,nx = np.shape(self.specCube.flux)
+        self.continuum = np.zeros((nz,ny,nx))
+        self.C0 = np.zeros((ny,nx))
+        self.Cs = np.zeros((ny,nx))
         self.refreshContinuum()
-        self.fitCont = True
+        self.fitcont = True
 
     def getContinuumGuess(self, ncell=None):
         sc = self.sci[self.spectra.index('Pix')]
@@ -1863,6 +1871,7 @@ class GUI (QMainWindow):
                     j, i = np.where(self.regions == ncell)
                     self.C0[j, i] = np.nanmedian((self.specCube.flux[:, j, i])[mask,:], axis=0)                   
         self.continuum = np.broadcast_to(self.C0, np.shape(self.specCube.flux))
+        self.Cs = self.C0.copy() * 0. # Set all slopes to 0
         self.refreshContinuum()
         self.fitcont = True
 
@@ -1944,6 +1953,12 @@ class GUI (QMainWindow):
                 itab = self.bands.index(b)
                 ic = self.ici[itab]
                 ic.showImage(image=sb)
+                if (b == 'sv') & (self.specCube.instrument == 'FIFI-LS'):
+                    R = self.specCube.getResolutionFIFI()
+                    c = 299792.458 # km/s
+                    sR = c/R/2.355
+                    ic.fig.suptitle('$\sigma_v$ [km/s]  (R = '+str(int(R)) + 
+                                    ", $\sigma_R$ = {:.1f} km/s)".format(sR))
                 ic.image.format_cursor_data = lambda z: "{:.1f} km/s".format(float(z))
                 ih = self.ihi[itab]
                 ih.compute_initial_figure(image = sb)
@@ -2164,13 +2179,14 @@ class GUI (QMainWindow):
         sc = self.sci[self.spectra.index('Pix')]
         intcp = sc.guess.intcpt
         slope = sc.guess.slope
-        c, c0 = multiFitContinuum(self.Cmask, self.specCube.wave, self.specCube.flux,
+        c, c0, cs = multiFitContinuum(self.Cmask, self.specCube.wave, self.specCube.flux,
                                   self.continuum, self.C0, self.specCube.l0,
                                   points, slope, intcp, self.positiveContinuum,
                                   self.kernel, exp=self.specCube.exposure)
         self.continuum = c
         print('max continuum is ',np.nanmax(self.continuum))
         self.C0 = c0
+        self.Cs = cs
         # Refresh the plotted image
         itab = self.bands.index('C0')
         ic = self.ici[itab]
@@ -2192,7 +2208,7 @@ class GUI (QMainWindow):
         ic = self.ici[0]
         xc,yc = ic.photApertures[0].xy[0]  # marker coordinates (center of rectangle)
         i = int(np.rint(xc)); j = int(np.rint(yc))
-        sc.updateSpectrum(cont=self.continuum[:,j,i])
+        sc.updateSpectrum(cont=self.continuum[:,j,i], cslope = self.Cs[j,i])
         sc.fig.canvas.draw_idle()
 
     def computeMomentsAll(self):
@@ -2459,7 +2475,7 @@ class GUI (QMainWindow):
         xc,yc = ic.photApertures[0].xy[0]
         i = int(np.rint(xc)); j = int(np.rint(yc))
         moments = [self.M0[j, i], self.M1[j, i], self.M2[j, i], self.M3[j, i], self.M4[j, i]]
-        sc.updateSpectrum(cont=self.continuum[:, j, i], moments=moments, noise=self.noise[j, i])
+        sc.updateSpectrum(cont=self.continuum[:, j, i], cslope=self.Cs[j,i], moments=moments, noise=self.noise[j, i])
         sc.fig.canvas.draw_idle()
         # Compute Velocities
         self.computeVelocities()
@@ -2520,7 +2536,7 @@ class GUI (QMainWindow):
         lines = []
         for line in self.lines:
             lines.append([line[0][j, i], line[1][j, i], line[2][j, i], line[3][j, i]])
-        sc.updateSpectrum(cont=self.continuum[:, j, i], lines=lines)
+        sc.updateSpectrum(cont=self.continuum[:, j, i], cslope=self.Cs[j,i], lines=lines)
         sc.fig.canvas.draw_idle()
         
     def fitLinesOnly(self, points, ncell):
@@ -2576,7 +2592,7 @@ class GUI (QMainWindow):
         for line in self.lines:
             lines.append([line[0][j, i], line[1][j, i], line[2][j, i], line[3][j, i]])
         sc = self.sci[self.spectra.index('Pix')]
-        sc.updateSpectrum(cont=self.continuum[:, j, i], lines=lines)
+        sc.updateSpectrum(cont=self.continuum[:, j, i], cslope=self.Cs[j,i],lines=lines)
         sc.fig.canvas.draw_idle()
  
 
@@ -4314,13 +4330,7 @@ class GUI (QMainWindow):
                 wvz = self.getWVZ(altitude,za)
                 print('Selected Zenithal Water Vapor: ', wvz)
                 # Download a new AT curve and apply it to the uflux
-                channel = self.specCube.header["DETCHAN"]
-                if channel == 'BLUE':
-                    order = self.specCube.header["G_ORD_B"]
-                else:
-                    order = 1
-                print('Channel ', channel, ' Order', order)
-                atrandata = self.readAtran(channel, order)
+                atrandata = self.readAtran(self.channel, self.order)
                 wt, atran, altitudes, wvs = atrandata
                 imin = np.argmin(np.abs(altitudes-altitude))
                 at = atran[imin]
@@ -4611,7 +4621,7 @@ class GUI (QMainWindow):
         fluxAll = s.flux[:,y0,x0]
         if s.instrument == 'GREAT':
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
-                            redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy )
+                            redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy)
         elif s.instrument == 'HI':
             spec = Spectrum(s.wave, fluxAll,instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0)
@@ -4633,6 +4643,7 @@ class GUI (QMainWindow):
                             exposure=expAll, atran = s.atran, instrument=s.instrument,
                             redshift=s.redshift, baryshift=s.baryshift, l0=s.l0)
         sc.compute_initial_spectrum(spectrum=spec)
+        print('initial spectrum computed')
         self.specZoomlimits = [sc.xlimits, sc.ylimits]
         sc.cid = sc.axes.callbacks.connect('xlim_changed' or 'ylim_changed', self.doZoomSpec)
         sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
@@ -4730,6 +4741,7 @@ class GUI (QMainWindow):
             r = w0/dw
             w0 = c / w0 * 1.e-6
             dw = c / dw * 1.e-6 / np.abs(r * r - 0.25)
+        #print('slider at ',w0,' with width ',dw)
         self.slider = SliderInteractor(sc.axes, w0, dw)
         self.slider.modSignal.connect(self.slideCube)
 
