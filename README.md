@@ -14,15 +14,15 @@
 - **How to install:** https://github.com/darioflute/sospex/blob/master/INSTALL.md
 - **Tutorials:** https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/tutorials.ipynb
 
-Once installed, it starts by typing in a terminal window:
+Once installed, type in a terminal window:
 ```bash
     sospex
 ```
-This opens a window with a few instructions and a series of buttons.
+This opens a GUI with a few instructions and a series of buttons.
 Buttons have tooltip helps, i.e. hovering over a button makes appear
 a succinct explanation of what the button is supposed to do.
 
-Cubes are shown as images (spatial image at a given wavelength) and spectra (plot of single spatial pixel). Users can explore the cube by moving the cursor on the image and a bar on the spectrum.
+Cubes are shown as images (spatial image at a given wavelength) and spectra (plot of single spatial pixel). Users can explore the cubes by moving the cursor on the image and a bar on the spectrum.
 The spectrum from a region can be computed by defining an aperture on the image.
-By selecting a range on the spectrum, the average spatial emission in the range is shown in the image display. The cube can be manipolated (cropped and trimmed) and moments of the emission can be computed and displayed. 
-External images and cubes can be uploaded and overplotted on the spectral cube.
+By selecting a range on the spectrum, the average spatial emission in the wavelength range is shown in the image display. The cube can be manipolated (cropped and trimmed) and moments of the emission can be computed and displayed. 
+External images and cubes can be uploaded and their contours can be plotted on the spectral cube images.
