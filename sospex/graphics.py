@@ -351,9 +351,9 @@ class ImageCanvas(MplCanvas):
                 elif title == 'M2':
                     title = 'M$_2$'
                 elif title == 'M3':
-                    title = 'M$_3$'
+                    title = 'Normalized Skewness'
                 elif title == 'M4':
-                    title = 'M$_4$'
+                    title = 'Kurtosis Excess'
                 elif title == 'sv':
                     title = '$\sigma_v$ [km/s]'
                 elif title == 'v':

@@ -127,7 +127,11 @@ class specCube(object):
             print('The unsmoothed transmission is not available')
             self.atran = hdl['TRANSMISSION'].data   
         self.response = hdl['RESPONSE'].data
-        self.exposure = hdl['EXPOSURE_MAP'].data
+        nexp = self.header['NEXP']
+        exptime = self.header['EXPTIME']
+        # Exposure contains number of exposures - if all the exposure last the same time, the 
+        # following is correct, otherwise it is an approximation
+        self.exposure = hdl['EXPOSURE_MAP'].data.astype(float) * exptime/nexp
           
     def readGREAT(self, hdl):
         from scipy.special import erf

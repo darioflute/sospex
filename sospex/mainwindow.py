@@ -392,17 +392,23 @@ class GUI (QMainWindow):
         elif b == 'Exp':
             self.itabs.addTab(t, u'E')  # unicode
         elif b == 'C0':
-            self.itabs.addTab(t, u'C\u2080')  # unicode
+            self.itabs.addTab(t, u'C\u2080')  # unicode for 0
         elif b == 'M0':
-            self.itabs.addTab(t, u'M\u2080')  # unicode
+            self.itabs.addTab(t, u'M\u2080')  # unicode for 0
         elif b == 'M1':
-            self.itabs.addTab(t, u'M\u2081')  # unicode for sigma
+            self.itabs.addTab(t, u'M\u2081')  # unicode for 1
         elif b == 'M2':
-            self.itabs.addTab(t, u'M\u2082')  # unicode for sigma
+            self.itabs.addTab(t, u'M\u2082')  # unicode for 2
         elif b == 'M3':
-            self.itabs.addTab(t, u'M\u2083')  # unicode for sigma
+            #self.itabs.addTab(t, u'M\u2083')  # unicode for 3
+            self.itabs.addTab(t, u'Sk')  # Skewness
         elif b == 'M4':
-            self.itabs.addTab(t, u'M\u2084')  # unicode for sigma
+            #self.itabs.addTab(t, u'M\u2084')  # unicode for 4
+            self.itabs.addTab(t, u'K')  # Kurtosis
+        elif b == 'L0':
+            self.itabs.addTab(t, u'I\u2080')  # unicode 0
+        elif b == 'L1':
+            self.itabs.addTab(t, u'I\u2081')  # unicode 1      
         else:
             self.itabs.addTab(t, b)
         ic = ImageCanvas(t, width=11, height=10.5, dpi=100)
@@ -2250,8 +2256,10 @@ class GUI (QMainWindow):
             itab = self.itabs.currentIndex()
             ic0 = self.ici[itab]
             # Create/update moment tabs
-            newbands = ['M0','M1','M2','M3','M4']
-            sbands = [self.M0, self.M1, self.M2, self.M3,self.M4]
+            #newbands = ['M0','M1','M2','M3','M4']
+            #sbands = [self.M0, self.M1, self.M2, self.M3,self.M4]
+            newbands = ['M0', 'M3', 'M4']
+            sbands = [self.M0, self.M3, self.M4]
             for new,sb in zip(newbands,sbands):
                 if new not in self.bands:
                     self.addBand(new)
@@ -2441,8 +2449,10 @@ class GUI (QMainWindow):
         moments, self.noise = multiComputeMoments(m, w, f, c, moments,points)
         self.M0, self.M1, self.M2, self.M3, self.M4 = moments
         # Refresh the plotted images
-        bands = ['M0', 'M1', 'M2', 'M3', 'M4']
-        sbands = [self.M0, self.M1, self.M2, self.M3, self.M4]
+        #bands = ['M0', 'M1', 'M2', 'M3', 'M4']
+        #sbands = [self.M0, self.M1, self.M2, self.M3, self.M4]
+        bands = ['M0', 'M3', 'M4']
+        sbands = [self.M0, self.M3, self.M4]
         for b,sb in zip(bands,sbands):
             itab = self.bands.index(b)
             ic = self.ici[itab]
