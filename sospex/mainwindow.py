@@ -1932,14 +1932,35 @@ class GUI (QMainWindow):
         else:
             message = 'First define a guess for the continuum'
             self.sb.showMessage(message, 4000)
+            
+    def moveIndex(self, oldpos, newpos):
+        
+        bigList = [
+                self.bands,
+                self.tabi,
+                self.ici,
+                self.ihi,
+                self.ihcid,
+                self.icid1,
+                self.icid2,
+                self.icid3,
+                self.icid4,
+        ]
+
+        for elist in bigList:
+            item = elist[oldpos]
+            elist.remove(item)
+            elist.insert(newpos, item)
 
     def computeVelocities(self):
         """ Compute velocity and vel. dispersion from the moments """
         if self.M0 is not None:
+            itab = self.itabs.currentIndex()
+            origband = self.bands[itab]
             # Update tabs
             newbands = ['v','sv']
             sbands = [self.v,self.sv]
-            for new,sb in zip(newbands,sbands):
+            for new, sb in zip(newbands, sbands):
                 if new not in self.bands:
                     self.addBand(new)
                 else:
@@ -1953,8 +1974,8 @@ class GUI (QMainWindow):
             self.v = (self.M1/w0 -1. - z)* c # km/s
             self.sv = np.sqrt(self.M2) * c/w0  # km/s
             # Refresh the plotted images
-            bands = ['v','sv']
-            sbands = [self.v,self.sv]
+            bands = ['v', 'sv']
+            sbands = [self.v, self.sv]
             for b,sb in zip(bands,sbands):
                 itab = self.bands.index(b)
                 ic = self.ici[itab]
@@ -1975,10 +1996,24 @@ class GUI (QMainWindow):
                 ic.image.axes.set_ylim(ic0.image.axes.get_ylim())
                 ic.changed = True
             # Refresh current image (if a velocity)
-            itab = self.itabs.currentIndex()
-            if self.bands[itab] in bands:
-                ic = self.ici[itab]
-                ic.fig.canvas.draw_idle()
+            #if self.bands[itab] in bands:
+            #    print('refresh ', self.bands[itab])
+            #    ic = self.ici[itab]
+            #    ic.fig.canvas.draw_idle()
+            # Reorder tabs
+            for new in ['v','sv']:  
+                itab = self.bands.index(new)
+                itab0 = self.bands.index('M0')
+                if new == 'v':
+                    newpos = itab0 + 1
+                else:
+                    newpos = itab0 + 2
+                self.itabs.tabBar().moveTab(itab, newpos) # move v, sv after M0
+                # Move elements in associated lists
+                self.moveIndex(itab, newpos)
+            # Go back to original tab
+            itab = self.bands.index(origband)
+            self.itabs.setCurrentIndex(itab)
         else:
             message = 'First compute the moments'
             self.sb.showMessage(message, 4000)
