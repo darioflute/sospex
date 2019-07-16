@@ -510,7 +510,7 @@ class GUI (QMainWindow):
             reply = QMessageBox.question(self, 'Message', close_msg, QMessageBox.Yes, QMessageBox.No)
             if reply == QMessageBox.No:
                 return
-        #print('Removing spectral tab no ',stab)
+        print('Removing spectral tab no ',stab)
         if stab > 1:
             # Once the tab is removed, also the relative aperture should be removed
             itab = self.itabs.currentIndex()
@@ -530,11 +530,13 @@ class GUI (QMainWindow):
             del self.photoApertures[n]
             # Redraw apertures
             ic0.fig.canvas.draw_idle()
+        # Move to pixel tab
+        #print('Current number of spectral tabs ', len(self.stabs))
+        #self.stabs.setCurrentIndex(1)
         # Remove tab
         widget = self.stabs.widget(stab)
         if widget is not None:
             widget.deleteLater()
-        self.stabs.removeTab(stab)
         # Disconnect and remove canvases
         tab = self.stabi[stab]
         spec = self.sci[stab]
@@ -559,6 +561,9 @@ class GUI (QMainWindow):
         self.scid5.remove(c5)
         self.scid6.remove(c6)
         spec = None
+        # Remove stab from list
+        self.stabs.removeTab(stab)
+        #print('New number of spectral tabs ', len(self.stabs))
         # Rename aperture tabs
         if len(self.stabs) > 2:
             for i in range(2, len(self.stabs)):
@@ -2982,6 +2987,10 @@ class GUI (QMainWindow):
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
         print('aperture is ',self.selAp)
+        # Deactivate pixel
+        pixel = self.ici[0].photApertures[0]
+        pixel.line.set_visible(False)
+        pixel.showverts = False
         if self.selAp == 'Polygon':
             self.PS = PolygonSelector(ic.axes, self.onPolySelect,
                                       lineprops=dict(linestyle='-',color='g'),
