@@ -4,7 +4,6 @@ from PyQt5.QtCore import pyqtSignal, QObject
 from matplotlib.lines import Line2D
 import matplotlib.transforms as transforms
 from matplotlib.patches import Rectangle, Polygon
-#from matplotlib.mlab import dist_point_to_segment
 from matplotlib.artist import Artist
 
 
@@ -408,7 +407,7 @@ class DistanceSelector(QObject):
                 self.y.append(y)
                 self.line1.set_data([self.x[0], self.x[1]], [self.y[0], self.y[1]])
                 self.fig.canvas.draw_idle()
-                self.fig.canvas.mpl_disconnect(self.__ID1)
+                #self.fig.canvas.mpl_disconnect(self.__ID1)
                 self.xy = [(i,j) for (i,j) in zip(self.x,self.y)]
                 # Disconnect
                 self.fig.canvas.mpl_disconnect(self.__ID1) 
@@ -526,17 +525,17 @@ class VoronoiInteractor(QObject):
                 segment = Line2D(x, y, color='black', linestyle='-')#, animated=True)
                 self.ax.add_line(segment)
                 self.segments.append(segment)
-        center = self.sites.mean(axis=0)
+        #center = self.sites.mean(axis=0)
         # Ridge rays
         self.rays = []
         for pointidx, simplex in zip(vor.ridge_points, vor.ridge_vertices):
             simplex = np.asarray(simplex)
             if np.any(simplex < 0):
-                i = simplex[simplex >= 0][0] # finite end Voronoi vertex
+                #i = simplex[simplex >= 0][0] # finite end Voronoi vertex
                 t = self.sites[pointidx[1]] - self.sites[pointidx[0]]  # tangent
                 t = t / np.linalg.norm(t)
-                n = np.array([-t[1], t[0]]) # normal
-                midpoint = self.sites[pointidx].mean(axis=0)
+                #n = np.array([-t[1], t[0]]) # normal
+                #midpoint = self.sites[pointidx].mean(axis=0)
                 #far_point = vor.vertices[i] + np.sign(np.dot(midpoint - center, n)) * n * 100
                 #x = [vor.vertices[i,0], far_point[0]]
                 #y = [vor.vertices[i,1], far_point[1]]
@@ -951,4 +950,222 @@ class LineInteractor(QObject):
         # change line parameters
         self.x0 = c / self.x0 * 1.e-6
         self.fwhm *= c / self.x0**2 * 1.e-6
+
+    
+class PsfInteractor(QObject):
+
+    epsilon = 5
+    showverts = True
+    mySignal = pyqtSignal(str)
+    modSignal = pyqtSignal(str)
+   
+    def __init__(self, ax, center, radius, annulus=None):
+        super().__init__()
+        from matplotlib.patches import Circle
+        from matplotlib.lines import Line2D
+        # from matplotlib.artist import Artist
+        # To avoid crashing with maximum recursion depth exceeded
+        import sys
+        sys.setrecursionlimit(10000) # 10000 is 10x the default value
+
+        if annulus is None:
+            annulus = radius * 0.3
+        self.ax = ax
+        self.innerCircle = Circle(center, radius, edgecolor='Lime', facecolor='none',
+                                   angle=0, fill=False, animated=True)
+        self.ax.add_patch(self.innerCircle)
+        self.canvas = self.innerCircle.figure.canvas
+        self.outerCircle = Circle(center, radius + annulus, edgecolor='Lime',
+                                   facecolor='none', angle=0, fill=False,
+                                   linestyle='--', animated=True)
+        self.ax.add_patch(self.outerCircle)
+
+        # Create a line with center, width, and height points
+        self.center = self.innerCircle.center
+        self.inRadius = self.innerCircle.radius
+        self.outRadius = self.outerCircle.radius
+
+        x0, y0 = self.center
+        r0 = self.inRadius
+        r1 = self.outRadius
+
+        x = [x0, x0+r0, x0+r1]
+        y = [y0, y0, y0]
+        self.xy = [(i,j) for (i,j) in zip(x,y)]
+        self.line = Line2D(x, y, marker='o', linestyle=None, linewidth=0.,
+                           markerfacecolor='g', animated=True)
+        self.ax.add_line(self.line)
+        self.cid = self.innerCircle.add_callback(self.circles_changed)
+        self._ind = None  # the active point
+        self.connect()
+        self.press = None
+        self.lock = None
+  
+    def connect(self):
+        self.cid_draw = self.canvas.mpl_connect('draw_event', self.draw_callback)
+        self.cid_press = self.canvas.mpl_connect('button_press_event', self.button_press_callback)
+        self.cid_release = self.canvas.mpl_connect('button_release_event', self.button_release_callback)
+        self.cid_motion = self.canvas.mpl_connect('motion_notify_event', self.motion_notify_callback)
+        self.cid_key = self.canvas.mpl_connect('key_press_event', self.key_press_callback)
+        self.canvas.draw_idle()
+  
+    def disconnect(self):
+        self.canvas.mpl_disconnect(self.cid_draw)
+        self.canvas.mpl_disconnect(self.cid_press)
+        self.canvas.mpl_disconnect(self.cid_release)
+        self.canvas.mpl_disconnect(self.cid_motion)
+        self.canvas.mpl_disconnect(self.cid_key)
+        self.innerCircle.remove()
+        self.outerCircle.remove()
+        self.line.remove()
+        self.canvas.draw_idle()
+        self.aperture = None
         
+    def draw_callback(self, event):
+        self.background = self.canvas.copy_from_bbox(self.ax.bbox)
+        self.ax.draw_artist(self.innerCircle)
+        self.ax.draw_artist(self.outerCircle)
+        self.ax.draw_artist(self.line)
+
+    def circles_changed(self, ellipse):
+        'this method is called whenever the polygon object is called'
+        # only copy the artist props to the line (except visibility)
+        vis = self.line.get_visible()
+        Artist.update_from(self.line, ellipse)
+        self.line.set_visible(vis)  
+  
+    def get_ind_under_point(self, event):
+        'get the index of the point if within epsilon tolerance'
+        x, y = zip(*self.xy)
+        d = np.hypot(x - event.xdata, y - event.ydata)
+        indseq, = np.nonzero(d == d.min())
+        ind = indseq[0]
+        if d[ind] >= self.epsilon:
+            ind = None
+        return ind
+
+    def button_press_callback(self, event):
+        'whenever a mouse button is pressed'
+        if not self.showverts:
+            return
+        if event.inaxes is None:
+            return
+        if event.button != 1:
+            return
+        self._ind = self.get_ind_under_point(event)
+        x0, y0 = self.innerCircle.center
+        r0 = self.inRadius
+        r1 = self.outRadius
+        print('center ', x0, y0)
+        print('radii ' ,r0, r1)
+        self.press = x0, y0, r0, r1, event.xdata, event.ydata
+        self.xy0 = self.xy
+        self.lock = "pressed"
+
+    def key_press_callback(self, event):
+        'whenever a key is pressed'
+        if not event.inaxes:
+            return
+        if event.key == 't':
+            self.showverts = not self.showverts
+            self.line.set_visible(self.showverts)
+            if not self.showverts:
+                self._ind = None
+        elif event.key == 'd':
+            #self.disconnect()
+            #self.ellipse = None
+            #self.line = None
+            self.mySignal.emit('circles deleted')
+        self.canvas.draw_idle()
+
+    def button_release_callback(self, event):
+        'whenever a mouse button is released'
+        if not self.showverts:
+            return
+        if event.button != 1:
+            return
+        self._ind = None
+        self.press = None
+        self.lock = "released"
+        self.background = None
+        # To get other aperture redrawn
+        self.canvas.draw_idle()
+
+    def motion_notify_callback(self, event):
+        'on mouse movement'
+        #if not self.ellipse.contains(event): return
+        if not self.showverts:
+            return
+        if self._ind is None:
+            return
+        if event.inaxes is None:
+            return
+        if event.button != 1:
+            return
+        x0, y0, r0, r1, xpress, ypress = self.press
+        self.dx = event.xdata - xpress
+        self.dy = event.ydata - ypress
+        self.update_circles()
+        # Redraw ellipse and points
+        self.canvas.restore_region(self.background)
+        self.ax.draw_artist(self.innerCircle)
+        self.ax.draw_artist(self.outerCircle)
+        self.ax.draw_artist(self.line)
+        self.canvas.update()
+        self.canvas.flush_events()
+        # Notify callback
+        self.modSignal.emit('circles modified')
+
+    def update_circles(self):
+        x0, y0, r0, r1, xpress, ypress = self.press
+        dx, dy = self.dx, self.dy        
+        if self.lock == "pressed":
+            if self._ind == 0:
+                self.lock = "move"
+            else:
+                self.lock = "resize"
+        elif self.lock == "move":
+            if x0+dx < 0:
+                xn = x0
+                dx = 0
+            else:
+                xn = x0+dx
+            if y0+dy < 0:
+                yn = y0
+                dy = 0
+            else:
+                yn = y0+dy
+            self.innerCircle.center = xn,yn
+            self.outerCircle.center = xn,yn
+            # update line
+            self.xy = [(i+dx,j+dy) for (i,j) in self.xy0]
+            # Redefine line
+            self.line.set_data(zip(*self.xy))
+        # otherwise rotate and resize
+        elif self.lock == 'resize':
+            # Avoid to shrink            
+            if self._ind == 1:
+                if (r0 + dx) > 0:
+                    r0 += dx
+            elif self._ind == 2:
+                if (r1 + dx) > r0:
+                    r1 += dx
+            if r1 < r0:
+                r1 = r0 * 1.2
+            # update circles
+            self.innerCircle.set_radius(r0)
+            self.outerCircle.set_radius(r1)
+            self.inRadius = r0
+            self.outRadius = r1
+            # update points
+            self.updateMarkers()
+
+    def updateMarkers(self):
+        # update points
+        x0,y0  = self.innerCircle.center
+        r0 = self.innerCircle.radius
+        r1 = self.outerCircle.radius
+        x = [x0, x0+r0, x0+r1]
+        y = [y0, y0, y0]
+        self.xy = [(i,j) for (i,j) in zip(x,y)]
+        self.line.set_data(x,y)

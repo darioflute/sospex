@@ -1621,3 +1621,40 @@ class SpectrumCanvas(MplCanvas):
             self.fig.canvas.draw_idle()
             self.dragged = None
         return True
+
+
+class PsfCanvas(MplCanvas):
+    """ Canvas to plot a PSF """
+    
+    switchSignal = pyqtSignal(str)
+    def __init__(self, *args, **kwargs):
+        MplCanvas.__init__(self, *args, **kwargs)
+        self.fig.set_edgecolor('none')
+        self.axes = self.fig.add_axes([0.12,0.15,.8,.78])
+        self.axes.format_coord = lambda x, y: "{:8.4f} arcsec  {:10.4f} ".format(x,y)        
+        # Checks
+        self.xlimits = None
+        self.ylimits = None        
+        self.axes.spines['top'].set_visible(False)
+        self.axes.spines['right'].set_visible(False)
+        self.axes.set_ylabel('Flux')
+        self.axes.set_xlabel('Distance [arcsec]')
+        
+    def compute_initial_psf(self, distance=None, flux=None, xmin=None, xmax=None):
+        if flux is None:
+            ''' initial definition when psf not yet available '''
+        else:
+            # Spectrum
+            self.flux = flux
+            self.distance = distance
+            self.drawPSF()
+            # Activate focus
+            self.setFocusPolicy(Qt.ClickFocus)
+            self.setFocus()
+            
+    def drawPSF(self):        
+        # Initialize
+        self.axes.clear()
+        self.axes.grid(True, which='both')
+        self.axes.xaxis.set_major_formatter(ScalarFormatter(useOffset=False))
+        self.axes.yaxis.set_major_formatter(ScalarFormatter(useOffset=False))

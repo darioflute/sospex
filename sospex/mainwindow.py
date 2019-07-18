@@ -23,13 +23,13 @@ from sospex.moments import (SegmentsSelector, SegmentsInteractor, multiFitContin
                             multiComputeMoments, ContParams, ContFitParams, SlicerDialog,
                             FitCubeDialog, multiFitLines)
 from sospex.graphics import  (NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas,
-                       cmDialog, ds9cmap, ScrollMessageBox)
+                       cmDialog, ds9cmap, ScrollMessageBox, PsfCanvas)
 from sospex.apertures import (photoAperture, PolygonInteractor, EllipseInteractor,
                               RectangleInteractor, PixelInteractor)
 from sospex.specobj import specCube, Spectrum, ExtSpectrum
 from sospex.cloud import cloudImage
 from sospex.interactors import (SliderInteractor, SliceInteractor, DistanceSelector,
-                                VoronoiInteractor, LineInteractor)
+                                VoronoiInteractor, LineInteractor, PsfInteractor)
 from sospex.inout import exportAperture, importAperture, exportGuesses, importGuesses
 
 class UpdateTabs(QObject):
@@ -376,6 +376,24 @@ class GUI (QMainWindow):
         self.ctrlIsHeld = False
         return t, sc, scid1, scid2, scid3, scid4, scid5, scid6
 
+    def addPsfPlot(self):
+        '''Add a tab with the plot of the PSF'''
+        t = QWidget()
+        t.layout = QVBoxLayout(t)
+        t.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored) # Avoid expansion
+        sc = PsfCanvas()
+        self.stabs.addTab(t, 'PSF')
+        t.layout.addWidget(sc)
+        self.stabs.resize(self.stabs.minimumSizeHint())  # Avoid expansion
+        self.stabi.append(t)
+        self.sci.append(sc)
+        self.scid1.append(None)
+        self.scid2.append(None)
+        self.scid3.append(None)
+        self.scid4.append(None)
+        self.scid5.append(None)
+        self.scid6.append(None)
+
     def addImage(self, b):
         '''Add a tab with an image.'''
         t = QWidget()
@@ -435,6 +453,7 @@ class GUI (QMainWindow):
         # toolbar.addAction(self.compMomAction)
         toolbar.addAction(self.maskAction)
         toolbar.addAction(self.distanceAction)
+        toolbar.addAction(self.psfAction)
         toolbar.addSeparator()
         #toolbar.addWidget(self.apertureAction)        
         # Foot
@@ -510,8 +529,11 @@ class GUI (QMainWindow):
             reply = QMessageBox.question(self, 'Message', close_msg, QMessageBox.Yes, QMessageBox.No)
             if reply == QMessageBox.No:
                 return
-        print('Removing spectral tab no ',stab)
-        if stab > 1:
+        tabname = self.stabs.tabText(stab)
+        print('Removing spectral tab no ',stab, ' name ', tabname)
+        if tabname in ['All','Pix','PSF']:
+            pass
+        else:
             # Once the tab is removed, also the relative aperture should be removed
             itab = self.itabs.currentIndex()
             ic0 = self.ici[itab]
@@ -530,9 +552,7 @@ class GUI (QMainWindow):
             del self.photoApertures[n]
             # Redraw apertures
             ic0.fig.canvas.draw_idle()
-        # Move to pixel tab
-        #print('Current number of spectral tabs ', len(self.stabs))
-        #self.stabs.setCurrentIndex(1)
+        
         # Remove tab
         widget = self.stabs.widget(stab)
         if widget is not None:
@@ -546,12 +566,13 @@ class GUI (QMainWindow):
         c4 = self.scid4[stab]
         c5 = self.scid5[stab]
         c6 = self.scid6[stab]
-        spec.mpl_disconnect(c1)
-        spec.mpl_disconnect(c2)
-        spec.mpl_disconnect(c3)
-        spec.mpl_disconnect(c4)
-        spec.mpl_disconnect(c5)
-        spec.mpl_disconnect(c6)
+        if tabname != 'PSF':
+            spec.mpl_disconnect(c1)
+            spec.mpl_disconnect(c2)
+            spec.mpl_disconnect(c3)
+            spec.mpl_disconnect(c4)
+            spec.mpl_disconnect(c5)
+            spec.mpl_disconnect(c6)
         self.stabi.remove(tab)
         self.sci.remove(spec)
         self.scid1.remove(c1)
@@ -565,11 +586,22 @@ class GUI (QMainWindow):
         self.stabs.removeTab(stab)
         #print('New number of spectral tabs ', len(self.stabs))
         # Rename aperture tabs
-        if len(self.stabs) > 2:
-            for i in range(2, len(self.stabs)):
-                apname = "{:d}".format(i-1)
-                self.stabs.setTabText(i,apname)
-                
+        i = 0
+        for stab in range(len(self.stabs)):
+            tabname = self.stabs.tabText(stab)
+            print('tab name ', tabname)
+            if tabname in ['All','Pix','PSF']:
+                pass
+            else:
+                apname = "{:d}".format(i)
+                print('Change ', tabname,' into ', apname)
+                self.stabs.setTabText(stab, apname)
+                i += 1
+        #if len(self.stabs) > 2:
+        #    for i in range(2, len(self.stabs)):
+        #        apname = "{:d}".format(i-1)
+        #        self.stabs.setTabText(i,apname)
+        
     def onITabChange(self, itab):
         ''' When tab changes check if latest update of ellipse are implemented '''
         if len(self.ici) == 0:
@@ -710,7 +742,8 @@ class GUI (QMainWindow):
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
         ic0 = self.ici[0]
-        nap = self.stabs.currentIndex()-1
+        #nap = self.stabs.currentIndex()-1
+        nap = self.nAper()
         aper = ic.photApertures[nap]
         aper0 = ic0.photApertures[nap]
         if aper.type == 'Polygon':
@@ -768,7 +801,8 @@ class GUI (QMainWindow):
         """Interpret signal from apertures."""        
         itab = self.itabs.currentIndex()
         istab = self.stabs.currentIndex()
-        n = istab-1
+        # n = istab-1
+        n = self.nAper()
         ap = self.ici[itab].photApertures[n]
         apertype = ap.__class__.__name__
         if (event == 'rectangle deleted' and apertype == 'RectangleInteractor') or \
@@ -785,6 +819,7 @@ class GUI (QMainWindow):
         """Update spectrum when aperture is modified."""
         itab = self.itabs.currentIndex()
         # Grab aperture in the flux image to compute the new fluxes
+        n = self.nAper()
         istab = self.stabs.currentIndex()
         if istab > 0:
             sc = self.sci[istab]
@@ -792,7 +827,8 @@ class GUI (QMainWindow):
             # I should find a way to know if the aperture has changed
             if itab != 0:
                 self.updateAperture()
-            aperture = self.ici[0].photApertures[istab-1].aperture
+            #aperture = self.ici[0].photApertures[istab-1].aperture
+            aperture = self.ici[0].photApertures[n].aperture
             path = aperture.get_path()
             transform = aperture.get_patch_transform()
             npath = transform.transform_path(path)
@@ -928,7 +964,9 @@ class GUI (QMainWindow):
                                       noise=noise, ncell=ncell)
 
            
-    def onDraw(self,event):        
+    def onDraw(self,event):
+        if len(self.ici) <= 1:
+            return
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
         # Deselect pan option on release of mouse
@@ -939,8 +977,15 @@ class GUI (QMainWindow):
         istab = self.stabs.currentIndex()
         ici = self.ici.copy()
         ici.remove(ic)
-        if istab != 0 and len(ici) > 0:
-            aper = ic.photApertures[istab-1]
+        tabname = self.stabs.tabText(istab)
+        if tabname in ['All', 'PSF']:
+            return
+        else:
+            if tabname == 'Pix':
+                ntab = 0
+            else:
+                ntab = int(tabname) + 1
+            aper = ic.photApertures[ntab]
             #apertype = aper.__class__.__name__
             if aper.type == 'Ellipse' or aper.type == 'Circle':
                 x0,y0 = aper.ellipse.center
@@ -952,7 +997,7 @@ class GUI (QMainWindow):
                 for ima in ici:
                     x0,y0 = ima.wcs.wcs_world2pix(ra0, dec0, 0)
                     w0 = ws/ima.pixscale; h0 = hs / ima.pixscale
-                    ap = ima.photApertures[istab - 1]
+                    ap = ima.photApertures[ntab]
                     ap.ellipse.center = x0, y0
                     ap.ellipse.width = w0
                     ap.ellipse.height = h0
@@ -970,7 +1015,7 @@ class GUI (QMainWindow):
                     x0,y0 = ima.wcs.wcs_world2pix(ra0, dec0, 0)
                     w0 = ws / ima.pixscale
                     h0 = hs / ima.pixscale
-                    ap = ima.photApertures[istab-1]
+                    ap = ima.photApertures[ntab]
                     ap.rect.set_xy((x0,y0))
                     ap.rect.set_width(w0)
                     ap.rect.set_height(h0)
@@ -982,7 +1027,7 @@ class GUI (QMainWindow):
                 adverts = np.array([(ic.wcs.wcs_pix2world(x, y, 0)) for (x, y) in verts])                
                 for ima in ici:
                     verts = [(ima.wcs.wcs_world2pix(ra, dec, 0)) for (ra, dec) in adverts]
-                    ap = ima.photApertures[istab - 1]
+                    ap = ima.photApertures[ntab]
                     ap.poly.set_xy(verts)
                     ap.updateMarkers()
                     ima.changed = True
@@ -1265,6 +1310,8 @@ class GUI (QMainWindow):
                                                  'Ctrl+f',self.fitRegion)
         self.distanceAction = self.createAction(os.path.join(self.path0,'icons','squareset.png'),
                                                 'Measure distance', '', self.computeDistance)
+        self.psfAction = self.createAction(os.path.join(self.path0,'icons','psf.png'),
+                                                'Estimate FWHM of PSF', '', self.estimatePSF)
         # Add buttons to the toolbar
         self.spacer = QWidget()
         self.spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -2808,7 +2855,7 @@ class GUI (QMainWindow):
                                rectprops=dict(alpha=0.3, facecolor='LightGreen'))
         sc.span.active = False
         # Select new tab
-        self.stabs.setCurrentIndex(n+1)
+        self.stabs.setCurrentIndex(len(self.stabs)-1)
                    
     def onRectSelect(self, eclick, erelease):
         """eclick and erelease are the press and release events."""       
@@ -2987,10 +3034,13 @@ class GUI (QMainWindow):
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
         print('aperture is ',self.selAp)
-        # Deactivate pixel
-        pixel = self.ici[0].photApertures[0]
-        pixel.line.set_visible(False)
-        pixel.showverts = False
+        # Deactivate current aperture
+        n = self.nAper()
+        if n >= 0:
+            print('deactivate aperture ', n)
+            ap = ic.photApertures[n]
+            ap.showverts = False
+            ap.line.set_visible(ap.showverts)
         if self.selAp == 'Polygon':
             self.PS = PolygonSelector(ic.axes, self.onPolySelect,
                                       lineprops=dict(linestyle='-',color='g'),
@@ -3045,6 +3095,7 @@ class GUI (QMainWindow):
                                                        alpha=0.8),
                                       interactive=False)
             self.ES.state.add('center')        
+            self.ES.state.add('square')        
         if self.selAp != 'apertures':
             ic.fig.canvas.draw_idle()
         #put back to the 0-th item
@@ -3897,12 +3948,24 @@ class GUI (QMainWindow):
             pass
         sc.span.active = True
         
+    def nAper(self):
+        '''Return the number of the aperture'''
+        istab = self.stabs.currentIndex()
+        tabname = self.stabs.tabText(istab)
+        print('Name of tab is ', tabname)
+        if tabname in ['All','PSF']:
+            n = -1
+        elif tabname == 'Pix':
+            n = 0
+        else:
+            n = int(tabname)
+        return n
+        
     def computeDistance(self):
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
         # Disactivate aperture
-        istab = self.stabs.currentIndex()
-        n = istab - 1
+        n = self.nAper()
         if n >= 0:
             ap = ic.photApertures[n]
             ap.showverts = False
@@ -3912,14 +3975,65 @@ class GUI (QMainWindow):
     def printDistance(self, xy):
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
-        istab = self.stabs.currentIndex()
-        n = istab - 1
+        n = self.nAper()
         if n >= 0:
             ap = ic.photApertures[n]
             ap.showverts = True
             ap.line.set_visible(ap.showverts)        
             ic.fig.canvas.draw_idle()
         
+    def estimatePSF(self):
+        itab = self.itabs.currentIndex()
+        ic = self.ici[itab]
+        # Disactivate aperture
+        n = self.nAper()
+        if n >= 0:
+            ap = ic.photApertures[n]
+            ap.showverts = False
+            ap.line.set_visible(ap.showverts)
+        self.PsfS = EllipseSelector(ic.axes, self.onDrawPSF, drawtype='line', useblit=True,
+                                  button=[1, 3], minspanx=5, minspany=5, spancoords='pixels',
+                                  rectprops = dict(facecolor='g',
+                                                   edgecolor='g',
+                                                   alpha=0.8, fill=False),
+                                  lineprops = dict(color='g',
+                                                   linestyle='-',
+                                                   linewidth=2,
+                                                   alpha=0.8),
+                                  interactive=False)
+                                  #state_modifier_keys = dict(square='square', center='center')
+                                  #)
+        self.PsfS.state.add('center')
+        self.PsfS.state.add('square')
+        ic.fig.canvas.draw_idle()                                      
+        
+    def onDrawPSF(self, eclick, erelease):
+        itab = self.itabs.currentIndex()
+        ic = self.ici[itab]
+        x1, y1 = eclick.xdata, eclick.ydata
+        x2, y2 = erelease.xdata, erelease.ydata
+        print('x1,y1,x2,y2',x1,y1,x2,y2)
+        x0 = (x1 + x2) * 0.5
+        y0 = (y1 + y2) * 0.5
+        radius = np.hypot(x1-x2,y1-y2) * 0.5
+        print('center, radius ', (x0, y0), radius)
+        # Deactivate selector
+        self.PsfS.set_active(False)
+        for artist in self.PsfS.artists:
+            artist.remove()
+        self.PsfS = None
+        self.PsfI = PsfInteractor(ic.axes, (x0, y0), radius)
+        n = self.nAper()
+        if n >= 0:
+            ap = ic.photApertures[n]
+            ap.showverts = True
+            ap.line.set_visible(ap.showverts)        
+            ic.fig.canvas.draw_idle()
+        print('Call routine to compute PSF and display on right panel')
+        self.addPsfPlot()
+        # Move to tab with plot
+        self.stabs.setCurrentIndex(len(self.stabs)-1)
+    
     def maskCube(self):
         """Mask a slice of the cube."""
         # Dialog to choose between masking with contour level or polygon
@@ -5254,9 +5368,12 @@ class GUI (QMainWindow):
         if len(self.stabs) > 1:
             itab  = self.itabs.currentIndex()
             ic = self.ici[itab]
-            nap = len(self.stabs)-1
+            #nap = len(self.stabs)-1
+            nap = len(ic.photApertures)
             istab = self.stabs.currentIndex()
-            n = istab-1  # aperture number
+            n = self.nAper()
+            tabname = self.stabs.tabText(istab)
+            #n = istab-1  # aperture number
             # Activate interactor (toogle on) and disactivate
             for iap in range(nap):
                 ap = ic.photApertures[iap]
@@ -5270,20 +5387,21 @@ class GUI (QMainWindow):
                 ap.line.set_visible(ap.showverts)
             ic.fig.canvas.draw_idle()
             #
-            if self.slider is not None:
-                x = self.slider.x
-                dx = self.slider.dx
-                self.slider.disconnect()
-                sc = self.sci[istab]
-                self.slider = SliderInteractor(sc.axes, x, dx)
-                self.slider.modSignal.connect(self.slideCube)
-            if self.slicer is not None:
-                xl = self.slicer.xl
-                xr = self.slicer.xr
-                self.slicer.disconnect()
-                sc = self.sci[istab]
-                self.slicer = SliceInteractor(sc.axes, xl, xr)
-                self.slicer.modSignal.connect(self.updateImages)
+            if tabname != 'PSF':
+                if self.slider is not None:
+                    x = self.slider.x
+                    dx = self.slider.dx
+                    self.slider.disconnect()
+                    sc = self.sci[istab]
+                    self.slider = SliderInteractor(sc.axes, x, dx)
+                    self.slider.modSignal.connect(self.slideCube)
+                if self.slicer is not None:
+                    xl = self.slicer.xl
+                    xr = self.slicer.xr
+                    self.slicer.disconnect()
+                    sc = self.sci[istab]
+                    self.slicer = SliceInteractor(sc.axes, xl, xr)
+                    self.slicer.modSignal.connect(self.updateImages)
         # Delayed computation of all tab
         if stab == 0:
             if self.all == False:
