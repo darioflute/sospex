@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8" />
-<title>tutorials</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
+<title>atmtrans</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
 
 <style type="text/css">
@@ -11775,7 +11775,7 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p><a href="Help.html">Previous</a> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="start.html">Next</a>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="tutorials.html">Tutorials</a> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="Help.html">Help</a></p>
+<p><a href="erase.html">Previous</a> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="tutorials.html">Next</a>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="tutorials.html">Tutorials</a> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="Help.html">Help</a></p>
 
 </div>
 </div>
@@ -11784,7 +11784,7 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="Tutorials">Tutorials<a class="anchor-link" href="#Tutorials">&#182;</a></h2>
+<h2 id="Atmospheric-transmission">Atmospheric transmission<a class="anchor-link" href="#Atmospheric-transmission">&#182;</a></h2>
 </div>
 </div>
 </div>
@@ -11792,40 +11792,47 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>The following tutorials explain how to use most of the features of SOSPEX for exploring, analyzing, and 
-manipulating the data or comparing to other images from public archives.</p>
-<ul>
-<li><p><a href="start.html">Load a spectral cube</a></p>
-</li>
-<li><p><a href="zoom.html">Zoom and Pan</a></p>
-</li>
-<li><p><a href="intensity.html">Change image intensity levels and color map</a></p>
-</li>
-<li><p><a href="specpanel.html">Using the spectral panel</a></p>
-</li>
-<li><p><a href="slider.html">Sliding along the spectral direction</a></p>
-</li>
-<li><p><a href="slice.html">Select a slice of the cube</a></p>
-</li>
-<li><p><a href="croptrim.html">Crop and trim the cubes</a></p>
-</li>
-<li><p><a href="apertures.html">Select and modify apertures</a></p>
-</li>
-<li><p><a href="extimages.html">Load external images</a></p>
-</li>
-<li><p><a href="blink.html">Blink between images</a></p>
-</li>
-<li><p><a href="contours.html">Overlap contours</a></p>
-</li>
-<li><p><a href="save.html">Save images and spectra</a></p>
-</li>
-<li><p><a href="moments.html">Fit continuum and compute moments</a></p>
-</li>
-<li><p><a href="erase.html">Erase part of the cube</a></p>
-</li>
-<li><p><a href="atmtrans.html">Compute new atmospheric transmission</a></p>
-</li>
-</ul>
+<p>In the case of FIFI-LS data, the level 4 product contain an extension with flux corrected for atmospheric transmission and another one with flux not corrected.
+The pipeline corrects for the atmospheric transmission by convolving the ATRAN model of the atmosphere with the spectral resolution of FIFI-LS and then dividing the flux for each frame by taking into account altitude and zenithal angle of the observation.
+This works perfectly only in the case of continuum and with the correct water vapor values.</p>
+<p>In reality, unresolved lines which reside outside telluric lines are not affected by the atmospheric absorption and,
+due to the fact that the atmospheric transmission is convoluted with the spectral resolution, are sometimes unnecessarely corrected for the effect of the atmosphere. The effect is particularly bad for lines in the wings of telluric lines.</p>
+<p>On the top of that, an incorrect value of the water vapor can lead to an over/under correction of the atmospheric absorption.</p>
+<p><em>sospex</em> offers three alternatives to correct for atmospheric absorption:</p>
+<ol>
+<li>Apply the median value of the transmission to the entire observation</li>
+<li>Use the value of the transmission at the reference wavelenght. This will give the best correction for the flux of the line at the reference wavelength but will not correct the surrounding continuum.</li>
+<li>Use an input value of the water vapor to apply an alternative correction to the data. This leads to better results only if the pipeline value is substantially off. Note that in this case the median value of the altitude and zenithal angle during the observation is used, while the pipeline takes into account the variation of these quantities during the observation.</li>
+</ol>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<h3 id="The-correction">The correction<a class="anchor-link" href="#The-correction">&#182;</a></h3><p>Under the menu select one of the three possibilities:</p>
+<p><img src="../icons/atcorr1.png" alt="Atmospheric correction 1" style="width: 200px;"/></p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>If the third option is selected, a pop-up window will require the new value for the water vapor.</p>
+<p><img src="../icons/atcorr2.png" alt="Atmospheric transmission 2" style="width: 200px;"/></p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>Once selected, a new value of the flux is computed an displayed.</p>
 
 </div>
 </div>
