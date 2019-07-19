@@ -1623,6 +1623,20 @@ class SpectrumCanvas(MplCanvas):
         return True
 
 
+from lmfit import Parameters, minimize
+def residualsPsf(p,dis,data=None):
+    v = p.valuesdict()
+    s = v['s']
+    A = v['A']
+    d2 = (dis/s)**2
+    model = A *  np.exp(-0.5 * d2)
+    
+    if data is None:
+        return model
+    else:
+        return (model- data.flatten())
+
+
 class PsfCanvas(MplCanvas):
     """ Canvas to plot a PSF """
     
@@ -1637,10 +1651,10 @@ class PsfCanvas(MplCanvas):
         self.ylimits = None        
         self.axes.spines['top'].set_visible(False)
         self.axes.spines['right'].set_visible(False)
-        self.axes.set_ylabel('Flux')
-        self.axes.set_xlabel('Distance [arcsec]')
         
-    def compute_initial_psf(self, distance=None, flux=None, xmin=None, xmax=None):
+    def compute_initial_psf(self, distance=None, flux=None, xmax=None, instrument=None, w=None):
+        self.w = w
+        self.instrument = instrument
         if flux is None:
             ''' initial definition when psf not yet available '''
         else:
@@ -1655,6 +1669,88 @@ class PsfCanvas(MplCanvas):
     def drawPSF(self):        
         # Initialize
         self.axes.clear()
+        self.axes.set_ylabel('Flux')
+        self.axes.set_xlabel('Distance [arcsec]')
         self.axes.grid(True, which='both')
         self.axes.xaxis.set_major_formatter(ScalarFormatter(useOffset=False))
         self.axes.yaxis.set_major_formatter(ScalarFormatter(useOffset=False))
+        self.pointScatter, = self.axes.plot(self.distance, self.flux, '.', color='blue', label='Data')
+        
+        # Overplot profile of unresolved line
+        if (self.w is None) or (self.instrument is None):
+            pass
+        else:
+            self.unresolvedPsf()
+            if self.sigma is None:
+                pass
+                self.unresolved = None
+            else:
+                xg = np.arange(0, 5 * self.sigma, 0.1)
+                yg = np.nanmax(self.flux) * np.exp(- 0.5 * (xg/self.sigma)**2)
+                self.unresolved, = self.axes.plot(xg, yg, color = 'red',
+                                                  label='FWHM [PSF] = {:2.1f}'.format(self.sigma*2.355))
+                
+        # Fit a Gaussian on data
+        A, sigma = self.fitPsf()
+        xf = np.arange(0, np.nanmax(self.distance), 0.1)
+        yf = A * np.exp(- 0.5 * (xf/sigma)**2)
+        self.resolved, = self.axes.plot(xf, yf, color = 'green',
+                                        label='FWHM [Fit] = {:2.1f}'.format(sigma*2.355))
+        
+        self.axes.legend()
+
+    def updatePSF(self, distance, flux):
+        # Modify data
+        self.distance = distance
+        self.flux = flux
+        maxflux = np.nanmax(flux)
+        self.pointScatter.set_data(distance, flux)
+        #self.pointScatter.set_ydata(flux)
+        # Plot new data
+        #self.axes.draw_artist(self.pointScatter)
+        if self.unresolved is not None:
+            yg = self.unresolved.get_ydata()
+            self.unresolved.set_ydata(yg/np.nanmax(yg) * maxflux)
+            #self.axes.draw_artist(self.unresolved)
+        # Refit and redisplay
+        A, sigma = self.fitPsf()
+        xf = np.arange(0, np.nanmax(self.distance), 0.1)
+        yf = A * np.exp(- 0.5 * (xf/sigma)**2)
+        self.resolved.set_data(xf, yf)
+        self.resolved.set_label('FWHM [Fit] = {:2.1f}'.format(sigma*2.355))
+        self.axes.legend()  # Regenerate legend
+        #self.axes.draw_artist(self.resolved)        
+        # Reset y limits if needed
+        ylims = self.axes.get_ylim()
+        if ylims[1] < maxflux:
+            self.axes.set_ylim(ylims[0], maxflux*1.1)
+        self.fig.canvas.draw_idle()
+
+    def unresolvedPsf(self):
+        if self.instrument in ['FIFI-LS', 'GREAT']:
+            m1diam = 2.500 # Effective diameter of SOFIA
+            #m2diam = 0.350
+        elif self.instrument == 'PACS':
+            m1diam = 3.500 # Diameter of Herschel mirror
+            #m2diam = 0.308
+        else:
+            m1diam = None
+            print('unknown instrument')            
+        if m1diam is None:
+            self.sigma = None
+        else:
+            self.sigma = 1.22*self.w*1e-6/m1diam*180/np.pi*3600 / 2.355
+        
+    def fitPsf(self):
+        '''Fit a Gaussian on data'''
+        fit_params = Parameters()
+        fit_params.add('A', value=np.nanmax(self.flux))
+        if self.sigma is None:
+            sigmaguess = 5
+        else:
+            sigmaguess = self.sigma
+        fit_params.add('s', value=sigmaguess, min=1, max=2*sigmaguess)
+        out = minimize(residualsPsf, fit_params, args=(self.distance,), kws={'data': self.flux,})
+        A = out.params['A'].value
+        sigma = out.params['s'].value
+        return A, sigma

@@ -1056,8 +1056,8 @@ class PsfInteractor(QObject):
         x0, y0 = self.innerCircle.center
         r0 = self.inRadius
         r1 = self.outRadius
-        print('center ', x0, y0)
-        print('radii ' ,r0, r1)
+        # print('center ', x0, y0)
+        # print('radii ' ,r0, r1)
         self.press = x0, y0, r0, r1, event.xdata, event.ydata
         self.xy0 = self.xy
         self.lock = "pressed"
@@ -1075,7 +1075,7 @@ class PsfInteractor(QObject):
             #self.disconnect()
             #self.ellipse = None
             #self.line = None
-            self.mySignal.emit('circles deleted')
+            self.mySignal.emit('psf deleted')
         self.canvas.draw_idle()
 
     def button_release_callback(self, event):
@@ -1159,6 +1159,16 @@ class PsfInteractor(QObject):
             self.outRadius = r1
             # update points
             self.updateMarkers()
+            
+    def updateInteractor(self):
+        # Redraw ellipse and points
+        self.updateMarkers()        
+        self.canvas.restore_region(self.background)
+        self.ax.draw_artist(self.innerCircle)
+        self.ax.draw_artist(self.outerCircle)
+        self.ax.draw_artist(self.line)
+        self.canvas.update()
+        self.canvas.flush_events()
 
     def updateMarkers(self):
         # update points
