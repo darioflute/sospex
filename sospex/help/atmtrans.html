@@ -11800,8 +11800,8 @@ due to the fact that the atmospheric transmission is convoluted with the spectra
 <p>On the top of that, an incorrect value of the water vapor can lead to an over/under correction of the atmospheric absorption.</p>
 <p><em>sospex</em> offers three alternatives to correct for atmospheric absorption:</p>
 <ol>
-<li>Apply the median value of the transmission to the entire observation</li>
 <li>Use the value of the transmission at the reference wavelenght. This will give the best correction for the flux of the line at the reference wavelength but will not correct the surrounding continuum.</li>
+<li>Apply the median value of the transmission to the entire observation. Useful when a range has to be corrected without caring for telluric line at the sides.</li>
 <li>Use an input value of the water vapor to apply an alternative correction to the data. This leads to better results only if the pipeline value is substantially off. Note that in this case the median value of the altitude and zenithal angle during the observation is used, while the pipeline takes into account the variation of these quantities during the observation.</li>
 </ol>
 
@@ -11813,7 +11813,7 @@ due to the fact that the atmospheric transmission is convoluted with the spectra
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <h3 id="The-correction">The correction<a class="anchor-link" href="#The-correction">&#182;</a></h3><p>Under the menu select one of the three possibilities:</p>
-<p><img src="../icons/atcorr1.png" alt="Atmospheric correction 1" style="height: 200px;"/></p>
+<p><img src="../icons/atcorr1.png" alt="Atmospheric correction 1" style="height: 150px;"/></p>
 
 </div>
 </div>
@@ -11823,7 +11823,7 @@ due to the fact that the atmospheric transmission is convoluted with the spectra
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>If the third option is selected, a pop-up window will require the new value for the water vapor.</p>
-<p><img src="../icons/atcorr2.png" alt="Atmospheric transmission 2" style="height: 100px;"/></p>
+<p><img src="../icons/atcorr2.png" alt="Atmospheric transmission 2" style="height: 150px;"/></p>
 
 </div>
 </div>
