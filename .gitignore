@@ -20,4 +20,6 @@ notebooks/*.ipynb
 
 # directory old
 old
+build
+dist
 
