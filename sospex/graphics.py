@@ -1624,7 +1624,7 @@ class SpectrumCanvas(MplCanvas):
 
 
 from lmfit import Parameters, minimize
-def residualsPsf(p,dis,data=None):
+def residualsPsf(p, dis, data=None, err=None):
     v = p.valuesdict()
     s = v['s']
     A = v['A']
@@ -1634,8 +1634,10 @@ def residualsPsf(p,dis,data=None):
     if data is None:
         return model
     else:
-        return (model- data.flatten())
-
+        if err is None:
+            return (model - data.flatten())
+        else:
+            return (model - data.flatten())/err.flatten()
 
 class PsfCanvas(MplCanvas):
     """ Canvas to plot a PSF """
@@ -1652,9 +1654,11 @@ class PsfCanvas(MplCanvas):
         self.axes.spines['top'].set_visible(False)
         self.axes.spines['right'].set_visible(False)
         
-    def compute_initial_psf(self, distance=None, flux=None, xmax=None, instrument=None, w=None):
+    def compute_initial_psf(self, distance=None, flux=None,
+                            xmax=None, instrument=None, w=None, pix=None):
         self.w = w
         self.instrument = instrument
+        self.pix = pix
         if flux is None:
             ''' initial definition when psf not yet available '''
         else:
@@ -1750,7 +1754,13 @@ class PsfCanvas(MplCanvas):
         else:
             sigmaguess = self.sigma
         fit_params.add('s', value=sigmaguess, min=1, max=2*sigmaguess)
-        out = minimize(residualsPsf, fit_params, args=(self.distance,), kws={'data': self.flux,})
+        if self.pix is None:
+            out = minimize(residualsPsf, fit_params, args=(self.distance,), kws={'data': self.flux,})
+        else:
+            weight = 1. / (self.distance * self.pix)
+            out = minimize(residualsPsf, fit_params, args=(self.distance,),
+                           kws={'data': self.flux, 'err':weight})
+
         A = out.params['A'].value
         sigma = out.params['s'].value
         return A, sigma

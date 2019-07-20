@@ -415,7 +415,9 @@ class GUI (QMainWindow):
         # Compute distances and fluxes
         dist, flux = self.computePsfData()
         sc.compute_initial_psf(distance=dist, flux=flux,
-                               instrument=self.specCube.instrument, w=self.specCube.l0)
+                               instrument=self.specCube.instrument,
+                               w=self.specCube.l0,
+                               pix=ic.pixscale)
 
     def addImage(self, b):
         '''Add a tab with an image.'''
