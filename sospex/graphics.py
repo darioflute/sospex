@@ -798,11 +798,12 @@ class SpectrumCanvas(MplCanvas):
         self.moments = False
         self.fittedlines = False
         
-    def compute_initial_spectrum(self, spectrum=None, xmin=None, xmax=None):
+    def compute_initial_spectrum(self, name=None, spectrum=None, xmin=None, xmax=None):
         if spectrum is None:
             ''' initial definition when spectrum not yet available '''
         else:
             # Spectrum
+            self.name = name
             self.spectrum = spectrum
             self.instrument = spectrum.instrument
             self.drawSpectrum()
@@ -1656,6 +1657,7 @@ class PsfCanvas(MplCanvas):
         
     def compute_initial_psf(self, distance=None, flux=None,
                             xmax=None, instrument=None, w=None, pix=None):
+        self.name = 'PSF'
         self.w = w
         self.instrument = instrument
         self.pix = pix
@@ -1754,13 +1756,19 @@ class PsfCanvas(MplCanvas):
         else:
             sigmaguess = self.sigma
         fit_params.add('s', value=sigmaguess, min=1, max=2*sigmaguess)
-        if self.pix is None:
-            out = minimize(residualsPsf, fit_params, args=(self.distance,), kws={'data': self.flux,})
-        else:
-            weight = 1. / (self.distance * self.pix)
-            out = minimize(residualsPsf, fit_params, args=(self.distance,),
-                           kws={'data': self.flux, 'err':weight})
+        idx = np.isfinite(self.flux)
+        if np.sum(idx) > 10:
+            if self.pix is None:
+                out = minimize(residualsPsf, fit_params, args=(self.distance[idx],), kws={'data': self.flux[idx],})
+            else:
+                weight =  (self.distance[idx] * self.pix)
+                out = minimize(residualsPsf, fit_params, args=(self.distance[idx],),
+                               kws={'data': self.flux[idx], 'err':weight})
 
-        A = out.params['A'].value
-        sigma = out.params['s'].value
+            A = out.params['A'].value
+            sigma = out.params['s'].value
+        else:
+            A = np.nan
+            sigma = np.nan
+            print('Not enough good points')
         return A, sigma

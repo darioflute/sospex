@@ -844,10 +844,10 @@ def computeMoments(p,m,w,dw,f):
             M4 = np.nansum(np.power(w-M1,4)*Slambda*dw)/M0/np.power(SD,4)-3. # Relative to Gaussian which is 3
             M0 *= 1.e-26 # [W/m2]  (W/m2 = Jy*Hz*1.e-26)
         else:
-            M0 = 0.
+            M0 = np.nan
             M1 = M2 = M3 = M4 = np.nan
     else:
-        M0 = 0.
+        M0 = np.nan
         M1 = M2 = M3 = M4 = np.nan
         sigma = np.nan
             
@@ -1049,3 +1049,22 @@ def multiFitLines2(m, w, f, c, lineguesses, linefits, points):
             linefits[k][3][j,i] = linepars[k][3]
                 
     return 1
+
+def residualsPsf(p, x, y, data=None, err=None):
+    '''Residual of a PSF with unknown center'''
+    v = p.valuesdict()
+    s = v['s']
+    A = v['A']
+    x0 = v['x0']
+    y0 = v['y0']
+    dis = np.hypot(x-x0,y-y0)/s
+    d2 = np.square(dis.flatten())
+    model = A *  np.exp(-0.5 * d2)
+    
+    if data is None:
+        return model
+    else:
+        if err is None:
+            return (model - data.flatten())
+        else:
+            return (model - data.flatten())/err.flatten()

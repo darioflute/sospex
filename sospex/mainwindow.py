@@ -21,7 +21,7 @@ warnings.filterwarnings('ignore')
 
 from sospex.moments import (SegmentsSelector, SegmentsInteractor, multiFitContinuum,
                             multiComputeMoments, ContParams, ContFitParams, SlicerDialog,
-                            FitCubeDialog, multiFitLines)
+                            FitCubeDialog, multiFitLines, residualsPsf)
 from sospex.graphics import  (NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas,
                        cmDialog, ds9cmap, ScrollMessageBox, PsfCanvas)
 from sospex.apertures import (photoAperture, PolygonInteractor, EllipseInteractor,
@@ -387,6 +387,7 @@ class GUI (QMainWindow):
         # Navigation toolbar
         # Add actions to toolbar
         toolbar.addAction(self.centroidAction)
+        toolbar.addAction(self.centerAction)
         sc.toolbar = NavigationToolbar(sc, self)
         foot = QWidget()
         foot.layout = QHBoxLayout(foot)
@@ -555,7 +556,7 @@ class GUI (QMainWindow):
             if reply == QMessageBox.No:
                 return
         tabname = self.stabs.tabText(stab)
-        print('Removing spectral tab no ',stab, ' name ', tabname)
+        print('Removing spectral tab no ',stab, ' name ', tabname,' canvas name ',self.sci[stab].name)
         itab = self.itabs.currentIndex()
         ic0 = self.ici[itab]
         if tabname in ['All','Pix']:
@@ -569,8 +570,10 @@ class GUI (QMainWindow):
             ic0.fig.canvas.draw_idle()
         else:
             # Once the tab is removed, also the relative aperture should be removed
-            n = stab-1
-            #print('removing aperture ',n,' type: ',ic0.photApertures[n].type)
+            # n = stab-1
+            scname = self.sci[stab].name
+            n = int(scname)
+            print('removing aperture ',n,' type: ',ic0.photApertures[n].type)
             for ic in self.ici:
                 ap = ic.photApertures[n]
                 #aps = 
@@ -582,6 +585,8 @@ class GUI (QMainWindow):
                 del ic.photApertures[n]
             # Remove photoAperture
             del self.photoApertures[n]
+            # Remove from self.spectra
+            del self.spectra[scname]
             # Redraw apertures
             ic0.fig.canvas.draw_idle()
         
@@ -618,16 +623,17 @@ class GUI (QMainWindow):
         self.stabs.removeTab(stab)
         #print('New number of spectral tabs ', len(self.stabs))
         # Rename aperture tabs
-        i = 0
+        i = 1
         for stab in range(len(self.stabs)):
             tabname = self.stabs.tabText(stab)
-            print('tab name ', tabname)
+            #print('tab name ', tabname)
             if tabname in ['All','Pix','PSF']:
                 pass
             else:
                 apname = "{:d}".format(i)
-                print('Change ', tabname,' into ', apname)
+                #print('Change ', tabname,' into ', apname)
                 self.stabs.setTabText(stab, apname)
+                self.sci[stab].name = apname
                 i += 1
         #if len(self.stabs) > 2:
         #    for i in range(2, len(self.stabs)):
@@ -853,10 +859,23 @@ class GUI (QMainWindow):
         """Update spectrum when aperture is modified."""
         itab = self.itabs.currentIndex()
         # Grab aperture in the flux image to compute the new fluxes
-        n = self.nAper()
         istab = self.stabs.currentIndex()
-        if istab > 0:
+        sc = self.sci[istab]
+        if sc.name == 'PSF': # Ideally it should go to the stab which correspond to the interactor
+            # Check activated aperture
+            ic = self.ici[itab]
+            for i, ap in enumerate(ic.photApertures):
+                if ap.showverts:
+                    n = i
+            if n == 0:       
+                istab = self.spectra.index('Pix')
+            else:
+                istab = n
+            self.stabs.setCurrentIndex(istab)
             sc = self.sci[istab]
+        else:
+            n = self.nAper()
+        if istab > 0:
             s = self.specCube
             # I should find a way to know if the aperture has changed
             if itab != 0:
@@ -1125,13 +1144,17 @@ class GUI (QMainWindow):
                         pass
                 # Propagate to other tabs
                 for sc_ in self.sci:
-                    sc_.spectrum.redshift = self.specCube.redshift
-                    for annotation in sc_.annotations:
-                        annotation.remove()
-                    sc_.lannotation.remove()
-                    sc_.zannotation.remove()
-                    sc_.drawSpectrum()
-                    sc_.fig.canvas.draw_idle()
+                    # Check if tab is psf
+                    if sc_.name != 'PSF':
+                        sc_.spectrum.redshift = self.specCube.redshift
+                        for annotation in sc_.annotations:
+                            annotation.remove()
+                        sc_.lannotation.remove()
+                        sc_.zannotation.remove()
+                        sc_.drawSpectrum()
+                        sc_.fig.canvas.draw_idle()
+                    else:
+                        pass
             elif QMessageBox.No:
                 self.sb.showMessage("Redshift value unchanged ", 2000)
                 sc.spectrum.redshift = self.specCube.redshift
@@ -1161,13 +1184,16 @@ class GUI (QMainWindow):
                         pass
                 # Propagate to other tabs
                 for sc_ in self.sci:
-                    sc_.spectrum.l0 = self.specCube.l0
-                    for annotation in sc_.annotations:
-                        annotation.remove()
-                    sc_.lannotation.remove()
-                    sc_.zannotation.remove()
-                    sc_.drawSpectrum()
-                    sc_.fig.canvas.draw_idle()
+                    if sc_.name != 'PSF':
+                        sc_.spectrum.l0 = self.specCube.l0
+                        for annotation in sc_.annotations:
+                            annotation.remove()
+                        sc_.lannotation.remove()
+                        sc_.zannotation.remove()
+                        sc_.drawSpectrum()
+                        sc_.fig.canvas.draw_idle()
+                    else:
+                        pass
             elif QMessageBox.No:
                 self.sb.showMessage("Redshift value unchanged ", 2000)
                 sc.spectrum.l0 = self.specCube.l0
@@ -1348,7 +1374,8 @@ class GUI (QMainWindow):
                                                 'Estimate FWHM of PSF', '', self.estimatePSF)
         self.centroidAction = self.createAction(os.path.join(self.path0,'icons','centroid.png'),
                                                 'Centroid of the PSF', '', self.centroidPSF)
-        # Add buttons to the toolbar
+        self.centerAction = self.createAction(os.path.join(self.path0,'icons','center.png'),
+                                                'Fit center of the PSF', '', self.centerPSF)
         self.spacer = QWidget()
         self.spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.tb.addAction(self.startAction)
@@ -2883,7 +2910,7 @@ class GUI (QMainWindow):
         # Inherit the x-units of pix 
         istab = self.spectra.index('Pix')
         sc.xunit = self.sci[istab].xunit
-        sc.compute_initial_spectrum(spectrum=spec)
+        sc.compute_initial_spectrum(name=apname, spectrum=spec)
         self.specZoomlimits = [sc.xlimits,sc.ylimits]
         sc.cid = sc.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomSpec)
         # Start the span selector to show only part of the cube
@@ -4113,7 +4140,8 @@ class GUI (QMainWindow):
         ic = self.ici[itab]
         image = ic.oimage.ravel()
         mc = (distance > r0) & (distance <= r1)
-        cont = np.nanmedian(image[mc])
+        annulus = image[mc]
+        cont = np.nanmedian(annulus)
         
         # New fluxes
         mi = distance <= r0
@@ -4126,13 +4154,18 @@ class GUI (QMainWindow):
         """Update the profile after changing the aperture to compute the PSF."""   
         istab = self.stabs.currentIndex()
         sc = self.sci[istab]
+        if sc.name != 'PSF':
+            tabnames = [self.stabs.tabText(i) for i in range(len(self.stabs))]
+            i = tabnames.index('PSF')
+            self.stabs.setCurrentIndex(i)
+            sc = self.sci[i]
         # Compute new distance and flux
         dist, flux = self.computePsfData()
         # Update figure of PSF
         sc.updatePSF(dist, flux)    
         
     def centroidPSF(self, event):
-        """Recenter on the PSF aperture on centroid."""
+        """Recenter the PSF aperture on centroid of intensity."""
         x0, y0 = self.PsfI.innerCircle.center
         xi, yi = self.imagePoints
         distance = np.hypot(xi - x0, yi - y0)
@@ -4153,6 +4186,54 @@ class GUI (QMainWindow):
         self.PsfI.updateInteractor()
         # Update plot
         self.onModifiedPsf('center changed')
+        
+    def centerPSF(self, event):
+        """Recenter the PSF aperture optimizing the center with a fit"""
+        from lmfit import Parameters, minimize
+        x0, y0 = self.PsfI.innerCircle.center
+        xi, yi = self.imagePoints
+        distance = np.hypot(xi - x0, yi - y0)
+        r0 = self.PsfI.inRadius
+        r1 = self.PsfI.outRadius
+        mc = distance <= r0
+        ma = (distance > r0) & (distance <= r1)
+        itab = self.itabs.currentIndex()
+        ic = self.ici[itab]
+        stab = self.stabs.currentIndex()
+        sc = self.sci[stab]
+        image = ic.oimage
+        annulus = image[ma]
+        cont = np.nanmedian(annulus)
+        image -= cont
+        fit_params = Parameters()
+        fit_params.add('A', value=np.nanmax(image[mc]))
+        if sc.sigma is None:
+            sigmaguess = 5
+        else:
+            sigmaguess = sc.sigma
+        try:
+            fit_params.add('s', value=sigmaguess, min=1, max=2*sigmaguess)
+            fit_params.add('x0', value=x0)
+            fit_params.add('y0', value=y0)
+            idx = np.isfinite(image)
+            if ic.pixscale is None:
+                out = minimize(residualsPsf, fit_params, args=(xi[idx],yi[idx]),
+                               kws={'data': image[idx],})
+            else:
+                weight = (distance * ic.pixscale)
+                weight[~mc] = np.nanmax(weight)
+                out = minimize(residualsPsf, fit_params, args=(xi[idx],yi[idx]),
+                           kws={'data': image[idx], 'err':weight[idx]})
+            x0 = out.params['x0'].value
+            y0 = out.params['y0'].value
+            self.PsfI.innerCircle.center = x0, y0
+            self.PsfI.outerCircle.center = x0, y0
+            # Update interactor
+            self.PsfI.updateInteractor()
+            # Update plot
+            self.onModifiedPsf('center changed')
+        except:
+            print('Fit has failed')
         
     def maskCube(self):
         """Mask a slice of the cube."""
@@ -4541,7 +4622,8 @@ class GUI (QMainWindow):
                 # self.specCube.flux = self.specCube.uflux/atmed
                 # Redraw the spectrum
                 for sc in self.sci:
-                    sc.updateSpectrum(atran=atran, f=self.specCube.flux)
+                    if sc.name != 'PSF':
+                        sc.updateSpectrum(atran=atran, f=self.specCube.flux)
                 # tab with total flux
                 self.doZoomAll('new AT')
                 # tabs with apertures
@@ -4567,7 +4649,8 @@ class GUI (QMainWindow):
                 # self.specCube.flux = self.specCube.uflux/atmed
                 # Redraw the spectrum
                 for sc in self.sci:
-                    sc.updateSpectrum(atran=atran, f=self.specCube.flux)
+                    if sc.name != 'PSF':
+                        sc.updateSpectrum(atran=atran, f=self.specCube.flux)
                 # tab with total flux
                 self.doZoomAll('new AT')
                 # tabs with apertures
@@ -4635,7 +4718,8 @@ class GUI (QMainWindow):
                 atmed[atmed < 0.3] = np.nan   # Do not correct for too low atmospheric transmission
                 self.computeFluxAtm(atmed)
                 for sc in self.sci:
-                    sc.updateSpectrum(atran=atran, f=self.specCube.flux)
+                    if sc.name != 'PSF':
+                        sc.updateSpectrum(atran=atran, f=self.specCube.flux)
                 # tab with total flux
                 self.doZoomAll('new AT')
                 # tabs with apertures
@@ -4930,7 +5014,7 @@ class GUI (QMainWindow):
             spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, uflux= ufluxAll,
                             exposure=expAll, atran = s.atran, instrument=s.instrument,
                             redshift=s.redshift, baryshift=s.baryshift, l0=s.l0)
-        sc.compute_initial_spectrum(spectrum=spec)
+        sc.compute_initial_spectrum(name='Pix', spectrum=spec)
         print('initial spectrum computed')
         self.specZoomlimits = [sc.xlimits, sc.ylimits]
         sc.cid = sc.axes.callbacks.connect('xlim_changed' or 'ylim_changed', self.doZoomSpec)
@@ -5150,7 +5234,7 @@ class GUI (QMainWindow):
             spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, uflux= ufluxAll,
                             exposure=expAll, atran = s.atran, instrument=s.instrument,
                             redshift=s.redshift, baryshift = s.baryshift, l0=s.l0)
-        sc.compute_initial_spectrum(spectrum=spec)
+        sc.compute_initial_spectrum(name='All', spectrum=spec)
         self.specZoomlimits = [sc.xlimits,sc.ylimits]
         sc.cid = sc.axes.callbacks.connect('xlim_changed' or 'ylim_changed', self.doZoomSpec)
         # Start the span selector to show only part of the cube

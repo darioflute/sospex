@@ -201,15 +201,14 @@ def importGuesses(self):
         with open(filename) as f:
             data = json.load(f, object_pairs_hook=OrderedDict)
         self.ncells = data['ncells']
-        stab = self.stabs.currentIndex()        
-        sc = self.sci[stab]
+        #stab = self.stabs.currentIndex()        
+        istab = self.spectra.index('Pix')
+        sc = self.sci[istab]
+        self.stabs.setCurrentIndex(istab)
         sc.spectrum.redshift = data['redshift']
         sc.spectrum.l0 = data['wavref']
         # Update 
         self.onDraw2(1)
-        istab = self.spectra.index('Pix')
-        sc = self.sci[istab]
-        self.stabs.setCurrentIndex(istab)
         imtab = self.bands.index('Flux')
         ic = self.ici[imtab]
         self.itabs.setCurrentIndex(imtab)
