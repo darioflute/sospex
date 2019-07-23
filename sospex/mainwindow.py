@@ -4617,10 +4617,11 @@ class GUI (QMainWindow):
                 at = self.specCube.atran
                 atmed = np.nanmedian(at)
                 atran = self.specCube.atran*0.+atmed
+                self.specCube.atran = atran
                 #self.specCube.atran[:] = atmed
                 # The uncorrected flux should be interpolated over the corrected flux wavelength
                 # grid after applying the baryshift correction ...
-                self.computeFluxAtm(atmed)
+                self.computeFluxAtm(atran)
                 # self.specCube.flux = self.specCube.uflux/atmed
                 # Redraw the spectrum
                 for istab in range(len(self.stabs)):
@@ -4630,6 +4631,8 @@ class GUI (QMainWindow):
                 self.doZoomAll('new AT')
                 # tabs with apertures
                 self.onModifiedAperture('new AT')
+                # Update image
+                self.slideCube('new AT')
             else:
                 self.sb.showMessage("This operation is possible with FIFI-LS cubes only", 2000)    
         except:
@@ -4648,6 +4651,7 @@ class GUI (QMainWindow):
                 # The uncorrected flux should be interpolated over the corrected flux wavelength
                 # grid after applying the baryshift correction ...
                 self.computeFluxAtm(at[idx])
+                self.specCube.atran = atran
                 # self.specCube.flux = self.specCube.uflux/atmed
                 # Redraw the spectrum
                 for istab in range(len(self.stabs)):
@@ -4657,11 +4661,12 @@ class GUI (QMainWindow):
                 self.doZoomAll('new AT')
                 # tabs with apertures
                 self.onModifiedAperture('new AT')
+                # Update image
+                self.slideCube('new AT')
             else:
                 self.sb.showMessage("This operation is possible with FIFI-LS cubes only", 2000)    
         except:
             self.sb.showMessage("First choose a cube ", 1000)
-         
         
     def computeFluxAtm(self, atmed):
         nz, ny, nx = np.shape(self.specCube.uflux)
