@@ -515,6 +515,7 @@ class VoronoiInteractor(QObject):
         from scipy.spatial import Voronoi
         self.sites = self.poly.xy
         vor = Voronoi(self.sites)
+        #print('vertices ', vor.vertices)
         # Ridge segments
         self.segments = []
         for simplex in vor.ridge_vertices:
@@ -522,26 +523,28 @@ class VoronoiInteractor(QObject):
             if np.all(simplex >= 0):
                 x = vor.vertices[simplex, 0]
                 y = vor.vertices[simplex, 1]
+                #print('vertices: ', x, y)
                 segment = Line2D(x, y, color='black', linestyle='-')#, animated=True)
                 self.ax.add_line(segment)
                 self.segments.append(segment)
-        #center = self.sites.mean(axis=0)
+        center = self.sites.mean(axis=0)
         # Ridge rays
         self.rays = []
         for pointidx, simplex in zip(vor.ridge_points, vor.ridge_vertices):
             simplex = np.asarray(simplex)
             if np.any(simplex < 0):
-                #i = simplex[simplex >= 0][0] # finite end Voronoi vertex
+                i = simplex[simplex >= 0][0] # finite end Voronoi vertex
                 t = self.sites[pointidx[1]] - self.sites[pointidx[0]]  # tangent
                 t = t / np.linalg.norm(t)
-                #n = np.array([-t[1], t[0]]) # normal
-                #midpoint = self.sites[pointidx].mean(axis=0)
-                #far_point = vor.vertices[i] + np.sign(np.dot(midpoint - center, n)) * n * 100
-                #x = [vor.vertices[i,0], far_point[0]]
-                #y = [vor.vertices[i,1], far_point[1]]
-                #ray = Line2D(x, y, color='black', linestyle='--')#, animated=True)
-                #self.ax.add_line(ray)
-                #self.rays.append(ray)
+                n = np.array([-t[1], t[0]]) # normal
+                #print('normal is ',n, ' finite end ', vor.vertices[i], ' site ', self.sites[pointidx[0]])
+                midpoint = self.sites[pointidx].mean(axis=0)
+                far_point = vor.vertices[i] + np.sign(np.dot(midpoint - center, n)) * n * 3
+                x = [vor.vertices[i,0], far_point[0]]
+                y = [vor.vertices[i,1], far_point[1]]
+                ray = Line2D(x, y, color='black', linestyle='--')#, animated=True)
+                self.ax.add_line(ray)
+                self.rays.append(ray)
 
     def connect(self):
         self.cid_draw = self.canvas.mpl_connect('draw_event', self.draw_callback)

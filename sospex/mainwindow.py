@@ -586,7 +586,7 @@ class GUI (QMainWindow):
             # Remove photoAperture
             del self.photoApertures[n]
             # Remove from self.spectra
-            del self.spectra[scname]
+            self.spectra.remove(scname)
             # Redraw apertures
             ic0.fig.canvas.draw_idle()
         

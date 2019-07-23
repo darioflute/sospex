@@ -819,29 +819,32 @@ def computeMoments(p,m,w,dw,f):
         pos = f[1:] > 0 # Consider only positive values
         df = f[1:]-f[:-1]
         df = df[pos]
-        med = np.median(df)
-        mad = np.median(np.abs(med))
+        med = np.nanmedian(df)
+        mad = np.nanmedian(np.abs(med))
         sigma = 3 *  mad/np.sqrt(2.) # 3 sigma value
-        #ms = f > 3*sigma
-
         # Consider only values greater than continuum
+        #if np.isfinite(sigma):
+        #    ms = f > (-sigma)
+        #else:
+        #    ms = np.isfinite(f)
         ms = f > 0
-    
+        # Compute also negative intensity
         if np.sum(ms) > 5:
             c = 299792458. # m/s
-            w = w[ms]
-            dw = dw[ms]
+            w_ = w[ms]
+            dw_ = dw[ms]
             Snu = f[ms]
             pos = Snu > 0
-            Slambda = c*Snu[pos]/(w[pos]*w[pos])*1.e6   # [Jy * Hz / um]
-            w  = w[pos]
-            dw = dw[pos]
-            M0 = np.nansum(Slambda*dw) # [Jy Hz]  
-            M1 = np.nansum(w*Slambda*dw)/M0 # [um]
-            M2 = np.nansum(np.power(w-M1,2)*Slambda*dw)/M0 # [um*um]
+            #pos = Snu > (-sigma)
+            Slambda = c*Snu[pos]/(w_[pos]*w_[pos])*1.e6   # [Jy * Hz / um]
+            w_  = w_[pos]
+            dw_ = dw_[pos]
+            M0 = np.nansum(Slambda*dw_) # [Jy Hz] 
+            M1 = np.nansum(w_*Slambda*dw_)/M0 # [um]
+            M2 = np.nansum(np.power(w_-M1,2)*Slambda*dw_)/M0 # [um*um]
             SD = np.sqrt(M2)
-            M3 = np.nansum(np.power(w-M1,3)*Slambda*dw)/M0/np.power(SD,3)
-            M4 = np.nansum(np.power(w-M1,4)*Slambda*dw)/M0/np.power(SD,4)-3. # Relative to Gaussian which is 3
+            M3 = np.nansum(np.power(w_-M1,3)*Slambda*dw_)/M0/np.power(SD,3)
+            M4 = np.nansum(np.power(w_-M1,4)*Slambda*dw_)/M0/np.power(SD,4)-3. # Relative to Gaussian which is 3
             M0 *= 1.e-26 # [W/m2]  (W/m2 = Jy*Hz*1.e-26)
         else:
             M0 = np.nan

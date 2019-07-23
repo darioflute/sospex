@@ -144,6 +144,7 @@ def exportGuesses(self):
         imtab = self.bands.index('Flux')
         ic = self.ici[imtab]
         x, y = zip(*self.sites)
+        #print("sites ", self.sites)
         ra, dec = ic.wcs.wcs_pix2world(x, y, 0)
         data = OrderedDict(info)
         # Check deleted lines
@@ -237,7 +238,9 @@ def importGuesses(self):
                 sc.lguess.append(g['lines'])
             sc.lguess = [list(i) for i in zip(*sc.lguess)]  # Transposing
             x, y = ic.wcs.wcs_world2pix(ra, dec, 0)
-            self.sites = [(i,j) for (i,j) in zip(x,y)]
+            # Round to 2 decimal figures to avoid crazy Voronoi vertices values
+            self.sites = [(round(i,2),round(j,2)) for (i,j) in zip(x,y)]
+            #print('sites in ', self.sites)
             x = data['0']['x']
             y = data['0']['y']
             lines = data['0']['lines']
