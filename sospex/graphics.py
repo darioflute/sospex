@@ -1691,7 +1691,7 @@ class PsfCanvas(MplCanvas):
                 pass
                 self.unresolved = None
             else:
-                xg = np.arange(0, 5 * self.sigma, 0.1)
+                xg = np.arange(0, np.nanmax(self.distance), 0.1)
                 yg = np.nanmax(self.flux) * np.exp(- 0.5 * (xg/self.sigma)**2)
                 self.unresolved, = self.axes.plot(xg, yg, color = 'red',
                                                   label='FWHM [PSF] = {:2.1f}'.format(self.sigma*2.355))
@@ -1752,10 +1752,10 @@ class PsfCanvas(MplCanvas):
         fit_params = Parameters()
         fit_params.add('A', value=np.nanmax(self.flux))
         if self.sigma is None:
-            sigmaguess = 5
+            sigmaguess = 2
         else:
             sigmaguess = self.sigma
-        fit_params.add('s', value=sigmaguess, min=1, max=2*sigmaguess)
+        fit_params.add('s', value=sigmaguess, min=.1, max=2*sigmaguess)
         idx = np.isfinite(self.flux)
         if np.sum(idx) > 10:
             if self.pix is None:
