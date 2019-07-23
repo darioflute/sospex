@@ -1179,29 +1179,30 @@ class SpectrumCanvas(MplCanvas):
                 self.axes.draw_artist(self.fluxLine[0])
                 ylim0, ylim1 = self.axes.get_ylim()
                 n = len(f)
-                n5 = n // 5
                 if self.spectrum.instrument == 'FIFI-LS':
                     # Ignore regions with atm transmission < 0.5
                     atm = self.spectrum.atran
-                    mask = (atm > 0.5) & np.isfinite(f)
+                    mask = (atm > 0.2) & np.isfinite(f)
+                    n5 = n // 10
                 else:
                     mask = np.ones(n, dtype=bool)
+                    n5 = n // 20
                 mask[0:n5] = 0
                 mask[-n5:] = 0
                 if np.sum(mask) > 0:    
                     maxf = np.nanmax(f[mask])
                     minf = np.nanmin(f[mask])
                 else:
-                    #dy = ylim1 - ylim0
                     maxf = ylim1 / 1.1
                     minf = ylim0 
                 if self.spectrum.instrument == 'FIFI-LS':
                     if uf is not None:
                         n = len(uf) // 5
                         umaxf = np.nanmax(uf[n:-n])
-                        if umaxf > maxf: maxf = umaxf
+                        if umaxf > maxf:
+                            maxf = umaxf
                 self.axes.set_ylim(minf, maxf*1.1)
-                self.ylimits = (minf,maxf*1.1)
+                self.ylimits = (minf, maxf*1.1)
                 self.updateYlim(f=f)
                 self.updateGuess(f, ncell)
             if moments is not None:

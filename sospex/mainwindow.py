@@ -861,6 +861,7 @@ class GUI (QMainWindow):
         # Grab aperture in the flux image to compute the new fluxes
         istab = self.stabs.currentIndex()
         sc = self.sci[istab]
+        # print('modify aperture on ', sc.name)
         if sc.name == 'PSF': # Ideally it should go to the stab which correspond to the interactor
             # Check activated aperture
             ic = self.ici[itab]
@@ -1007,6 +1008,7 @@ class GUI (QMainWindow):
                 sc.spectrum.uflux = ufluxAll
                 sc.spectrum.eflux = efluxAll
                 sc.spectrum.exposure = expAll
+                #print('updating aperture ...')
                 if sc.auxiliary:
                     sc.updateSpectrum(f=fluxAll, af=afluxAll, uf=ufluxAll, exp=expAll,
                                       cont=cont,cslope=cslope, moments=moments, lines=lines, 
@@ -4621,9 +4623,9 @@ class GUI (QMainWindow):
                 self.computeFluxAtm(atmed)
                 # self.specCube.flux = self.specCube.uflux/atmed
                 # Redraw the spectrum
-                for sc in self.sci:
-                    if sc.name != 'PSF':
-                        sc.updateSpectrum(atran=atran, f=self.specCube.flux)
+                for istab in range(len(self.stabs)):
+                    if self.stabs.tabText(istab) != 'PSF':
+                        self.sci[istab].updateSpectrum(atran=atran)
                 # tab with total flux
                 self.doZoomAll('new AT')
                 # tabs with apertures
@@ -4648,9 +4650,9 @@ class GUI (QMainWindow):
                 self.computeFluxAtm(at[idx])
                 # self.specCube.flux = self.specCube.uflux/atmed
                 # Redraw the spectrum
-                for sc in self.sci:
-                    if sc.name != 'PSF':
-                        sc.updateSpectrum(atran=atran, f=self.specCube.flux)
+                for istab in range(len(self.stabs)):
+                    if self.stabs.tabText(istab) != 'PSF':
+                        self.sci[istab].updateSpectrum(atran=atran)
                 # tab with total flux
                 self.doZoomAll('new AT')
                 # tabs with apertures
@@ -4717,13 +4719,16 @@ class GUI (QMainWindow):
                 atran = atmed
                 atmed[atmed < 0.3] = np.nan   # Do not correct for too low atmospheric transmission
                 self.computeFluxAtm(atmed)
-                for sc in self.sci:
-                    if sc.name != 'PSF':
-                        sc.updateSpectrum(atran=atran, f=self.specCube.flux)
+                self.specCube.atran = atran # update atran
+                for istab in range(len(self.stabs)):
+                    if self.stabs.tabText(istab) != 'PSF':
+                        self.sci[istab].updateSpectrum(atran=atran)
                 # tab with total flux
                 self.doZoomAll('new AT')
                 # tabs with apertures
                 self.onModifiedAperture('new AT')
+                # Update image
+                self.slideCube('new AT')
             else:
                 self.sb.showMessage("This operation is possible with FIFI-LS cubes only", 2000)    
         except:
