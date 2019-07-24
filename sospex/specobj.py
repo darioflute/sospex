@@ -147,7 +147,6 @@ class specCube(object):
         c = 299792458.0  # speed of light in m/s 
         self.redshift /= c
         self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
-        print('pixel scale', )
         self.n = self.header['NAXIS3']
         naxes = self.header['NAXIS']
         if naxes == 4:
@@ -165,12 +164,10 @@ class specCube(object):
         # Compute the beam size at the wavelength
         bmaj = self.header['BMAJ'] * 3600. # Beam major axis in arcsec
         bmin = self.header['BMIN'] * 3600. # Beam minor axis in arcsec
-        print('Bmaj and Bmin ', bmaj, bmin)
         # Multiply by the flux fraction in the pixel assuming a 2D Gaussian curve                    
         pixfraction = 0.5 * erf(self.pixscale*0.5/bmaj) * erf(ypixscale*0.5/bmin)
         print('Beam fraction on pixel ', pixfraction)
         self.Tb2Jy *= pixfraction
-        print('Tb2Jy ', self.Tb2Jy)
         self.flux *= pixfraction
         vel = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3
         self.l0 = l0
