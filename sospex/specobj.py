@@ -368,9 +368,16 @@ class specCube(object):
 
     def computeExpFromNan(self):
         """Compute an exposure cube from NaN in the flux cube."""
-        self.exposure = np.ones(np.shape(self.flux))
-        mask = self.flux == np.nan
-        self.exposure[mask] = 0
+        if self.instrument == 'GREAT':
+            # Blank values (highest value is blank)
+            blank = self.header['BZERO']+self.header['BSCALE']*self.header['BLANK']
+            idx = self.flux == blank
+            #idx = self.flux == np.nanmax(self.flux)
+            print('blanks are ',np.sum(idx))
+            self.flux[idx] = np.nan
+            self.exposure = ~idx            
+        else:
+            self.exposure = np.isfinite(self.flux)
         
     def readFIFI(self, hdl):
         print('This is a FIFI-LS spectral cube')
@@ -482,7 +489,7 @@ class specCube(object):
             self.flux = (hdl[0].read())[0,:,:,:]
         else:
             self.flux = hdl[0].read()
-        t1 = time.process_time() 
+        t1 = time.process_time()
         print('Flux reading completed in ', t1-t,' s')
         #self.flux *= self.Tb2Jy   # Transformed from temperature to S_nu [Jy]  Move this to code
         vel = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3

@@ -1090,15 +1090,15 @@ def histoImage(image, xmin=None, xmax=None):
     if nh > 0:
         ima = np.sort(ima)
         s = np.size(ima)
-        smin = int(s*0.005)
-        smax = min(int(s*0.995)-1,s-1)
+        smin = int(s*0.01)
+        smax = min(int(s*0.99)-1,s-1)
         nbins=256
         imedian = np.median(ima)
         sdev = np.std(ima[smin:smax])
         imin = np.min(ima)
         imax = np.max(ima)
         epsilon = sdev/3.            
-        # Define the interval containing 99% of the values
+        # Define the interval containing 98% of the values
         if xmin == None:
             xmin = ima[smin]
         if xmax == None:

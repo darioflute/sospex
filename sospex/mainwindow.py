@@ -4789,8 +4789,15 @@ class GUI (QMainWindow):
             self.initializeSpectra()
             self.initializeSlider()
             if self.specCube.instrument in ['GREAT','HI']:
-                print('compute Exp from Nan')
                 self.specCube.computeExpFromNan()
+                #idx = np.isfinite(self.specCube.flux)
+                #print('No of bad ', np.sum(~idx))
+                if self.specCube.instrument  == 'GREAT':
+                    self.slideCube('exp computed')
+                    #image = self.specCube.flux[self.specCube.n0,:,:]
+                    #ic = self.ici[self.bands.index('Flux')]
+                    #ic.updateImage(image)
+                    #ic.fig.canvas.draw_idle()            
             self.all = False
             self.fitcont = False
             # Set default number of lines to fit across the cube
@@ -4827,7 +4834,7 @@ class GUI (QMainWindow):
                 self.initializeSpectra()
                 print('spectra initialized ')
                 if self.specCube.instrument in ['GREAT','HI']:
-                    print('compute Exp from Nan')
+                    #print('compute Exp from Nan')
                     self.specCube.computeExpFromNan()
                 self.all = False
                 self.fitcont = False
@@ -4835,6 +4842,12 @@ class GUI (QMainWindow):
                 self.abslines = 0
                 self.emslines = 0
                 self.initializeSlider()
+                if self.specCube.instrument == 'GREAT':
+                    self.slideCube('Exp computed')
+                    #image = self.specCube.flux[self.specCube.n0,:,:]
+                    #ic = self.ici[self.bands.index('Flux')]
+                    #ic.updateImage(image)
+                    #ic.fig.canvas.draw_idle()            
             except:
                 print('No spectral cube is defined')
                 pass
@@ -5187,8 +5200,10 @@ class GUI (QMainWindow):
         for ima in imas:
             if ima == 'Flux':
                 if self.specCube.instrument == 'GREAT':
-                    t2j = self.specCube.Tb2Jy
-                    image = self.specCube.flux[n,:,:] * t2j
+                    #print('update image of great cube')
+                    #idx = np.isfinite(self.specCube.flux[n,:,:])
+                    #print('NaN are ',np.sum(~idx))
+                    image = self.specCube.flux[n,:,:] * self.specCube.Tb2Jy
                 else:
                     image = self.specCube.flux[n,:,:]
             elif ima == 'uFlux':
