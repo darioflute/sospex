@@ -61,7 +61,18 @@ class DownloadThread(QThread):
         self.sendMessage.emit(message)
         # Disconnect signal at the end of the thread
         self.updateTabs.newImage.disconnect()
+        
+class UpdateHistogram(QThread):
+    #updateHisto = updateHisto()
+    sendMessage = pyqtSignal([str])
                 
+    def __init__(self, image, clim, parent=None):
+        super().__init__(parent)
+        self.image = image
+        self.clim = clim
+        
+    def run(self):
+        pass
         
 class GUI (QMainWindow):
     """Main GUI window."""
@@ -908,19 +919,22 @@ class GUI (QMainWindow):
                     ncell = 0
             else:
                 ncell = 0
-
+            if s.instrument == 'GREAT':
+                t2j = self.specCube.Tb2Jy
+            else:
+                t2j = 1.
             if istab == 1 and self.continuum is not None:
                 xc=np.median(xx); yc = np.median(yy)
                 if np.isfinite(xc) & np.isfinite(yc):
                     i = int(np.rint(xc)); j = int(np.rint(yc))
                     try:
-                        cont = self.continuum[:, j, i]
-                        cslope=self.Cs[j,i]
+                        cont = self.continuum[:, j, i]*t2j
+                        cslope=self.Cs[j,i]*t2j
                     except:
                         cont = None
                         cslope=None
                     try:
-                        moments = [self.M0[j, i], self.M1[j, i], self.M2[j, i],
+                        moments = [self.M0[j, i]*t2j, self.M1[j, i], self.M2[j, i],
                                    self.M3[j, i], self.M4[j, i]]
                         noise = self.noise[j, i]
                     except:
@@ -977,10 +991,10 @@ class GUI (QMainWindow):
             sc.spectrum.flux = fluxAll
             if s.instrument in ['GREAT','HI']:
                 if sc.auxiliary:
-                    sc.updateSpectrum(f=fluxAll, af=afluxAll, cont=cont, cslope=cslope, moments=moments, 
+                    sc.updateSpectrum(f=fluxAll*t2j, af=afluxAll, cont=cont, cslope=cslope, moments=moments, 
                                       lines=lines, noise=noise, ncell=ncell)
                 else:
-                    sc.updateSpectrum(f=fluxAll, cont=cont,cslope=cslope, moments=moments, 
+                    sc.updateSpectrum(f=fluxAll*t2j, cont=cont,cslope=cslope, moments=moments, 
                                       lines=lines, noise=noise, ncell=ncell)
             elif s.instrument in ['PACS','FORCAST']:
                 if istab == 1:
@@ -1682,6 +1696,8 @@ class GUI (QMainWindow):
         # image
         if band == 'M0':
             image = self.M0
+            if self.specCube.instrument == 'GREAT':
+                image *= self.specCube.Tb2Jy
         elif band == 'M1':
             image = self.M1
         elif band == 'M2':
@@ -1992,7 +2008,7 @@ class GUI (QMainWindow):
                     mask[i0:i1] = True
                     mask[i2:i3] = True
                     j, i = np.where(self.regions == ncell)
-                    self.C0[j, i] = np.nanmedian((self.specCube.flux[:, j, i])[mask,:], axis=0)                   
+                    self.C0[j, i] = np.nanmedian((self.specCube.flux[:, j, i])[mask,:], axis=0)
         self.continuum = np.broadcast_to(self.C0, np.shape(self.specCube.flux))
         self.Cs = self.C0.copy() * 0. # Set all slopes to 0
         self.refreshContinuum()
@@ -2015,7 +2031,11 @@ class GUI (QMainWindow):
         ic = self.ici[0]
         xc,yc = ic.photApertures[0].xy[0]  # marker coordinates (center of rectangle)
         i = int(np.rint(xc)); j = int(np.rint(yc))
-        sc.updateSpectrum(cont=self.continuum[:,j,i])
+        if self.specCube.instrument == 'GREAT':
+            t2j = self.specCube.Tb2Jy
+        else:
+            t2j = 1.
+        sc.updateSpectrum(cont=self.continuum[:,j,i]*t2j)
         sc.fig.canvas.draw_idle()
 
     def chooseComputeMoments(self):
@@ -2112,11 +2132,6 @@ class GUI (QMainWindow):
                 ic.image.axes.set_xlim(ic0.image.axes.get_xlim())
                 ic.image.axes.set_ylim(ic0.image.axes.get_ylim())
                 ic.changed = True
-            # Refresh current image (if a velocity)
-            #if self.bands[itab] in bands:
-            #    print('refresh ', self.bands[itab])
-            #    ic = self.ici[itab]
-            #    ic.fig.canvas.draw_idle()
             # Reorder tabs
             for new in ['v','sv']:  
                 itab = self.bands.index(new)
@@ -2348,10 +2363,14 @@ class GUI (QMainWindow):
         # Refresh the plotted image
         itab = self.bands.index('C0')
         ic = self.ici[itab]
-        ic.showImage(image=self.C0)
+        if self.specCube.instrument == 'GREAT':
+            t2j = self.specCube.Tb2Jy
+        else:
+            t2j = 1.
+        ic.showImage(image=self.C0*t2j)
         ic.image.format_cursor_data = lambda z: "{:.2e} Jy".format(float(z))        
         ih = self.ihi[itab]
-        ih.compute_initial_figure(image = self.C0)
+        ih.compute_initial_figure(image=self.C0*t2j)
         self.addContours(ic)
         # Update limits of image
         ic.image.set_clim(ih.limits)
@@ -2366,7 +2385,7 @@ class GUI (QMainWindow):
         ic = self.ici[0]
         xc,yc = ic.photApertures[0].xy[0]  # marker coordinates (center of rectangle)
         i = int(np.rint(xc)); j = int(np.rint(yc))
-        sc.updateSpectrum(cont=self.continuum[:,j,i], cslope = self.Cs[j,i])
+        sc.updateSpectrum(cont=self.continuum[:,j,i]*t2j, cslope = self.Cs[j,i]*t2j)
         sc.fig.canvas.draw_idle()
 
     def computeMomentsAll(self):
@@ -2411,7 +2430,11 @@ class GUI (QMainWindow):
             #newbands = ['M0','M1','M2','M3','M4']
             #sbands = [self.M0, self.M1, self.M2, self.M3,self.M4]
             newbands = ['M0', 'M3', 'M4']
-            sbands = [self.M0, self.M3, self.M4]
+            if self.specCube.instrument == 'GREAT':
+                t2j = self.specCube.Tb2Jy
+            else:
+                t2j = 1.
+            sbands = [self.M0*t2j, self.M3, self.M4]
             for new,sb in zip(newbands,sbands):
                 if new not in self.bands:
                     self.addBand(new)
@@ -2604,7 +2627,11 @@ class GUI (QMainWindow):
         #bands = ['M0', 'M1', 'M2', 'M3', 'M4']
         #sbands = [self.M0, self.M1, self.M2, self.M3, self.M4]
         bands = ['M0', 'M3', 'M4']
-        sbands = [self.M0, self.M3, self.M4]
+        if self.specCube.instrument == 'GREAT':
+            t2j = self.specCube.Tb2Jy
+        else:
+            t2j = 1.
+        sbands = [self.M0*t2j, self.M3, self.M4]
         for b,sb in zip(bands,sbands):
             itab = self.bands.index(b)
             ic = self.ici[itab]
@@ -2636,8 +2663,13 @@ class GUI (QMainWindow):
         ic = self.ici[0]
         xc,yc = ic.photApertures[0].xy[0]
         i = int(np.rint(xc)); j = int(np.rint(yc))
-        moments = [self.M0[j, i], self.M1[j, i], self.M2[j, i], self.M3[j, i], self.M4[j, i]]
-        sc.updateSpectrum(cont=self.continuum[:, j, i], cslope=self.Cs[j,i], moments=moments, noise=self.noise[j, i])
+        if self.specCube.instrument == 'GREAT':
+            t2j = self.specCube.Tb2Jy
+        else:
+            t2j = 1
+        moments = [self.M0[j, i] * t2j, self.M1[j, i], self.M2[j, i], self.M3[j, i], self.M4[j, i]]
+        sc.updateSpectrum(cont=self.continuum[:, j, i]* t2j, cslope=self.Cs[j,i]* t2j,
+                          moments=moments, noise=self.noise[j, i]* t2j)
         sc.fig.canvas.draw_idle()
         # Compute Velocities
         self.computeVelocities()
@@ -2895,8 +2927,8 @@ class GUI (QMainWindow):
         xx,yy = inpoints.T        
         fluxAll = np.nansum(s.flux[:,yy,xx], axis=1)
         if s.instrument == 'GREAT':
-            spec = Spectrum(s.wave, fluxAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0,
-                            Tb2Jy = s.Tb2Jy)
+            spec = Spectrum(s.wave, fluxAll*s.Tb2Jy, instrument=s.instrument, 
+                            redshift=s.redshift, l0=s.l0, Tb2Jy = s.Tb2Jy)
         elif s.instrument == 'HI':
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0)
         elif s.instrument == 'FIFI-LS':
@@ -3373,7 +3405,7 @@ class GUI (QMainWindow):
         """Upload existing spectrum."""        
         fd = QFileDialog()
         fd.setLabelText(QFileDialog.Accept, "Import")
-        fd.setNameFilters(["Fits Files (*.fits)","All Files (*)"])
+        fd.setNameFilters(["Fits Files (*.fits, *.fits.gz)","All Files (*)"])
         fd.setOptions(QFileDialog.DontUseNativeDialog)
         fd.setViewMode(QFileDialog.List)
         fd.setFileMode(QFileDialog.ExistingFile)
@@ -3924,11 +3956,11 @@ class GUI (QMainWindow):
                 header['VELO-LSR'] = self.specCube.redshift * c
                 header['RESTFREQ'] = self.specCube.header['RESTFREQ']
                 header['CUNIT3'] = ('m/s','Velocity unit')
-                eta_fss=0.97
-                eta_mb =0.67
-                calib = 971.
-                factor = calib*eta_fss*eta_mb
-                temperature = flux / factor  # Transform flux into temperature
+                #eta_fss=0.97
+                #eta_mb =0.67
+                #calib = 971.
+                #factor = calib*eta_fss*eta_mb
+                temperature = flux #/ factor  # Flux is already a Tb
                 # Primary header
                 hdu = fits.PrimaryHDU(temperature)
                 header['NAXIS'] = (3,'Number of axis')
@@ -4779,7 +4811,7 @@ class GUI (QMainWindow):
             pass
         fd = QFileDialog()
         fd.setLabelText(QFileDialog.Accept, "Import")
-        fd.setNameFilters(["Fits Files (*.fits)", "All Files (*)"])
+        fd.setNameFilters(["Fits Files (*.fits*)", "All Files (*)"])
         fd.setOptions(QFileDialog.DontUseNativeDialog)
         fd.setViewMode(QFileDialog.List)
         fd.setFileMode(QFileDialog.ExistingFile)
@@ -4912,6 +4944,8 @@ class GUI (QMainWindow):
             ic = self.ici[self.bands.index(ima)]
             if ima == 'Flux':
                 image = s.flux[s.n0,:,:]
+                if s.instrument == 'GREAT':
+                    image *= s.Tb2Jy
             elif ima == 'uFlux':
                 image = s.uflux[s.n0,:,:]
             elif ima == 'Exp':
@@ -4941,7 +4975,7 @@ class GUI (QMainWindow):
                                                self.doZoomAll)
             # print('Define histogram')
             ih = self.ihi[self.bands.index(ima)]
-            ih.changed = False
+            #ih.changed = False
             try:
                 clim = ic.image.get_clim()
             except BaseException:
@@ -4974,6 +5008,7 @@ class GUI (QMainWindow):
         self.ES = None
         self.RS = None
         self.LS = None
+        return image, clim
             
     def initializeSpectra(self):
         s = self.specCube
@@ -5002,7 +5037,8 @@ class GUI (QMainWindow):
         y0 = s.ny // 2
         fluxAll = s.flux[:,y0,x0]
         if s.instrument == 'GREAT':
-            spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
+            #print('max flux is ', np.nanmax(fluxAll*s.Tb2Jy))
+            spec = Spectrum(s.wave, fluxAll*s.Tb2Jy, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy)
         elif s.instrument == 'HI':
             spec = Spectrum(s.wave, fluxAll,instrument=s.instrument,
@@ -5025,7 +5061,7 @@ class GUI (QMainWindow):
                             exposure=expAll, atran = s.atran, instrument=s.instrument,
                             redshift=s.redshift, baryshift=s.baryshift, l0=s.l0)
         sc.compute_initial_spectrum(name='Pix', spectrum=spec)
-        print('initial spectrum computed')
+        #print('initial spectrum computed')
         self.specZoomlimits = [sc.xlimits, sc.ylimits]
         sc.cid = sc.axes.callbacks.connect('xlim_changed' or 'ylim_changed', self.doZoomSpec)
         sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
@@ -5150,7 +5186,11 @@ class GUI (QMainWindow):
         ic0 = self.ici[itab]
         for ima in imas:
             if ima == 'Flux':
-                image = self.specCube.flux[n,:,:]
+                if self.specCube.instrument == 'GREAT':
+                    t2j = self.specCube.Tb2Jy
+                    image = self.specCube.flux[n,:,:] * t2j
+                else:
+                    image = self.specCube.flux[n,:,:]
             elif ima == 'uFlux':
                 image = self.specCube.uflux[n,:,:]
             elif ima == 'Exp':
@@ -5228,7 +5268,7 @@ class GUI (QMainWindow):
         sc = self.sci[self.spectra.index(spectrum)]
         fluxAll = np.nansum(s.flux, axis=(1,2))
         if s.instrument == 'GREAT':
-            spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
+            spec = Spectrum(s.wave, fluxAll*s.Tb2Jy, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy)
         elif s.instrument == 'HI':
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
@@ -5425,7 +5465,8 @@ class GUI (QMainWindow):
             ima.cid = ima.axes.callbacks.connect('ylim_changed', self.doZoomAll)
         fluxAll = np.nansum(self.specCube.flux[:, y0:y1, x0:x1], axis=(1, 2))
         if s.instrument in ['GREAT','HI']:
-            sc.updateSpectrum(f=fluxAll)
+            t2j = self.specCube.Tb2Jy
+            sc.updateSpectrum(f=fluxAll*t2j)
         elif s.instrument in ['PACS','FORCAST']:
             expAll = np.nansum(s.exposure[:, y0:y1, x0:x1], axis=(1, 2))
             sc.updateSpectrum(f=fluxAll,exp=expAll)            
@@ -5460,11 +5501,8 @@ class GUI (QMainWindow):
             ih.setVisible(not state)
             if ih.isVisible():
                 if ih.changed:
-                    image = self.ici[itab].oimage
                     ih.axes.clear()
-                    #clim = image.get_clim()
-                    #ih.compute_initial_figure(image=image,xmin=clim[0],xmax=clim[1])
-                    ih.compute_initial_figure(image=image)
+                    ih.update_figure(image=self.ici[itab].oimage)
                     ih.fig.canvas.draw_idle()
                     ih.changed = False
         except:

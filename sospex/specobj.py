@@ -3,8 +3,8 @@ from astropy.io import fits
 from astropy.wcs import WCS
 from astropy.wcs.utils import proj_plane_pixel_scales
 
-class specCube(object):
-    """ spectral cube """
+class specCubeAstro(object):
+    """ spectral cube - read with AstroPy routines """
     def __init__(self, infile):
         import time
         t = time.process_time()
@@ -65,9 +65,10 @@ class specCube(object):
 
     def computeExpFromNan(self):
         """Compute an exposure cube from NaN in the flux cube."""
-        self.exposure = np.ones(np.shape(self.flux))
-        mask = self.flux == np.nan
-        self.exposure[mask] = 0
+        #self.exposure = np.zero(np.shape(self.flux))
+        #mask = np.isfinite(self.flux)
+        #self.exposure[mask] = 0
+        self.exposure = np.isfinite(self.flux)
         
     def readFIFI(self, hdl):
         print('This is a FIFI-LS spectral cube')
@@ -302,6 +303,326 @@ class specCube(object):
             else:
                 return 1.9163 * l * l - 187.35 * l + 5496.9
 
+import fitsio
+class specCube(object):
+    """ spectral cube - read with fitsio routines"""
+    def __init__(self, infile):
+        import time
+        t = time.process_time()
+        # Option None seems faster than False
+        #hdl = fits.open(infile,memmap=None)
+        hdl = fitsio.FITS(infile)
+        #header = hdl['PRIMARY'].header
+        header = hdl[0].read_header()
+        self.header = header
+        self.filename = infile
+        try:
+            self.instrument = header['INSTRUME'].strip()
+        except:
+            origin = header['ORIGIN'].strip()
+            if origin == 'GILDAS Consortium':
+                self.instrument = 'GREAT'
+            elif origin[0:6] == 'Miriad':
+                print('Origin is ', origin)
+                self.instrument = 'HI'
+        try:
+            self.obsdate = header['DATE-OBS'].strip()
+        except:
+            self.obsdate = header['DATE'].strip()
+        # Reading files
+        if self.instrument == 'FIFI-LS':     
+            self.readFIFI(hdl)
+        elif self.instrument == 'GREAT':
+            self.readGREAT(hdl)
+        elif self.instrument == 'PACS':
+            self.readPACS(hdl)
+        elif self.instrument == 'FORCAST':
+            self.readFORCAST(hdl)
+        elif self.instrument == 'HI':
+            self.readHI(hdl)
+        else:
+            print('This is not a supported spectral cube')
+        hdl.close()
+        # Index of the ref wavelength
+        self.n0 = np.argmin(np.abs(self.wave - self.l0))
+        print('ref wavelength at n: ', self.n0)
+        # Create a grid of points
+        self.nz, self.ny, self.nx = np.shape(self.flux)
+        if self.n0 <= 0:
+            self.n0 = self.nz // 2
+        xi = np.arange(self.nx); yi = np.arange(self.ny)
+        xi,yi = np.meshgrid(xi, yi)
+        # Compute rotation angle
+        h1 = self.wcs.to_header()
+        try:
+            self.crota2 = np.arctan2(-h1["PC2_1"], h1["PC2_2"]) * 180./np.pi
+        except:
+            self.crota2 = 0.
+        print('rotation angle ', self.crota2)
+        # Alternative way
+        # self.points = np.array([np.ravel(xi), np.ravel(yi)]).transpose()
+        self.points = np.c_[np.ravel(xi), np.ravel(yi)]
+        # Time used for reading
+        elapsed_time = time.process_time() - t
+        print('Reading of cube completed in ', elapsed_time,' s')
+
+    def computeExpFromNan(self):
+        """Compute an exposure cube from NaN in the flux cube."""
+        self.exposure = np.ones(np.shape(self.flux))
+        mask = self.flux == np.nan
+        self.exposure[mask] = 0
+        
+    def readFIFI(self, hdl):
+        print('This is a FIFI-LS spectral cube')
+        self.wcs = WCS(self.header).celestial
+        self.crpix3 = self.header['CRPIX3']
+        self.crval3 = self.header['CRVAL3']
+        self.cdelt3 = self.header['CDELT3']
+        self.objname = self.header['OBJ_NAME'].strip()
+        try:
+            self.filegpid = self.header['FILEGPID'].strip()
+        except:
+            print('File group ID not defined')
+            self.filegpid = 'Unknown'
+        self.baryshift = self.header['BARYSHFT']
+        self.pixscale = self.header['PIXSCAL']
+        self.resolution = self.header['RESOLUN']
+        self.za = (self.header['ZA_START'], self.header['ZA_END'])
+        self.altitude = (self.header['ALTI_STA'],self.header['ALTI_END'])
+        try:
+            self.redshift = self.header['REDSHIFT']
+        except:
+            print('No redshift present')
+            self.redshift = 0.0
+            
+        extnames = [f.get_extname() for f in hdl]
+        print('ext names ', extnames)
+        
+        self.flux = hdl[extnames.index('FLUX')].read()
+        self.eflux = hdl[extnames.index('ERROR')].read()
+        self.uflux = hdl[extnames.index('UNCORRECTED_FLUX')].read()
+        self.euflux = hdl[extnames.index('UNCORRECTED_ERROR')].read()
+        self.wave = hdl[extnames.index('WAVELENGTH')].read()
+        self.n = len(self.wave)
+        #self.vel = np.zeros(self.n)  # prepare array of velocities
+        self.x = hdl[extnames.index('X')].read()
+        self.y = hdl[extnames.index('Y')].read()
+        #self.atran = hdl['TRANSMISSION'].data
+        self.channel = self.header['DETCHAN'].strip()
+        if self.channel == 'BLUE':
+            self.order = str(self.header["G_ORD_B"])
+        else:
+            self.order = '1'
+        print('channel ', self.channel, ' order ', self.order)
+        # Read reference wavelength from file group name
+        try:
+            if self.channel == 'RED':
+                filegp = self.header['FILEGP_R'].strip()
+            else:
+                filegp = self.header['FILEGP_B'].strip()
+            name, wr = filegp.split('_')
+            print('wr is ',wr)
+            self.l0 = float(wr)
+        except:
+            self.l0 = np.nanmedian(self.wave)
+            print('No file group present, assumed central wavelength ', self.l0)
+        print('ref wav ', self.l0)
+        try:
+            utran = hdl[extnames.index('UNSMOOTHED_TRANSMISSION')].read()
+            w = utran[0,:]
+            t = utran[1,:]
+            self.atran = np.interp(self.wave,w,t)  # Interpolation at the resolution of the wavelength grid
+        except:
+            print('The unsmoothed transmission is not available')
+            self.atran = hdl[extnames.index('TRANSMISSION')].read()
+        print('atran read')
+        self.response = hdl[extnames.index('RESPONSE')].read()
+        nexp = self.header['NEXP']
+        exptime = self.header['EXPTIME']
+        # Exposure contains number of exposures - if all the exposure last the same time, the 
+        # following is correct, otherwise it is an approximation
+        self.exposure = hdl[extnames.index('EXPOSURE_MAP')].read().astype(float) * exptime/nexp
+          
+    def readGREAT(self, hdl):
+        from scipy.special import erf
+        import time
+        print('This is a GREAT spectral cube')
+        #self.cmin = header['DATAMIN']
+        #self.cmax = header['DATAMAX']
+        t = time.process_time()
+        self.wcs = WCS(self.header).celestial
+        self.crpix3 = self.header['CRPIX3']
+        self.crval3 = self.header['CRVAL3']
+        self.cdelt3 = self.header['CDELT3']
+        self.objname = self.header['OBJECT'].strip()
+        self.redshift = self.header['VELO-LSR'] # in m/s
+        print('redshift ', self.redshift)
+        c = 299792458.0  # speed of light in m/s 
+        self.redshift /= c
+        self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
+        self.n = self.header['NAXIS3']
+        eta_fss=0.97
+        eta_mb =0.67
+        calib = 971.
+        self.Tb2Jy = calib*eta_fss*eta_mb
+        nu0 = self.header['RESTFREQ']  # MHz
+        print('rest freq ', nu0)
+        l0 = c/nu0  # in micron
+        # Transform in Jy/pixel
+        # Compute the beam size at the wavelength
+        bmaj = self.header['BMAJ'] * 3600. # Beam major axis in arcsec
+        bmin = self.header['BMIN'] * 3600. # Beam minor axis in arcsec
+        # Multiply by the flux fraction in the pixel assuming a 2D Gaussian curve                    
+        pixfraction = 0.5 * erf(self.pixscale*0.5/bmaj) * erf(ypixscale*0.5/bmin)
+        print('Beam fraction on pixel ', pixfraction)
+        self.Tb2Jy *= pixfraction
+        naxes = self.header['NAXIS']
+        print('no of axes ', naxes)
+        if naxes == 4:
+            self.flux = (hdl[0].read())[0,:,:,:]
+        else:
+            self.flux = hdl[0].read()
+        t1 = time.process_time() 
+        print('Flux reading completed in ', t1-t,' s')
+        #self.flux *= self.Tb2Jy   # Transformed from temperature to S_nu [Jy]  Move this to code
+        vel = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3
+        self.l0 = l0
+        self.wave = l0 + l0 * vel / c
+        #t2 = time.process_time()
+        #print('GREAT transf completed in ', t2-t1,' s')
+        
+    def readFORCAST(self, hdl): 
+        print('This is a FORCAST spectral cube')
+        wcs = WCS(self.header)
+        self.wcs = wcs.celestial
+        self.crpix3 = self.header['CRPIX3']
+        self.crval3 = self.header['CRVAL3']
+        self.cdelt3 = self.header['CDELT3']
+        self.objname = self.header['OBJECT'].strip()
+        self.redshift = 0 # in m/s
+        self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
+        self.n = self.header['NAXIS3']
+        extnames = [f.get_extname() for f in hdl]
+        self.flux = hdl[extnames.index('FLUX')].read()
+        self.eflux = np.sqrt(hdl[extnames.index('VARIANCE')].read())
+        # nz, ny, nx = np.shape(self.flux)
+        # print('nz is ',nz)
+        exptime = self.header['EXPTIME']
+        exp = hdl[extnames.index('EXPOSURE')].read().astype(float) * exptime
+        self.exposure = np.broadcast_to(exp, np.shape(self.flux))
+        print('shape of exposure is ', np.shape(self.exposure))
+        self.wave = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3
+        self.l0 = np.nanmedian(self.wave)
+
+    def readPACS(self, hdl):
+        """ Case of PACS spectral cubes """
+        print('This is a PACS spectral cube')
+        extnames = [f.get_extname() for f in hdl]
+        print('Extensions ', extnames)
+        self.objname = self.header['OBJECT'].strip()
+        try:
+            self.redshift = self.header['REDSHFTV']*1000. # in km/s
+            c = 299792458.0  # speed of light in m/s 
+            self.redshift /= c
+        except:
+            self.redshift = 0.
+        print('Object is ',self.objname)
+        self.flux = hdl[extnames.index('image')].read()
+        #print('Flux read')
+        try:
+            self.exposure = hdl[extnames.index('coverage')].read()
+            print('Coverage read')
+        except:
+            print('No coverage available - range observation')
+            self.computeExpFromNan()
+            print('New exposure computed')
+            
+        wave = hdl[extnames.index('wcs-tab')].read()
+        print('Wvl read')
+        nwave = len(np.shape(wave['wavelen']))
+        if nwave == 3:
+            self.wave = np.concatenate(wave['wavelen'][0])
+        else:
+            self.wave = np.concatenate(wave['wavelen'])
+        self.l0 = np.nanmedian(self.wave)
+        self.n = len(self.wave)
+        print('Length of wavelength ',self.n)
+        print('Min and max wavelengths: ', np.nanmin(self.wave), np.nanmax(self.wave))
+        print(np.shape(self.wave))
+        print('image ext ', extnames.index('image'))
+        header = hdl[extnames.index('image')].read_header()
+        self.header = header
+        print('Header ',header)
+        hdu = fits.PrimaryHDU(self.flux)
+        hdu.header
+        hdu.header['CRPIX1']=header['CRPIX1']
+        hdu.header['CRPIX2']=header['CRPIX2']
+        hdu.header['CDELT1']=header['CDELT1']
+        hdu.header['CDELT2']=header['CDELT2']
+        hdu.header['CRVAL1']=header['CRVAL1']
+        hdu.header['CRVAL2']=header['CRVAL2']
+        hdu.header['CTYPE1']=header['CTYPE1'].strip()
+        hdu.header['CTYPE2']=header['CTYPE2'].strip()
+        self.wcs = WCS(hdu.header).celestial
+        print('astrometry ', self.wcs)
+        self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
+        self.crpix3 = 1
+        w = self.wave
+        self.crval3 = w[0]
+        self.cdelt3 = np.median(w[1:] - w[:-1])
+        
+    def readHI(self, hdl):
+        """Case of generic radio cube (in this case HI cubes from Westerbrock)."""
+        self.objname = self.header['OBJECT'].strip()
+        print('Object of HI is ',self.objname)
+        self.header = hdl[0].read_header()
+        self.redshift = 0.
+        data = hdl[0].read()
+        naxis = self.header['NAXIS']
+        if naxis == 3:
+            self.flux = data
+        elif naxis == 4: # polarization
+            self.flux = data[0,:,:,:]
+        nz, ny, nx = np.shape(self.flux)
+        self.n = nz
+        print('nz: ',nz, self.header['NAXIS3'])
+        wcs = WCS(self.header)
+        self.wcs = wcs.celestial
+        self.crpix3 = self.header['CRPIX3']
+        self.crval3 = self.header['CRVAL3']
+        self.cdelt3 = self.header['CDELT3']
+        ctype3 = self.header['CTYPE3'].strip()
+        if (ctype3 == 'VELO-HEL') or (ctype3 == 'VELO-LSR'):
+            velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3 # m/s
+            # Neutral Hydrogen (HI)
+            nu0 = self.header['RESTFREQ']
+            print('reference frequency', nu0)
+            c = 299792458.0 # m/s
+            # self.l0 = 21.1061140542 * 1.e4 #um
+            self.l0 = c/nu0 * 1.e6 #um
+            self.wave = self.l0 * (1 + velocity/c) #um
+        self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
+        print('scale is ', self.pixscale)
+        # Back to wavelength
+        w = self.wave
+        self.crval3 = w[0]
+        self.cdelt3 = np.median(w[1:] - w[:-1])
+        
+    
+    def getResolutionFIFI(self):
+        """Compute resolution at reference wavelength for FIFI-LS"""
+        if self.instrument != 'FIFI-LS':
+            return
+        l0 = self.l0
+        z = self.redshift
+        l = l0 * (1.+z)
+        if self.channel == 'RED':
+            return 0.062423 * l * l - 6.6595 * l + 647.65
+        else:
+            if self.order == '1':
+                return 0.16864 * l * l - 22.831 * l + 1316.6 
+            else:
+                return 1.9163 * l * l - 187.35 * l + 5496.9
 
 class ExtSpectrum(object):
     """ class for external spectrum """

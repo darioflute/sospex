@@ -820,31 +820,41 @@ def computeMoments(p,m,w,dw,f):
         df = f[1:]-f[:-1]
         df = df[pos]
         med = np.nanmedian(df)
-        mad = np.nanmedian(np.abs(med))
-        sigma = 3 *  mad/np.sqrt(2.) # 3 sigma value
+        # Divide by sqrt(2.) since I did a subtraction 
+        mad = np.nanmedian(np.abs(med))/np.sqrt(2.) * 1.48 # MAD for Gaussian distributions
+        sigma = 1 *  mad# n sigma value
         # Consider only values greater than continuum
         #if np.isfinite(sigma):
         #    ms = f > (-sigma)
         #else:
         #    ms = np.isfinite(f)
-        ms = f > 0
+        ms = f > sigma
         # Compute also negative intensity
         if np.sum(ms) > 5:
             c = 299792458. # m/s
             w_ = w[ms]
             dw_ = dw[ms]
             Snu = f[ms]
-            pos = Snu > 0
-            #pos = Snu > (-sigma)
+            pos = Snu > sigma
             Slambda = c*Snu[pos]/(w_[pos]*w_[pos])*1.e6   # [Jy * Hz / um]
             w_  = w_[pos]
             dw_ = dw_[pos]
+            # Compute only for values > sigma
             M0 = np.nansum(Slambda*dw_) # [Jy Hz] 
             M1 = np.nansum(w_*Slambda*dw_)/M0 # [um]
             M2 = np.nansum(np.power(w_-M1,2)*Slambda*dw_)/M0 # [um*um]
             SD = np.sqrt(M2)
             M3 = np.nansum(np.power(w_-M1,3)*Slambda*dw_)/M0/np.power(SD,3)
             M4 = np.nansum(np.power(w_-M1,4)*Slambda*dw_)/M0/np.power(SD,4)-3. # Relative to Gaussian which is 3
+            #w_ = w[ms]
+            #dw_ = dw[ms]
+            #Snu = f[ms]
+            # Compute M0 only for positive values (or mildly negative)
+            #pos = Snu > sigma
+            #Slambda = c*Snu[pos]/(w_[pos]*w_[pos])*1.e6   # [Jy * Hz / um]
+            #w_  = w_[pos]
+            #dw_ = dw_[pos]
+            #M0 = np.nansum(Slambda*dw_) # [Jy Hz]             
             M0 *= 1.e-26 # [W/m2]  (W/m2 = Jy*Hz*1.e-26)
         else:
             M0 = np.nan
@@ -1071,3 +1081,47 @@ def residualsPsf(p, x, y, data=None, err=None):
             return (model - data.flatten())
         else:
             return (model - data.flatten())/err.flatten()
+
+def histoImage(image, xmin=None, xmax=None):
+    ima = image.ravel()
+    mask = np.isfinite(ima)
+    ima = ima[mask]
+    nh = len(ima)
+    if nh > 0:
+        ima = np.sort(ima)
+        s = np.size(ima)
+        smin = int(s*0.005)
+        smax = min(int(s*0.995)-1,s-1)
+        nbins=256
+        imedian = np.median(ima)
+        sdev = np.std(ima[smin:smax])
+        imin = np.min(ima)
+        imax = np.max(ima)
+        epsilon = sdev/3.            
+        # Define the interval containing 99% of the values
+        if xmin == None:
+            xmin = ima[smin]
+        if xmax == None:
+            xmax = ima[smax]
+        print('xmin, xmax ', xmin, xmax)
+        # Avoid excessively lower flux
+        if xmin < (imedian - 3 * sdev):
+            xmin = imedian - 3 * sdev
+        hmin = ima[smin]
+        hmax = ima[smax]
+        if (hmax - imedian) > 10 * sdev:
+            hmax = imedian+ 10 * sdev
+        print(hmin, hmax)
+    else:
+        nbins = 0
+        xmin = 0.
+        xmax = 0.
+        imedian = 0.
+        sdev = 0.
+        imin = 0.
+        imax = 0.
+        epsilon = 0.
+        hmin = 0.
+        hmax = 0.
+    return ima, nbins, xmin, xmax, hmin, hmax, imedian, imin, imax, sdev, epsilon
+    

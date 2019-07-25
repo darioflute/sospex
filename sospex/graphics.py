@@ -8,6 +8,7 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 from matplotlib.ticker import ScalarFormatter
 from matplotlib.font_manager import FontProperties
 from matplotlib.patches import Polygon,FancyArrowPatch
+import matplotlib.ticker as ticker
 
 # Matplotlib parameters
 import matplotlib.pyplot as plt
@@ -479,6 +480,7 @@ class ImageCanvas(MplCanvas):
         self.image.set_clim([self.cmin,self.cmax])
         self.fig.canvas.draw_idle()
 
+from sospex.moments import histoImage
         
 class ImageHistoCanvas(MplCanvas):
     """ Canvas to plot the histogram of image intensity """
@@ -507,66 +509,37 @@ class ImageHistoCanvas(MplCanvas):
             ''' initial definition when images are not yet read '''
             pass
         else:
-            # Print the histogram of finite values
-            ima = image.ravel()
-            mask = np.isfinite(ima)
-            ima = ima[mask]
-            #print('image has size', len(ima))
-            self.nh = len(ima)
-            if self.nh > 0:
-                ima = np.sort(ima)
-                s = np.size(ima)
-                smin = int(s*0.005)
-                smax = min(int(s*0.9995),s-1)
-                nbins=256
-                self.median = np.median(ima)
-                self.sdev = np.std(ima[smin:smax])
-                self.min = np.min(ima)
-                self.max = np.max(ima)
-                self.epsilon = self.sdev/3.            
-                # Define the interval containing 99% of the values
-                if xmin == None:
-                    xmin = ima[int(s*0.01)]
-                if xmax == None:
-                    xmax = ima[int(s*0.99)-1]
-                # Avoid excessively lower flux
-                if xmin < (self.median - 3 * self.sdev):
-                    xmin = self.median - 3 * self.sdev
-                hmin = ima[smin]
-                hmax = ima[smax]
-                if (hmax - self.median) > 10 *self.sdev:
-                    hmax = self.median+10*self.sdev
-                n, self.bins, patches = self.axes.hist(ima, bins=nbins,
-                                                       range=(hmin,hmax), fc='k', ec='k')            
-                if np.isfinite(xmin) and np.isfinite(xmax):
-                    self.onSelect(xmin,xmax)
-                else:
-                    print('Problems with the image')
-            else:
-                xmin = 0.
-                xmax = 0.
-                self.median = 0.
-                self.sdev = 0.
-                self.min = 0.
-                self.max = 0.
-                self.epsilon = 0.
-                #hmin = 0
-                #hmax = 0
-                self.onSelect(xmin, xmax)
-            # Draw grid (median, median+n*sigma)
-            x = self.median
-            for i in range(10):
-                if x < self.max:
-                    self.axes.axvline(x=x,color='black',alpha=0.5)
-                    x += self.sdev                
-            x = self.median-self.sdev
-            for i in range(3):
-                if x > self.min:
-                    self.axes.axvline(x=x,color='black',alpha=0.5)
-                    x -= self.sdev                
+            # Delay the computation of histogram to fist call
             # Activate focus
             self.setFocusPolicy(Qt.ClickFocus)
             self.setFocus()
+        
+    def update_figure(self, image=None):
+        try:
+            ima, nbins, xmin, xmax, hmin, hmax, imedian, imin, imax, sdev, epsilon = histoImage(image)
+            if hmin != hmax:
+                n, self.bins, patches = self.axes.hist(ima, bins=nbins,
+                                                       range=(hmin,hmax), fc='k', ec='k')
+                # Draw grid (median, median+n*sigma)
+                # This should be a collection which could be removed once redrawing the image
+                x = imedian
+                for i in range(10):
+                    if x < imax:
+                        self.axes.axvline(x=x,color='black',alpha=0.5)
+                        x += sdev                
+                x = imedian-sdev
+                for i in range(3):
+                    if x > imin:
+                        self.axes.axvline(x=x,color='black',alpha=0.5)
+                        x -= sdev                
+                self.min = imin
+                self.max = imax
+                self.median = imedian
+                self.epsilon = epsilon
+                self.sdev = sdev
+                self.onSelect(xmin,xmax)
+        except:
+            print('Problems with the image')
 
     def drawLevels(self):
         """ Draw levels as defined in levels"""
@@ -953,6 +926,8 @@ class SpectrumCanvas(MplCanvas):
                 self.Taxes = self.axes.twinx()
                 self.Taxes.tick_params(labelright='off',right='off')
                 self.Taxes.set_ylabel('T$_b$ [K]')
+                print('limits in Flux ', self.axes.get_ylim())
+                print('limits in Tb ', self.axes.get_ylim()/self.spectrum.Tb2Jy)
                 self.Taxes.set_ylim(self.axes.get_ylim()/self.spectrum.Tb2Jy)
         elif s.instrument in ['PACS', 'FORCAST']:
             try:
