@@ -4566,6 +4566,9 @@ class GUI (QMainWindow):
         ih0 = self.ihi[itab]
         # Conserve tab number
         self.tabContour[0] = itab
+        if ih0.median is None or ih0.sdev is None:
+            print('updating histogram')
+            ih0.update_figure(image=ic0.oimage)
         if self.bands[itab] == 'Cov':
             ih0.levels = list(np.arange(ih0.min,ih0.max,(ih0.max-ih0.min)/8))
         else:

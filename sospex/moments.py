@@ -1109,7 +1109,7 @@ def histoImage(image, xmin=None, xmax=None):
             xmax = ima[smax]
         # Avoid excessively lower flux
         if xmin > (imedian - 3 * sdev):
-            xmin = imedian - 3 * sdev
+            xmin = imedian - 1.5 * sdev
         if xmax < (imedian + 6 * sdev):
             xmax = imedian + 6 * sdev
         hmin = ima[smin]

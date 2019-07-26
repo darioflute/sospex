@@ -322,22 +322,24 @@ class specCube(object):
         #hdl = fits.open(infile,memmap=None)
         hdl = fitsio.FITS(infile)
         #header = hdl['PRIMARY'].header
-        header = hdl[0].read_header()
-        self.header = header
+        self.header = hdl[0].read_header()
+        self.purifyHeader()
         self.filename = infile
+        # Change internal file name to external file name
+        self.header['FILENAME']=self.filename
         try:
-            self.instrument = header['INSTRUME'].strip()
+            self.instrument = self.header['INSTRUME'].strip()
         except:
-            origin = header['ORIGIN'].strip()
+            origin = self.header['ORIGIN'].strip()
             if origin == 'GILDAS Consortium':
                 self.instrument = 'GREAT'
             elif origin[0:6] == 'Miriad':
                 print('Origin is ', origin)
                 self.instrument = 'HI'
         try:
-            self.obsdate = header['DATE-OBS'].strip()
+            self.obsdate = self.header['DATE-OBS'].strip()
         except:
-            self.obsdate = header['DATE'].strip()
+            self.obsdate = self.header['DATE'].strip()
         # Reading files
         if self.instrument == 'FIFI-LS':     
             self.readFIFI(hdl)
@@ -374,6 +376,16 @@ class specCube(object):
         # Time used for reading
         elapsed_time = time.process_time() - t
         print('Reading of cube completed in ', elapsed_time,' s')
+        
+    def purifyHeader(self):
+        orig_header = self.header
+        header = fits.Header()
+        for dict_key in orig_header.keys():
+            try:
+                header[dict_key] = orig_header[dict_key]
+            except:
+                pass
+        self.header = header
 
     def computeExpFromNan(self):
         """Compute an exposure cube from NaN in the flux cube."""
@@ -392,11 +404,13 @@ class specCube(object):
         
     def readFIFI(self, hdl):
         print('This is a FIFI-LS spectral cube')
+        #self.header.delete('ASSC_AOR')  # this cannot be interpreted by WCS
         self.wcs = WCS(self.header).celestial
         self.crpix3 = self.header['CRPIX3']
         self.crval3 = self.header['CRVAL3']
         self.cdelt3 = self.header['CDELT3']
         self.objname = self.header['OBJ_NAME'].strip()
+        print('Name :', self.objname)
         try:
             self.filegpid = self.header['FILEGPID'].strip()
         except:
@@ -409,6 +423,7 @@ class specCube(object):
         self.altitude = (self.header['ALTI_STA'],self.header['ALTI_END'])
         try:
             self.redshift = self.header['REDSHIFT']
+            print('Redshift ', self.redshift)
         except:
             print('No redshift present')
             self.redshift = 0.0
@@ -556,7 +571,7 @@ class specCube(object):
             print('New exposure computed')
             
         wave = hdl[extnames.index('wcs-tab')].read()
-        print('Wvl read')
+        #print('Wvl read')
         nwave = len(np.shape(wave['wavelen']))
         if nwave == 3:
             self.wave = np.concatenate(wave['wavelen'][0])
@@ -564,25 +579,16 @@ class specCube(object):
             self.wave = np.concatenate(wave['wavelen'])
         self.l0 = np.nanmedian(self.wave)
         self.n = len(self.wave)
-        print('Length of wavelength ',self.n)
-        print('Min and max wavelengths: ', np.nanmin(self.wave), np.nanmax(self.wave))
-        print(np.shape(self.wave))
-        print('image ext ', extnames.index('image'))
+        #print('Length of wavelength ',self.n)
+        #print('Min and max wavelengths: ', np.nanmin(self.wave), np.nanmax(self.wave))
+        #print(np.shape(self.wave))
+        #print('image ext ', extnames.index('image'))
         header = hdl[extnames.index('image')].read_header()
         self.header = header
-        print('Header ',header)
-        hdu = fits.PrimaryHDU(self.flux)
-        hdu.header
-        hdu.header['CRPIX1']=header['CRPIX1']
-        hdu.header['CRPIX2']=header['CRPIX2']
-        hdu.header['CDELT1']=header['CDELT1']
-        hdu.header['CDELT2']=header['CDELT2']
-        hdu.header['CRVAL1']=header['CRVAL1']
-        hdu.header['CRVAL2']=header['CRVAL2']
-        hdu.header['CTYPE1']=header['CTYPE1'].strip()
-        hdu.header['CTYPE2']=header['CTYPE2'].strip()
-        self.wcs = WCS(hdu.header).celestial
-        print('astrometry ', self.wcs)
+        #self.purifyHeader()
+        #self.wcs = WCS(self.header)
+        self.getWCS()
+        #print('astrometry ', self.wcs)
         self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
         self.crpix3 = 1
         w = self.wave
@@ -626,6 +632,19 @@ class specCube(object):
         self.crval3 = w[0]
         self.cdelt3 = np.median(w[1:] - w[:-1])
         
+    def getWCS(self):
+        #hdu = fits.PrimaryHDU(self.flux)
+        hdr = fits.Header()
+        #hdu.header
+        hdr['CRPIX1']=self.header['CRPIX1']
+        hdr['CRPIX2']=self.header['CRPIX2']
+        hdr['CDELT1']=self.header['CDELT1']
+        hdr['CDELT2']=self.header['CDELT2']
+        hdr['CRVAL1']=self.header['CRVAL1']
+        hdr['CRVAL2']=self.header['CRVAL2']
+        hdr['CTYPE1']=self.header['CTYPE1'].strip()
+        hdr['CTYPE2']=self.header['CTYPE2'].strip()
+        self.wcs = WCS(hdr).celestial 
     
     def getResolutionFIFI(self):
         """Compute resolution at reference wavelength for FIFI-LS"""
