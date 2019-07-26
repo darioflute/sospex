@@ -3341,8 +3341,8 @@ class GUI (QMainWindow):
             except:
                 ic.crota2 = 0.
             ih.compute_initial_figure(image=image)
-            ic.image.set_clim(ih.limits)
-            ic.changed = True
+            #ic.image.set_clim(ih.limits)
+            #ic.changed = True
             # Check rotation angle
             # Align with spectral cube
             ic0 = self.ici[0]

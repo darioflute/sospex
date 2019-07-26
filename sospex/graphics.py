@@ -516,7 +516,7 @@ class ImageHistoCanvas(MplCanvas):
         
     def update_figure(self, image=None):
         try:
-            ima, nbins, xmin, xmax, hmin, hmax, imedian, imin, imax, sdev, epsilon = histoImage(image)
+            ima, nbins, xmin, xmax, hmin, hmax, imedian, imin, imax, sdev, epsilon, nh = histoImage(image)
             if hmin != hmax:
                 n, self.bins, patches = self.axes.hist(ima, bins=nbins,
                                                        range=(hmin,hmax), fc='k', ec='k')
@@ -537,6 +537,7 @@ class ImageHistoCanvas(MplCanvas):
                 self.median = imedian
                 self.epsilon = epsilon
                 self.sdev = sdev
+                self.nh = nh
                 self.onSelect(xmin,xmax)
         except:
             print('Problems with the image')

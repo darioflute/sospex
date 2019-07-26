@@ -9,7 +9,8 @@ class specCubeAstro(object):
         import time
         t = time.process_time()
         # Option None seems faster than False
-        hdl = fits.open(infile,memmap=None)
+        # ignore blank to speed up reading of GREAT cubes
+        hdl = fits.open(infile, memmap=None, ignore_blank=True)
         header = hdl['PRIMARY'].header
         self.header = header
         self.filename = infile
@@ -65,11 +66,19 @@ class specCubeAstro(object):
 
     def computeExpFromNan(self):
         """Compute an exposure cube from NaN in the flux cube."""
-        #self.exposure = np.zero(np.shape(self.flux))
-        #mask = np.isfinite(self.flux)
-        #self.exposure[mask] = 0
-        self.exposure = np.isfinite(self.flux)
-        
+        if self.instrument == 'GREAT':
+            # Blank values (highest value is blank)
+            try:
+                idx = self.flux > self.header['DATAMAX']
+                #blank = self.header['BZERO']+self.header['BSCALE']*self.header['BLANK']
+                #idx = self.flux == blank
+            except:
+                print('No data max in the header')
+            self.flux[idx] = np.nan
+            self.exposure = ~idx            
+        else:
+            self.exposure = np.isfinite(self.flux)
+       
     def readFIFI(self, hdl):
         print('This is a FIFI-LS spectral cube')
         self.wcs = WCS(self.header).celestial
@@ -158,7 +167,6 @@ class specCubeAstro(object):
         eta_mb =0.67
         calib = 971.
         self.Tb2Jy = calib*eta_fss*eta_mb
-        self.flux *= self.Tb2Jy   # Transformed from temperature to S_nu [Jy] 
         nu0 = self.header['RESTFREQ']  # MHz
         l0 = c/nu0  # in micron
         # Transform in Jy/pixel
@@ -169,7 +177,8 @@ class specCubeAstro(object):
         pixfraction = 0.5 * erf(self.pixscale*0.5/bmaj) * erf(ypixscale*0.5/bmin)
         print('Beam fraction on pixel ', pixfraction)
         self.Tb2Jy *= pixfraction
-        self.flux *= pixfraction
+        # Multiplication is delayed in the code to speed up reading
+        # self.flux *= self.Tb2Jy   # Transformed from temperature to S_nu [Jy] per pixel
         vel = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3
         self.l0 = l0
         self.wave = l0 + l0*vel/c
@@ -303,11 +312,11 @@ class specCubeAstro(object):
             else:
                 return 1.9163 * l * l - 187.35 * l + 5496.9
 
-import fitsio
 class specCube(object):
     """ spectral cube - read with fitsio routines"""
     def __init__(self, infile):
         import time
+        import fitsio
         t = time.process_time()
         # Option None seems faster than False
         #hdl = fits.open(infile,memmap=None)
@@ -371,10 +380,11 @@ class specCube(object):
         if self.instrument == 'GREAT':
             # Blank values (highest value is blank)
             try:
-                blank = self.header['BZERO']+self.header['BSCALE']*self.header['BLANK']
-                idx = self.flux == blank
-            except:
                 idx = self.flux > self.header['DATAMAX']
+                #blank = self.header['BZERO']+self.header['BSCALE']*self.header['BLANK']
+                #idx = self.flux == blank
+            except:
+                print('No data max in the header')
             self.flux[idx] = np.nan
             self.exposure = ~idx            
         else:

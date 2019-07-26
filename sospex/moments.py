@@ -1089,28 +1089,34 @@ def histoImage(image, xmin=None, xmax=None):
     nh = len(ima)
     if nh > 0:
         ima = np.sort(ima)
+        # Take uniq to avoid repeated values (which could be border values)
+        u, indices = np.unique(ima, return_index=True)
+        ima = ima[indices]
+        nh = len(ima)
         s = np.size(ima)
-        smin = int(s*0.01)
-        smax = min(int(s*0.99)-1,s-1)
+        smin = int(s*0.005)
+        smax = min(int(s*0.995)-1,s-1)
         nbins=256
         imedian = np.median(ima)
         sdev = np.std(ima[smin:smax])
         imin = np.min(ima)
         imax = np.max(ima)
         epsilon = sdev/3.            
-        # Define the interval containing 98% of the values
+        # Define the interval containing 99% of the values
         if xmin == None:
             xmin = ima[smin]
         if xmax == None:
             xmax = ima[smax]
         # Avoid excessively lower flux
-        if xmin < (imedian - 3 * sdev):
+        if xmin > (imedian - 3 * sdev):
             xmin = imedian - 3 * sdev
+        if xmax < (imedian + 6 * sdev):
+            xmax = imedian + 6 * sdev
         hmin = ima[smin]
         hmax = ima[smax]
-        if (hmax - imedian) > 10 * sdev:
-            hmax = imedian+ 10 * sdev
-        print(hmin, hmax)
+        #if (hmax - imedian) > 10 * sdev:
+        #    hmax = imedian + 10 * sdev
+        #print(hmin, hmax)
     else:
         nbins = 0
         xmin = 0.
@@ -1122,5 +1128,6 @@ def histoImage(image, xmin=None, xmax=None):
         epsilon = 0.
         hmin = 0.
         hmax = 0.
-    return ima, nbins, xmin, xmax, hmin, hmax, imedian, imin, imax, sdev, epsilon
+        
+    return ima, nbins, xmin, xmax, hmin, hmax, imedian, imin, imax, sdev, epsilon, nh
     
