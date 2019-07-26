@@ -9,11 +9,13 @@ It is a good practice to update all your installed packages to have the latest v
 
 conda update --all -y
 
-The packages *lmfit* and *reproject* have to be installed from the astropy channel:
+The packages *lmfit*, *reproject*, and *fitsio* have to be installed from other channels:
 
 conda install -c cprescher lmfit -y
 
-conda install -c astropy reproject -y
+conda install -c conda-forge reproject -y
+
+conda install -c conda-forge fitsio -y
 
 Now you are ready to install sospex:
 
