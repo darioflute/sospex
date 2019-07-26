@@ -370,10 +370,11 @@ class specCube(object):
         """Compute an exposure cube from NaN in the flux cube."""
         if self.instrument == 'GREAT':
             # Blank values (highest value is blank)
-            blank = self.header['BZERO']+self.header['BSCALE']*self.header['BLANK']
-            idx = self.flux == blank
-            #idx = self.flux == np.nanmax(self.flux)
-            print('blanks are ',np.sum(idx))
+            try:
+                blank = self.header['BZERO']+self.header['BSCALE']*self.header['BLANK']
+                idx = self.flux == blank
+            except:
+                idx = self.flux > self.header['DATAMAX']
             self.flux[idx] = np.nan
             self.exposure = ~idx            
         else:
