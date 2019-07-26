@@ -2022,6 +2022,7 @@ class GUI (QMainWindow):
         ic.image.format_cursor_data = lambda z: "{:.2e} Jy".format(float(z))        
         ih = self.ihi[itab]
         ih.compute_initial_figure(image = self.C0)
+        ih.update_figure(image = self.C0)
         self.addContours(ic)
         # Update limits of image
         ic.image.set_clim(ih.limits)
@@ -2126,6 +2127,7 @@ class GUI (QMainWindow):
                 ic.image.format_cursor_data = lambda z: "{:.1f} km/s".format(float(z))
                 ih = self.ihi[itab]
                 ih.compute_initial_figure(image = sb)
+                ih.update_figure(image = sb)
                 ic.image.set_clim(ih.limits)
                 # Adopt same limits as flux image
                 ic0=self.ici[0]
@@ -2371,6 +2373,7 @@ class GUI (QMainWindow):
         ic.image.format_cursor_data = lambda z: "{:.2e} Jy".format(float(z))        
         ih = self.ihi[itab]
         ih.compute_initial_figure(image=self.C0*t2j)
+        ih.update_figure(image=self.C0*t2j)
         self.addContours(ic)
         # Update limits of image
         ic.image.set_clim(ih.limits)
@@ -2646,6 +2649,7 @@ class GUI (QMainWindow):
                 ic.image.format_cursor_data = lambda z: "{:.2e} ".format(float(z))
             ih = self.ihi[itab]
             ih.compute_initial_figure(image=sb)
+            ih.update_figure(image=sb)
             self.addContours(ic)
             ic.image.set_clim(ih.limits)
             # Adopt same limits as flux image
@@ -2710,6 +2714,7 @@ class GUI (QMainWindow):
             ic.image.format_cursor_data = lambda z: "{:.2e} W/m2".format(float(z))
             ih = self.ihi[itab]
             ih.compute_initial_figure(image=sb)
+            ih.update_figure(image=sb)
             self.addContours(ic)
             ic.image.set_clim(ih.limits)
             # Adopt same limits as flux image
@@ -2766,6 +2771,7 @@ class GUI (QMainWindow):
             ic.image.format_cursor_data = lambda z: "{:.2e} W/m2".format(float(z))
             ih = self.ihi[itab]
             ih.compute_initial_figure(image=sb)
+            ih.update_figure(image=sb)
             self.addContours(ic)
             ic.image.set_clim(ih.limits)
             # Adopt same limits as flux image
@@ -3341,8 +3347,9 @@ class GUI (QMainWindow):
             except:
                 ic.crota2 = 0.
             ih.compute_initial_figure(image=image)
-            #ic.image.set_clim(ih.limits)
-            #ic.changed = True
+            ih.update_figure(image=image)
+            ic.image.set_clim(ih.limits)
+            ic.changed = True
             # Check rotation angle
             # Align with spectral cube
             ic0 = self.ici[0]

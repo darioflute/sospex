@@ -510,6 +510,8 @@ class ImageHistoCanvas(MplCanvas):
             pass
         else:
             # Delay the computation of histogram to fist call
+            if xmin is not None and xmax is not None:
+                self.limits = [xmin, xmax]
             # Activate focus
             self.setFocusPolicy(Qt.ClickFocus)
             self.setFocus()
@@ -580,7 +582,7 @@ class ImageHistoCanvas(MplCanvas):
                                        facecolor='Lavender', alpha=0.5, linewidth=0)
         # Redefine limits
         x1, x2 = self.axes.get_xlim()
-        x2 = self.limits[1] + 5 * self.sdev
+        x2 = self.limits[1] + 6 * self.sdev
         x1 = self.limits[0] - 3 * self.sdev
         self.axes.set_xlim((x1,x2))
         self.fig.canvas.draw_idle()
