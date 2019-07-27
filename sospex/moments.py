@@ -1082,7 +1082,7 @@ def residualsPsf(p, x, y, data=None, err=None):
         else:
             return (model - data.flatten())/err.flatten()
 
-def histoImage(image, xmin=None, xmax=None):
+def histoImage(image, percent, xmin=None, xmax=None):
     ima = image.ravel()
     mask = np.isfinite(ima)
     ima = ima[mask]
@@ -1094,8 +1094,12 @@ def histoImage(image, xmin=None, xmax=None):
         ima = ima[indices]
         nh = len(ima)
         s = np.size(ima)
-        smin = int(s*0.005)
-        smax = min(int(s*0.995)-1,s-1)
+        if percent is None:
+            percent = 99.0
+        p1 = (100.-percent)/200.
+        p2 = 1. - p1
+        smin = int(s*p1)
+        smax = min(int(s*p2)-1,s-1)
         nbins=256
         imedian = np.median(ima)
         sdev = np.std(ima[smin:smax])
@@ -1107,16 +1111,13 @@ def histoImage(image, xmin=None, xmax=None):
             xmin = ima[smin]
         if xmax == None:
             xmax = ima[smax]
-        # Avoid excessively lower flux
-        if xmin > (imedian - 3 * sdev):
-            xmin = imedian - 1.5 * sdev
-        if xmax < (imedian + 6 * sdev):
-            xmax = imedian + 6 * sdev
         hmin = ima[smin]
         hmax = ima[smax]
-        #if (hmax - imedian) > 10 * sdev:
-        #    hmax = imedian + 10 * sdev
-        #print(hmin, hmax)
+        # Avoid excessively lower flux
+        if hmin > (imedian - 3 * sdev):
+            hmin = imedian - 1.5 * sdev
+        if hmax < (imedian + 6 * sdev):
+            hmax = imedian + 6 * sdev        
     else:
         nbins = 0
         xmin = 0.

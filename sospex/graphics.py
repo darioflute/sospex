@@ -518,9 +518,9 @@ class ImageHistoCanvas(MplCanvas):
             self.setFocusPolicy(Qt.ClickFocus)
             self.setFocus()
         
-    def update_figure(self, image=None):
+    def update_figure(self, image=None, percent=None):
         try:
-            ima, nbins, xmin, xmax, hmin, hmax, imedian, imin, imax, sdev, epsilon, nh = histoImage(image)
+            ima, nbins, xmin, xmax, hmin, hmax, imedian, imin, imax, sdev, epsilon, nh = histoImage(image, percent)
             if hmin != hmax:
                 n, self.bins, patches = self.axes.hist(ima, bins=nbins,
                                                        range=(hmin,hmax), fc='k', ec='k')
@@ -585,7 +585,7 @@ class ImageHistoCanvas(MplCanvas):
         # Redefine limits
         x1, x2 = self.axes.get_xlim()
         x2 = self.limits[1] + 6 * self.sdev
-        x1 = self.limits[0] - 1.5 * self.sdev
+        x1 = self.limits[0] - 2 * self.sdev
         self.axes.set_xlim((x1,x2))
         self.fig.canvas.draw_idle()
 

@@ -187,9 +187,17 @@ class GUI (QMainWindow):
         slice.addAction(QAction('on channel', self, shortcut='', triggered=self.initializeSlider))
         slice.addAction(QAction('on slice', self, shortcut='', triggered=self.initializeSlicer))
         slice.addAction(QAction('no', self, shortcut='', triggered=self.removeSliders))
-        self.menuHisto = QAction('Image levels',self,shortcut='',
-                                 checkable = True, triggered=self.changeVisibility)
-        view.addAction(self.menuHisto)
+        level = view.addMenu("Image levels")
+        level.addAction(QAction('100.0%',self,shortcut='', triggered=self.changeVisibility100))
+        level.addAction(QAction('99.5%',self,shortcut='', triggered=self.changeVisibility995))
+        level.addAction(QAction('99.0%',self,shortcut='', triggered=self.changeVisibility990))
+        level.addAction(QAction('98.0%',self,shortcut='', triggered=self.changeVisibility980))
+        level.addAction(QAction('95.0%',self,shortcut='', triggered=self.changeVisibility950))
+        level.addAction(QAction('90.0%',self,shortcut='', triggered=self.changeVisibility900))
+        level.addAction(QAction('80.0%',self,shortcut='', triggered=self.changeVisibility800))
+        #self.menuHisto = QAction('Image levels',self,shortcut='',
+        #                         checkable = True, triggered=self.changeVisibility)
+        #view.addAction(self.menuHisto)
         view.addAction(QAction('Colors and stretch',self,shortcut='',triggered=self.changeColorMap))
         view.addAction(QAction('Show header',self,shortcut='',triggered=self.showHeader))
         magnify = view.addMenu("Magnify image")
@@ -5514,22 +5522,50 @@ class GUI (QMainWindow):
         sc.ylimits = sc.axes.get_ylim()
         self.specZoomlimits = [sc.xlimits,sc.ylimits]
 
-    def changeVisibility(self):
+    def changeVisibility100(self):
+        self.changeVisibility(percent=100)
+
+    def changeVisibility995(self):
+        self.changeVisibility(percent=99.5)
+
+    def changeVisibility990(self):
+        self.changeVisibility(percent=99.0)
+
+    def changeVisibility980(self):
+        self.changeVisibility(percent=98.0)
+
+    def changeVisibility950(self):
+        self.changeVisibility(percent=95.0)
+
+    def changeVisibility900(self):
+        self.changeVisibility(percent=90.0)
+
+    def changeVisibility800(self):
+        self.changeVisibility(percent=80.0)
+
+    def changeVisibility(self, dumb=None, percent=None):
         """ Hide/show the histogram of image intensities """
+        #print(percent)
+        #print(dumb)   understand why percent is not None is first argument
         try:
             itab = self.itabs.currentIndex()
             ih = self.ihi[itab]
-            state = ih.isVisible()
-            # for ih in self.ihi:
-            #     ih.setVisible(not state)
-            # self.menuHisto.setChecked(not state)
-            ih.setVisible(not state)
+            if percent is None:
+                state = ih.isVisible()
+                ih.setVisible(not state)
+            else:
+                ih.changed = True
+                ih.setVisible(True)
             if ih.isVisible():
                 if ih.changed:
                     ih.axes.clear()
-                    ih.update_figure(image=self.ici[itab].oimage)
+                    ih.update_figure(image=self.ici[itab].oimage, percent=percent)
                     ih.fig.canvas.draw_idle()
-                    ih.changed = False
+                    if percent is None:
+                        ih.changed = False
+                    #if percent is not None:
+                    #    ic = self.ici[itab]
+                    #    ic.fig.canvas.draw_idle()
         except:
             self.sb.showMessage("First choose a cube ", 1000)
 
