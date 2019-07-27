@@ -5576,7 +5576,7 @@ class GUI (QMainWindow):
         # normalization as 'sqrt' for instance ... norm = simple_norm(image,'sqrt') with astropy.visualization
         # Great adaption: https://github.com/glue-viz/ds9norm
         # In the colormap dialog I should add a list of possible stretches (sqrt, log , ...)
-        if len(self.ihi) > 1:
+        if len(self.ihi) > 0:
             self.CMlist = ['gist_heat','afmhot','ds9heat','gist_earth','gist_gray','inferno','ocean','plasma','seismic','jet',
                            'ds9a','ds9b','ds9cool','ds9i8','ds9aips0','ds9rainbow','ds9he']
             self.STlist = ['linear','sqrt','square','log','power','sinh','asinh']
@@ -5634,6 +5634,7 @@ class GUI (QMainWindow):
         from astropy.visualization import ImageNormalize
         newStretch = self.STlist[newRow]
         if newStretch != self.stretchMap:
+            print('new stretch is ', newStretch)
             self.stretchMap = newStretch
             for ic in self.ici:
                 ic.stretch = self.stretchMap
@@ -5641,10 +5642,12 @@ class GUI (QMainWindow):
                                          stretch=ic.stretchFunc(ic.stretch))
                 ic.image.norm = ic.norm
                 ic.changed = True
-        itab  = self.itabs.currentIndex()
-        ic = self.ici[itab]
-        ic.fig.canvas.draw_idle()
-        ic.changed = False
+            itab  = self.itabs.currentIndex()
+            ic = self.ici[itab]
+            ic.image.autoscale()  # trick to update colorbar (https://github.com/matplotlib/matplotlib/issues/5424)
+            ic.refreshImage()
+            #ic.fig.canvas.draw_idle()
+            #ic.changed = False
 
     def updateColorMap(self, newRow):
         """ Update the color map of the image tabs """
@@ -5657,8 +5660,9 @@ class GUI (QMainWindow):
                 ic.changed = True
             itab  = self.itabs.currentIndex()
             ic = self.ici[itab]
-            ic.fig.canvas.draw_idle()
-            ic.changed = False
+            ic.refreshImage()
+            #ic.fig.canvas.draw_idle()
+            #ic.changed = False
                 
     def reverseColorMap(self, reverse):
         """ Reverse color map direction """

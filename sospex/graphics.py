@@ -479,6 +479,10 @@ class ImageCanvas(MplCanvas):
     def updateNorm(self):
         self.image.set_clim([self.cmin,self.cmax])
         self.fig.canvas.draw_idle()
+        
+    def refreshImage(self):
+        self.fig.canvas.draw_idle()
+        self.changed = False
 
 from sospex.moments import histoImage
         

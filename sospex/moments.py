@@ -1111,10 +1111,12 @@ def histoImage(image, percent, xmin=None, xmax=None):
             xmin = ima[smin]
         if xmax == None:
             xmax = ima[smax]
+        smin = int(s*0.005)
+        smax = min(int(s*0.995), s-1)
         hmin = ima[smin]
         hmax = ima[smax]
         # Avoid excessively lower flux
-        if hmin > (imedian - 3 * sdev):
+        if hmin > (imedian - 1.5 * sdev):
             hmin = imedian - 1.5 * sdev
         if hmax < (imedian + 6 * sdev):
             hmax = imedian + 6 * sdev        
