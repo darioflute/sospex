@@ -933,7 +933,7 @@ class SpectrumCanvas(MplCanvas):
                 except:
                     pass
                 self.Taxes = self.axes.twinx()
-                self.Taxes.tick_params(labelright='off',right='off')
+                #self.Taxes.tick_params(labelright='off',right='off')
                 self.Taxes.set_ylabel('T$_b$ [K]')
                 print('limits in Flux ', self.axes.get_ylim())
                 print('limits in Tb ', self.axes.get_ylim()/self.spectrum.Tb2Jy)
