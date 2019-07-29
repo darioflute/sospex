@@ -4279,6 +4279,7 @@ class GUI (QMainWindow):
                            kws={'data': image[idx], 'err':weight[idx]})
             x0 = out.params['x0'].value
             y0 = out.params['y0'].value
+            sc.sigma = out.params['s'].value
             self.PsfI.innerCircle.center = x0, y0
             self.PsfI.outerCircle.center = x0, y0
             # Update interactor

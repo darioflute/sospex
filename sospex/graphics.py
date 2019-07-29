@@ -1624,7 +1624,21 @@ def residualsPsf(p, dis, data=None, err=None):
             return (model - data.flatten())
         else:
             return (model - data.flatten())/err.flatten()
-
+             
+def residualsMoffat(p, dis, data=None, err=None):
+    v = p.valuesdict()
+    Io = v['Io']
+    alpha = v['alpha']
+    beta = v['beta']
+    model = Io * (1 + (dis/alpha)**2)**(-beta)
+    if data is None:
+        return model
+    else:
+        if err is None:
+            return (model - data.flatten())
+        else:
+            return (model - data.flatten())/err.flatten()
+    
 class PsfCanvas(MplCanvas):
     """ Canvas to plot a PSF """
     
@@ -1682,11 +1696,16 @@ class PsfCanvas(MplCanvas):
                                                   label='FWHM [PSF] = {:2.1f}'.format(self.sigma*2.355))
                 
         # Fit a Gaussian on data
-        A, sigma = self.fitPsf()
+        #A, fwhm = self.fitPsfGauss()
+        #xf = np.arange(0, np.nanmax(self.distance), 0.1)
+        #yf = A * np.exp(- 0.5 * (xf/(fwhm/2.355))**2)
+        
+        # Fit a Moffat function on data
+        Io, alpha, beta, fwhm = self.fitPsf()
         xf = np.arange(0, np.nanmax(self.distance), 0.1)
-        yf = A * np.exp(- 0.5 * (xf/sigma)**2)
+        yf = Io * (1 + (xf/alpha)**2)**(-beta)
         self.resolved, = self.axes.plot(xf, yf, color = 'green',
-                                        label='FWHM [Fit] = {:2.1f}'.format(sigma*2.355))
+                                        label='FWHM [Fit] = {:2.1f}'.format(fwhm))
         
         self.axes.legend()
 
@@ -1704,11 +1723,15 @@ class PsfCanvas(MplCanvas):
             self.unresolved.set_ydata(yg/np.nanmax(yg) * maxflux)
             #self.axes.draw_artist(self.unresolved)
         # Refit and redisplay
-        A, sigma = self.fitPsf()
+        #A, fwhm = self.fitPsfGauss()
+        #xf = np.arange(0, np.nanmax(self.distance), 0.1)
+        #yf = A * np.exp(- 0.5 * (xf/(fwhm/2.355))**2)
+        
+        Io, alpha, beta, fwhm = self.fitPsf()
         xf = np.arange(0, np.nanmax(self.distance), 0.1)
-        yf = A * np.exp(- 0.5 * (xf/sigma)**2)
+        yf = Io * (1 + (xf/alpha)**2)**(-beta)
         self.resolved.set_data(xf, yf)
-        self.resolved.set_label('FWHM [Fit] = {:2.1f}'.format(sigma*2.355))
+        self.resolved.set_label('FWHM [Fit] = {:2.1f}'.format(fwhm))
         self.axes.legend()  # Regenerate legend
         #self.axes.draw_artist(self.resolved)        
         # Reset y limits if needed
@@ -1732,7 +1755,7 @@ class PsfCanvas(MplCanvas):
         else:
             self.sigma = 1.22*self.w*1e-6/m1diam*180/np.pi*3600 / 2.355
         
-    def fitPsf(self):
+    def fitPsfGauss(self):
         '''Fit a Gaussian on data'''
         fit_params = Parameters()
         fit_params.add('A', value=np.nanmax(self.flux))
@@ -1756,4 +1779,41 @@ class PsfCanvas(MplCanvas):
             A = np.nan
             sigma = np.nan
             print('Not enough good points')
-        return A, sigma
+        return A, sigma*2.355
+
+    def fitPsf(self):
+        '''Fit a Moffat function on data'''
+        fit_params = Parameters()
+        fit_params.add('Io', value=np.nanmax(self.flux))
+        if self.sigma is None:
+            sigmaguess = 2
+        else:
+            sigmaguess = self.sigma
+        fwhm = sigmaguess * 2.355
+        beta = 4.7
+        alpha = fwhm*0.5/np.sqrt(2**(1/beta)-1)
+        alphamax = 100*0.5/np.sqrt(2**(1/beta)-1)
+        alphamin = 0.1*0.5/np.sqrt(2**(1/beta)-1)
+        fit_params.add('alpha', value=alpha, min=alphamin, max=alphamax)        
+        fit_params.add('beta', value=4.7, min=3, max=5)
+        idx = np.isfinite(self.flux)
+        if np.sum(idx) > 10:
+            if self.pix is None:
+                out = minimize(residualsMoffat, fit_params, args=(self.distance[idx],), kws={'data': self.flux[idx],})
+            else:
+                weight =  (self.distance[idx] * self.pix)
+                out = minimize(residualsMoffat, fit_params, args=(self.distance[idx],),
+                               kws={'data': self.flux[idx], 'err':weight})
+
+            Io = out.params['Io'].value
+            alpha = out.params['alpha'].value
+            beta = out.params['beta'].value
+            fwhm = 2*alpha*np.sqrt(2**(1/beta)-1)
+            #print('a,b,i', alpha, beta, Io)
+        else:
+            Io = np.nan
+            alpha = np.nan
+            beta = np.nan
+            fwhm = np.nan
+            print('Not enough good points')
+        return Io, alpha, beta, fwhm
