@@ -1738,6 +1738,8 @@ class PsfCanvas(MplCanvas):
         ylims = self.axes.get_ylim()
         if ylims[1] < maxflux:
             self.axes.set_ylim(ylims[0], maxflux*1.1)
+        if ylims[1] > maxflux/2.:
+            self.axes.set_ylim(ylims[0], maxflux*1.1)
         self.fig.canvas.draw_idle()
 
     def unresolvedPsf(self):
