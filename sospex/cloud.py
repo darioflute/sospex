@@ -197,7 +197,7 @@ class cloudImage(object):
 
     def openLocal(self):
         """ Open a local FITS / check if coordinates fall into the FITS """
-
+        
         # Open a dialog
         fd = QFileDialog()
         fd.setLabelText(QFileDialog.Accept, "Import")
@@ -257,7 +257,6 @@ class cloudImage(object):
                         self.crota2 = 0.
                     print('rotation angle ', self.crota2)
                     try:
-                        h1 = self.to_header()
                         pc11=h1["PC1_1"]
                         pc12=h1["PC1_2"]
                         pc21=h1["PC2_1"]
@@ -302,6 +301,134 @@ class cloudImage(object):
                 self.wcs = None
                 print('The selected  FITS is not a valid file')
 
+    def purifyHeader(self, orig_header):
+        header = fits.Header()
+        for dict_key in orig_header.keys():
+            try:
+                header[dict_key] = orig_header[dict_key]
+            except:
+                pass
+        return header
+
+    def openLocalFitsio(self):
+        """ Open a local FITS / check if coordinates fall into the FITS """
+        import fitsio        
+        # Open a dialog
+        fd = QFileDialog()
+        fd.setLabelText(QFileDialog.Accept, "Import")
+        fd.setNameFilters(["Fits Files (*.fits)","All Files (*)"])
+        fd.setOptions(QFileDialog.DontUseNativeDialog)
+        fd.setViewMode(QFileDialog.List)
+        fd.setFileMode(QFileDialog.ExistingFile)
+
+        if (fd.exec()):
+            filenames= fd.selectedFiles()
+            image_file = filenames[0]
+            print("File selected is: ", filenames[0])
+            try:           
+                print('opening ',image_file)
+                hdulist = fitsio.FITS(image_file)
+                hdu = hdulist[0]
+                #hdulist.info()
+                h = hdu.read_header()
+                header = self.purifyHeader(h)
+                try:
+                    instrument = header['INSTRUME']
+                    self.source = instrument
+                    try:
+                        if instrument == 'PACS':
+                            w = header['WAVELNTH']
+                            self.source += str(int(w // 1))
+                    except:
+                        pass
+                except:
+                    self.source = 'unknown'
+                print('Instrument ',self.source)
+                naxis = header['NAXIS']
+                print('Number of axes ', naxis)
+                if naxis == 2:
+                    self.data = hdulist[0].read()
+                elif naxis > 2:
+                    self.data = hdulist[0].read()[0,0,:,:]
+                elif naxis == 0:
+                    # Switch to image extensions if exists.
+                    extnames = [f.get_extname() for f in hdulist]
+                    print('ext names ', extnames)
+                    if 'IMAGE' in extnames:
+                        hdu = hdulist[extnames.index('IMAGE')]
+                        h = hdu.read_header()
+                        header = self.purifyHeader(h)
+                        self.data = hdu.data.read()
+                    elif 'image' in extnames:
+                        hdu = hdulist[extnames.index('image')]
+                        h = hdu.read_header()
+                        header = self.purifyHeader(h)
+                        self.data = hdu.data.read()
+                    else:
+                        print('This is not an image')
+                        return
+                print('header: ',header)
+                self.wcs = WCS(header).celestial
+                print(self.wcs)
+                # Check if coordinates are inside the image
+                x,y = self.wcs.wcs_world2pix(self.lon,self.lat,0)
+                print('x y ',x,y)
+                ny,nx = np.shape(self.data)
+                if x >= 0 and x <= nx and y >= 0 and y  <= ny:
+                    print('Source inside the FITS image')
+                    # Check if N aligned with y, if not reproject image
+                    h1 = self.wcs.to_header()
+                    try:
+                        self.crota2 = np.arctan2(-h1["PC2_1"], h1["PC2_2"]) * 180./np.pi
+                    except:
+                        self.crota2 = 0.
+                    print('rotation angle ', self.crota2)
+                    try:
+                        #h1 = self.to_header()
+                        pc11=h1["PC1_1"]
+                        pc12=h1["PC1_2"]
+                        pc21=h1["PC2_1"]
+                        pc22=h1["PC2_2"]
+                        pc1 = -np.hypot(pc11,pc12)
+                        pc2 = np.hypot(pc21,pc22)
+                        rota = np.arctan(pc21/pc22)
+                        print('rotation angle ', rota*180./np.pi)
+                        if (np.abs(rota)*180./np.pi > 5.):
+                            if h1["CRVAL2"] < 0:
+                                pc2=-pc2
+                            h1.update(pc1_1=pc1,pc1_2=0.0,pc2_1=0.0,pc2_2=pc2,orientat=0.)
+                            h1['NAXIS']=2
+                            # Compute the size of the rectangle containing the rotated rectangle
+                            rota = np.abs(rota)
+                            n1 = int(np.rint(nx*np.sin(rota)+ny*np.cos(rota)))
+                            n2 = int(np.rint(nx*np.cos(rota)+ny*np.sin(rota)))
+                            h1['NAXIS1']= n1
+                            h1['NAXIS2']= n2
+                            crpix1=header['CRPIX1']
+                            crpix2=header['CRPIX2']
+                            h1['crpix1'] = crpix1+(n1-nx)/2.
+                            h1['crpix2'] = crpix2+(n2-ny)/2.
+                            self.wcs = WCS(h1)
+                            print("Rotating the image ....")
+                            # The reproject does not work with fitsio format
+                            array, footprint = reproject_interp(hdu, h1)
+                            print('shape of rotated image is ',np.shape(array))
+                            self.data= array
+                            # Save the rotated image
+                            self.saveRotatedFits(image_file)
+                        else:
+                            print('No rotation needed. The rotation angle is ',rota*180./np.pi)                        
+                    except:
+                        print('Rotation failed')
+                else:
+                    self.data = None
+                    self.wcs = None
+                    print('Coordinates out of the selected FITS image')
+                hdulist.close()
+            except:
+                self.data = None
+                self.wcs = None
+                print('The selected  FITS is not a valid file')
 
 
     def saveRotatedFits(self, name_orig):
