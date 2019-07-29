@@ -3980,6 +3980,9 @@ class GUI (QMainWindow):
                 # Primary header
                 hdu = fits.PrimaryHDU(temperature)
                 header['NAXIS'] = (3,'Number of axis')
+                header['BMAJ'] = self.specCube.header['BMAJ']
+                header['BMIN'] = self.specCube.header['BMIN']
+                header['DATAMAX'] = self.specCube.header['DATAMAX']
                 hdu.header.extend(header)
                 hdul = fits.HDUList([hdu])
                 hdul.writeto(outfile,overwrite=True) 
@@ -4813,10 +4816,6 @@ class GUI (QMainWindow):
                 #print('No of bad ', np.sum(~idx))
                 if self.specCube.instrument  == 'GREAT':
                     self.slideCube('exp computed')
-                    #image = self.specCube.flux[self.specCube.n0,:,:]
-                    #ic = self.ici[self.bands.index('Flux')]
-                    #ic.updateImage(image)
-                    #ic.fig.canvas.draw_idle()            
             self.all = False
             self.fitcont = False
             # Set default number of lines to fit across the cube
@@ -4863,10 +4862,6 @@ class GUI (QMainWindow):
                 self.initializeSlider()
                 if self.specCube.instrument == 'GREAT':
                     self.slideCube('Exp computed')
-                    #image = self.specCube.flux[self.specCube.n0,:,:]
-                    #ic = self.ici[self.bands.index('Flux')]
-                    #ic.updateImage(image)
-                    #ic.fig.canvas.draw_idle()            
             except:
                 print('No spectral cube is defined')
                 pass
@@ -5099,6 +5094,10 @@ class GUI (QMainWindow):
         sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
                                rectprops=dict(alpha=0.3, facecolor='LightGreen'))
         sc.span.active = False
+        print('s.n0 ', s.n0, ' len(wave) ', len(s.wave))
+        if (s.n0 <= 0) or (s.n0 >= (len(s.wave)-2)):
+            s.n0 = len(s.wave)//2
+        print('s.n0 updated ', s.n0)
         wave0 = s.wave[s.n0]
         dwave = (s.wave[s.n0+1]-wave0)*0.5
         sc.regionlimits = wave0-dwave,wave0+dwave
@@ -5162,6 +5161,7 @@ class GUI (QMainWindow):
     def initializeSlider(self):
         s = self.specCube
         sc = self.sci[self.stabs.currentIndex()]
+        print('no is ', s.n0)
         w0 = s.wave[s.n0]
         dw = s.wave[s.n0+1]-w0
         try:
