@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8" />
-<title>tutorials</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
+<title>psf</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
 
 <style type="text/css">
@@ -11775,7 +11775,7 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p><a href="Help.html">Previous</a> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="start.html">Next</a>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="tutorials.html">Tutorials</a> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="Help.html">Help</a></p>
+<p><a href="atmtrans.html">Previous</a> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="tutorials.html">Next</a>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="tutorials.html">Tutorials</a> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="Help.html">Help</a></p>
 
 </div>
 </div>
@@ -11784,7 +11784,7 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="Tutorials">Tutorials<a class="anchor-link" href="#Tutorials">&#182;</a></h2>
+<h1 id="PSF">PSF<a class="anchor-link" href="#PSF">&#182;</a></h1>
 </div>
 </div>
 </div>
@@ -11792,42 +11792,67 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>The following tutorials explain how to use most of the features of SOSPEX for exploring, analyzing, and 
-manipulating the data or comparing to other images from public archives.</p>
-<ul>
-<li><p><a href="start.html">Load a spectral cube</a></p>
-</li>
-<li><p><a href="zoom.html">Zoom and Pan</a></p>
-</li>
-<li><p><a href="intensity.html">Change image intensity levels and color map</a></p>
-</li>
-<li><p><a href="specpanel.html">Using the spectral panel</a></p>
-</li>
-<li><p><a href="slider.html">Sliding along the spectral direction</a></p>
-</li>
-<li><p><a href="slice.html">Select a slice of the cube</a></p>
-</li>
-<li><p><a href="croptrim.html">Crop and trim the cubes</a></p>
-</li>
-<li><p><a href="apertures.html">Select and modify apertures</a></p>
-</li>
-<li><p><a href="extimages.html">Load external images</a></p>
-</li>
-<li><p><a href="blink.html">Blink between images</a></p>
-</li>
-<li><p><a href="contours.html">Overlap contours</a></p>
-</li>
-<li><p><a href="save.html">Save images and spectra</a></p>
-</li>
-<li><p><a href="moments.html">Fit continuum and compute moments</a></p>
-</li>
-<li><p><a href="erase.html">Erase part of the cube</a></p>
-</li>
-<li><p><a href="atmtrans.html">Compute new atmospheric transmission</a></p>
-</li>
-<li><p><a href="psf.html">Estimate FWHM of a point source</a></p>
-</li>
-</ul>
+<table>
+<thead><tr>
+<th style="text-align:center">Button</th>
+<th style="text-align:left">Function</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center"><img src="../icons/psf.png" alt="PSF" style="width: 20px;"/></td>
+<td style="text-align:left">Measure FWHM of a PSF</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>By clicking on this icon, it is possible to define a circular aperture with an exterior annulus to fit a Moffat function and estimate the FWHM of a point source.</p>
+<p>Once a circle around the source is defined by clicking and dragging the mouse on the image, a tab opens on the spectral side showing the expected profile of the instrument (the spectral cube), the flux measured on the image after subtraction of the median value in the annulus, and the fit of the points with a Moffat function. The FWHM of the fit and of the expected PSF is shown in the legend.</p>
+<p>The aperture can be modified by dragging the markers on the aperture.</p>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<table>
+<thead><tr>
+<th style="text-align:center">Button</th>
+<th style="text-align:left">Function</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center"><img src="../icons/centroid.png" alt="PSF centroid" style="width: 20px;"/></td>
+<td style="text-align:left">PSF centroid</td>
+</tr>
+<tr>
+<td style="text-align:center"><img src="../icons/center.png" alt="PSF recenter" style="width: 20px;"/></td>
+<td style="text-align:left">PSF recenter</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
+</div>
+<div class="inner_cell">
+<div class="text_cell_render border-box-sizing rendered_html">
+<p>It is possible to automatically recenter the aperture on the centroid of the intensity by clicking on the first icon.</p>
+<p>The second icon will compute a new center by fitting a 2D Gaussian on the intensity in the aperture.
+Usually it gives the best results.
+Once recentered, the Moffat fit is automatically redone and the FWHM estimate is displayed in the legend.</p>
 
 </div>
 </div>
