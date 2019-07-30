@@ -6,7 +6,7 @@
 [![Anaconda-Server Badge](https://anaconda.org/darioflute/sospex/badges/license.svg)](https://anaconda.org/darioflute/sospex)
 [![Anaconda-Server Badge](https://anaconda.org/darioflute/sospex/badges/platforms.svg)](https://anaconda.org/darioflute/sospex)
 
-**sospex** is a GUI tool to display and analyse [SOFIA](https://www.sofia.usra.edu) ([FIFI-LS](https://www.sofia.usra.edu/science/instruments/fifi-ls) and [GREAT](https://www.sofia.usra.edu/science/instruments/great)) and [PACS](https://www.cosmos.esa.int/web/herschel/pacs-overview) spectral cubes.
+**sospex** is a GUI tool to display and analyse [SOFIA](https://www.sofia.usra.edu) ([FIFI-LS](https://www.sofia.usra.edu/science/instruments/fifi-ls) and [GREAT](https://www.sofia.usra.edu/science/instruments/great)) and [PACS](https://www.cosmos.esa.int/web/herschel/pacs-overview) ([Herschel]())spectral cubes.
 
 - **Source:** https://github.com/darioflute/sospex
 - **Bug reports:** https://github.com/darioflute/sospex/issues
