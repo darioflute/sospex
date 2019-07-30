@@ -11792,12 +11792,13 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p>In the case of FIFI-LS data, the level 4 product contain an extension with flux corrected for atmospheric transmission and another one with flux not corrected.
+<p>In the case of FIFI-LS data, the level 4 products contain an extension with flux corrected for atmospheric transmission and another one with flux not corrected.
 The pipeline corrects for the atmospheric transmission by convolving the ATRAN model of the atmosphere with the spectral resolution of FIFI-LS and then dividing the flux for each frame by taking into account altitude and zenithal angle of the observation.
 This works perfectly only in the case of continuum and with the correct water vapor values.</p>
-<p>In reality, unresolved lines which reside outside telluric lines are not affected by the atmospheric absorption and,
-due to the fact that the atmospheric transmission is convoluted with the spectral resolution, are sometimes unnecessarely corrected for the effect of the atmosphere. The effect is particularly bad for lines in the wings of telluric lines.</p>
+<p>In reality, unresolved lines which lie outside telluric lines are not affected by the atmospheric absorption and,
+due to the fact that the atmospheric transmission is convolved with the spectral resolution, are sometimes unnecessarely corrected for the effect of the atmosphere. The effect is particularly bad for lines in the wings of telluric lines.</p>
 <p>On the top of that, an incorrect value of the water vapor can lead to an over/under correction of the atmospheric absorption.</p>
+<p>Finally, note that <strong>the values of the water vapor assumed by the pipeline are the ones expected at the altitude of the observation.</strong></p>
 <p><em>sospex</em> offers three alternatives to correct for atmospheric absorption:</p>
 <ol>
 <li>Use the value of the transmission at the reference wavelenght. This will give the best correction for the flux of the line at the reference wavelength but will not correct the surrounding continuum.</li>
