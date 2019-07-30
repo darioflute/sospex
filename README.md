@@ -6,7 +6,7 @@
 [![Anaconda-Server Badge](https://anaconda.org/darioflute/sospex/badges/license.svg)](https://anaconda.org/darioflute/sospex)
 [![Anaconda-Server Badge](https://anaconda.org/darioflute/sospex/badges/platforms.svg)](https://anaconda.org/darioflute/sospex)
 
-**sospex** is a GUI tool to display and analyse [SOFIA](https://www.sofia.usra.edu) ([FIFI-LS](https://www.sofia.usra.edu/science/instruments/fifi-ls) and [GREAT](https://www.sofia.usra.edu/science/instruments/great)) and [PACS](https://www.cosmos.esa.int/web/herschel/pacs-overview) ([Herschel]())spectral cubes.
+**sospex** is a GUI tool to display and analyse [SOFIA](https://www.sofia.usra.edu) ([FIFI-LS](https://www.sofia.usra.edu/science/instruments/fifi-ls) and [GREAT](https://www.sofia.usra.edu/science/instruments/great)) and [Herschel](http://sci.esa.int/herschel/) ([PACS](https://www.cosmos.esa.int/web/herschel/pacs-overview)) spectral cubes.
 
 - **Source:** https://github.com/darioflute/sospex
 - **Bug reports:** https://github.com/darioflute/sospex/issues
@@ -22,7 +22,6 @@ This opens a GUI with a few instructions and a series of buttons.
 Buttons have tooltip helps, i.e. hovering over a button makes appear
 a succinct explanation of what the button is supposed to do.
 
-Cubes are shown as images (spatial image at a given wavelength) and spectra (plot of single spatial pixel). Users can explore the cubes by moving the cursor on the image and a bar on the spectrum.
-The spectrum from a region can be computed by defining an aperture on the image.
-By selecting a range on the spectrum, the average spatial emission in the wavelength range is shown in the image display. The cube can be manipolated (cropped and trimmed) and moments of the emission can be computed and displayed. 
-External images and cubes can be uploaded and their contours can be plotted on the spectral cube images.
+Cubes are shown as images (spatial images at given wavelengths) and spectra (plots in a sky direction). Cubes can be explored by moving the cursor on the image and a bar on the spectrum. Spectra can be extracted by defining apertures on the image.
+By selecting a range on the spectrum, the average spatial emission in the wavelength range is displayed. The cube can be manipolated (cropped and trimmed) and moments of the emission can be computed and displayed. 
+External images and cubes can be uploaded and their contours can be overplotted on the image tabs.
