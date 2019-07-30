@@ -3,7 +3,7 @@
 To install the code in your computer, you need first to install the anaconda
 python (https://www.anaconda.com/download).
 
-**You will have to use the Python 3.x distribution.**
+**You will have to use the Python 3.7 distribution.**
 
 It is a good practice to update all your installed packages to have the latest versions:
 
