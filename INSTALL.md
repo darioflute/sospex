@@ -35,7 +35,7 @@ and simply do:
 
 conda update sospex
 
-### Install with pipy
+### Install with pipy  (Currently the version on pipy is pretty old)
 
 pip install sospex
 
