@@ -128,14 +128,21 @@ class specCubeAstro(object):
         except:
             self.l0 = np.nanmedian(self.wave)
             print('No file group present, assumed central wavelength ', self.l0)
+        print('min wave ', np.nanmin(self.wave))
         try:
             utran = hdl['UNSMOOTHED_TRANSMISSION'].data
             w = utran[0,:]
             t = utran[1,:]
-            self.atran = np.interp(self.wave,w,t)  # Interpolation at the resolution of the wavelength grid
+            idx = (w > np.nanmin(self.wave)) & (w < np.nanmax(self.wave))
+            print('Atran ', len(idx), len(w))
+            self.watran = w[idx]
+            self.uatran = t[idx]
+            #self.atran = np.interp(self.wave,w,t)  # Interpolation at the resolution of the wavelength grid
         except:
             print('The unsmoothed transmission is not available')
-            self.atran = hdl['TRANSMISSION'].data   
+            self.watran = None
+            self.uatran = None
+        self.atran = hdl['TRANSMISSION'].data 
         self.response = hdl['RESPONSE'].data
         nexp = self.header['NEXP']
         exptime = self.header['EXPTIME']
@@ -460,15 +467,30 @@ class specCube(object):
             self.l0 = np.nanmedian(self.wave)
             print('No file group present, assumed central wavelength ', self.l0)
         print('ref wav ', self.l0)
+        
         try:
-            utran = hdl[extnames.index('UNSMOOTHED_TRANSMISSION')].read()
+            utran = hdl['UNSMOOTHED_TRANSMISSION'].read()
             w = utran[0,:]
             t = utran[1,:]
-            self.atran = np.interp(self.wave,w,t)  # Interpolation at the resolution of the wavelength grid
+            idx = (w > np.nanmin(self.wave)) & (w < np.nanmax(self.wave))
+            print('Atran ', len(idx), len(w))
+            self.watran = w[idx]
+            self.uatran = t[idx]
+            #self.atran = np.interp(self.wave,w,t)  # Interpolation at the resolution of the wavelength grid
         except:
             print('The unsmoothed transmission is not available')
-            self.atran = hdl[extnames.index('TRANSMISSION')].read()
-        print('atran read')
+            self.watran = None
+            self.uatran = None
+        self.atran = hdl['TRANSMISSION'].read()
+        #try:
+        #    utran = hdl[extnames.index('UNSMOOTHED_TRANSMISSION')].read()
+        #    w = utran[0,:]
+        #    t = utran[1,:]
+        #    self.atran = np.interp(self.wave,w,t)  # Interpolation at the resolution of the wavelength grid
+        #except:
+        #    print('The unsmoothed transmission is not available')
+        #    self.atran = hdl[extnames.index('TRANSMISSION')].read()
+        #print('atran read')
         self.response = hdl[extnames.index('RESPONSE')].read()
         nexp = self.header['NEXP']
         exptime = self.header['EXPTIME']
@@ -679,7 +701,7 @@ class ExtSpectrum(object):
 
 class Spectrum(object):
     """ class to define a spectrum """
-    def __init__(self, wave, flux, eflux=None, uflux=None, exposure=None, atran=None,
+    def __init__(self, wave, flux, eflux=None, uflux=None, exposure=None, atran=None, uatran=None, watran=None,
                  instrument=None, baryshift=None, redshift=None, l0=None, area=None, Tb2Jy=None):
         self.wave = wave
         self.flux = flux
@@ -691,6 +713,10 @@ class Spectrum(object):
             self.atran = atran
         if uflux is not None:
             self.uflux = uflux
+        if uatran is not None:
+            self.uatran = uatran
+        if watran is not None:
+            self.watran = watran
         if instrument is not None:
             self.instrument = instrument
         if baryshift is not None:

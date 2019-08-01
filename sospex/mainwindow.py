@@ -2951,7 +2951,8 @@ class GUI (QMainWindow):
             efluxAll = np.sqrt(np.nansum(s.eflux[:,yy,xx]**2, axis=1))
             spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, uflux=ufluxAll,
                             exposure=expAll, atran = s.atran, instrument=s.instrument,
-                            redshift=s.redshift, baryshift=s.baryshift, l0=s.l0)
+                            redshift=s.redshift, baryshift=s.baryshift, l0=s.l0, 
+                            watran=s.watran, uatran=s.uatran)
         elif s.instrument in ['PACS','FORCAST']:
             expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
             spec = Spectrum(s.wave, fluxAll, exposure=expAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0 )
@@ -5087,7 +5088,8 @@ class GUI (QMainWindow):
             efluxAll = s.eflux[:, y0, x0]
             spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, uflux= ufluxAll,
                             exposure=expAll, atran = s.atran, instrument=s.instrument,
-                            redshift=s.redshift, baryshift=s.baryshift, l0=s.l0)
+                            redshift=s.redshift, baryshift=s.baryshift, l0=s.l0,
+                            watran=s.watran, uatran=s.uatran)
         sc.compute_initial_spectrum(name='Pix', spectrum=spec)
         #print('initial spectrum computed')
         self.specZoomlimits = [sc.xlimits, sc.ylimits]

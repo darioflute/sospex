@@ -8,7 +8,7 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT
 from matplotlib.ticker import ScalarFormatter
 from matplotlib.font_manager import FontProperties
 from matplotlib.patches import Polygon,FancyArrowPatch
-import matplotlib.ticker as ticker
+#import matplotlib.ticker as ticker
 
 # Matplotlib parameters
 import matplotlib.pyplot as plt
@@ -815,14 +815,21 @@ class SpectrumCanvas(MplCanvas):
             self.axes.fmt_xdata = lambda x: "{:.4f}".format(x)        
             self.axes.set_xlabel('Wavelength [$\\mu$m]', picker=True)
             self.x = s.wave
+            if s.watran is not None:
+                self.xa = s.watran
             if s.instrument == 'FIFI-LS':
                 self.xr = self.x * (1+s.baryshift)
+                if s.watran is not None:
+                    self.xar = self.xa * (1+s.baryshift)
         elif self.xunit == 'THz':
             self.axes.format_coord = lambda x, y: "{:6.4f} THz ({:5.0f} km/s)  {:10.4f} Jy".format(x, (c/x-s.l0)/s.l0*cz, y)
             self.axes.set_xlabel('Frequency [THz]', picker=True)
             self.x = c/s.wave * 1.e-3
+            self.xa = c/self.watran * 1.e-3
             if s.instrument == 'FIFI-LS':
                 self.xr = self.x / (1 + s.baryshift)             
+                if s.watran is not None:
+                    self.xar = self.xa / (1 + s.baryshift)             
         self.fluxLine = self.axes.step(self.x, s.flux, color='blue', label='F', zorder=10)
         self.fluxLayer, = self.fluxLine
         self.contLine = self.axes.plot(self.x, s.continuum, color='skyblue', label='Cont', zorder=9)
@@ -887,6 +894,9 @@ class SpectrumCanvas(MplCanvas):
             self.ax4.tick_params(labelright='off',right='off')
             self.ax4.set_yticklabels([]) # remove tick labels on the left
             self.atranLine = self.ax2.step(self.xr, s.atran, color='red', label='Atm', zorder=12)
+            if s.uatran is not None:
+                self.atranLine2 = self.ax2.plot(self.xar, s.uatran, color='red', zorder=14, alpha=0.2)
+                self.atranLayer2, = self.atranLine2
             self.exposureLine = self.ax3.step(self.x, s.exposure,
                                               color='orange', label='E', zorder=13)
             ymax = np.nanmax(s.flux); ymin = np.nanmin(s.flux)
@@ -1368,7 +1378,12 @@ class SpectrumCanvas(MplCanvas):
             origline = self.lined[legline]
             txt = self.labed[legline]
             vis = not origline.get_visible()
-            origline.set_visible(vis)
+            origline.set_visible(vis)                    
+            if label == 'Atm':
+                try:
+                    self.atranLayer2.set_visible(vis)
+                except:
+                    pass
             # Change the alpha on the line in the legend so we can see what lines
             # have been toggled
             if vis:
@@ -1415,6 +1430,7 @@ class SpectrumCanvas(MplCanvas):
                     self.displayLines = False
                 elif label == 'F$_{x}$':
                     self.displayAuxFlux = False
+                    
             if self.shade == True:
                 self.shadeRegion()
             if label == 'Lines':
