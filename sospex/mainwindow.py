@@ -5090,6 +5090,7 @@ class GUI (QMainWindow):
                             exposure=expAll, atran = s.atran, instrument=s.instrument,
                             redshift=s.redshift, baryshift=s.baryshift, l0=s.l0,
                             watran=s.watran, uatran=s.uatran)
+            #print('spectrum defined')
         sc.compute_initial_spectrum(name='Pix', spectrum=spec)
         #print('initial spectrum computed')
         self.specZoomlimits = [sc.xlimits, sc.ylimits]
@@ -5097,10 +5098,10 @@ class GUI (QMainWindow):
         sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
                                rectprops=dict(alpha=0.3, facecolor='LightGreen'))
         sc.span.active = False
-        print('s.n0 ', s.n0, ' len(wave) ', len(s.wave))
+        #print('s.n0 ', s.n0, ' len(wave) ', len(s.wave))
         if (s.n0 <= 0) or (s.n0 >= (len(s.wave)-2)):
             s.n0 = len(s.wave)//2
-        print('s.n0 updated ', s.n0)
+        #print('s.n0 updated ', s.n0)
         wave0 = s.wave[s.n0]
         dwave = (s.wave[s.n0+1]-wave0)*0.5
         sc.regionlimits = wave0-dwave,wave0+dwave

@@ -715,8 +715,12 @@ class Spectrum(object):
             self.uflux = uflux
         if uatran is not None:
             self.uatran = uatran
+        else:
+            self.uatran = None
         if watran is not None:
             self.watran = watran
+        else:
+            self.watran = None
         if instrument is not None:
             self.instrument = instrument
         if baryshift is not None:
