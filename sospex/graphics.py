@@ -547,6 +547,8 @@ class ImageHistoCanvas(MplCanvas):
                 self.sdev = sdev
                 self.nh = nh
                 self.onSelect(xmin,xmax)
+            else:
+                self.limits = [0, 0]
         except:
             print('Problems with the image')
 
@@ -1161,12 +1163,6 @@ class SpectrumCanvas(MplCanvas):
             if exp is not None:
                 self.exposureLine[0].set_ydata(exp)
                 self.ax3.draw_artist(self.exposureLine[0])
-            if af is not None:
-                self.afluxLine[0].set_ydata(af)
-                self.vaxes.draw_artist(self.afluxLine[0])
-                minf = np.nanmin(af)
-                maxf = np.nanmax(af)
-                self.axu.set_ylim(minf, maxf*1.1)
             if f is not None:
                 self.fluxLine[0].set_ydata(f)
                 # self.spectrum.flux = f
@@ -1199,6 +1195,16 @@ class SpectrumCanvas(MplCanvas):
                 self.ylimits = (minf, maxf*1.1)
                 self.updateYlim(f=f)
                 self.updateGuess(f, ncell)
+            if af is not None:
+                self.afluxLine[0].set_ydata(af)
+                self.vaxes.draw_artist(self.afluxLine[0])
+                # If similar wavelength, it should have same limits as main cube
+                if np.abs(self.spectrum.l0 - self.auxl0) < 1:  # less than 1 micrometer
+                    self.axu.set_ylim(self.ylimits)
+                else:
+                    minf = np.nanmin(af)
+                    maxf = np.nanmax(af)
+                    self.axu.set_ylim(minf, maxf*1.1)
             if moments is not None:
                 self.moments = True
                 # Update position, size, and dispersion from moments
