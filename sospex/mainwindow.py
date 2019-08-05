@@ -26,7 +26,7 @@ from sospex.graphics import  (NavigationToolbar, ImageCanvas, ImageHistoCanvas, 
                        cmDialog, ds9cmap, ScrollMessageBox, PsfCanvas)
 from sospex.apertures import (photoAperture, PolygonInteractor, EllipseInteractor,
                               RectangleInteractor, PixelInteractor)
-from sospex.specobj import specCube, Spectrum, ExtSpectrum
+from sospex.specobj import specCube, specCubeAstro, Spectrum, ExtSpectrum
 from sospex.cloud import cloudImage
 from sospex.interactors import (SliderInteractor, SliceInteractor, DistanceSelector,
                                 VoronoiInteractor, LineInteractor, PsfInteractor)
@@ -4873,8 +4873,12 @@ class GUI (QMainWindow):
         try:
             self.specCube = specCube(infile)
         except:
-            self.sb.showMessage("ERROR: The selected file is not a good spectral cube ", 2000)
-            return
+            self.sb.showMessage("fitsio cannot read this file ", 1000)
+            try:
+                self.specCube = specCubeAstro(infile)
+            except:
+                self.sb.showMessage("ERROR: The selected file is not a good spectral cube ", 2000)
+                return
         # Delete pre-existing spectral tabs
         try:
             for stab in reversed(range(len(self.sci))):
