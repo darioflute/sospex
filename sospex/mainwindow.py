@@ -997,7 +997,7 @@ class GUI (QMainWindow):
             else:
                 fluxAll = np.nansum(s.flux[:, yy, xx], axis=1)
             sc.spectrum.flux = fluxAll
-            if s.instrument in ['GREAT','HI']:
+            if s.instrument in ['GREAT','HI','VLA']:
                 if sc.auxiliary:
                     sc.updateSpectrum(f=fluxAll*t2j, af=afluxAll, cont=cont, cslope=cslope, moments=moments, 
                                       lines=lines, noise=noise, ncell=ncell)
@@ -1778,6 +1778,7 @@ class GUI (QMainWindow):
                 sc.lguess.append([[line.x0, line.fwhm, line.A]] * self.ncells)        
         # Generate a list of limits connected to each Voronoi cell
         xg,yg = zip(*sc.guess.xy)
+        print('x limits of guess ', xg)
         sc.xguess = [xg] * self.ncells
         # 
         if sc.displayLines == False:
@@ -1991,6 +1992,8 @@ class GUI (QMainWindow):
         i1 = np.argmin(np.abs(self.specCube.wave-xg[1]))
         i2 = np.argmin(np.abs(self.specCube.wave-xg[2]))
         i3 = np.argmin(np.abs(self.specCube.wave-xg[3]))
+        #print('cell ', ncell, ' xguess ', xg)
+        #print('indeces ', i0, i1, i2, i3)
         return i0, i1, i2, i3
 
     def setContinuumMedian(self):
@@ -2012,6 +2015,7 @@ class GUI (QMainWindow):
                 # Otherwise, find the regions
                 for ncell in range(self.ncells):
                     i0, i1, i2, i3 = self.getContinuumGuess(ncell)
+                    #print('cell ',ncell, 'is', i0,i1,i2,i3)
                     mask = np.zeros(len(self.specCube.flux), dtype=bool)
                     mask[i0:i1] = True
                     mask[i2:i3] = True
@@ -2942,8 +2946,8 @@ class GUI (QMainWindow):
         fluxAll = np.nansum(s.flux[:,yy,xx], axis=1)
         if s.instrument == 'GREAT':
             spec = Spectrum(s.wave, fluxAll*s.Tb2Jy, instrument=s.instrument, 
-                            redshift=s.redshift, l0=s.l0, Tb2Jy = s.Tb2Jy)
-        elif s.instrument == 'HI':
+                            redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy)
+        elif s.instrument in ['HI','VLA']:
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0)
         elif s.instrument == 'FIFI-LS':
             ufluxAll = np.nansum(s.uflux[:,yy,xx], axis=1)
@@ -2955,7 +2959,8 @@ class GUI (QMainWindow):
                             watran=s.watran, uatran=s.uatran)
         elif s.instrument in ['PACS','FORCAST']:
             expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
-            spec = Spectrum(s.wave, fluxAll, exposure=expAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0 )
+            spec = Spectrum(s.wave, fluxAll, exposure=expAll, instrument=s.instrument,
+                            redshift=s.redshift, l0=s.l0 )
         # Inherit the x-units of pix 
         istab = self.spectra.index('Pix')
         sc.xunit = self.sci[istab].xunit
@@ -4812,7 +4817,7 @@ class GUI (QMainWindow):
             self.initializeImages()
             self.initializeSpectra()
             self.initializeSlider()
-            if self.specCube.instrument in ['GREAT','HI']:
+            if self.specCube.instrument in ['GREAT','HI','VLA']:
                 self.specCube.computeExpFromNan()
                 #idx = np.isfinite(self.specCube.flux)
                 #print('No of bad ', np.sum(~idx))
@@ -4853,7 +4858,7 @@ class GUI (QMainWindow):
                 print('images initialized ')
                 self.initializeSpectra()
                 print('spectra initialized ')
-                if self.specCube.instrument in ['GREAT','HI']:
+                if self.specCube.instrument in ['GREAT','HI','VLA']:
                     #print('compute Exp from Nan')
                     self.specCube.computeExpFromNan()
                 self.all = False
@@ -4918,7 +4923,7 @@ class GUI (QMainWindow):
         if self.specCube.instrument == 'FIFI-LS':
             self.bands = ['Flux','uFlux','Exp']
             self.spectra = ['All','Pix']
-        elif self.specCube.instrument in ['GREAT','HI']: 
+        elif self.specCube.instrument in ['GREAT','HI','VLA']: 
             self.bands = ['Flux']
             self.spectra = ['All','Pix']
         elif self.specCube.instrument == 'FORCAST':
@@ -5073,7 +5078,7 @@ class GUI (QMainWindow):
             #print('max flux is ', np.nanmax(fluxAll*s.Tb2Jy))
             spec = Spectrum(s.wave, fluxAll*s.Tb2Jy, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy)
-        elif s.instrument == 'HI':
+        elif s.instrument in ['HI','VLA']:
             spec = Spectrum(s.wave, fluxAll,instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0)
         elif s.instrument == 'PACS':
@@ -5095,10 +5100,12 @@ class GUI (QMainWindow):
                             redshift=s.redshift, baryshift=s.baryshift, l0=s.l0,
                             watran=s.watran, uatran=s.uatran)
             #print('spectrum defined')
+        print('compute initial spectrum')
         sc.compute_initial_spectrum(name='Pix', spectrum=spec)
-        #print('initial spectrum computed')
+        print('initial spectrum computed')
         self.specZoomlimits = [sc.xlimits, sc.ylimits]
         sc.cid = sc.axes.callbacks.connect('xlim_changed' or 'ylim_changed', self.doZoomSpec)
+        print('define span selector')
         sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
                                rectprops=dict(alpha=0.3, facecolor='LightGreen'))
         sc.span.active = False
@@ -5215,7 +5222,7 @@ class GUI (QMainWindow):
             w = c / w * 1.e-6
         n = np.argmin(np.abs(self.specCube.wave - w))
        # Display channel n of the spectral cube
-        if self.specCube.instrument in ['GREAT','HI']:
+        if self.specCube.instrument in ['GREAT','HI','VLA']:
             imas = ['Flux']
         elif self.specCube.instrument in ['PACS', 'FORCAST']:
             imas = ['Flux','Exp']
@@ -5312,7 +5319,7 @@ class GUI (QMainWindow):
         if s.instrument == 'GREAT':
             spec = Spectrum(s.wave, fluxAll*s.Tb2Jy, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy)
-        elif s.instrument == 'HI':
+        elif s.instrument in ['HI','VLA']:
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0)
         elif s.instrument in ['PACS', 'FORCAST']:
@@ -5408,7 +5415,7 @@ class GUI (QMainWindow):
         indmin, indmax = np.searchsorted(self.specCube.wave, (xmin, xmax))
         indmax = min(len(self.specCube.wave) - 1, indmax)
         sc.regionlimits = [xmin,xmax]
-        if self.specCube.instrument in ['GREAT','HI']:
+        if self.specCube.instrument in ['GREAT','HI','VLA']:
             imas = ['Flux']
         elif self.specCube.instrument in ['PACS','FORCAST']:
             imas = ['Flux','Exp']
@@ -5506,9 +5513,11 @@ class GUI (QMainWindow):
             ima.changed = True
             ima.cid = ima.axes.callbacks.connect('ylim_changed', self.doZoomAll)
         fluxAll = np.nansum(self.specCube.flux[:, y0:y1, x0:x1], axis=(1, 2))
-        if s.instrument in ['GREAT','HI']:
+        if s.instrument in ['GREAT']:
             t2j = self.specCube.Tb2Jy
             sc.updateSpectrum(f=fluxAll*t2j)
+        elif s.instrument in ['HI','VLA']:
+            sc.updateSpectrum(f=fluxAll)
         elif s.instrument in ['PACS','FORCAST']:
             expAll = np.nansum(s.exposure[:, y0:y1, x0:x1], axis=(1, 2))
             sc.updateSpectrum(f=fluxAll,exp=expAll)            

@@ -178,6 +178,12 @@ class SegmentsInteractor(QObject):
         # color = '#7ec0ee'
         self.zeroDeg = zeroDeg
         x, y = zip(*verts)
+        # Order in ascending x if wavelength
+        #x = np.asarray(x)
+        #y = np.asarray(y)
+        #idx = np.argsort(x, axis=0)
+        #x = x[idx]
+        #y = y[idx]
         self.xy = [(i,j) for (i,j) in zip(x,y)]
         self.computeSlope()        
         self.line1 = Line2D(x[:2],y[:2],color=color,linewidth=2, animated = True)

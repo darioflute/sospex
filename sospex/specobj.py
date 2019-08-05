@@ -358,6 +358,8 @@ class specCube(object):
             self.readFORCAST(hdl)
         elif self.instrument == 'HI':
             self.readHI(hdl)
+        elif self.instrument == 'VLA':
+            self.readVLA(hdl)
         else:
             print('This is not a supported spectral cube')
         hdl.close()
@@ -621,7 +623,7 @@ class specCube(object):
         """Case of generic radio cube (in this case HI cubes from Westerbrock)."""
         self.objname = self.header['OBJECT'].strip()
         print('Object of HI is ',self.objname)
-        self.header = hdl[0].read_header()
+        #self.header = hdl[0].read_header()
         self.redshift = 0.
         data = hdl[0].read()
         naxis = self.header['NAXIS']
@@ -654,6 +656,44 @@ class specCube(object):
         self.crval3 = w[0]
         self.cdelt3 = np.median(w[1:] - w[:-1])
         
+    def readVLA(self, hdl):
+        """Case of VLA cube (from VIVA)."""
+        self.objname = self.header['OBJECT'].strip()
+        print('Object of VLA is ',self.objname)
+        data = hdl[0].read()
+        naxis = self.header['NAXIS']
+        if naxis == 3:
+            self.flux = data
+        elif naxis == 4: # polarization
+            self.flux = data[0,:,:,:]
+        self.redshift = 0.
+        nz, ny, nx = np.shape(self.flux)
+        self.n = nz
+        print('nz: ',nz, self.header['NAXIS3'])
+        wcs = WCS(self.header)
+        self.wcs = wcs.celestial
+        self.crpix3 = self.header['CRPIX3']
+        self.crval3 = self.header['CRVAL3']
+        self.cdelt3 = self.header['CDELT3']
+        ctype3 = self.header['CTYPE3'].strip()
+        if ctype3 == 'FREQ':
+            freq = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3 
+            nu0 = self.header['RESTFREQ']
+            print('reference frequency', nu0, 'Hz')
+            c = 299792458.0 # m/s
+            self.l0 = c/nu0 * 1.e6 #um
+            self.wave = c/freq * 1.e6 #um
+            # Reorder wave (and flux)
+            idx = np.argsort(self.wave)
+            self.wave = self.wave[idx]
+            self.flux = self.flux[idx, :, :]
+        self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
+        print('scale is ', self.pixscale)
+        # Back to wavelength
+        w = self.wave
+        self.crval3 = w[0]
+        self.cdelt3 = np.median(w[1:] - w[:-1])
+                
     def getWCS(self):
         #hdu = fits.PrimaryHDU(self.flux)
         hdr = fits.Header()
@@ -701,7 +741,8 @@ class ExtSpectrum(object):
 
 class Spectrum(object):
     """ class to define a spectrum """
-    def __init__(self, wave, flux, eflux=None, uflux=None, exposure=None, atran=None, uatran=None, watran=None,
+    def __init__(self, wave, flux, eflux=None, uflux=None, exposure=None,
+                 atran=None, uatran=None, watran=None,
                  instrument=None, baryshift=None, redshift=None, l0=None, area=None, Tb2Jy=None):
         self.wave = wave
         self.flux = flux

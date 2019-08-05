@@ -827,7 +827,8 @@ class SpectrumCanvas(MplCanvas):
             self.axes.format_coord = lambda x, y: "{:6.4f} THz ({:5.0f} km/s)  {:10.4f} Jy".format(x, (c/x-s.l0)/s.l0*cz, y)
             self.axes.set_xlabel('Frequency [THz]', picker=True)
             self.x = c/s.wave * 1.e-3
-            self.xa = c/self.watran * 1.e-3
+            if s.watran is not None:
+                self.xa = c/s.watran * 1.e-3
             if s.instrument == 'FIFI-LS':
                 self.xr = self.x / (1 + s.baryshift)             
                 if s.watran is not None:
@@ -932,7 +933,7 @@ class SpectrumCanvas(MplCanvas):
                                   direction='in', pad = -25, colors='red')
             else:
                 self.ax2.get_yaxis().set_tick_params(labelright='off',right='off')   
-        elif s.instrument in ['GREAT','HI']:
+        elif s.instrument in ['GREAT','HI','VLA']:
             self.displayUFlux = False
             self.displayAtran = False
             self.displayExposure = False
