@@ -1911,7 +1911,8 @@ class GUI (QMainWindow):
                 pass
             else:
                 if moption == 'Region':
-                    print('Compute region moments')
+                    print('Set continuum to median and compute region moments')
+                    self.setContinuumMedian()
                     self.computeMomentsRegion()
                 elif moption == 'All':
                     print('Compute all cube moments')
@@ -2002,7 +2003,7 @@ class GUI (QMainWindow):
         self.openContinuumTab()
 
         sc = self.sci[self.spectra.index('Pix')]
-        print('ncells ', self.ncells)
+        #print('ncells ', self.ncells)
         if sc.guess is None:
             self.C0 = np.nanmedian(self.specCube.flux, axis=0)
         else:
@@ -2016,7 +2017,7 @@ class GUI (QMainWindow):
                 # Otherwise, find the regions
                 for ncell in range(self.ncells):
                     i0, i1, i2, i3 = self.getContinuumGuess(ncell)
-                    print('cell ',ncell, 'is', i0,i1,i2,i3)
+                    #print('cell ',ncell, 'is', i0,i1,i2,i3)
                     mask = np.zeros(len(self.specCube.flux), dtype=bool)
                     mask[i0:i1] = True
                     mask[i2:i3] = True
@@ -2521,7 +2522,7 @@ class GUI (QMainWindow):
             print('region has ',np.sum(mask),' points')
             yi, xi = np.where(mask == True)
             points = np.c_[xi, yi]
-            print('Points defined ... for computing moments, points: ', np.shape(points))
+            #print('Points defined ... for computing moments, points: ', np.shape(points))
             # Define moments
             self.defineMoments()
             # Compute moment mask

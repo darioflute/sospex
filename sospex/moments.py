@@ -830,7 +830,7 @@ def computeMoments(p,m,w,dw,f):
         med = np.nanmedian(df)
         # Divide by sqrt(2.) since I did a subtraction 
         mad = np.nanmedian(np.abs(med))/np.sqrt(2.) * 1.48 # MAD for Gaussian distributions
-        sigma = 0.0 *  mad# n sigma value
+        sigma = -5.0 *  mad# n sigma value
         # Consider only values greater than continuum
         #if np.isfinite(sigma):
         #    ms = f > (-sigma)
