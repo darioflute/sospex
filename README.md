@@ -18,8 +18,8 @@ Once installed, type in a terminal window:
 ```bash
     sospex
 ```
-This opens a GUI with few buttons and a popup window with quick start instructions.
-Hovering over buttons makes appear tooltip boxes with a succinct explanation of their function.
+This opens a GUI with buttons and a popup window with quick start instructions.
+Hovering over buttons displays tooltip help boxes with succinct explanations of button functions.
 
 Cubes are shown as images (spatial images at given wavelengths) and spectra (plots in a sky direction). Cubes can be explored by moving the cursor on the image and a bar on the spectrum. Spectra can be extracted by defining apertures on the image.
 By selecting a range on the spectrum, the average spatial emission in the wavelength range is displayed. Cubes can be manipolated (cropped and trimmed) and moments of the emission can be computed and displayed. 
