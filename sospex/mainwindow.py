@@ -2947,7 +2947,7 @@ class GUI (QMainWindow):
         fluxAll = np.nansum(s.flux[:,yy,xx], axis=1)
         if s.instrument == 'GREAT':
             spec = Spectrum(s.wave, fluxAll*s.Tb2Jy, instrument=s.instrument, 
-                            redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy)
+                            redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy, bunit=s.bunit)
         elif s.instrument in ['HI','VLA']:
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0)
         elif s.instrument == 'FIFI-LS':
@@ -3935,7 +3935,11 @@ class GUI (QMainWindow):
             header['CDELT3'] = (self.specCube.cdelt3,'Increment')
             header['NAXIS3'] = (self.specCube.n,'3rd dimension')
             header['INSTRUME'] = (self.specCube.instrument, 'Instrument')
-            header['DATE-OBS'] = (self.specCube.obsdate, 'Date of the observation')            
+            header['DATE-OBS'] = (self.specCube.obsdate, 'Date of the observation')  
+            try:
+                header['BUNIT'] = self.specCube.header['BUNIT']
+            except:
+                print('No flux unit defined in original cube')
             if self.specCube.instrument == 'FIFI-LS':
                 header['CUNIT3'] = ('um','Wavelength unit')
                 header['OBJ_NAME'] = (self.specCube.objname, 'Object Name')
@@ -5078,7 +5082,7 @@ class GUI (QMainWindow):
         if s.instrument == 'GREAT':
             #print('max flux is ', np.nanmax(fluxAll*s.Tb2Jy))
             spec = Spectrum(s.wave, fluxAll*s.Tb2Jy, instrument=s.instrument,
-                            redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy)
+                            redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy, bunit=s.bunit)
         elif s.instrument in ['HI','VLA']:
             spec = Spectrum(s.wave, fluxAll,instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0)
@@ -5319,7 +5323,7 @@ class GUI (QMainWindow):
         fluxAll = np.nansum(s.flux, axis=(1,2))
         if s.instrument == 'GREAT':
             spec = Spectrum(s.wave, fluxAll*s.Tb2Jy, instrument=s.instrument,
-                            redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy)
+                            redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy, bunit=s.bunit)
         elif s.instrument in ['HI','VLA']:
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0)

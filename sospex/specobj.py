@@ -170,10 +170,14 @@ class specCubeAstro(object):
             self.flux = (hdl['PRIMARY'].data)[0,:,:,:]
         else:
             self.flux = hdl['PRIMARY'].data
+        self.bunit = self.header['BUNIT']
         eta_fss=0.97
         eta_mb =0.67
         calib = 971.
-        self.Tb2Jy = calib*eta_fss*eta_mb
+        if self.bunit == 'K (Tmb)':
+            self.Tb2Jy = calib*eta_fss*eta_mb
+        else: # Case of K (Ta*)
+            self.Tb2Jy = calib
         nu0 = self.header['RESTFREQ']  # MHz
         l0 = c/nu0  # in micron
         # Transform in Jy/pixel
@@ -519,10 +523,14 @@ class specCube(object):
         self.redshift /= c
         self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
         self.n = self.header['NAXIS3']
+        self.bunit = self.header['BUNIT'].strip()
         eta_fss=0.97
         eta_mb =0.67
         calib = 971.
-        self.Tb2Jy = calib*eta_fss*eta_mb
+        if self.bunit == 'K (Tmb)':
+            self.Tb2Jy = calib*eta_fss*eta_mb
+        else: # Case of K (Ta*)
+            self.Tb2Jy = calib
         nu0 = self.header['RESTFREQ']  # MHz
         print('rest freq ', nu0)
         l0 = c/nu0  # in micron
@@ -744,7 +752,8 @@ class Spectrum(object):
     """ class to define a spectrum """
     def __init__(self, wave, flux, eflux=None, uflux=None, exposure=None,
                  atran=None, uatran=None, watran=None,
-                 instrument=None, baryshift=None, redshift=None, l0=None, area=None, Tb2Jy=None):
+                 instrument=None, baryshift=None, redshift=None, l0=None, area=None, Tb2Jy=None,
+                 bunit=None):
         self.wave = wave
         self.flux = flux
         if eflux is not None:
@@ -775,4 +784,6 @@ class Spectrum(object):
             self.area = area
         if Tb2Jy is not None:
             self.Tb2Jy = Tb2Jy
+        if bunit is not None:
+            self.bunit = bunit
         self.continuum =  np.full(len(wave), np.nan)

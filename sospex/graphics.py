@@ -974,7 +974,10 @@ class SpectrumCanvas(MplCanvas):
                     pass
                 self.Taxes = self.axes.twinx()
                 #self.Taxes.tick_params(labelright='off',right='off')
-                self.Taxes.set_ylabel('T$_b$ [K]')
+                if s.bunit == 'K (Tmb)':
+                    self.Taxes.set_ylabel('T$_{mb}$ [K]')
+                else:
+                    self.Taxes.set_ylabel('T$^{*}_{A}$ [K]')
                 #print('limits in Flux ', self.axes.get_ylim())
                 #print('limits in Tb ', self.axes.get_ylim()/self.spectrum.Tb2Jy)
                 self.Taxes.set_ylim(self.axes.get_ylim()/self.spectrum.Tb2Jy)
