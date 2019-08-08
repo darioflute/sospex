@@ -1,8 +1,8 @@
 # <img alt="SoSpEx" src="sospex/icons/sospexlogo.png" height="100">
 
-[![Anaconda-Server Badge](https://anaconda.org/darioflute/sospex/badges/version.svg?branch=master&kill_cache=1&service=github)](https://anaconda.org/darioflute/sospex)
-[![Anaconda-Server Badge](https://anaconda.org/darioflute/sospex/badges/latest_release_date.svg?branch=master&kill_cache=1&service=github)](https://anaconda.org/darioflute/sospex)
-[![PyPI version](https://badge.fury.io/py/sospex.svg?branch=master&kill_cache=1)](https://badge.fury.io/py/sospex)
+[![Anaconda-Server Badge](https://anaconda.org/darioflute/sospex/badges/version.svg?branch=master)](https://anaconda.org/darioflute/sospex)
+[![Anaconda-Server Badge](https://anaconda.org/darioflute/sospex/badges/latest_release_date.svg?branch=master)](https://anaconda.org/darioflute/sospex)
+[![PyPI version](https://badge.fury.io/py/sospex.svg?branch=master&kill_cache=1&service=github)](https://badge.fury.io/py/sospex)
 [![Anaconda-Server Badge](https://anaconda.org/darioflute/sospex/badges/license.svg)](https://anaconda.org/darioflute/sospex)
 [![Anaconda-Server Badge](https://anaconda.org/darioflute/sospex/badges/platforms.svg)](https://anaconda.org/darioflute/sospex)
 
@@ -12,15 +12,14 @@
 - **Bug reports:** https://github.com/darioflute/sospex/issues
 - **Anaconda:** https://anaconda.org/darioflute/sospex
 - **How to install:** https://github.com/darioflute/sospex/blob/master/INSTALL.md
-- **Tutorials:** https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/tutorials.ipynb
+- **Tutorials:** https://nbviewer.jupyter.org/github/darioflute/sospex/blob/master/sospex/help/tutorials.html
 
 Once installed, type in a terminal window:
 ```bash
     sospex
 ```
-This opens a GUI with a few instructions and a series of buttons.
-Buttons have tooltip helps, i.e. hovering over a button makes appear
-a succinct explanation of what the button is supposed to do.
+This opens a GUI with buttons and a popup window with quick start instructions.
+Hovering over buttons displays tooltip help boxes with succinct explanations of button functions.
 
 Cubes are shown as images (spatial images at given wavelengths) and spectra (plots in a sky direction). Cubes can be explored by moving the cursor on the image and a bar on the spectrum. Spectra can be extracted by defining apertures on the image.
 By selecting a range on the spectrum, the average spatial emission in the wavelength range is displayed. Cubes can be manipolated (cropped and trimmed) and moments of the emission can be computed and displayed. 
