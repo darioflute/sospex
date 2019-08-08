@@ -11726,9 +11726,7 @@ body {
 div#notebook {
   overflow: visible;
   border-top: none;
-}
-
-@media print {
+}@media print {
   div.cell {
     display: block;
     page-break-inside: avoid;
@@ -11749,7 +11747,7 @@ div#notebook {
 
 <!-- Loading mathjax macro -->
 <!-- Load mathjax -->
-    <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS_HTML"></script>
     <!-- MathJax configuration -->
     <script type="text/x-mathjax-config">
     MathJax.Hub.Config({
@@ -11773,8 +11771,7 @@ div#notebook {
   <div tabindex="-1" id="notebook" class="border-box-sizing">
     <div class="container" id="notebook-container">
 
-<div class="cell border-box-sizing text_cell rendered">
-<div class="prompt input_prompt">
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
@@ -11783,8 +11780,7 @@ div#notebook {
 </div>
 </div>
 </div>
-<div class="cell border-box-sizing text_cell rendered">
-<div class="prompt input_prompt">
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
@@ -11792,15 +11788,14 @@ div#notebook {
 </div>
 </div>
 </div>
-<div class="cell border-box-sizing text_cell rendered">
-<div class="prompt input_prompt">
+<div class="cell border-box-sizing text_cell rendered"><div class="prompt input_prompt">
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
 <p>Several actions are possible on the spectral panel.
-We describe here only the one which do not involve pressing any icon on the toolbar.</p>
+We describe here only the ones which do not involve pressing any icon on the toolbar.</p>
 <ul>
-<li><strong>change x-axis scale</strong> It is possible to switch between wavelength (in $\mu$m) and frequecy (in THz) by pressing the label on the x-axis.</li>
+<li><strong>change x-axis scale</strong> It is possible to switch between wavelength (in $\mu$m) and frequency (in THz) by pressing the label on the x-axis.</li>
 <li><strong>change velocity</strong> By pressing the label with the value of cz, it is possible to write in a different value of velocity.</li>
 <li><strong>select a line</strong> By clicking on the name of a line, it is possible to change the velocity reference selecting as velocity origin the position of the line</li>
 <li><strong>select redshift and line</strong> By dragging the label of a line to a spectral feature, the line becomes the reference frequency for velocity computations and, if agreed, also the redshift of the object is changed by identifying the spectral feature with the selected line.</li>
