@@ -19,21 +19,25 @@ def dist_point_to_segment(p, s0, s1):
     p = np.asarray(p, float)
     s0 = np.asarray(s0, float)
     s1 = np.asarray(s1, float)
+    
     v = s1 - s0
     w = p - s0
 
     c1 = np.dot(w, v)
     if c1 <= 0:
-        return np.hypot(p, s0)
+#        return np.hypot(p, s0)
+        return np.linalg.norm(p - s0)
 
     c2 = np.dot(v, v)
     if c2 <= c1:
-        return np.hypot(p, s1)
+#        return np.hypot(p, s1)
+        return np.linalg.norm(p - s1)
 
     b = c1 / c2
     pb = s0 + b * v
-    return np.hypot(p, pb)
-
+    
+#    return np.hypot(p, pb)
+    return np.linalg.norm(p - pb)   
 
 
 class SliderInteractor(QObject):
@@ -491,12 +495,11 @@ class VoronoiInteractor(QObject):
         self.type = 'Polygon'
         self.epsilon = epsilon
         self.showsites = showsites
+        self.sites = sites
+        x, y = zip(*self.sites)
         self.poly = Polygon(list(sites), animated=True, fill=False, closed=True, color='red')
         self.ax.add_patch(self.poly)
         self.canvas = self.poly.figure.canvas
-
-        self.sites = sites
-        x, y = zip(*self.sites)
         self.line = Line2D(x, y, marker='o', linestyle=None, linewidth=0.,
                            markerfacecolor='red', animated=True)
         self.ax.add_line(self.line)
@@ -505,7 +508,7 @@ class VoronoiInteractor(QObject):
         self.poly.set_visible(self.showsites)
 
         # self.sites = self.sites
-        self.sites = sites
+        #self.sites = sites
         self.drawVoronoi()
         #self.cid = self.poly.add_callback(self.poly_changed)
         self._ind = None  # the active vert
@@ -513,7 +516,9 @@ class VoronoiInteractor(QObject):
         
     def drawVoronoi(self):
         from scipy.spatial import Voronoi
-        self.sites = self.poly.xy
+        self.sites = self.poly.xy[:-1]
+        #print('Sites are ', len(self.sites))
+        #print('sites: ', self.sites)
         vor = Voronoi(self.sites)
         #print('vertices ', vor.vertices)
         # Ridge segments
@@ -625,6 +630,7 @@ class VoronoiInteractor(QObject):
         for s in self.segments + self.rays:
             s.remove()
         self.drawVoronoi()
+        #print('Number of sites ', len(self.sites))
         # Notify callback
         self.modSignal.emit('voronoi modified')
 
@@ -659,7 +665,7 @@ class VoronoiInteractor(QObject):
                         a.insert(-1,a[0])
                         del a[-1]
                     self.poly.set_xy(a)
-                    print('new lengths ', len(a), len(self.poly.xy))
+                    #print('new lengths ', len(a), len(self.poly.xy))
                     self.line.set_data(zip(*self.poly.xy))
                     self.modSignal.emit(str(ind))  # Pass the index canceled
                 for s in self.segments + self.rays:
@@ -674,7 +680,7 @@ class VoronoiInteractor(QObject):
                 d = dist_point_to_segment(p, s0, s1)
                 if d <= self.epsilon:
                     a = list(self.poly.get_xy())
-                    a.insert(i, (event.xdata, event.ydata))
+                    a.insert(i+1, (event.xdata, event.ydata))
                     self.poly.set_xy(a)
                     #self.poly.xy = np.array(
                     #    list(self.poly.xy[:i+1]) +

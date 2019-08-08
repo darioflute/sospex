@@ -27,7 +27,8 @@ from astropy.wcs.utils import proj_plane_pixel_scales as pixscales
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 
-from PyQt5.QtWidgets import (QVBoxLayout, QSizePolicy, QInputDialog, QDialog, QListWidget,
+from PyQt5.QtWidgets import (QVBoxLayout, QHBoxLayout, QLineEdit, QSizePolicy, QInputDialog, 
+                             QDialog, QListWidget,
                              QListWidgetItem,QPushButton,QLabel,QMessageBox,QScrollArea,QWidget)
 from PyQt5.QtGui import QIcon,QFont
 from PyQt5.QtCore import Qt, QSize, pyqtSignal
@@ -38,23 +39,39 @@ from astropy.visualization import (LinearStretch, SqrtStretch, SquaredStretch, S
                                    LogStretch, ImageNormalize, PowerStretch)
 
 class ScrollMessageBox(QMessageBox):
-   def __init__(self, l, *args, **kwargs):
-      super().__init__(*args, **kwargs)
-      font = QFont()
-      font.setFamily("Monaco")
-      font.setPointSize(10)
-      self.setWindowTitle("Header")
-      scroll = QScrollArea(self)
-      scroll.setWidgetResizable(True)
-      self.content = QWidget()
-      scroll.setWidget(self.content)
-      lay = QVBoxLayout(self.content)
-      for item in l:
-          label = QLabel(item, self)
-          label.setFont(font)
-          lay.addWidget(label)
-      self.layout().addWidget(scroll, 0, 0, 1, self.layout().columnCount())
-      self.setStyleSheet("QScrollArea{min-width:600 px; min-height: 400px}")
+    def __init__(self, l, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.list = l
+        font = QFont()
+        font.setFamily("Monaco")
+        font.setPointSize(10)
+        self.setWindowTitle("Header")
+        scroll = QScrollArea(self)
+        scroll.setWidgetResizable(True)
+        self.content = QWidget()
+        scroll.setWidget(self.content)
+        vLayout = QVBoxLayout(self.content)
+        hLayout = QHBoxLayout()
+        self.filter = QPushButton("filter", self)
+        self.filter.clicked.connect(self.filterClicked)
+        hLayout.addWidget(self.filter)
+        self.lineEdit = QLineEdit(self)
+        hLayout.addWidget(self.lineEdit)
+        vLayout.addLayout(hLayout)
+        for item in l:
+            label = QLabel(item, self)
+            label.setFont(font)
+            vLayout.addWidget(label)
+        self.layout().addWidget(scroll, 0, 0, 1, self.layout().columnCount())
+        self.setStyleSheet("QScrollArea{min-width:600 px; min-height: 400px}")
+    
+    def filterClicked(self):
+        import re
+        filter_text = str(self.lineEdit.text()).strip()
+        for l in self.list:
+            if bool(re.search(filter_text, l)):
+                print('String ', l)
+
 
 def ds9cmap():
     """Adding DS9 colormap.
@@ -144,6 +161,13 @@ def ds9cmap():
     ds9heat_r = {'red': lambda v : np.interp(v, [0, 0.34, 1], [0, 1, 1])[::-1],
                'green': lambda v : np.interp(v, [0, 1], [0, 1])[::-1],
                'blue': lambda v : np.interp(v, [0, 0.65, 0.98, 1], [0, 0, 1, 1])[::-1]}
+    # Additional GAIA map
+    gaiareal = {'red': lambda v : np.interp(v, [0,  0.5, 1],[0, 1, 1]),
+            'green': lambda v : np.interp(v, [0, 0.5, 1],[0, 0.5, 1]),
+            'blue': lambda v : np.interp(v, [0, 0.5,  1],[0, 0, 1])}
+    gaiareal_r = {'red': lambda v : np.interp(v, [0,  0.5, 1],[0, 1, 1])[::-1],
+            'green': lambda v : np.interp(v, [0, 0.5, 1],[0, 0.5, 1])[::-1],
+            'blue': lambda v : np.interp(v, [0, 0.5,  1],[0, 0, 1])[::-1]}
     # Set aliases, where colormap exists in matplotlib
     cmap_d['ds9bb'] = cmap_d['afmhot']
     cmap_d['ds9grey'] = cmap_d['gray']
@@ -167,6 +191,9 @@ def ds9cmap():
     register_cmap('ds9rainbow_r', data=ds9rainbow_r)
     register_cmap('ds9he_r', data=ds9he_r)
     register_cmap('ds9heat_r', data=ds9heat_r)
+    # Additional gaia map
+    register_cmap('real', data=gaiareal)
+    register_cmap('real_r', data=gaiareal_r)
     # The Normalize class is largely based on code provided by Sarah Graves.
     # http://www.ster.kuleuven.be/~pieterd/python/html/plotting/interactive_colorbar.html
 
@@ -311,7 +338,7 @@ class ImageCanvas(MplCanvas):
         MplCanvas.__init__(self, *args, **kwargs)
         # Define color map
             
-    def compute_initial_figure(self, image=None, wcs=None, title=None, cMap = 'gist_heat',
+    def compute_initial_figure(self, image=None, wcs=None, title=None, cMap = 'real',
                                cMapDir = '_r', stretch='linear', instrument=None):
         self.colorMap = cMap
         self.colorMapDirection = cMapDir
@@ -1283,10 +1310,10 @@ class SpectrumCanvas(MplCanvas):
             ymed = np.nanmedian(y)
             dy = med - ymed
             y += dy
-            g.xy = [(i,j) for (i,j) in zip(x,y)]
-            g.updateLinesMarkers()
             yc = np.nanmedian(y)
-            #print('cont y is ', yc)
+            if np.isfinite(yc):
+                g.xy = [(i,j) for (i,j) in zip(x,y)]
+                g.updateLinesMarkers()
             # Update line guesses
             try:
                 if len(self.lines) > 0:

@@ -273,10 +273,13 @@ class SegmentsInteractor(QObject):
         x = np.array(x); y = np.array(y)
         d = np.hypot(x - event.x, y - event.y)
         indseq, = np.nonzero(d == d.min())
-        ind = indseq[0]
-        # print('distance is ',d[ind])
-        if d[ind] >= self.epsilon:
+        if len(indseq) > 0:
+            ind = indseq[0]
+            if d[ind] >= self.epsilon:
+                ind = None
+        else:
             ind = None
+        # print('distance is ',d[ind])
         return ind
 
     def key_press_callback(self, event):
@@ -821,14 +824,13 @@ def computeMoments(p,m,w,dw,f):
         # between two consecutive values. Assuming they have the
         # same dispersion, the dispersion of the difference is
         # sqrt(2) higher.
-
         pos = f[1:] > 0 # Consider only positive values
         df = f[1:]-f[:-1]
         df = df[pos]
         med = np.nanmedian(df)
         # Divide by sqrt(2.) since I did a subtraction 
         mad = np.nanmedian(np.abs(med))/np.sqrt(2.) * 1.48 # MAD for Gaussian distributions
-        sigma = 1 *  mad# n sigma value
+        sigma = 0.0 *  mad# n sigma value
         # Consider only values greater than continuum
         #if np.isfinite(sigma):
         #    ms = f > (-sigma)

@@ -443,6 +443,7 @@ class specCube(object):
         self.flux = hdl[extnames.index('FLUX')].read()
         self.eflux = hdl[extnames.index('ERROR')].read()
         self.uflux = hdl[extnames.index('UNCORRECTED_FLUX')].read()
+        #self.uflux = hdl[extnames.index('ERROR')].read()
         self.euflux = hdl[extnames.index('UNCORRECTED_ERROR')].read()
         self.wave = hdl[extnames.index('WAVELENGTH')].read()
         self.n = len(self.wave)

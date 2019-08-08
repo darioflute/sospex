@@ -88,7 +88,7 @@ class GUI (QMainWindow):
         self.setAttribute(Qt.WA_DeleteOnClose)
         # Default color map for images
         ds9cmap()
-        self.colorMap = 'gist_heat'
+        self.colorMap = 'real'
         self.colorMapDirection = '_r'
         self.stretchMap = 'linear'
         self.colorContour = ['cyan', 'yellow']
@@ -1660,6 +1660,7 @@ class GUI (QMainWindow):
             try:
                 # Add to the list the last value
                 newguess = sc.xguess[-1]
+                print('Adding guess ', newguess)
                 sc.xguess.append(newguess)
                 if len(sc.lines) > 0:
                     for line in sc.lines:
@@ -1869,7 +1870,7 @@ class GUI (QMainWindow):
         """Dialog to select fit options for the cube."""
         #if self.continuum is not None:
         sc = self.sci[self.spectra.index('Pix')]
-        print('fitcont: ', self.fitcont)
+        # print('fitcont: ', self.fitcont)
         if sc.guess is not None:
             if self.fitcont:
                 moments = True
@@ -1885,11 +1886,11 @@ class GUI (QMainWindow):
             else:
                 lines = False
             if self.ncells > 1:
-                options.extend(['Fit region', 'Fit all cube', 'Set to zero', 'Set to medians'])
+                options.extend(['Set to medians', 'Fit region', 'Fit all cube', 'Set to zero'])
             else:
-                options.extend(['Fit all cube', 'Set to zero', 'Set to medians'])
+                options.extend(['Set to medians', 'Fit all cube', 'Set to zero'])
         else:
-            options = ['Set to zero', 'Set to medians']
+            options = ['Set to medians', 'Set to zero']
             moments = False
             lines = False
         FCD = FitCubeDialog(options, moments, lines)
@@ -2015,7 +2016,7 @@ class GUI (QMainWindow):
                 # Otherwise, find the regions
                 for ncell in range(self.ncells):
                     i0, i1, i2, i3 = self.getContinuumGuess(ncell)
-                    #print('cell ',ncell, 'is', i0,i1,i2,i3)
+                    print('cell ',ncell, 'is', i0,i1,i2,i3)
                     mask = np.zeros(len(self.specCube.flux), dtype=bool)
                     mask[i0:i1] = True
                     mask[i2:i3] = True
@@ -3427,7 +3428,7 @@ class GUI (QMainWindow):
         """Upload existing spectrum."""        
         fd = QFileDialog()
         fd.setLabelText(QFileDialog.Accept, "Import")
-        fd.setNameFilters(["Fits Files (*.fits, *.fits.gz)","All Files (*)"])
+        fd.setNameFilters(["Fits Files (*.fits, *.fits.gz)","WXY fits files (*WXY*.fits*)", "All Files (*)"])
         fd.setOptions(QFileDialog.DontUseNativeDialog)
         fd.setViewMode(QFileDialog.List)
         fd.setFileMode(QFileDialog.ExistingFile)
@@ -5595,7 +5596,7 @@ class GUI (QMainWindow):
         # Great adaption: https://github.com/glue-viz/ds9norm
         # In the colormap dialog I should add a list of possible stretches (sqrt, log , ...)
         if len(self.ihi) > 0:
-            self.CMlist = ['gist_heat','afmhot','ds9heat','gist_earth','gist_gray','inferno','ocean','plasma','seismic','jet',
+            self.CMlist = ['real','gist_heat','afmhot','ds9heat','gist_earth','gist_gray','inferno','ocean','plasma','seismic','jet',
                            'ds9a','ds9b','ds9cool','ds9i8','ds9aips0','ds9rainbow','ds9he']
             self.STlist = ['linear','sqrt','square','log','power','sinh','asinh']
             self.CClist = ['cyan','lime','magenta','red','blue','purple','black','white','yellow']
