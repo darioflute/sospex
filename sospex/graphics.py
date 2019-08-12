@@ -837,10 +837,10 @@ class SpectrumCanvas(MplCanvas):
         else:
             self.axes.set_ylabel('Flux [Jy]')
         s = self.spectrum   
-        c = 299792.458  # speed of light in km/s
-        cz = c/(s.redshift + 1)
+        ckms = 299792.458  # speed of light in km/s
         if self.xunit == 'um':
-            self.axes.format_coord = lambda x, y: "{:8.4f} um ({:5.0f} km/s)  {:10.4f} Jy".format(x,(x-s.l0)/s.l0*cz,y)
+            x0 = s.l0 * (1 + s.redshift)
+            self.axes.format_coord = lambda x, y: "{:8.4f} um ({:6.0f} km/s)  {:10.4f} Jy".format(x,(x/x0 - 1)*ckms,y)
             self.axes.fmt_xdata = lambda x: "{:.4f}".format(x)        
             self.axes.set_xlabel('Wavelength [$\\mu$m]', picker=True)
             self.x = s.wave
@@ -851,11 +851,12 @@ class SpectrumCanvas(MplCanvas):
                 if s.watran is not None:
                     self.xar = self.xa * (1+s.baryshift)
         elif self.xunit == 'THz':
-            self.axes.format_coord = lambda x, y: "{:6.4f} THz ({:5.0f} km/s)  {:10.4f} Jy".format(x, (c/x-s.l0)/s.l0*cz, y)
+            x0 = s.l0 * (1 + s.redshift)
+            self.axes.format_coord = lambda x, y: "{:6.4f} THz ({:5.0f} km/s)  {:10.4f} Jy".format(x, (ckms/x*1.e-3/x0 - 1)*ckms, y)
             self.axes.set_xlabel('Frequency [THz]', picker=True)
-            self.x = c/s.wave * 1.e-3
+            self.x = ckms/s.wave * 1.e-3
             if s.watran is not None:
-                self.xa = c/s.watran * 1.e-3
+                self.xa = ckms/s.watran * 1.e-3
             if s.instrument == 'FIFI-LS':
                 self.xr = self.x / (1 + s.baryshift)             
                 if s.watran is not None:
@@ -872,8 +873,7 @@ class SpectrumCanvas(MplCanvas):
             self.ylimits = self.axes.get_ylim()
         xlim0,xlim1 = self.xlimits
         if self.xunit == 'THz':
-            c = 299792458.0  # speed of light in m/s
-            xlim1, xlim0 = c /xlim0 * 1.e-6, c / xlim1 * 1.e-6
+            xlim1, xlim0 = ckms /xlim0 * 1.e-3, ckms / xlim1 * 1.e-3
         self.axes.set_xlim(xlim0, xlim1)
         self.axes.set_ylim(self.ylimits)
         # Fake line to have the lines in the legend
@@ -881,8 +881,7 @@ class SpectrumCanvas(MplCanvas):
                                         alpha=0.4, label='Lines', zorder=11)
         self.linesLayer, = self.linesLine
         # Add redshift value on the plot
-        c = 299792.458  #km/s
-        self.zannotation = self.axes.annotate(" cz = {:.1f} km/s".format(c*s.redshift),
+        self.zannotation = self.axes.annotate(" cz = {:.1f} km/s".format(ckms*s.redshift),
                                               xy=(-0.15,-0.07), picker=5, xycoords='axes fraction')
         # Add reference wavelength value on the plot
         self.lannotation = self.axes.annotate(" $\\lambda_0$ = {:.4f} $\\mu$m".format(s.l0),
@@ -1012,8 +1011,8 @@ class SpectrumCanvas(MplCanvas):
             if self.auxiliary:
                 # Draw auxiliary flux
                 self.axu = self.vaxes.twinx()
-                c =  299792.458 # km/s
-                v = (self.auxw/self.auxl0 - 1. - s.redshift) * c
+                #c =  299792.458 # km/s
+                v = (self.auxw/self.auxl0 - 1. - s.redshift) * ckms
                 print('auxl0 ', self.auxl0)
                 self.afluxLine = self.axu.step(v, self.aflux, color='cyan', label='F$_{x}$', zorder=12)
                 # Add scale on the right ?
@@ -1058,9 +1057,9 @@ class SpectrumCanvas(MplCanvas):
         font = FontProperties(family='DejaVu Sans', size=12)
         xlim0, xlim1 = self.axes.get_xlim()
         ylim0, ylim1 = self.axes.get_ylim()
-        c = 299792458.0  # speed of light in m/s
+        #c = 299792458.0  # speed of light in m/s
         if self.xunit == 'THz':
-            xlim1, xlim0 = c / xlim0 * 1.e-6, c / xlim1 * 1.e-6
+            xlim1, xlim0 = ckms / xlim0 * 1.e-3, ckms / xlim1 * 1.e-3
         dy = ylim1 - ylim0
         for line in self.Lines.keys():
             nline = self.Lines[line][0]
@@ -1077,7 +1076,7 @@ class SpectrumCanvas(MplCanvas):
                 if self.xunit == 'um':
                     xline = wline
                 elif self.xunit == 'THz':
-                    xline = c/wline * 1.e-6
+                    xline = ckms/wline * 1.e-3
                 y2 = 0.95  # Axes coordinates
                 trans = transforms.blended_transform_factory(self.axes.transData, 
                                                              self.axes.transAxes)
@@ -1105,7 +1104,7 @@ class SpectrumCanvas(MplCanvas):
             return (vx2, vx1)
         else:
             return (vx1, vx2)
-        print('Velocity limits ', vx1, vx2)
+        #print('Velocity limits ', vx1, vx2)
 
     def updateXlim(self):
         """Update xlimits."""
