@@ -167,7 +167,7 @@ class cloudImage(object):
         # Open a dialog
         fd = QFileDialog()
         fd.setLabelText(QFileDialog.Accept, "Import")
-        fd.setNameFilters(["Fits Files (*.fits)","WXY fits files (*WXY*.fits*)", "All Files (*)"])
+        fd.setNameFilters(["Fits Files (*.fit*)","WXY fits files (*WXY*.fits*)", "All Files (*)"])
         fd.setOptions(QFileDialog.DontUseNativeDialog)
         fd.setViewMode(QFileDialog.List)
         fd.setFileMode(QFileDialog.ExistingFile)
@@ -729,14 +729,17 @@ class cloudImage(object):
         if file is not None:
             #idx = data.index('FITS-cutout')
             #file = 'http:'+values[idx]
-            response = urllib.request.urlopen(file)
-            content= response.read()
-            fitsfile = BytesIO(content)
-            hdulist = fits.open(fitsfile,memmap=False)
-            header = hdulist['PRIMARY'].header
-            self.data = hdulist['PRIMARY'].data
-            hdulist.close()
-            self.wcs = WCS(header).celestial
+            try:
+                response = urllib.request.urlopen(file)
+                content= response.read()
+                fitsfile = BytesIO(content)
+                hdulist = fits.open(fitsfile,memmap=False)
+                header = hdulist['PRIMARY'].header
+                self.data = hdulist['PRIMARY'].data
+                hdulist.close()
+                self.wcs = WCS(header).celestial
+            except:
+                print('Problems with connection')
         else:
             self.data = None
             self.wcs = None
