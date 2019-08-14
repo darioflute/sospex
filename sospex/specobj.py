@@ -327,7 +327,11 @@ class specCube(object):
     """ spectral cube - read with fitsio routines"""
     def __init__(self, infile):
         import time
-        import fitsio
+        try:
+            import fitsio
+        except ImportError:
+            print('install fitsio library:  conda install -c conda-forge fitsio')
+            exit
         t = time.process_time()
         # Option None seems faster than False
         #hdl = fits.open(infile,memmap=None)
@@ -667,6 +671,7 @@ class specCube(object):
         
     def readVLA(self, hdl):
         """Case of VLA cube (from VIVA)."""
+        c = 299792458.0 # m/s
         self.objname = self.header['OBJECT'].strip()
         print('Object of VLA is ',self.objname)
         data = hdl[0].read()
@@ -686,10 +691,19 @@ class specCube(object):
         self.cdelt3 = self.header['CDELT3']
         ctype3 = self.header['CTYPE3'].strip()
         if ctype3 == 'FREQ':
-            freq = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3 
             nu0 = self.header['RESTFREQ']
             print('reference frequency', nu0, 'Hz')
-            c = 299792458.0 # m/s
+            # Check if altrval exists and its different from crval3
+            try:
+                altrval = self.header['ALTRVAL']  # ref velocity in m/s
+                vcrval3 = c * (1 - self.crval3/nu0)
+                faltrval = nu0 * (1 - altrval/c)  # alt crval3
+                if np.abs(vcrval3 - altrval) > 20:
+                    self.crval3 = faltrval
+                self.redshift = altrval/c
+            except:
+                pass
+            freq = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3 
             self.l0 = c/nu0 * 1.e6 #um
             self.wave = c/freq * 1.e6 #um
             # Reorder wave (and flux)
