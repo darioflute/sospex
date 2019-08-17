@@ -152,6 +152,7 @@ def exportGuesses(self):
         idx.reverse()
         g = sc.guess
         xg, yg = zip(*g.xy)
+        print('no of cells ', self.ncells)
         for i in range(self.ncells):
             xg = sc.xguess[i]
             lines = []

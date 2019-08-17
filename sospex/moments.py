@@ -836,7 +836,8 @@ def computeMoments(p,m,w,dw,f):
         #    ms = f > (-sigma)
         #else:
         #    ms = np.isfinite(f)
-        ms = f > sigma
+        # ms = f > sigma
+        ms = f > 0
         # Compute also negative intensity
         if np.sum(ms) > 5:
             c = 299792458. # m/s

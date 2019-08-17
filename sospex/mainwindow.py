@@ -1600,6 +1600,10 @@ class GUI (QMainWindow):
             self.VI.disconnect
             self.VI.modSignal.disconnect()
             self.VI = None
+            istab = self.spectra.index('Pix')
+            sc = self.sci[istab]
+            sc.lguess = []
+            sc.xguess = []
         except BaseException:
             pass
         
