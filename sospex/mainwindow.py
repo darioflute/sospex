@@ -1577,13 +1577,18 @@ class GUI (QMainWindow):
             pixel.rect.set_xy((x,y))
             ic.changed = True
         # Help on status bar
-        self.sb.showMessage("Drag the mouse over the spectrum to select two continuum regions ",
+        self.sb.showMessage("Click and drag the mouse over the spectrum to select two continuum regions ",
                             2000)        
         # Delete previous guess and select new one
         if sc.guess is not None:
             self.onRemoveContinuum('segments deleted')
         # I don't know how to disactivate the draggable feature, so I hide the annotations
         # when selecting the continuum
+        try:
+            sc.lguess = []
+            sc.xguess = []
+        except:
+            pass
         self.CS = SegmentsSelector(sc.axes, sc.fig, self.onContinuumSelect, zD=self.zeroDeg)
         self.openContinuumTab()
         # Create Voronoi sites, KDTree, plot Voronoi ridges on image
@@ -1600,10 +1605,6 @@ class GUI (QMainWindow):
             self.VI.disconnect
             self.VI.modSignal.disconnect()
             self.VI = None
-            istab = self.spectra.index('Pix')
-            sc = self.sci[istab]
-            sc.lguess = []
-            sc.xguess = []
         except BaseException:
             pass
         
@@ -1890,11 +1891,11 @@ class GUI (QMainWindow):
             else:
                 lines = False
             if self.ncells > 1:
-                options.extend(['Set to medians', 'Fit region', 'Fit all cube', 'Set to zero'])
+                options.extend(['Set to medians', 'Set to lowest 50% medians', 'Fit region', 'Fit all cube', 'Set to zero'])
             else:
-                options.extend(['Set to medians', 'Fit all cube', 'Set to zero'])
+                options.extend(['Set to medians', 'Set to lowest 50% medians','Fit all cube', 'Set to zero'])
         else:
-            options = ['Set to medians', 'Set to zero']
+            options = ['Set to medians', 'Set to lowest 50% medians','Set to zero']
             moments = False
             lines = False
         FCD = FitCubeDialog(options, moments, lines)
@@ -1909,6 +1910,8 @@ class GUI (QMainWindow):
                     self.fitContRegion()
                 elif coption == 'Set to medians':
                     self.setContinuumMedian()
+                elif coption == 'Set to lowest 50% medians':
+                    self.setContinuumMedian10percent()
                 elif coption == 'Set to zero':
                     self.setContinuumZero()
             if moption is None:
@@ -2031,6 +2034,39 @@ class GUI (QMainWindow):
         self.Cs = self.C0.copy() * 0. # Set all slopes to 0
         self.refreshContinuum()
         self.fitcont = True
+        
+    def setContinuumMedian10percent(self):
+        """Compute continuum by using the median signal per pixel."""
+        self.openContinuumTab()
+
+        sc = self.sci[self.spectra.index('Pix')]
+        #print('ncells ', self.ncells)
+        if sc.guess is None:
+            sflux = np.sort(self.specCube.flux, axis=0)
+            print('shape of flux is ',np.shape(sflux))
+            nz, ny, nx = np.shape(sflux)
+            n50 = nz // 4
+            self.C0 = np.nanmedian(sflux[0: n50, :, :], axis=0)
+        else:
+            if self.ncells == 1:
+                i0, i1, i2, i3 = self.getContinuumGuess()
+                n50 = (i3-i0)//4
+                sflux = np.sort(self.specCube.flux[i0:i3, :, :], axis=0)
+                #print('n10 ', n50, 'sflux ', np.shape(sflux))
+                self.C0 = np.nanmedian(sflux[0:n50, :, :], axis=0)
+            else:
+                # Otherwise, find the regions
+                for ncell in range(self.ncells):
+                    i0, i1, i2, i3 = self.getContinuumGuess(ncell)
+                    j, i = np.where(self.regions == ncell)
+                    n50 = (i3-i0)//4  # 20%
+                    sflux = np.sort(self.specCube.flux[i0:i3,j,i], axis=0)
+                    self.C0[j, i] = np.nanmedian(sflux[0:n50,:], axis=0)
+        self.continuum = np.broadcast_to(self.C0, np.shape(self.specCube.flux))
+        self.Cs = self.C0.copy() * 0. # Set all slopes to 0
+        self.refreshContinuum()
+        self.fitcont = True
+    
 
     def refreshContinuum(self):
         """Refresh the plotted image of the continuuum."""
@@ -2598,7 +2634,8 @@ class GUI (QMainWindow):
             for p in points:
                 i, j = p
                 self.Mmask[:,j,i] = 0
-                self.Mmask[i1:i2,j,i] = 1
+                #self.Mmask[i1:i2,j,i] = 1
+                self.Mmask[i0:i3,j,i] = 1
         else:
             # Do some smoothing before computing the Cmask
             if smooth:
@@ -2610,8 +2647,10 @@ class GUI (QMainWindow):
                 for cell in range(self.ncells):
                     i0, i1, i2, i3 = self.getContinuumGuess(cell)
                     idx = np.where(self.regions == cell)
-                    i1map[idx] = i1
-                    i2map[idx] = i2
+                    #i1map[idx] = i1
+                    #i2map[idx] = i2
+                    i1map[idx] = i0
+                    i2map[idx] = i3
                 # B) Convolve each limit map with a kernel
                 kernel = np.array([[1/16., 1/8., 1/16.], 
                                    [1/8., 1/4., 1/8.],
