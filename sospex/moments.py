@@ -74,6 +74,42 @@ def biweight(data, axis=None):
         
     return M.squeeze(), S
 
+def weightedMedian(data, weights, axis=None):
+    """
+        Median of a weighted array.
+        The function works also on a 2D or 3D array one an axis for median computation is defined.
+    """
+    
+    # Transform into numpy arrays and sort
+    a = np.asarray(data)
+    w = np.asarray(weights)
+    ids = np.argsort(a, axis=axis)
+    a = np.take_along_axis(a, ids, axis=axis)
+    w = np.take_along_axis(w, ids, axis=axis)
+    
+    # Compute midpoint and find the median
+    wcum = np.cumsum(w, axis=axis)
+    wmid = np.sum(w, axis=axis, keepdims=True)*0.5
+    mask = wcum <= wmid
+    if axis is None:
+        idx = np.sum(mask) - 1
+        if wcum  == wmid:
+            wmed = (a[idx] + a[idx+1]) * 0.5
+        else:
+            wmed = a[idx+1]
+    else:
+        idx = np.sum(mask, axis=axis, keepdims=True) - 1
+        icum = np.take_along_axis(wcum, idx, axis=1).squeeze()
+        wmed = np.take_along_axis(a, idx+1, axis=1).squeeze()
+        w1 = np.take_along_axis(a, idx, axis=1).squeeze()
+        id = icum == wmid.squeeze()
+        if np.sum(id) > 0:
+            wmed[id] = (wmed[id]+w1[id])*0.5
+
+    return wmed
+    
+    
+
 class SegmentsSelector(QObject):
 
     def __init__(self, ax, fig, callback, color='#7ec0ee', zD = True):
