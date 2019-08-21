@@ -896,6 +896,8 @@ class GUI (QMainWindow):
         else:
             n = self.nAper()
         if istab > 0:
+            #print('changing apertures')
+            #self.onDraw('changed aperture')
             s = self.specCube
             # I should find a way to know if the aperture has changed
             if itab != 0:
@@ -1061,7 +1063,7 @@ class GUI (QMainWindow):
             if tabname == 'Pix':
                 ntab = 0
             else:
-                ntab = int(tabname) + 1
+                ntab = int(tabname)
             aper = ic.photApertures[ntab]
             #apertype = aper.__class__.__name__
             if aper.type == 'Ellipse' or aper.type == 'Circle':
@@ -1891,11 +1893,11 @@ class GUI (QMainWindow):
             else:
                 lines = False
             if self.ncells > 1:
-                options.extend(['Set to medians', 'Set to lowest 50% medians', 'Fit region', 'Fit all cube', 'Set to zero'])
+                options.extend(['Set to medians', 'Set to lowest 25% medians', 'Set to lowest 50% medians', 'Fit region', 'Fit all cube', 'Set to zero'])
             else:
-                options.extend(['Set to medians', 'Set to lowest 50% medians','Fit all cube', 'Set to zero'])
+                options.extend(['Set to medians', 'Set to lowest 25% medians', 'Set to lowest 50% medians','Fit all cube', 'Set to zero'])
         else:
-            options = ['Set to medians', 'Set to lowest 50% medians','Set to zero']
+            options = ['Set to medians', 'Set to lowest 25% medians', 'Set to lowest 50% medians','Set to zero']
             moments = False
             lines = False
         FCD = FitCubeDialog(options, moments, lines)
@@ -1910,8 +1912,10 @@ class GUI (QMainWindow):
                     self.fitContRegion()
                 elif coption == 'Set to medians':
                     self.setContinuumMedian()
+                elif coption == 'Set to lowest 25% medians':
+                    self.setContinuumMedianPercent(25)
                 elif coption == 'Set to lowest 50% medians':
-                    self.setContinuumMedian10percent()
+                    self.setContinuumMedianPercent(50)
                 elif coption == 'Set to zero':
                     self.setContinuumZero()
             if moption is None:
@@ -2035,33 +2039,34 @@ class GUI (QMainWindow):
         self.refreshContinuum()
         self.fitcont = True
         
-    def setContinuumMedian10percent(self):
+    def setContinuumMedianPercent(self, percent):
         """Compute continuum by using the median signal per pixel."""
         self.openContinuumTab()
 
         sc = self.sci[self.spectra.index('Pix')]
+        n = 100 // percent 
         #print('ncells ', self.ncells)
         if sc.guess is None:
             sflux = np.sort(self.specCube.flux, axis=0)
             print('shape of flux is ',np.shape(sflux))
             nz, ny, nx = np.shape(sflux)
-            n50 = nz // 4
-            self.C0 = np.nanmedian(sflux[0: n50, :, :], axis=0)
+            npc = nz // n
+            self.C0 = np.nanmedian(sflux[0: npc, :, :], axis=0)
         else:
             if self.ncells == 1:
                 i0, i1, i2, i3 = self.getContinuumGuess()
-                n50 = (i3-i0)//4
+                npc = (i3-i0) // n
                 sflux = np.sort(self.specCube.flux[i0:i3, :, :], axis=0)
                 #print('n10 ', n50, 'sflux ', np.shape(sflux))
-                self.C0 = np.nanmedian(sflux[0:n50, :, :], axis=0)
+                self.C0 = np.nanmedian(sflux[0:npc, :, :], axis=0)
             else:
                 # Otherwise, find the regions
                 for ncell in range(self.ncells):
                     i0, i1, i2, i3 = self.getContinuumGuess(ncell)
                     j, i = np.where(self.regions == ncell)
-                    n50 = (i3-i0)//4  # 20%
+                    npc = (i3-i0) // n 
                     sflux = np.sort(self.specCube.flux[i0:i3,j,i], axis=0)
-                    self.C0[j, i] = np.nanmedian(sflux[0:n50,:], axis=0)
+                    self.C0[j, i] = np.nanmedian(sflux[0:npc,:], axis=0)
         self.continuum = np.broadcast_to(self.C0, np.shape(self.specCube.flux))
         self.Cs = self.C0.copy() * 0. # Set all slopes to 0
         self.refreshContinuum()
