@@ -4003,7 +4003,11 @@ class GUI (QMainWindow):
                 header['PIXSCAL'] = (self.specCube.pixscale,'Pixel scale [arcsec]' )
                 header['RESOLUN'] = (self.specCube.resolution,'Spectral resolution')
                 header['DETCHAN'] = (self.specCube.header['DETCHAN'],'Data comes from ..')
-                header['NAXIS'] = (3,'Number of axis')                
+                header['NAXIS'] = (3,'Number of axis')  
+                exptime = self.specCube.header['EXPTIME']
+                nexp = self.specCube.header['NEXP']
+                header['EXPTIME'] = (exptime,'On-source exposure time in seconds')
+                header['NEXP'] = (nexp,'Number of exposure in source')
                 # Primary header
                 hdu = fits.PrimaryHDU()
                 hdu.header.extend(header)
@@ -4021,7 +4025,7 @@ class GUI (QMainWindow):
                 hdu7 = self.addExtension(self.specCube.y,'Y',None,None)
                 hdu8 = self.addExtension(self.specCube.atran,'TRANSMISSION',None,None)
                 hdu9 = self.addExtension(self.specCube.response,'RESPONSE',None,None)
-                hdu10 = self.addExtension(self.specCube.exposure,'EXPOSURE_MAP',None,header)
+                hdu10 = self.addExtension(self.specCube.exposure* nexp/exptime,'EXPOSURE_MAP',None,header)
                 hdul = fits.HDUList([hdu, hdu1, hdu2, hdu3, hdu4, hdu5, hdu6, hdu7, hdu8, hdu9, hdu10])            
                 #hdul.info()    
                 hdul.writeto(outfile,overwrite=True) 

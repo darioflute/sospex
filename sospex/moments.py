@@ -79,7 +79,8 @@ def weightedMedian(data, weights, axis=None):
         Median of a weighted array.
         The function works also on a 2D or 3D array one an axis for median computation is defined.
     """
-    
+    import numpy as np
+    np.seterr(divide='ignore', invalid='ignore')
     # Transform into numpy arrays and sort
     a = np.asarray(data)
     w = np.asarray(weights)
@@ -93,21 +94,30 @@ def weightedMedian(data, weights, axis=None):
     mask = wcum <= wmid
     if axis is None:
         idx = np.sum(mask) - 1
-        if wcum  == wmid:
-            wmed = (a[idx] + a[idx+1]) * 0.5
+        if np.max(w) > wmid:
+            wmed = (a[w == np.max(w)])[0]
         else:
-            wmed = a[idx+1]
+            if wcum  == wmid:
+                wmed = (a[idx] + a[idx+1]) * 0.5
+            else:
+                wmed = a[idx+1]
     else:
+        wmid = wmid.squeeze()
         idx = np.sum(mask, axis=axis, keepdims=True) - 1
-        icum = np.take_along_axis(wcum, idx, axis=1).squeeze()
-        wmed = np.take_along_axis(a, idx+1, axis=1).squeeze()
-        w1 = np.take_along_axis(a, idx, axis=1).squeeze()
-        id = icum == wmid.squeeze()
+        icum = np.take_along_axis(wcum, idx, axis=axis).squeeze()
+        wmed = np.take_along_axis(a, idx+1, axis=axis).squeeze()
+        w1 = np.take_along_axis(a, idx, axis=axis).squeeze()
+        id = icum == wmid
         if np.sum(id) > 0:
             wmed[id] = (wmed[id]+w1[id])*0.5
-
+        # Case of weight > midpoint
+        id = np.nanmax(w, axis=axis) > wmid
+        if np.sum(id) > 0:
+            imax = np.expand_dims(np.nanargmax(w, axis=axis), axis=axis)
+            amax = np.take_along_axis(a, imax, axis=axis)
+            wmed[id] = amax[id]
+        
     return wmed
-    
     
 
 class SegmentsSelector(QObject):
