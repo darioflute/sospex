@@ -1893,11 +1893,16 @@ class GUI (QMainWindow):
             else:
                 lines = False
             if self.ncells > 1:
-                options.extend(['Set to medians', 'Set to lowest 25% medians', 'Set to lowest 50% medians', 'Fit region', 'Fit all cube', 'Set to zero'])
+                options.extend(['Set to medians', 'Set to lowest 25% medians', 
+                                'Set to lowest 50% medians', 'Offset of lowest 25% uncorrected medians',
+                                'Fit region', 'Fit all cube', 'Set to zero'])
             else:
-                options.extend(['Set to medians', 'Set to lowest 25% medians', 'Set to lowest 50% medians','Fit all cube', 'Set to zero'])
+                options.extend(['Set to medians', 'Set to lowest 25% medians', 
+                                'Set to lowest 50% medians', 'Offset of lowest 25% uncorrected medians',
+                                'Fit all cube', 'Set to zero'])
         else:
-            options = ['Set to medians', 'Set to lowest 25% medians', 'Set to lowest 50% medians','Set to zero']
+            options = ['Set to medians', 'Set to lowest 25% medians', 
+                       'Set to lowest 50% medians','Offset of lowest 25% uncorrected medians','Set to zero']
             moments = False
             lines = False
         FCD = FitCubeDialog(options, moments, lines)
@@ -1916,6 +1921,8 @@ class GUI (QMainWindow):
                     self.setContinuumMedianPercent(25)
                 elif coption == 'Set to lowest 50% medians':
                     self.setContinuumMedianPercent(50)
+                elif coption == 'Offset of lowest 25% uncorrected medians':
+                    self.setContinuumMedianPercent(33, True)
                 elif coption == 'Set to zero':
                     self.setContinuumZero()
             if moption is None:
@@ -2039,15 +2046,21 @@ class GUI (QMainWindow):
         self.refreshContinuum()
         self.fitcont = True
         
-    def setContinuumMedianPercent(self, percent):
+    def setContinuumMedianPercent(self, percent, uncorrected=False):
         """Compute continuum by using the median signal per pixel."""
         self.openContinuumTab()
+
+        if self.specCube.instrument != 'FIFI-LS':
+            uncorrected = False
 
         sc = self.sci[self.spectra.index('Pix')]
         n = 100 // percent 
         #print('ncells ', self.ncells)
         if sc.guess is None:
-            sflux = np.sort(self.specCube.flux, axis=0)
+            if uncorrected:
+                sflux = np.sort(self.specCube.uflux, axis=0)
+            else:
+                sflux = np.sort(self.specCube.flux, axis=0)
             print('shape of flux is ',np.shape(sflux))
             nz, ny, nx = np.shape(sflux)
             npc = nz // n
@@ -2056,7 +2069,10 @@ class GUI (QMainWindow):
             if self.ncells == 1:
                 i0, i1, i2, i3 = self.getContinuumGuess()
                 npc = (i3-i0) // n
-                sflux = np.sort(self.specCube.flux[i0:i3, :, :], axis=0)
+                if uncorrected:
+                    sflux = np.sort(self.specCube.uflux[i0:i3, :, :], axis=0)
+                else:
+                    sflux = np.sort(self.specCube.flux[i0:i3, :, :], axis=0)
                 #print('n10 ', n50, 'sflux ', np.shape(sflux))
                 self.C0 = np.nanmedian(sflux[0:npc, :, :], axis=0)
             else:
@@ -2065,8 +2081,15 @@ class GUI (QMainWindow):
                     i0, i1, i2, i3 = self.getContinuumGuess(ncell)
                     j, i = np.where(self.regions == ncell)
                     npc = (i3-i0) // n 
-                    sflux = np.sort(self.specCube.flux[i0:i3,j,i], axis=0)
+                    if uncorrected:
+                        sflux = np.sort(self.specCube.uflux[i0:i3,j,i], axis=0)
+                    else:
+                        sflux = np.sort(self.specCube.flux[i0:i3,j,i], axis=0)
                     self.C0[j, i] = np.nanmedian(sflux[0:npc,:], axis=0)
+        # If uncorrected, put to zero positive offsets
+        if uncorrected:
+            idx = self.C0 > 0
+            self.C0[idx] = 0
         self.continuum = np.broadcast_to(self.C0, np.shape(self.specCube.flux))
         self.Cs = self.C0.copy() * 0. # Set all slopes to 0
         self.refreshContinuum()
@@ -4025,8 +4048,13 @@ class GUI (QMainWindow):
                 hdu7 = self.addExtension(self.specCube.y,'Y',None,None)
                 hdu8 = self.addExtension(self.specCube.atran,'TRANSMISSION',None,None)
                 hdu9 = self.addExtension(self.specCube.response,'RESPONSE',None,None)
-                hdu10 = self.addExtension(self.specCube.exposure* nexp/exptime,'EXPOSURE_MAP',None,header)
-                hdul = fits.HDUList([hdu, hdu1, hdu2, hdu3, hdu4, hdu5, hdu6, hdu7, hdu8, hdu9, hdu10])            
+                hdu10 = self.addExtension(self.specCube.exposure * nexp / exptime,'EXPOSURE_MAP',None,header)
+                if self.specCube.watran is not None:
+                    uatran = np.array([self.specCube.watran, self.specCube.uatran])
+                    hdu11 = self.addExtension(uatran,'UNSMOOTHED_TRANSMISSION',None,None)
+                    hdul = fits.HDUList([hdu, hdu1, hdu2, hdu3, hdu4, hdu5, hdu6, hdu7, hdu8, hdu9, hdu10, hdu11])
+                else:
+                    hdul = fits.HDUList([hdu, hdu1, hdu2, hdu3, hdu4, hdu5, hdu6, hdu7, hdu8, hdu9, hdu10])            
                 #hdul.info()    
                 hdul.writeto(outfile,overwrite=True) 
                 hdul.close()
