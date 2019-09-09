@@ -959,7 +959,7 @@ class SpectrumCanvas(MplCanvas):
                                   direction='in', pad = -25, colors='red')
             else:
                 self.ax2.get_yaxis().set_tick_params(labelright='off',right='off')   
-        elif s.instrument in ['GREAT','HI','VLA']:
+        elif s.instrument in ['GREAT','HI','VLA','MUSE']:
             self.displayUFlux = False
             self.displayAtran = False
             self.displayExposure = False
@@ -1053,6 +1053,13 @@ class SpectrumCanvas(MplCanvas):
         if self.shade == True:
             self.shadeRegion()
         # Add spectral lines
+        self.spectralLines()
+                
+    def spectralLines(self):
+        """Draw spectral lines."""
+        ckms = 299792.458  # speed of light in km/s
+        s = self.spectrum   
+        # Add spectral lines
         self.annotations = []
         font = FontProperties(family='DejaVu Sans', size=12)
         xlim0, xlim1 = self.axes.get_xlim()
@@ -1082,7 +1089,6 @@ class SpectrumCanvas(MplCanvas):
                                                              self.axes.transAxes)
                 annotation = self.axes.annotate(nline, xy=(xline,y1),  xytext=(xline, y2),
                                                 textcoords = trans,
-                                                #draggable=True,
                                                 picker=5,
                                                 color='purple', alpha=0.4, ha='center',
                                                 arrowprops=dict(edgecolor='purple',facecolor='y', 
@@ -1090,8 +1096,8 @@ class SpectrumCanvas(MplCanvas):
                                                 connectionstyle="angle,angleA=0,angleB=90,rad=10"),
                                                 rotation = 90, fontstyle = 'italic',
                                                 fontproperties=font, visible=self.displayLines)
-                annotation.draggable()
-                self.annotations.append(annotation)    
+                annotation.draggable()  # Make annotation draggable
+                self.annotations.append(annotation)  
 
     def computeVelLimits(self):
         """Compute velocity limits."""
@@ -1489,6 +1495,7 @@ class SpectrumCanvas(MplCanvas):
                             self.xlannotation.remove()
                         self.drawSpectrum()
                         self.fig.canvas.draw_idle()
+                        print('Updated spectrum after z change ')
                         # Simulate a release to activate the update of redshift in main program
                         QTest.mouseRelease(self, Qt.LeftButton)
             if event.artist == self.lannotation:

@@ -38,6 +38,8 @@ class specCubeAstro(object):
             self.readFORCAST(hdl)
         elif self.instrument == 'HI':
             self.readHI(hdl)
+        elif self.instrument == 'MUSE':
+            self.readMUSE(hdl)
         else:
             print('This is not a supported spectral cube')
         hdl.close()
@@ -307,6 +309,28 @@ class specCubeAstro(object):
         self.crval3 = w[0]
         self.cdelt3 = np.median(w[1:] - w[:-1])
         
+    def readMUSE(self, hdl):
+        "MUSE integral field spectrometer at VLT"
+        self.objname = self.header['OBJECT']
+        print('Object of MUSE is ',self.objname)
+        self.flux = hdl['DATA'].data  # 10**(-20)*erg/s/cm**2/Angstrom
+        nz, ny, nx = np.shape(self.flux)
+        self.n = nz
+        self.header = hdl['DATA'].header
+        wcs = WCS(self.header)
+        self.wcs = wcs.celestial
+        self.crpix3 = self.header['CRPIX3']
+        self.crval3 = self.header['CRVAL3']
+        self.cdelt3 = self.header['CD3_3']
+        #ctype3 = self.header['CTYPE3'].strip()
+        self.wave = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3 # Angstrom
+        self.wave *= 1.e-4  # um
+        #print('min wave ', np.nanmin(self.wave))
+        self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
+        print('scale is ', self.pixscale)
+        self.redshift = 0
+        self.l0 = np.nanmedian(self.wave)
+        #self.l0 = (self.header['WAVELMIN']+self.header['WAVELMAX']) * 0.5 * 1.e-3 # wav in nm
     
     def getResolutionFIFI(self):
         """Compute resolution at reference wavelength for FIFI-LS"""
@@ -344,6 +368,7 @@ class specCube(object):
         self.header['FILENAME']=self.filename
         try:
             self.instrument = self.header['INSTRUME'].strip()
+            print('Instrument: ', self.instrument)
         except:
             origin = self.header['ORIGIN'].strip()
             if origin == 'GILDAS Consortium':
@@ -351,6 +376,12 @@ class specCube(object):
             elif origin[0:6] == 'Miriad':
                 print('Origin is ', origin)
                 self.instrument = 'HI'
+            try:
+                telescope = self.header['TELESCOP'].strip()
+                if telescope == 'ALMA':
+                    self.instrument = 'ALMA'
+            except:
+                print('Unknown telescope')
         try:
             self.obsdate = self.header['DATE-OBS'].strip()
         except:
@@ -366,8 +397,10 @@ class specCube(object):
             self.readFORCAST(hdl)
         elif self.instrument == 'HI':
             self.readHI(hdl)
-        elif self.instrument == 'VLA':
+        elif self.instrument in ['VLA','ALMA']:
             self.readVLA(hdl)
+        elif self.instrument == 'MUSE':
+            self.readMUSE(hdl)
         else:
             print('This is not a supported spectral cube')
         hdl.close()
@@ -542,8 +575,10 @@ class specCube(object):
         # Compute the beam size at the wavelength
         bmaj = self.header['BMAJ'] * 3600. # Beam major axis in arcsec
         bmin = self.header['BMIN'] * 3600. # Beam minor axis in arcsec
+        xsigma = 2 * bmaj / 2.355 / np.sqrt(2) # sigma from FWHM divided by sqrt(2)
+        ysigma = 2 * bmin / 2.355 / np.sqrt(2)
         # Multiply by the flux fraction in the pixel assuming a 2D Gaussian curve                    
-        pixfraction = 0.5 * erf(self.pixscale*0.5/bmaj) * erf(ypixscale*0.5/bmin)
+        pixfraction = erf(self.pixscale*0.5/xsigma) * erf(ypixscale*0.5/ysigma)
         print('Beam fraction on pixel ', pixfraction)
         self.Tb2Jy *= pixfraction
         naxes = self.header['NAXIS']
@@ -691,7 +726,10 @@ class specCube(object):
         self.cdelt3 = self.header['CDELT3']
         ctype3 = self.header['CTYPE3'].strip()
         if ctype3 == 'FREQ':
-            nu0 = self.header['RESTFREQ']
+            if self.instrument == 'VLA':
+                nu0 = self.header['RESTFREQ']
+            elif self.instrument == 'ALMA':
+                nu0 = self.header['RESTFRQ']
             print('reference frequency', nu0, 'Hz')
             # Check if altrval exists and its different from crval3
             try:
@@ -716,6 +754,24 @@ class specCube(object):
         w = self.wave
         self.crval3 = w[0]
         self.cdelt3 = np.median(w[1:] - w[:-1])
+       
+    def readMUSE(self, hdl):
+        "MUSE integral field spectrometer at VLT"
+        self.objname = self.header['OBJECT'].strip()
+        print('Object of MUSE is ',self.objname)
+        self.flux = hdl[1].read()  # 10**(-20)*erg/s/cm**2/Angstrom
+        nz, ny, nx = np.shape(self.flux)
+        self.n = nz
+        wcs = WCS(self.header)
+        self.wcs = wcs.celestial
+        self.crpix3 = self.header['CRPIX3']
+        self.crval3 = self.header['CRVAL3']
+        self.cdelt3 = self.header['CDELT3']
+        #ctype3 = self.header['CTYPE3'].strip()
+        self.wave = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3 # Angstrom
+        self.wave *= 1.e4  # um
+        self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
+        print('scale is ', self.pixscale)
                 
     def getWCS(self):
         #hdu = fits.PrimaryHDU(self.flux)

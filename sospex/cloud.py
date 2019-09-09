@@ -764,11 +764,11 @@ class cloudImage(object):
         url0="https://dr14.sdss.org/fields/raDec?ra="
         ras = "{:02.0f}+{:.0f}+{:.1f}".format(cra[0],cra[1],cra[2])
         if self.lat > 0:
-            url = url0+ras+"+&dec=+{:02.0f}+{:.0f}+{:.0f}".format(cdec[0],cdec[1],cdec[2])
+            url = url0+ras+"+&dec=+{:02.0f}+{:02.0f}+{:02.0f}".format(cdec[0],cdec[1],cdec[2])
         else:
-            url = url0+ras+"+&dec=-{:02.0f}+{:.0f}+{:.0f}".format(-cdec[0],-cdec[1],-cdec[2])
+            url = url0+ras+"+&dec=-{:02.0f}+{:02.0f}+{:02.0f}".format(-cdec[0],-cdec[1],-cdec[2])
 
-        #print('request ', url)
+        print('request ', url)
         request = urllib.request.Request(url)
         response = urllib.request.urlopen(request)
         html = response.read()
@@ -796,14 +796,14 @@ class cloudImage(object):
             self.data = hdulist['PRIMARY'].data
             hdulist.close()
             self.wcs = WCS(header)
+            h1 = self.wcs.to_header()
+            self.crota2 = np.arctan2(-h1["PC2_1"], h1["PC2_2"]) * 180./np.pi
+            print('rotation angle ', self.crota2)
         else:
             self.data = None
             self.wcs = None
             print('Coordinates out of the SDSS survey')
   
-        h1 = self.wcs.to_header()
-        self.crota2 = np.arctan2(-h1["PC2_1"], h1["PC2_2"]) * 180./np.pi
-        print('rotation angle ', self.crota2)
 
         
             
