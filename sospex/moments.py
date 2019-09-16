@@ -45,7 +45,7 @@ def biweight(data, axis=None):
     
     c1 = 6.0
     c2 = 9.0
-    data = np.asanarray(data)
+    data = np.asarray(data)
     M = np.nanmedian(data, axis=axis, keepdims=True)
     S = np.nanmedian(np.abs(data-M), axis=axis, keepdims=True)
         
@@ -60,6 +60,8 @@ def biweight(data, axis=None):
     s4 = np.nansum(u, axis=axis)
     if axis is not None:
         s34 = np.expand_dims(s3 / s4, axis=axis)
+    else:
+        s34 = s3 / s4
     M += s34
     
     u = (data - M ) / (c2 * S)
@@ -97,7 +99,7 @@ def weightedMedian(data, weights, axis=None):
         if np.max(w) > wmid:
             wmed = (a[w == np.max(w)])[0]
         else:
-            if wcum  == wmid:
+            if wcum[idx]  == wmid:
                 wmed = (a[idx] + a[idx+1]) * 0.5
             else:
                 wmed = a[idx+1]
