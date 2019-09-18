@@ -72,14 +72,13 @@ class specCubeAstro(object):
             # Blank values (highest value is blank)
             try:
                 idx = self.flux > self.header['DATAMAX']
-                #blank = self.header['BZERO']+self.header['BSCALE']*self.header['BLANK']
-                #idx = self.flux == blank
+                self.flux[idx] = np.nan
+                self.exposure = np.asarray(~idx, np.dfloat32)           
             except:
                 print('No data max in the header')
-            self.flux[idx] = np.nan
-            self.exposure = ~idx            
+                self.exposure = np.asarray(np.isfinite(self.flux), np.float32)
         else:
-            self.exposure = np.isfinite(self.flux)
+            self.exposure = np.asarray(np.isfinite(self.flux), np.float32)
        
     def readFIFI(self, hdl):
         print('This is a FIFI-LS spectral cube')
@@ -240,7 +239,7 @@ class specCubeAstro(object):
             print('New exposure computed')
             
         wave = hdl['wcs-tab'].data
-        #print('Wvl read')
+        print('Wvl read')
         nwave = len(np.shape(wave['wavelen']))
         if nwave == 3:
             self.wave = np.concatenate(wave['wavelen'][0])
@@ -250,7 +249,7 @@ class specCubeAstro(object):
         self.n = len(self.wave)
         print('Length of wavelength ',self.n)
         print('Min and max wavelengths: ', np.nanmin(self.wave), np.nanmax(self.wave))
-        print(np.shape(self.wave))
+        print('wavelenght shape ', np.shape(self.wave))
         header = hdl['IMAGE'].header
         self.header = header
         # print('Header ',header)
@@ -445,12 +444,14 @@ class specCube(object):
                 idx = self.flux > self.header['DATAMAX']
                 #blank = self.header['BZERO']+self.header['BSCALE']*self.header['BLANK']
                 #idx = self.flux == blank
+                self.flux[idx] = np.nan
+                self.exposure = ~idx            
             except:
                 print('No data max in the header')
-            self.flux[idx] = np.nan
-            self.exposure = ~idx            
+                self.exposure = np.isfinite(self.flux)
         else:
             self.exposure = np.isfinite(self.flux)
+            print('exp map is ', np.shape(self.exposure))
         
     def readFIFI(self, hdl):
         print('This is a FIFI-LS spectral cube')
@@ -641,6 +642,7 @@ class specCube(object):
             print('No coverage available - range observation')
             self.computeExpFromNan()
             print('New exposure computed')
+            print('shape of exp ', np.shape(self.exposure))
             
         wave = hdl[extnames.index('wcs-tab')].read()
         #print('Wvl read')

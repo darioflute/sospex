@@ -5070,7 +5070,9 @@ class GUI (QMainWindow):
         s = self.specCube
         # Compute initial images
         # print('Initialize images')
+        print('bands ',self.bands)
         for ima in self.bands:
+            #print('ima is ', ima)
             ts = time.process_time()
             ic = self.ici[self.bands.index(ima)]
             if ima == 'Flux':
@@ -5080,7 +5082,10 @@ class GUI (QMainWindow):
             elif ima == 'uFlux':
                 image = s.uflux[s.n0,:,:]
             elif ima == 'Exp':
+                #print('exposure exists ! ', np.shape(s.exposure))
+                print('n0 is ',s.n0)
                 image = s.exposure[s.n0,:,:]
+                print('image is ', np.shape(image), image)
             elif ima == 'M0':
                 self.computeZeroMoment()
                 image = self.M0
@@ -5118,11 +5123,13 @@ class GUI (QMainWindow):
             x = ic.axes.get_xlim()
             y = ic.axes.get_ylim()
             ic.zoomlimits = [x,y]
+            print('zoom limits ', x, y)
         # Re-initialize variables
         self.contours = 'off'
         self.blink = 'off'
         self.slice = 'off'
         self.trimcube = 'off'
+        print('variables off ..')
         self.continuum = None
         self.L0 = None
         self.L1 = None
@@ -5139,11 +5146,14 @@ class GUI (QMainWindow):
         self.ES = None
         self.RS = None
         self.LS = None
+        print('all cleared ..')
         return image, clim
             
     def initializeSpectra(self):
+        print('initializing spectrum ...')
         s = self.specCube
         # Compute initial pixel spectrum
+        print('spectra ', self.spectra)
         spectrum = self.spectra[1]
         sc = self.sci[self.spectra.index(spectrum)]
         # Add pixel aperture
@@ -5155,6 +5165,7 @@ class GUI (QMainWindow):
         n = len(self.photoApertures)
         # Define pixel aperture
         data = [r0,d0,ws]
+        print('aperture at ', data)
         self.photoApertures.append(photoAperture(n,'pixel',data))
         for ic in self.ici:
             x0, y0 = ic.wcs.wcs_world2pix(r0, d0, 0)
