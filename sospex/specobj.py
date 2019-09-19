@@ -24,6 +24,15 @@ class specCubeAstro(object):
                 print('Origin is ', origin)
                 self.instrument = 'HI'
         try:
+            telescope = self.header['TELESCOP']
+            if telescope == 'ALMA':
+                self.instrument = 'ALMA'
+            elif telescope == 'IRAM30M':
+                self.instrument = 'IRAM'
+            print('Telescope is ', telescope)
+        except:
+            print('Unknown telescope')
+        try:
             self.obsdate = header['DATE-OBS']
         except:
             self.obsdate = header['DATE']
@@ -40,6 +49,8 @@ class specCubeAstro(object):
             self.readHI(hdl)
         elif self.instrument == 'MUSE':
             self.readMUSE(hdl)
+        elif self.instrument == 'IRAM':
+            self.readIRAM(hdl)
         else:
             print('This is not a supported spectral cube')
         hdl.close()
@@ -308,6 +319,45 @@ class specCubeAstro(object):
         self.crval3 = w[0]
         self.cdelt3 = np.median(w[1:] - w[:-1])
         
+    def readIRAM(self, hdl):
+        """Case of generic radio cube (in this case HI cubes from Westerbrock)."""
+        #self.objname = self.header['OBJECT']
+        #print('Object of HI is ',self.objname)
+        print('Reading IRAM cube')
+        self.objname = ''
+        self.header = hdl['PRIMARY'].header
+        self.redshift = 0.
+        data = hdl['PRIMARY'].data
+        naxis = self.header['NAXIS']
+        if naxis == 3:
+            self.flux = data
+        elif naxis == 4: # polarization
+            self.flux = data[0,:,:,:]
+        nz, ny, nx = np.shape(self.flux)
+        self.n = nz
+        print('nz: ',nz, self.header['NAXIS3'])
+        wcs = WCS(self.header)
+        self.wcs = wcs.celestial
+        self.crpix3 = self.header['CRPIX3']
+        self.crval3 = self.header['CRVAL3']
+        self.cdelt3 = self.header['CDELT3']
+        ctype3 = self.header['CTYPE3']
+        if ctype3 == 'VELOCITY':
+            velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3 # m/s
+            # Neutral Hydrogen (HI)
+            nu0 = self.header['RESTFREQ']
+            print('reference frequency', nu0)
+            c = 299792458.0 # m/s
+            # self.l0 = 21.1061140542 * 1.e4 #um
+            self.l0 = c/nu0 * 1.e6 #um
+            self.wave = self.l0 * (1 + velocity/c) #um
+        self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
+        print('scale is ', self.pixscale)
+        # Back to wavelength
+        w = self.wave
+        self.crval3 = w[0]
+        self.cdelt3 = np.median(w[1:] - w[:-1])
+        
     def readMUSE(self, hdl):
         "MUSE integral field spectrometer at VLT"
         self.objname = self.header['OBJECT']
@@ -359,6 +409,7 @@ class specCube(object):
         # Option None seems faster than False
         #hdl = fits.open(infile,memmap=None)
         hdl = fitsio.FITS(infile)
+        print('File opened ')
         #header = hdl['PRIMARY'].header
         self.header = hdl[0].read_header()
         self.purifyHeader()
@@ -369,16 +420,22 @@ class specCube(object):
             self.instrument = self.header['INSTRUME'].strip()
             print('Instrument: ', self.instrument)
         except:
-            origin = self.header['ORIGIN'].strip()
-            if origin == 'GILDAS Consortium':
-                self.instrument = 'GREAT'
-            elif origin[0:6] == 'Miriad':
-                print('Origin is ', origin)
-                self.instrument = 'HI'
+            try:
+                origin = self.header['ORIGIN'].strip()
+                if origin == 'GILDAS Consortium':
+                    self.instrument = 'GREAT'
+                elif origin[0:6] == 'Miriad':
+                    print('Origin is ', origin)
+                    self.instrument = 'HI'
+            except:
+                print('Unknown origin')
             try:
                 telescope = self.header['TELESCOP'].strip()
                 if telescope == 'ALMA':
                     self.instrument = 'ALMA'
+                elif telescope == 'IRAM30M':
+                    self.instrument = 'IRAM'
+                print('telescope is ', telescope)
             except:
                 print('Unknown telescope')
         try:
@@ -396,6 +453,8 @@ class specCube(object):
             self.readFORCAST(hdl)
         elif self.instrument == 'HI':
             self.readHI(hdl)
+        elif self.instrument == 'IRAM':
+            self.readIRAM(hdl)
         elif self.instrument in ['VLA','ALMA']:
             self.readVLA(hdl)
         elif self.instrument == 'MUSE':
@@ -691,6 +750,46 @@ class specCube(object):
         self.cdelt3 = self.header['CDELT3']
         ctype3 = self.header['CTYPE3'].strip()
         if (ctype3 == 'VELO-HEL') or (ctype3 == 'VELO-LSR'):
+            velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3 # m/s
+            # Neutral Hydrogen (HI)
+            nu0 = self.header['RESTFREQ']
+            print('reference frequency', nu0)
+            c = 299792458.0 # m/s
+            # self.l0 = 21.1061140542 * 1.e4 #um
+            self.l0 = c/nu0 * 1.e6 #um
+            self.wave = self.l0 * (1 + velocity/c) #um
+        self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
+        print('scale is ', self.pixscale)
+        # Back to wavelength
+        w = self.wave
+        self.crval3 = w[0]
+        self.cdelt3 = np.median(w[1:] - w[:-1])
+
+    def readIRAM(self, hdl):
+        """Case of Heracles observations with IRAM 30M."""
+        print('This is an IRAM cube')
+        try:
+            self.objname = self.header['OBJECT'].strip()
+            print('Object of HI is ',self.objname)
+        except:
+            self.objname = ''
+        self.redshift = 0.
+        data = hdl[0].read()
+        naxis = self.header['NAXIS']
+        if naxis == 3:
+            self.flux = data
+        elif naxis == 4: # polarization
+            self.flux = data[0,:,:,:]
+        nz, ny, nx = np.shape(self.flux)
+        self.n = nz
+        print('nz: ',nz, self.header['NAXIS3'])
+        wcs = WCS(self.header)
+        self.wcs = wcs.celestial
+        self.crpix3 = self.header['CRPIX3']
+        self.crval3 = self.header['CRVAL3']
+        self.cdelt3 = self.header['CDELT3']
+        ctype3 = self.header['CTYPE3'].strip()
+        if ctype3 == 'VELOCITY':
             velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3 # m/s
             # Neutral Hydrogen (HI)
             nu0 = self.header['RESTFREQ']

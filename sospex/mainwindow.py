@@ -999,7 +999,7 @@ class GUI (QMainWindow):
             else:
                 fluxAll = np.nansum(s.flux[:, yy, xx], axis=1)
             sc.spectrum.flux = fluxAll
-            if s.instrument in ['GREAT','HI','VLA','ALMA','MUSE']:
+            if s.instrument in ['GREAT','HI','VLA','ALMA','MUSE','IRAM']:
                 if sc.auxiliary:
                     sc.updateSpectrum(f=fluxAll*t2j, af=afluxAll, cont=cont, cslope=cslope, moments=moments, 
                                       lines=lines, noise=noise, ncell=ncell)
@@ -3026,7 +3026,7 @@ class GUI (QMainWindow):
         if s.instrument == 'GREAT':
             spec = Spectrum(s.wave, fluxAll*s.Tb2Jy, instrument=s.instrument, 
                             redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy, bunit=s.bunit)
-        elif s.instrument in ['HI','VLA','ALMA','MUSE']:
+        elif s.instrument in ['HI','VLA','ALMA','MUSE','IRAM']:
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0)
         elif s.instrument == 'FIFI-LS':
             ufluxAll = np.nansum(s.uflux[:,yy,xx], axis=1)
@@ -4909,7 +4909,7 @@ class GUI (QMainWindow):
             self.initializeImages()
             self.initializeSpectra()
             self.initializeSlider()
-            if self.specCube.instrument in ['GREAT','HI','VLA','ALMA','MUSE']:
+            if self.specCube.instrument in ['GREAT','HI','VLA','ALMA','MUSE','IRAM']:
                 self.specCube.computeExpFromNan()
                 #idx = np.isfinite(self.specCube.flux)
                 #print('No of bad ', np.sum(~idx))
@@ -4950,7 +4950,7 @@ class GUI (QMainWindow):
                 print('images initialized ')
                 self.initializeSpectra()
                 print('spectra initialized ')
-                if self.specCube.instrument in ['GREAT','HI','VLA','ALMA','MUSE']:
+                if self.specCube.instrument in ['GREAT','HI','VLA','ALMA','MUSE','IRAM']:
                     #print('compute Exp from Nan')
                     self.specCube.computeExpFromNan()
                 self.all = False
@@ -5016,7 +5016,7 @@ class GUI (QMainWindow):
         if self.specCube.instrument == 'FIFI-LS':
             self.bands = ['Flux','uFlux','Exp']
             self.spectra = ['All','Pix']
-        elif self.specCube.instrument in ['GREAT','HI','VLA','ALMA','MUSE']: 
+        elif self.specCube.instrument in ['GREAT','HI','VLA','ALMA','MUSE','IRAM']: 
             self.bands = ['Flux']
             self.spectra = ['All','Pix']
         elif self.specCube.instrument == 'FORCAST':
@@ -5182,7 +5182,7 @@ class GUI (QMainWindow):
             #print('max flux is ', np.nanmax(fluxAll*s.Tb2Jy))
             spec = Spectrum(s.wave, fluxAll*s.Tb2Jy, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy, bunit=s.bunit)
-        elif s.instrument in ['HI','VLA','ALMA','MUSE']:
+        elif s.instrument in ['HI','VLA','ALMA','MUSE','IRAM']:
             spec = Spectrum(s.wave, fluxAll,instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0)
         elif s.instrument == 'PACS':
@@ -5326,7 +5326,7 @@ class GUI (QMainWindow):
             w = c / w * 1.e-6
         n = np.argmin(np.abs(self.specCube.wave - w))
        # Display channel n of the spectral cube
-        if self.specCube.instrument in ['GREAT','HI','VLA','ALMA','MUSE']:
+        if self.specCube.instrument in ['GREAT','HI','VLA','ALMA','MUSE','IRAM']:
             imas = ['Flux']
         elif self.specCube.instrument in ['PACS', 'FORCAST']:
             imas = ['Flux','Exp']
@@ -5423,7 +5423,7 @@ class GUI (QMainWindow):
         if s.instrument == 'GREAT':
             spec = Spectrum(s.wave, fluxAll*s.Tb2Jy, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy, bunit=s.bunit)
-        elif s.instrument in ['HI','VLA','ALMA','MUSE']:
+        elif s.instrument in ['HI','VLA','ALMA','MUSE','IRAM']:
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0)
         elif s.instrument in ['PACS', 'FORCAST']:
@@ -5519,7 +5519,7 @@ class GUI (QMainWindow):
         indmin, indmax = np.searchsorted(self.specCube.wave, (xmin, xmax))
         indmax = min(len(self.specCube.wave) - 1, indmax)
         sc.regionlimits = [xmin,xmax]
-        if self.specCube.instrument in ['GREAT','HI','VLA','ALMA','MUSE']:
+        if self.specCube.instrument in ['GREAT','HI','VLA','ALMA','MUSE','IRAM']:
             imas = ['Flux']
         elif self.specCube.instrument in ['PACS','FORCAST']:
             imas = ['Flux','Exp']
@@ -5620,7 +5620,7 @@ class GUI (QMainWindow):
         if s.instrument in ['GREAT']:
             t2j = self.specCube.Tb2Jy
             sc.updateSpectrum(f=fluxAll*t2j)
-        elif s.instrument in ['HI','VLA','ALMA','MUSE']:
+        elif s.instrument in ['HI','VLA','ALMA','MUSE','IRAM']:
             sc.updateSpectrum(f=fluxAll)
         elif s.instrument in ['PACS','FORCAST']:
             expAll = np.nansum(s.exposure[:, y0:y1, x0:x1], axis=(1, 2))
