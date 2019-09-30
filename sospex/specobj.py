@@ -849,6 +849,29 @@ class specCube(object):
             idx = np.argsort(self.wave)
             self.wave = self.wave[idx]
             self.flux = self.flux[idx, :, :]
+        elif (ctype3 == 'VELO-HEL') or (ctype3 == 'VELO-LSR'):
+            velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3 # m/s
+            if self.instrument == 'VLA':
+                nu0 = self.header['RESTFREQ']
+            elif self.instrument == 'ALMA':
+                nu0 = self.header['RESTFRQ']
+            print('reference frequency', nu0)
+            c = 299792458.0 # m/s
+            # self.l0 = 21.1061140542 * 1.e4 #um
+            self.l0 = c/nu0 * 1.e6 #um
+            try:
+                altrval = self.header['ALTRVAL']  # ref frequency
+                altrpix = self.header['ALTRPIX']  # ref pixel
+                vcrval3 = c * (1. - altrval/nu0)
+                #faltrval = nu0 * (1 - altrval/c)  # alt crval3
+                if np.abs(self.crval3 - vcrval3) > 20:
+                    self.crval3 = vcrval3
+                    self.crpix3 = altrpix
+                    self.redshift = vcrval3 / c
+                    velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3 # m/s
+            except:
+                pass
+            self.wave = self.l0 * (1 + velocity/c) #um
         self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
         print('scale is ', self.pixscale)
         # Back to wavelength

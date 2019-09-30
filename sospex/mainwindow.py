@@ -17,7 +17,6 @@ import scipy.ndimage as ndimage
 
 # To avoid excessive warning messages
 import warnings
-warnings.filterwarnings('ignore')
 
 from sospex.moments import (SegmentsSelector, SegmentsInteractor, multiFitContinuum,
                             multiComputeMoments, ContParams, ContFitParams, SlicerDialog,
@@ -5890,6 +5889,8 @@ class GUI (QMainWindow):
 def main():
     from sospex import __version__
     # QApplication.setStyle('Fusion')
+    # Ignore warnings
+    warnings.filterwarnings('ignore')
     print('sospex version: ', __version__)
     app = QApplication(sys.argv)
     gui = GUI()    
