@@ -5897,7 +5897,7 @@ def main():
     # Adjust geometry to size of the screen
     screen_resolution = app.desktop().screenGeometry()
     width = screen_resolution.width()
-    gui.setGeometry(width*0.025, 0, width*0.95, width*0.5)
+    gui.setGeometry(width*0.025, width*0.025, width*0.95, width*0.5)
     gui.hsplitter.setSizes ([width*0.40,width*0.48])
     # Add an icon for the application
     app.setWindowIcon(QIcon(os.path.join(gui.path0,'icons','sospex.png')))

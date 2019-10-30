@@ -130,16 +130,22 @@ class specCubeAstro(object):
             self.order = '1'
         # Read reference wavelength from file group name
         try:
-            if self.channel == 'RED':
-                filegp = self.header['FILEGP_R']
-            else:
-                filegp = self.header['FILEGP_B']
-            name, wr = filegp.split('_')
-            print('wr is ',wr)
-            self.l0 = float(wr)
+            self.l0 = self.header['RESTWAV']
+            print('Restwave is ', self.l0)
         except:
-            self.l0 = np.nanmedian(self.wave)
-            print('No file group present, assumed central wavelength ', self.l0)
+            try:
+                if self.channel == 'RED':
+                    filegp = self.header['FILEGP_R']
+                else:
+                    filegp = self.header['FILEGP_B']
+                print('file group id ', filegp)
+                names = filegp.split('_')
+                wr = names[-1]
+                print('wr is ',wr)
+                self.l0 = float(wr)
+            except:
+                self.l0 = np.nanmedian(self.wave)
+                print('No file group present, assumed central wavelength ', self.l0)
         print('min wave ', np.nanmin(self.wave))
         try:
             utran = hdl['UNSMOOTHED_TRANSMISSION'].data
@@ -513,7 +519,7 @@ class specCube(object):
             print('exp map is ', np.shape(self.exposure))
         
     def readFIFI(self, hdl):
-        print('This is a FIFI-LS spectral cube')
+        print('This is a FIFI-LS spectral cube (read with FITSIO')
         #self.header.delete('ASSC_AOR')  # this cannot be interpreted by WCS
         self.wcs = WCS(self.header).celestial
         self.crpix3 = self.header['CRPIX3']
@@ -560,16 +566,22 @@ class specCube(object):
         print('channel ', self.channel, ' order ', self.order)
         # Read reference wavelength from file group name
         try:
-            if self.channel == 'RED':
-                filegp = self.header['FILEGP_R'].strip()
-            else:
-                filegp = self.header['FILEGP_B'].strip()
-            name, wr = filegp.split('_')
-            print('wr is ',wr)
-            self.l0 = float(wr)
+            self.l0 = self.header['RESTWAV']
+            print('Rest wavelength is ', self.l0)
         except:
-            self.l0 = np.nanmedian(self.wave)
-            print('No file group present, assumed central wavelength ', self.l0)
+            try:
+                if self.channel == 'RED':
+                    filegp = self.header['FILEGP_R'].strip()
+                else:
+                    filegp = self.header['FILEGP_B'].strip()
+                print('file group id ', filegp)
+                names = filegp.split('_')
+                wr = names[-1]
+                print('wr is ',wr)
+                self.l0 = float(wr)
+            except:
+                self.l0 = np.nanmedian(self.wave)
+                print('No file group present, assumed central wavelength ', self.l0)
         print('ref wav ', self.l0)
         
         try:
