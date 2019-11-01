@@ -122,7 +122,7 @@ class GUI (QMainWindow):
         wid = QWidget()
         self.setCentralWidget(wid)
         # Main layout is horizontal
-        mainLayout = QHBoxLayout()
+        mainLayout = QHBoxLayout(wid)
         # Horizontal splitter
         self.hsplitter = QSplitter(Qt.Horizontal)        
         # Create main panels
