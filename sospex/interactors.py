@@ -67,7 +67,7 @@ class SliderInteractor(QObject):
         self.region = Rectangle((x - dx * 0.5, 0.), dx, 1, facecolor='lightgreen', alpha=0.3,
                                 zorder=1, animated=True, transform=trans)
         # x coords are data, y coords are axes (points stays in the same spot when zooming)
-        self.line = Line2D([x], [0.98], marker='^', markersize=10, linestyle=None, linewidth=0,
+        self.line = Line2D([x], [0.01], marker='v', markersize=10, linestyle=None, linewidth=0,
                            markerfacecolor='lime', animated=True, transform=trans)
         self.ax.add_line(self.line)
         self.ax.add_patch(self.region)
@@ -187,7 +187,7 @@ class SliceInteractor(QObject):
         trans = transforms.blended_transform_factory(ax.transData, ax.transAxes)
         self.region = Rectangle((xl, 0.), xr-xl, 1, facecolor='lightgreen', alpha=0.3,
                                 zorder=1, animated=True, transform=trans)
-        self.line = Line2D([xl, xr], [0.98, 0.98], marker='^', markersize=10, linestyle=None,
+        self.line = Line2D([xl, xr], [0.01, 0.01], marker='v', markersize=10, linestyle=None,
                            linewidth=0,
                            markerfacecolor='lime', animated=True, transform=trans)
         self.ax.add_line(self.line)
