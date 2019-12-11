@@ -708,7 +708,8 @@ class GUI (QMainWindow):
                         ny ,nx = np.shape(ima.oimage)
                         levs =  sorted(ih0.levels)
                         # Smooth data
-                        ismo = ndimage.gaussian_filter(co.data, sigma=0.5, order=0)
+                        #ismo = ndimage.gaussian_filter(co.data, sigma=0.1, order=0)
+                        ismo = co.data
                         if nx0 > 2 * nx:
                             # print('Reprojecting image for contours')
                             from reproject import reproject_interp
@@ -998,7 +999,7 @@ class GUI (QMainWindow):
             else:
                 fluxAll = np.nansum(s.flux[:, yy, xx], axis=1)
             sc.spectrum.flux = fluxAll
-            if s.instrument in ['GREAT','HI','VLA','ALMA','MUSE','IRAM']:
+            if s.instrument in ['GREAT','HI','VLA','ALMA','MUSE','IRAM','CARMA']:
                 if sc.auxiliary:
                     sc.updateSpectrum(f=fluxAll*t2j, af=afluxAll, cont=cont, cslope=cslope, moments=moments, 
                                       lines=lines, noise=noise, ncell=ncell)
@@ -3025,7 +3026,7 @@ class GUI (QMainWindow):
         if s.instrument == 'GREAT':
             spec = Spectrum(s.wave, fluxAll*s.Tb2Jy, instrument=s.instrument, 
                             redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy, bunit=s.bunit)
-        elif s.instrument in ['HI','VLA','ALMA','MUSE','IRAM']:
+        elif s.instrument in ['HI','VLA','ALMA','MUSE','IRAM','CARMA']:
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0)
         elif s.instrument == 'FIFI-LS':
             ufluxAll = np.nansum(s.uflux[:,yy,xx], axis=1)
@@ -4124,6 +4125,28 @@ class GUI (QMainWindow):
                 hdul = fits.HDUList([hdu, hdu1, hdu2, hdw])            
                 hdul.writeto(outfile,overwrite=True) 
                 hdul.close()
+            elif self.specCube.instrument == 'CARMA':
+                header['NAXIS'] = (3,'Number of axis')
+                c = 299792458.0  # speed of light in m/s 
+                header['TELESCOP'] = self.specCube.header['TELESCOP']
+                header['BMAJ'] = self.specCube.header['BMAJ']
+                header['BMIN'] = self.specCube.header['BMIN']
+                header['BPA'] = self.specCube.header['BPA']
+                header['BSCALE'] = self.specCube.header['BSCALE']
+                header['BZERO'] = self.specCube.header['BZERO']
+                header['RESTFRQ'] = self.specCube.header['RESTFRQ']
+                header['ALTRVAL'] = self.specCube.header['ALTRVAL']
+                header['ALTRPIX'] = self.specCube.header['ALTRPIX']
+                header['CTYPE3'] = self.specCube.header['CTYPE3']
+                header['CRPIX3'] = self.specCube.header['CRPIX3']
+                header['CRVAL3'] = self.specCube.header['CRVAL3']
+                header['CDELT3'] = self.specCube.header['CDELT3']
+                header['CUNIT3'] = ('m/s','Velocity unit')
+                hdu = fits.PrimaryHDU(flux)
+                hdu.header.extend(header)
+                hdul = fits.HDUList([hdu])
+                hdul.writeto(outfile,overwrite=True) 
+                hdul.close()
             else:
                 pass  
 
@@ -4686,7 +4709,10 @@ class GUI (QMainWindow):
             mask = levels < ih0.max
             ih0.levels = list(levels[mask])
         #print('Contour levels are: ',ih0.levels)
-        ismo = ndimage.gaussian_filter(ic0.oimage, sigma=1.0, order=0)
+        if self.specCube.instrument != 'FIFI-LS':
+            ismo = ndimage.gaussian_filter(ic0.oimage, sigma=1.0, order=0)
+        else:
+            ismo = ic0.oimage
         ic0.contour = ic0.axes.contour(ismo, ih0.levels, colors=self.colorContour[0])
         ic0.fig.canvas.draw_idle()
         # Add levels to histogram
@@ -4716,7 +4742,10 @@ class GUI (QMainWindow):
             if n >= 1000:
                 # Add a brand new level
                 n -= 1000
-                ismo = ndimage.gaussian_filter(ic0.oimage, sigma=0.5, order=0)
+                if self.specCube.instrument != 'FIFI-LS':
+                    ismo = ndimage.gaussian_filter(ic0.oimage, sigma=0.5, order=0)
+                else:
+                    ismo = ic0.oimage
                 new = ic0.axes.contour(ismo, [ih0.levels[n]], colors=self.colorContour[0])
                 # Insert new contour in the contour collection
                 ic0.contour.collections.insert(n, new.collections[0])                
@@ -4908,7 +4937,7 @@ class GUI (QMainWindow):
             self.initializeImages()
             self.initializeSpectra()
             self.initializeSlider()
-            if self.specCube.instrument in ['GREAT','HI','VLA','ALMA','MUSE','IRAM']:
+            if self.specCube.instrument in ['GREAT','HI','VLA','ALMA','MUSE','IRAM','CARMA']:
                 self.specCube.computeExpFromNan()
                 #idx = np.isfinite(self.specCube.flux)
                 #print('No of bad ', np.sum(~idx))
@@ -4949,7 +4978,7 @@ class GUI (QMainWindow):
                 print('images initialized ')
                 self.initializeSpectra()
                 print('spectra initialized ')
-                if self.specCube.instrument in ['GREAT','HI','VLA','ALMA','MUSE','IRAM']:
+                if self.specCube.instrument in ['GREAT','HI','VLA','ALMA','MUSE','IRAM','CARMA']:
                     #print('compute Exp from Nan')
                     self.specCube.computeExpFromNan()
                 self.all = False
@@ -5015,7 +5044,7 @@ class GUI (QMainWindow):
         if self.specCube.instrument == 'FIFI-LS':
             self.bands = ['Flux','uFlux','Exp']
             self.spectra = ['All','Pix']
-        elif self.specCube.instrument in ['GREAT','HI','VLA','ALMA','MUSE','IRAM']: 
+        elif self.specCube.instrument in ['GREAT','HI','VLA','ALMA','MUSE','IRAM','CARMA']: 
             self.bands = ['Flux']
             self.spectra = ['All','Pix']
         elif self.specCube.instrument == 'FORCAST':
@@ -5181,7 +5210,7 @@ class GUI (QMainWindow):
             #print('max flux is ', np.nanmax(fluxAll*s.Tb2Jy))
             spec = Spectrum(s.wave, fluxAll*s.Tb2Jy, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy, bunit=s.bunit)
-        elif s.instrument in ['HI','VLA','ALMA','MUSE','IRAM']:
+        elif s.instrument in ['HI','VLA','ALMA','MUSE','IRAM','CARMA']:
             spec = Spectrum(s.wave, fluxAll,instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0)
         elif s.instrument == 'PACS':
@@ -5325,7 +5354,7 @@ class GUI (QMainWindow):
             w = c / w * 1.e-6
         n = np.argmin(np.abs(self.specCube.wave - w))
        # Display channel n of the spectral cube
-        if self.specCube.instrument in ['GREAT','HI','VLA','ALMA','MUSE','IRAM']:
+        if self.specCube.instrument in ['GREAT','HI','VLA','ALMA','MUSE','IRAM','CARMA']:
             imas = ['Flux']
         elif self.specCube.instrument in ['PACS', 'FORCAST']:
             imas = ['Flux','Exp']
@@ -5422,7 +5451,7 @@ class GUI (QMainWindow):
         if s.instrument == 'GREAT':
             spec = Spectrum(s.wave, fluxAll*s.Tb2Jy, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy, bunit=s.bunit)
-        elif s.instrument in ['HI','VLA','ALMA','MUSE','IRAM']:
+        elif s.instrument in ['HI','VLA','ALMA','MUSE','IRAM','CARMA']:
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0)
         elif s.instrument in ['PACS', 'FORCAST']:
@@ -5518,7 +5547,7 @@ class GUI (QMainWindow):
         indmin, indmax = np.searchsorted(self.specCube.wave, (xmin, xmax))
         indmax = min(len(self.specCube.wave) - 1, indmax)
         sc.regionlimits = [xmin,xmax]
-        if self.specCube.instrument in ['GREAT','HI','VLA','ALMA','MUSE','IRAM']:
+        if self.specCube.instrument in ['GREAT','HI','VLA','ALMA','MUSE','IRAM','CARMA']:
             imas = ['Flux']
         elif self.specCube.instrument in ['PACS','FORCAST']:
             imas = ['Flux','Exp']
@@ -5619,7 +5648,7 @@ class GUI (QMainWindow):
         if s.instrument in ['GREAT']:
             t2j = self.specCube.Tb2Jy
             sc.updateSpectrum(f=fluxAll*t2j)
-        elif s.instrument in ['HI','VLA','ALMA','MUSE','IRAM']:
+        elif s.instrument in ['HI','VLA','ALMA','MUSE','IRAM','CARMA']:
             sc.updateSpectrum(f=fluxAll)
         elif s.instrument in ['PACS','FORCAST']:
             expAll = np.nansum(s.exposure[:, y0:y1, x0:x1], axis=(1, 2))

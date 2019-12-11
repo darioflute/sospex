@@ -51,6 +51,8 @@ class specCubeAstro(object):
             self.readMUSE(hdl)
         elif self.instrument == 'IRAM':
             self.readIRAM(hdl)
+        #elif self.instrument == 'OVRO': # Case of Carma data
+        #    se
         else:
             print('This is not a supported spectral cube')
         hdl.close()
@@ -441,6 +443,8 @@ class specCube(object):
                     self.instrument = 'ALMA'
                 elif telescope == 'IRAM30M':
                     self.instrument = 'IRAM'
+                elif telescope == 'OVRO':
+                    self.instrument = 'CARMA'
                 print('telescope is ', telescope)
             except:
                 print('Unknown telescope')
@@ -461,7 +465,8 @@ class specCube(object):
             self.readHI(hdl)
         elif self.instrument == 'IRAM':
             self.readIRAM(hdl)
-        elif self.instrument in ['VLA','ALMA']:
+        elif self.instrument in ['VLA','ALMA','CARMA']:
+            print('Ok on VLA')
             self.readVLA(hdl)
         elif self.instrument == 'MUSE':
             self.readMUSE(hdl)
@@ -819,9 +824,14 @@ class specCube(object):
         
     def readVLA(self, hdl):
         """Case of VLA cube (from VIVA)."""
+        print('Inside read VLA ')
         c = 299792458.0 # m/s
-        self.objname = self.header['OBJECT'].strip()
-        print('Object of VLA is ',self.objname)
+        try:
+            self.objname = self.header['OBJECT'].strip()
+            print('Object of ', self.instrument, ' is ', self.objname)
+        except:
+            self.objname = ""
+            print('No object name in the header')
         data = hdl[0].read()
         naxis = self.header['NAXIS']
         if naxis == 3:
@@ -838,8 +848,9 @@ class specCube(object):
         self.crval3 = self.header['CRVAL3']
         self.cdelt3 = self.header['CDELT3']
         ctype3 = self.header['CTYPE3'].strip()
+        print('ctype 3 is ', ctype3)
         if ctype3 == 'FREQ':
-            if self.instrument == 'VLA':
+            if self.instrument in ['VLA','CARMA']:
                 nu0 = self.header['RESTFREQ']
             elif self.instrument == 'ALMA':
                 nu0 = self.header['RESTFRQ']
@@ -861,11 +872,11 @@ class specCube(object):
             idx = np.argsort(self.wave)
             self.wave = self.wave[idx]
             self.flux = self.flux[idx, :, :]
-        elif (ctype3 == 'VELO-HEL') or (ctype3 == 'VELO-LSR'):
+        elif ctype3 in ['VELO-HEL', 'VELO-LSR', 'VRAD']:
             velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3 # m/s
             if self.instrument == 'VLA':
                 nu0 = self.header['RESTFREQ']
-            elif self.instrument == 'ALMA':
+            elif self.instrument in ['ALMA', 'CARMA']:
                 nu0 = self.header['RESTFRQ']
             print('reference frequency', nu0)
             c = 299792458.0 # m/s
@@ -884,6 +895,8 @@ class specCube(object):
             except:
                 pass
             self.wave = self.l0 * (1 + velocity/c) #um
+        else:
+            print('Ctype3 ', ctype3,' is not supported')
         self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
         print('scale is ', self.pixscale)
         # Back to wavelength
