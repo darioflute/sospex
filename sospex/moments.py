@@ -1064,6 +1064,8 @@ def fitLines(p, m,w,f,lines):
         y  = c * y / (x * x ) *1.e-20 # Jy * Hz / um --> W/m2 after integration in um
         # Normalization
         norm = np.abs(np.median(y))
+        if norm < 0.01:
+            norm = 1.
         #print('Normalization factor ', norm)
         y /= norm
         # Define lines
@@ -1080,10 +1082,14 @@ def fitLines(p, m,w,f,lines):
             sigma = line[1] / 2.355
             A = line[2] * c / (x0*x0) * 1.e-20 / norm # same units as flux
             params[li+'center'].set(x0, min=(x0 - sigma/2.), max=(x0 + sigma/2.))
-            if A > 0:
-                params[li+'amplitude'].set(A, min=0.1 * A, max=A * 2)
-            else:
-                params[li+'amplitude'].set(A, min=2 * A, max=A * 0.1)
+            params[li+'amplitude'].set(A)
+            #if A > 0:
+            #    params[li+'amplitude'].set(A, min=0.1 * A, max=A * 2)
+            #elif A == 0:
+            #    params[li+'amplitude'].set(A)
+            #else:
+            #    params[li+'amplitude'].set(A, min=2 * A, max=A * 0.1)
+                
             params[li+'sigma'].set(sigma, min=sigma / 2., max=sigma * 2)
             params[li + 'fraction'].set(0.0, vary=False, max = 0.3)  # No Cauchy part (i.e. Gauss)
         # Minimize

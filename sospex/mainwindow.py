@@ -3541,6 +3541,7 @@ class GUI (QMainWindow):
                 ic.photApertures.append(ellipse)
                 cidap=ellipse.mySignal.connect(self.onRemoveAperture)
                 ic.photApertureSignal.append(cidap)
+                ellipse.modSignal.connect(self.onModifiedAperture)
             elif aper.type == 'Rectangle' or aper.type == 'Square':
                 x0,y0 = aper.rect.get_xy()
                 w0    = aper.rect.get_width()
@@ -3560,6 +3561,7 @@ class GUI (QMainWindow):
                 ic.photApertures.append(rectangle)
                 cidap=rectangle.mySignal.connect(self.onRemoveAperture)
                 ic.photApertureSignal.append(cidap)
+                rectangle.modSignal.connect(self.onModifiedAperture)
             elif aper.type == 'Polygon':
                 verts = aper.poly.get_xy()
                 adverts = np.array([(ic0.wcs.wcs_pix2world(x,y,0)) for (x,y) in verts])
@@ -3570,6 +3572,7 @@ class GUI (QMainWindow):
                 ic.photApertures.append(poly)
                 cidap=poly.mySignal.connect(self.onRemoveAperture)
                 ic.photApertureSignal.append(cidap)
+                poly.modSignal.connect(self.onModifiedAperture)
             elif aper.type == 'Pixel':
                 x0,y0 = aper.rect.get_xy()
                 w0    = aper.rect.get_width()
