@@ -5,7 +5,7 @@ python (https://www.anaconda.com/download).
 
 **You will have to use the Python 3.7 distribution.**
 
-If you have a previous Python distribution installed, it is advisable to start from scracth
+If you have a previous Python distribution installed, it is advisable to start from scratch
 with a new Anaconda download of Python 3.7.
 
 It is a good practice to update all your installed packages to have the latest versions:
@@ -23,6 +23,11 @@ conda install -c conda-forge fitsio -y
 Now you are ready to install sospex:
 
 conda install -c darioflute sospex -y
+
+### Note for windows users
+
+There is currently no distribution available for fitsio for windows.
+It is still possible to install sospex without the fitsio library, since the default to open fits is the astropy library.
 
 ### Updating with anaconda
 
