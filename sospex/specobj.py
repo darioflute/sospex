@@ -51,6 +51,8 @@ class specCubeAstro(object):
             self.readMUSE(hdl)
         elif self.instrument == 'IRAM':
             self.readIRAM(hdl)
+        elif self.instrument == 'PCWI':
+            self.readPCWI(hdl)
         #elif self.instrument == 'OVRO': # Case of Carma data
         #    se
         else:
@@ -367,9 +369,9 @@ class specCubeAstro(object):
         self.cdelt3 = np.median(w[1:] - w[:-1])
         
     def readMUSE(self, hdl):
-        "MUSE integral field spectrometer at VLT"
+        """MUSE integral field spectrometer at VLT"""
         self.objname = self.header['OBJECT']
-        print('Object of MUSE is ',self.objname)
+        print('Object of MUSE is ', self.objname)
         self.flux = hdl['DATA'].data  # 10**(-20)*erg/s/cm**2/Angstrom
         nz, ny, nx = np.shape(self.flux)
         self.n = nz
@@ -388,6 +390,28 @@ class specCubeAstro(object):
         self.redshift = 0
         self.l0 = np.nanmedian(self.wave)
         #self.l0 = (self.header['WAVELMIN']+self.header['WAVELMAX']) * 0.5 * 1.e-3 # wav in nm
+    
+    def readPCWI(self, hdl):
+        """
+        Palomar Cosmic Web Imager (http://www.srl.caltech.edu/sal/cosmic-web-imager.html)
+        """
+        self.objname = self.header['OBJECT']
+        print('Object of PCWI is ', self.objname)
+        self.flux = hdl[0].data  # 10**(-20)*erg/s/cm**2/Angstrom
+        nz, ny, nx = np.shape(self.flux)
+        self.n = nz
+        self.header = hdl[0].header
+        wcs = WCS(self.header)
+        self.wcs = wcs.celestial
+        self.crpix3 = self.header['CRPIX3']
+        self.crval3 = self.header['CRVAL3']
+        self.cdelt3 = self.header['CD3_3']
+        self.wave = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3 # Angstrom
+        self.wave *= 1.e-4  # um
+        self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
+        print('scale is ', self.pixscale)
+        self.redshift = 0
+        self.l0 = self.header['WAVMID']*1.e-4 
     
     def getResolutionFIFI(self):
         """Compute resolution at reference wavelength for FIFI-LS"""
@@ -872,7 +896,7 @@ class specCube(object):
             idx = np.argsort(self.wave)
             self.wave = self.wave[idx]
             self.flux = self.flux[idx, :, :]
-        elif ctype3 in ['VELO-HEL', 'VELO-LSR', 'VRAD']:
+        elif ctype3 in ['VELO-HEL', 'VELO-LSR', 'VRAD','FELO-HEL']:
             velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3 # m/s
             if self.instrument == 'VLA':
                 nu0 = self.header['RESTFREQ']
