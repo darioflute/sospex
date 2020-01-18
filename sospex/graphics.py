@@ -339,10 +339,11 @@ class ImageCanvas(MplCanvas):
         # Define color map
             
     def compute_initial_figure(self, image=None, wcs=None, title=None, cMap = 'real',
-                               cMapDir = '_r', stretch='linear', instrument=None):
+                               cMapDir = '_r', stretch='linear', instrument=None, aspect=1):
         self.colorMap = cMap
         self.colorMapDirection = cMapDir
         self.stretch = stretch
+        self.aspect = aspect
         if wcs is None:
             '''initial definition when images are not yet read'''
             pass
@@ -467,10 +468,11 @@ class ImageCanvas(MplCanvas):
             self.image.remove()
         except:
             pass
+        print('aspect is ', self.aspect)
         self.image = self.axes.imshow(image, origin='lower',
                                       cmap=self.colorMap+self.colorMapDirection,
                                       interpolation='nearest',
-                                      norm=self.norm)
+                                      norm=self.norm, aspect=self.aspect)
         self.fig.colorbar(self.image, cax=self.cbaxes)
         if self.cmin != 0:
             self.image.set_clim([self.cmin,self.cmax])
@@ -481,7 +483,7 @@ class ImageCanvas(MplCanvas):
         def format_coord(x,y):
             """ Redefine how to show the coordinates """
             pixel = np.array([[x, y]], np.float_)
-            world = self.wcs.wcs_pix2world(pixel, 0)                    
+            world = self.wcs.all_pix2world(pixel, 0)                    
             xx = world[0][0]
             yy = world[0][1]
             " Transform coordinates in string "
@@ -828,15 +830,15 @@ class SpectrumCanvas(MplCanvas):
         self.axes.grid(True, which='both')
         self.axes.xaxis.set_major_formatter(ScalarFormatter(useOffset=False))
         self.axes.yaxis.set_major_formatter(ScalarFormatter(useOffset=False))
+        s = self.spectrum        
         # Write labels
-        if self.spectrum.instrument == 'GREAT':
+        if s.instrument == 'GREAT':
             if self.yunit == 'Jy':
                 self.axes.set_ylabel('Flux [Jy]', picker=True)
             else:
                 self.axes.set_ylabel('Temperature [K]', picker=True)
         else:
             self.axes.set_ylabel('Flux [Jy]')
-        s = self.spectrum   
         ckms = 299792.458  # speed of light in km/s
         if self.xunit == 'um':
             x0 = s.l0 * (1 + s.redshift)

@@ -406,10 +406,10 @@ class specCubeAstro(object):
         self.crpix3 = self.header['CRPIX3']
         self.crval3 = self.header['CRVAL3']
         self.cdelt3 = self.header['CD3_3']
-        self.wave = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3 # Angstrom
+        self.wave = self.cdelt3 * (np.arange(self.n) + 1 - self.crpix3) + self.crval3 # Angstrom
         self.wave *= 1.e-4  # um
-        self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
-        print('scale is ', self.pixscale)
+        self.pixscale, self.ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
+        print('scale is ', self.pixscale, self.ypixscale)
         self.redshift = 0
         self.l0 = self.header['WAVMID']*1.e-4 
     
