@@ -4,6 +4,7 @@ import collections
 ATOMIC AND IONIC FINE-STRUCTURE LINES (2-205 UM) FROM HTTP://WWW.MPE.MPG.DE/IR/ISO/LINELISTS/INDEX.HTML
 H2, HD, H2O, OH LINES FROM HTTP://WWW.MPE-GARCHING.MPG.DE/ISO/LINELISTS/MOLECULAR.HTML
 CO LINES FROM WW.MPE-GARCHING.MPG.DE/ISO/LINELISTS/CO.HTML
+[CIII] line from https://physics.nist.gov/PhysRefData/ASD/lines_form.html
 """
 
 def define_lines():
@@ -151,6 +152,7 @@ def define_lines():
         ('[SiI]    3P1-3P0',['[SiI]',  129.681730]),
         ('[OI]     3P0-3P1',['[OI]',   145.525439]),
         ('[CII]    2P3/2-2P1/2',['[CII]',  157.740900]),
+        ('[CIII]   1s22s2p/3P0/1',['[CIII]', 177.4308]),
         ('[NII]    3P1-3P0',['[NII]',  205.178230]),
         ('CO_J=1->0',['CO', 2600.76]),
         ('CO_J=13->12',['CO',  200.272476]),	         
