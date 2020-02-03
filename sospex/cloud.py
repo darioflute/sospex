@@ -10,7 +10,7 @@ from reproject import reproject_interp
 import numpy as np
 from html.parser import HTMLParser
 from PyQt5.QtWidgets import QFileDialog
-from sospex.specobj import specCube
+from sospex.specobj import specCube, specCubeAstro
 
 
 class MyHTMLParser(HTMLParser):
@@ -178,10 +178,15 @@ class cloudImage(object):
             print("File selected is: ", filenames[0])
             try:           
                 print('opening ', cube_file)
-                self.data = specCube(cube_file)
+                try:
+                    self.data = specCube(cube_file)
+                except:
+                    self.data = specCubeAstro(cube_file)
+                print('data read ')
                 self.wcs = self.data.wcs
+                print('wcs read ')
                 # Check if coordinates are inside the image
-                x,y = self.wcs.wcs_world2pix(self.lon,self.lat,0)
+                x,y = self.wcs.wcs_world2pix(self.lon, self.lat, 0)
                 print('x y ',x,y)
                 if x >= 0 and x <= self.data.nx and y >= 0 and y  <= self.data.ny:
                     print('Source inside the FITS cube')
