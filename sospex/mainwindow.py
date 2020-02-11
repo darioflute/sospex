@@ -1789,7 +1789,7 @@ class GUI (QMainWindow):
         if self.emslines + self.abslines > 0:
             sc.lguess = []
             for line in sc.lines:
-                sc.lguess.append([[line.x0, line.fwhm, line.A]] * self.ncells)        
+                sc.lguess.append([[line.x0, line.fwhm, line.A]] * self.ncells) 
         # Generate a list of limits connected to each Voronoi cell
         xg,yg = zip(*sc.guess.xy)
         print('x limits of guess ', xg)
@@ -1878,6 +1878,7 @@ class GUI (QMainWindow):
                 nline = int(event[-2:])
                 line = sc.lines[nline]
                 sc.lguess[nline][ncell] = [line.x0, line.fwhm, line.A]
+                sc.fig.canvas.draw_idle()
 
     def ContMomLines(self):
         """Dialog to select fit options for the cube."""

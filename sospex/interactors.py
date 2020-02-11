@@ -732,38 +732,52 @@ class LineInteractor(QObject):
         A  amplitude of the line
         fwhm FWHM of the line
         epsilon max pixel distance to count as a vertex hit
+
+    Key-bindings
+
+      't' toggle markers on and off.  When markers are on,
+          one can move or modify the line
+
+      'd' delete the line
     """
+
     showverts = True
     mySignal = pyqtSignal(str)
     modSignal = pyqtSignal(str)
 
-    def __init__(self, ax, c0, cs, x0, A, fwhm, n, color='#7ec0ee', epsilon=10):
+    def __init__(self, ax,  c0, cs, x0, A, fwhm, n, color='#7ec0ee', epsilon=10):
         super().__init__()
-        # To avoid crashing with maximum recursion depth exceeded
         sys.setrecursionlimit(10000)  # 10000 is 10x the default value
         self.epsilon = epsilon
-        self.n = n  # ID of the line
         self.ax = ax
-        self.fig = ax.figure
-        self.canvas = ax.figure.canvas
+        canvas = ax.figure.canvas
         self.c0 = c0  # Value of continuum at origin
         self.cs = cs  # Slope of the continuum
         self.type = 'Line'
         self.color = color
         self.x0 = x0
         self.A = A
+        self.n = n
         self.fwhm = fwhm
         self.computeMarkers()
         self.computeGaussian()
-        self.gauss = Polygon(self.verts, animated=True, fill=False, closed=False, color=self.color)
-        self.ax.add_patch(self.gauss)
+        self.poly = Polygon(self.verts, animated=True, fill=False, 
+                             closed=False, color=self.color)
+        self.ax.add_patch(self.poly)
         x, y = zip(*self.xy)
-        self.line = Line2D(x, y, marker='o', linestyle=None, linewidth=0.,
-                           markerfacecolor=self.color, animated=True)
+        self.line = Line2D(x, y, marker='o', markerfacecolor=self.color,
+                           linewidth=0., animated=True)
         self.ax.add_line(self.line)
-        self.artists = [self.line, self.gauss]
+
+        self.cid = self.poly.add_callback(self.poly_changed)
         self._ind = None  # the active vert
-        self.connect()
+
+        canvas.mpl_connect('draw_event', self.draw_callback)
+        canvas.mpl_connect('button_press_event', self.button_press_callback)
+        canvas.mpl_connect('key_press_event', self.key_press_callback)
+        canvas.mpl_connect('button_release_event', self.button_release_callback)
+        canvas.mpl_connect('motion_notify_event', self.motion_notify_callback)
+        self.canvas = canvas
 
     def computeMarkers(self):
         'Compute position of markers.'
@@ -779,54 +793,21 @@ class LineInteractor(QObject):
         dx = (x - self.x0) / self.sigma / np.sqrt(2.)
         y = self.c0 + (x - self.x0) * self.cs + self.A * np.exp(-dx * dx)
         self.verts = [(x_, y_) for x_, y_ in zip(x, y)]
-        return
-
-    def connect(self):
-        self.cid_draw = self.canvas.mpl_connect('draw_event',
-                                                self.draw_callback)
-        self.cid_press = self.canvas.mpl_connect('button_press_event',
-                                                 self.button_press_callback)
-        self.cid_release = self.canvas.mpl_connect('button_release_event',
-                                                   self.button_release_callback)
-        self.cid_motion = self.canvas.mpl_connect('motion_notify_event',
-                                                  self.motion_notify_callback)
-        self.cid_key = self.canvas.mpl_connect('key_press_event',
-                                               self.key_press_callback)
-        self.canvas.draw_idle()
-
-    def disconnect(self):
-        self.canvas.mpl_disconnect(self.cid_draw)
-        self.canvas.mpl_disconnect(self.cid_press)
-        self.canvas.mpl_disconnect(self.cid_release)
-        self.canvas.mpl_disconnect(self.cid_motion)
-        self.canvas.mpl_disconnect(self.cid_key)
-        try:
-            self.line.remove()
-        except BaseException:
-            print('no markers')
-        try:
-            self.gauss.remove()
-        except BaseException:
-            print('no line')
-        self.canvas.draw_idle()
-
+        
     def draw_callback(self, event):
-        self.grab_background()
-        self.ax.draw_artist(self.gauss)
+        self.background = self.canvas.copy_from_bbox(self.ax.bbox)
+        self.ax.draw_artist(self.poly)
         self.ax.draw_artist(self.line)
 
-    def safe_draw(self):
-        """Temporarily disconnect the draw_event callback to avoid recursion."""
-        self.canvas.mpl_disconnect(self.cid_draw)
-        self.canvas.draw_idle()
-        self.cid_draw = self.canvas.mpl_connect('draw_event', self.draw_callback)
-
-    def grab_background(self):
-        self.safe_draw()
-        self.background = self.canvas.copy_from_bbox(self.fig.bbox)  # or self.ax.bbox
+    def poly_changed(self, poly):
+        'this method is called whenever the polygon object is called'
+        # only copy the artist props to the line (except visibility)
+        vis = self.line.get_visible()
+        Artist.update_from(self.line, poly)
+        self.line.set_visible(vis)  # don't use the poly visibility state
 
     def get_ind_under_point(self, event):
-        'get the index of the point if within epsilon tolerance'
+        'get the index of the vertex under point if within epsilon tolerance'
         # Distance is computed in pixels on the screen
         xy = self.ax.transData.transform(self.xy)
         x, y = zip(*xy)
@@ -838,21 +819,6 @@ class LineInteractor(QObject):
         if d[ind] >= self.epsilon:
             ind = None
         return ind
-
-    def key_press_callback(self, event):
-        'whenever a key is pressed'
-        if not event.inaxes:
-            return
-        if event.key == 't':
-            self.showverts = not self.showverts
-            self.line.set_visible(self.showverts)
-            if not self.showverts:
-                self._ind = None
-        elif event.key == 'd':
-            ind = self.get_ind_under_point(event)
-            if ind is not None:
-                self.mySignal.emit('line deleted ' + str(self.n))
-        self.canvas.draw_idle()
 
     def button_press_callback(self, event):
         'whenever a mouse button is pressed'
@@ -871,9 +837,24 @@ class LineInteractor(QObject):
         if event.button != 1:
             return
         self._ind = None
-        # Redrawing
-        self.canvas.draw_idle()
+        # Notify callback
+        self.modSignal.emit('line guess modified ' + str(self.n))
 
+    def key_press_callback(self, event):
+        'whenever a key is pressed'
+        if not event.inaxes:
+            return
+        if event.key == 't':
+            self.showverts = not self.showverts
+            self.line.set_visible(self.showverts)
+            if not self.showverts:
+                self._ind = None
+        elif event.key == 'd':
+            ind = self.get_ind_under_point(event)
+            if ind is not None:
+                self.mySignal.emit('line deleted ' + str(self.n))
+        self.canvas.draw_idle()
+        
     def motion_notify_callback(self, event):
         'on mouse movement'
         if not self.showverts:
@@ -884,8 +865,8 @@ class LineInteractor(QObject):
             return
         if event.button != 1:
             return
-        # Update markers and Gaussian parameters
         x_, y_ = event.xdata, event.ydata
+
         x, y = zip(*self.xy)
         if x[-1] > x[0]:  # case wavelength
             if self._ind == 0:
@@ -921,23 +902,19 @@ class LineInteractor(QObject):
             elif self._ind == 2:
                 if x_ < x[1]:
                     self.fwhm = 2 * (x[1] - x_)
+        # Update and redraw
         self.updateCurves()
-        self.redraw()
-        # Notify callback
-        self.modSignal.emit('line guess modified ' + str(self.n))
+        self.canvas.restore_region(self.background)
+        self.ax.draw_artist(self.poly)
+        self.ax.draw_artist(self.line)
+        self.canvas.update()
+        self.canvas.flush_events()
 
     def updateCurves(self):
         self.computeGaussian()
         self.computeMarkers()
         self.line.set_data(zip(*self.xy))
-        self.gauss.xy = self.verts
-        
-    def redraw(self):
-        self.canvas.restore_region(self.background)
-        for artist in self.artists:
-            self.ax.draw_artist(artist)
-        self.canvas.update()
-        self.canvas.flush_events()
+        self.poly.xy = self.verts
 
     def switchUnits(self):
         """ Redraw segments in new units """
