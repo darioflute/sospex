@@ -22,21 +22,14 @@ def dist_point_to_segment(p, s0, s1):
     
     v = s1 - s0
     w = p - s0
-
     c1 = np.dot(w, v)
     if c1 <= 0:
-#        return np.hypot(p, s0)
         return np.linalg.norm(p - s0)
-
     c2 = np.dot(v, v)
     if c2 <= c1:
-#        return np.hypot(p, s1)
         return np.linalg.norm(p - s1)
-
     b = c1 / c2
     pb = s0 + b * v
-    
-#    return np.hypot(p, pb)
     return np.linalg.norm(p - pb)   
 
 
@@ -721,6 +714,415 @@ class VoronoiInteractor(QObject):
         self.line.set_data(zip(*self.poly.xy))
         self.sites = self.poly.xy
 
+
+class InteractorManager(QObject):
+    """
+    A manager to draw continuum and lines over common background
+    """
+
+    def __init__(self, ax, interactors):
+        super().__init__()
+        self.ax = ax
+        self.interactors = interactors
+        self.canvas = ax.figure.canvas
+        self.cid_draw = self.canvas.mpl_connect('draw_event', self.draw_callback)
+        self.cid_motion = self.canvas.mpl_connect('motion_notify_event', self.motion_notify_callback)
+
+    def draw_callback(self, event):
+        self.background = self.canvas.copy_from_bbox(self.ax.bbox)
+        for interactor in self.interactors:
+            interactor.draw_callback(event)
+
+    def motion_notify_callback(self, event):
+        if event.inaxes is None:
+            return
+        elif event.button != 1:
+            return
+        else:
+            self.canvas.restore_region(self.background)        
+            for interactor in self.interactors:
+                interactor.motion_notify_callback(event)
+                interactor.draw_callback(event)
+        self.canvas.blit(self.ax.bbox)
+        #self.canvas.update()
+        #self.canvas.flush_events()
+            
+    def disconnect(self):
+       self.canvas.mpl_disconnect(self.cid_draw)
+       self.canvas.mpl_disconnect(self.cid_motion)
+       del self.background
+
+
+
+class SegmentsSelector(QObject):
+
+    def __init__(self, ax, fig, callback, color='#7ec0ee', zD = True):
+        super().__init__()
+
+        self.x = []
+        self.y = []
+        self.line1 = None
+        self.line2 = None
+        self.color = color
+        self.fig = fig
+        self.ax = ax
+        self.callback = callback
+        self.zeroDeg = zD
+
+        self.__ID1 = self.fig.canvas.mpl_connect('motion_notify_event', self.__motion_notify_callback)
+        self.__ID2 = self.fig.canvas.mpl_connect('button_press_event', self.__button_press_callback)
+        self.__ID3 = self.fig.canvas.mpl_connect('button_release_event', self.__button_release_callback)
+
+    def __motion_notify_callback(self, event):
+        if event.inaxes:
+            #ax = event.inaxes
+            x, y = event.xdata, event.ydata
+            if (event.button == None or event.button == 1):
+                if self.line1 != None: # Move line around
+                    if self.line2 == None:
+                        if self.zeroDeg: self.y[0]=y
+                        self.line1.set_data([self.x[0], x],
+                                            [self.y[0], y])
+                    else:
+                        if self.zeroDeg:
+                            self.y=[y,y,y,y]
+                            self.line1.set_data([self.x[0], self.x[1]],
+                                                [self.y[0], self.y[1]])
+                        self.line2.set_data([self.x[2], x],
+                                            [self.y[2], y])
+                    self.fig.canvas.draw_idle()
+
+
+    def __button_release_callback(self, event):
+        if event.inaxes:
+            x, y = event.xdata, event.ydata
+            #ax = event.inaxes
+            if event.button == 1:
+                if self.line2 == None:  # Segment 1 completed
+                    self.x.append(x)
+                    self.y.append(y)
+                    if self.zeroDeg:
+                        self.y[-2]=self.y[-1]
+                    self.line1.set_data([self.x[0], self.x[1]],
+                                        [self.y[0], self.y[1]])
+                    self.fig.canvas.draw_idle()
+                    self.fig.canvas.mpl_disconnect(self.__ID1)
+                    self.line2 = 'start'
+                else:
+                    self.x.append(x)
+                    self.y.append(y)
+                    if self.zeroDeg:
+                        self.y[-1]=self.y[-2]
+                        m = 0.
+                    else:
+                        # Adjust to the same slope between first and last point
+                        m = (self.y[3]-self.y[0])/(self.x[3]-self.x[0])
+                    for i in range(4):
+                        self.y[i] = self.y[0]+m*(self.x[i]-self.x[0])
+                    self.line1.set_data([self.x[0], self.x[1]],
+                                        [self.y[0], self.y[1]])
+                    self.line2.set_data([self.x[2], self.x[3]],
+                                        [self.y[2], self.y[3]])
+                    self.fig.canvas.draw_idle()
+                    self.xy = [(i,j) for (i,j) in zip(self.x,self.y)]
+                    # Disconnect
+                    self.fig.canvas.mpl_disconnect(self.__ID1) 
+                    self.fig.canvas.mpl_disconnect(self.__ID2) 
+                    self.fig.canvas.mpl_disconnect(self.__ID3) 
+                    # Callback function, pass the vertices
+                    self.callback(self.xy)
+                    # Remove lines
+                    self.remove()
+
+    def __button_press_callback(self, event):
+        if event.inaxes:
+            x, y = event.xdata, event.ydata
+            ax = event.inaxes
+            if event.button == 1:
+                if self.line2 == None:
+                    if self.line1 == None:  # If you press the left button, single click
+                        self.line1 = Line2D([x, x],
+                                            [y, y],
+                                            marker='o',
+                                            color=self.color)
+                        self.start_point = [x,y]
+                        self.previous_point =  self.start_point
+                        self.x=[x]
+                        self.y=[y]
+                        self.__ID1 = self.fig.canvas.mpl_connect('motion_notify_event', self.__motion_notify_callback)
+                        ax.add_line(self.line1)
+                        # add a segment
+                        self.fig.canvas.draw_idle()
+                else:
+                    if self.zeroDeg:
+                        self.y = [y,y]
+                        self.line1.set_data([self.x[0], self.x[1]],
+                                            [self.y[0], self.y[1]])
+                    self.line2 = Line2D([x, x],
+                                        [y, y],
+                                        marker='o',
+                                        color=self.color)
+                    self.start_point = [x,y]
+                    self.previous_point =  self.start_point
+                    self.x.append(x)
+                    self.y.append(y)
+                    self.__ID1 = self.fig.canvas.mpl_connect('motion_notify_event', self.__motion_notify_callback)
+                        
+                    ax.add_line(self.line2)
+                    self.fig.canvas.draw()
+
+    def remove(self):
+        """ Remove lines from plot """
+        try:
+            self.line1.remove()
+            self.line2.remove()
+        except:
+            print('no lines to remove')
+
+
+class SegmentsInteractor(QObject):
+    """
+    A continuum interactor.
+    """
+    
+    showverts = True
+    mySignal = pyqtSignal(str)
+    modSignal = pyqtSignal(str)
+
+    def __init__(self, ax, verts, zeroDeg=True, color='#7ec0ee', epsilon=10):
+        super().__init__()
+        self.epsilon = epsilon # max pixel distance to count as a vertex hit
+        self.ax = ax
+        self.type = 'Continuum'
+        self.zeroDeg = zeroDeg
+        x, y = zip(*verts)
+        self.xy = [(i,j) for (i,j) in zip(x,y)]
+        self.computeSlope()        
+        self.line1 = Line2D(x[:2],y[:2],color=color,linewidth=2, animated = True)
+        self.line2 = Line2D(x[2:],y[2:],color=color,linewidth=2, animated = True)
+        trans = transforms.blended_transform_factory(ax.transData, ax.transAxes)
+        self.xl1a = Line2D([x[0], x[0]], [0, 1], color=color, linewidth=1,
+                           animated=True, transform=trans)
+        self.xl1b = Line2D([x[1], x[1]], [0, 1], color=color, linewidth=1,
+                           animated=True, transform=trans)
+        self.xl2a = Line2D([x[2], x[2]], [0, 1], color=color, linewidth=1,
+                           animated=True, transform=trans)
+        self.xl2b = Line2D([x[3], x[3]], [0, 1], color=color, linewidth=1,
+                           animated=True, transform=trans)
+        self.canvas = ax.figure.canvas
+        self.line = Line2D(x, y, marker='o', linestyle=None, linewidth=0., markerfacecolor=color, animated=True)                
+        self.artists = [self.line1, self.line2, self.xl1a, self.xl1b, self.xl2a, self.xl2b, self.line]
+        for artist in self.artists:
+            self.ax.add_line(artist)
+        self.cid = self.line1.add_callback(self.si_changed)
+        self._ind = None  # the active vert
+        self.connect()
+
+    def computeSlope(self):
+        xg,yg = zip(*self.xy)
+        xg = np.array(xg); yg = np.array(yg)
+        if self.zeroDeg:
+            self.slope = 0
+        else:
+            self.slope = (yg[3]-yg[0])/(xg[3]-xg[0])
+        self.intcpt = yg[0]-self.slope*xg[0]
+
+    def connect(self):
+        #self.cid_draw = self.canvas.mpl_connect('draw_event',
+        #                                        self.draw_callback)
+        self.cid_press = self.canvas.mpl_connect('button_press_event',
+                                                 self.button_press_callback)
+        self.cid_release = self.canvas.mpl_connect('button_release_event',
+                                                   self.button_release_callback)
+        #self.cid_motion = self.canvas.mpl_connect('motion_notify_event',
+        #                                          self.motion_notify_callback)
+        self.cid_key = self.canvas.mpl_connect('key_press_event',
+                                               self.key_press_callback)
+        self.canvas.draw_idle()
+
+    def disconnect(self):
+        #self.canvas.mpl_disconnect(self.cid_draw)
+        self.canvas.mpl_disconnect(self.cid_press)
+        self.canvas.mpl_disconnect(self.cid_release)
+        #self.canvas.mpl_disconnect(self.cid_motion)
+        self.canvas.mpl_disconnect(self.cid_key)
+        try:
+            self.line1.remove()
+            self.xl1a.remove()
+            self.xl1b.remove()
+        except BaseException:
+            print('no line 1')
+        try:
+            self.line2.remove()
+            self.xl2a.remove()
+            self.xl2b.remove()
+        except BaseException:
+            print('no line 2')
+        try:
+            self.line.remove()
+        except BaseException:
+            print('no markers')
+        self.canvas.draw_idle()
+        self.aperture = None
+        
+    def draw_callback(self, event):
+        #self.background = self.canvas.copy_from_bbox(self.ax.bbox)
+        for artist in self.artists:
+            self.ax.draw_artist(artist)
+
+    def si_changed(self, line1):
+        'this method is called whenever the line1 object is called'
+        # only copy the artist props to the line (except visibility)
+        vis = self.line.get_visible()
+        Artist.update_from(self.line, line1)
+        self.line.set_visible(vis)  
+
+    def get_ind_under_point(self, event):
+        'get the index of the point if within epsilon tolerance'
+        # Distance is computed in pixels on the screen
+        xy = self.ax.transData.transform(self.xy)
+        x, y = zip(*xy)
+        x = np.array(x); y = np.array(y)
+        d = np.hypot(x - event.x, y - event.y)
+        indseq, = np.nonzero(d == d.min())
+        if len(indseq) > 0:
+            ind = indseq[0]
+            if d[ind] >= self.epsilon:
+                ind = None
+        else:
+            ind = None
+        return ind
+
+    def key_press_callback(self, event):
+        'whenever a key is pressed'
+        if not event.inaxes:
+            return
+        if event.key == 't':
+            self.showverts = not self.showverts
+            self.line.set_visible(self.showverts)
+            if not self.showverts:
+                self._ind = None
+        elif event.key == 'd':
+            ind = self.get_ind_under_point(event)
+            if ind is not None:
+                self.mySignal.emit('segments deleted')
+        self.canvas.draw_idle()
+
+    def button_press_callback(self, event):
+        'whenever a mouse button is pressed'
+        if not self.showverts:
+            return
+        if event.inaxes is None:
+            return
+        if event.button != 1:
+            return
+        self._ind = self.get_ind_under_point(event)
+
+    def button_release_callback(self, event):
+        'whenever a mouse button is released'
+        if not self.showverts:
+            return
+        if event.button != 1:
+            return
+        self._ind = None
+
+    def motion_notify_callback(self, event):
+        'on mouse movement'
+        if not self.showverts:
+            return
+        if self._ind is None:
+            return
+        if event.inaxes is None:
+            return
+        if event.button != 1:
+            return
+        # Rebuild line collection
+        x,y = zip(*self.xy)
+        x = np.asarray(x)
+        y = np.asarray(y)
+        # Check order of x (increasing if wavelength, decreasing if frequency)
+        if x[3] > x[0]:
+            case = 'wave'
+        else:
+            case = 'freq'
+        # Update point
+        x_, y_ = event.xdata, event.ydata
+        y[self._ind] = y_
+        # How avoiding overstepping ...
+        if case == 'wave':
+            if self._ind == 0:
+                if x_ < x[1]:
+                    x[0] = x_
+            elif self._ind == 1:
+                if (x_ > x[0]) & (x_ < x[2]):
+                    x[1] = x_
+            elif self._ind == 2:
+                if (x_ > x[1]) & (x_ < x[3]):
+                    x[2] = x_
+            elif self._ind == 3:
+                if (x_ > x[2]):
+                    x[3] = x_
+        else:
+            if self._ind == 0:
+                if x_ > x[1]:
+                    x[0] = x_
+            elif self._ind == 1:
+                if (x_ < x[0]) & (x_ > x[2]):
+                    x[1] = x_
+            elif self._ind == 2:
+                if (x_ < x[1]) & (x_ > x[3]):
+                    x[2] = x_
+            elif self._ind == 3:
+                if (x_ < x[2]):
+                    x[3] = x_
+        if self.zeroDeg:
+            m = 0
+        else:
+            if self._ind < 2:
+                m = (y[3]-y[self._ind])/(x[3]-x[self._ind])
+            else:
+                m = (y[self._ind]-y[0])/(x[self._ind]-x[0])    
+        for i in range(4):
+            y[i] = y[self._ind]+m*(x[i]-x[self._ind])
+            self.xy[i] = (x[i],y[i])
+        # Update segments and markers
+        self.updateLinesMarkers()
+        #self.redraw()
+        # Notify callback
+        self.modSignal.emit('continuum guess modified')
+
+    def updateLinesMarkers(self):
+        x, y = zip(*self.xy)
+        self.xl1a.set_xdata([x[0], x[0]])
+        self.xl1b.set_xdata([x[1], x[1]])
+        self.xl2a.set_xdata([x[2], x[2]])
+        self.xl2b.set_xdata([x[3], x[3]])        
+        self.line1.set_data(zip(*self.xy[:2]))
+        self.line2.set_data(zip(*self.xy[2:]))
+        self.line.set_data(zip(*self.xy))
+
+    def redraw(self):
+        self.canvas.restore_region(self.background)
+        for artist in self.artists:
+            self.ax.draw_artist(artist)
+        self.canvas.update()
+        self.canvas.flush_events()
+
+    def switchUnits(self):
+        """ Redraw segments in new units """
+        # Rebuild line collection
+        x, y = zip(*self.xy)
+        x = np.asarray(x)
+        y = np.asarray(y)
+        c = 299792458.0  # speed of light in m/s
+        x = c/x * 1.e-6  # um to THz or viceversa
+        for i in range(4):
+            self.xy[i] = (x[i],y[i])
+        # Update segments and markers
+        self.updateLinesMarkers()
+        # self.redraw()
+
+
 class LineInteractor(QObject):
     """
     A Gaussian line interactor.
@@ -772,11 +1174,11 @@ class LineInteractor(QObject):
         self.cid = self.poly.add_callback(self.poly_changed)
         self._ind = None  # the active vert
 
-        canvas.mpl_connect('draw_event', self.draw_callback)
-        canvas.mpl_connect('button_press_event', self.button_press_callback)
-        canvas.mpl_connect('key_press_event', self.key_press_callback)
-        canvas.mpl_connect('button_release_event', self.button_release_callback)
-        canvas.mpl_connect('motion_notify_event', self.motion_notify_callback)
+        #canvas.mpl_connect('draw_event', self.draw_callback)
+        self.cid_press = canvas.mpl_connect('button_press_event', self.button_press_callback)
+        self.cid_key = canvas.mpl_connect('key_press_event', self.key_press_callback)
+        self.cid_release = canvas.mpl_connect('button_release_event', self.button_release_callback)
+        #canvas.mpl_connect('motion_notify_event', self.motion_notify_callback)
         self.canvas = canvas
 
     def computeMarkers(self):
@@ -795,7 +1197,7 @@ class LineInteractor(QObject):
         self.verts = [(x_, y_) for x_, y_ in zip(x, y)]
         
     def draw_callback(self, event):
-        self.background = self.canvas.copy_from_bbox(self.ax.bbox)
+        #self.background = self.canvas.copy_from_bbox(self.ax.bbox)
         self.ax.draw_artist(self.poly)
         self.ax.draw_artist(self.line)
 
@@ -875,6 +1277,7 @@ class LineInteractor(QObject):
             elif self._ind == 1:
                 dx = x_ - x[1]
                 self.x0 += dx
+                self.c0 += dx * self.cs
                 dy = y_ - y[1]
                 if (self.A > 0) & (dy < -self.A):  # Emission line
                     pass
@@ -892,6 +1295,7 @@ class LineInteractor(QObject):
             elif self._ind == 1:
                 dx = x_ - x[1]
                 self.x0 += dx
+                self.c0 += dx * self.cs
                 dy = y_ - y[1]
                 if (self.A > 0) & (dy < -self.A):  # Emission line
                     pass
@@ -904,17 +1308,33 @@ class LineInteractor(QObject):
                     self.fwhm = 2 * (x[1] - x_)
         # Update and redraw
         self.updateCurves()
-        self.canvas.restore_region(self.background)
-        self.ax.draw_artist(self.poly)
-        self.ax.draw_artist(self.line)
-        self.canvas.update()
-        self.canvas.flush_events()
+        #self.canvas.restore_region(self.background)
+        #self.ax.draw_artist(self.poly)
+        #self.ax.draw_artist(self.line)
+        #self.canvas.update()
+        #self.canvas.flush_events()
 
     def updateCurves(self):
         self.computeGaussian()
         self.computeMarkers()
         self.line.set_data(zip(*self.xy))
         self.poly.xy = self.verts
+
+    def disconnect(self):
+        #self.canvas.mpl_disconnect(self.cid_draw)
+        self.canvas.mpl_disconnect(self.cid_press)
+        self.canvas.mpl_disconnect(self.cid_release)
+        #self.canvas.mpl_disconnect(self.cid_motion)
+        self.canvas.mpl_disconnect(self.cid_key)
+        try:
+            self.line.remove()
+        except BaseException:
+            print('no markers')
+        try:
+            self.gauss.remove()
+        except BaseException:
+            print('no line')
+        self.canvas.draw_idle()
 
     def switchUnits(self):
         """ Redraw segments in new units """

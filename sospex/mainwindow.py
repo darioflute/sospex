@@ -18,9 +18,8 @@ import scipy.ndimage as ndimage
 # To avoid excessive warning messages
 import warnings
 
-from sospex.moments import (SegmentsSelector, SegmentsInteractor, multiFitContinuum,
-                            multiComputeMoments, ContParams, ContFitParams, SlicerDialog,
-                            FitCubeDialog, multiFitLines, residualsPsf)
+from sospex.moments import ( multiFitContinuum, multiComputeMoments, ContParams, ContFitParams, 
+                            SlicerDialog, FitCubeDialog, multiFitLines, residualsPsf)
 from sospex.graphics import  (NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas,
                        cmDialog, ds9cmap, ScrollMessageBox, PsfCanvas)
 from sospex.apertures import (photoAperture, PolygonInteractor, EllipseInteractor,
@@ -28,7 +27,8 @@ from sospex.apertures import (photoAperture, PolygonInteractor, EllipseInteracto
 from sospex.specobj import specCube, specCubeAstro, Spectrum, ExtSpectrum
 from sospex.cloud import cloudImage
 from sospex.interactors import (SliderInteractor, SliceInteractor, DistanceSelector,
-                                VoronoiInteractor, LineInteractor, PsfInteractor)
+                                VoronoiInteractor, LineInteractor, PsfInteractor,
+                                InteractorManager, SegmentsSelector, SegmentsInteractor)
 from sospex.inout import exportAperture, importAperture, exportGuesses, importGuesses
 
 class UpdateTabs(QObject):
@@ -1775,17 +1775,18 @@ class GUI (QMainWindow):
         x = x[idx]
         y = y[idx]
         verts = [(i,j) for (i,j) in zip(x,y)]
-        SI = SegmentsInteractor(sc.axes, verts, self.zeroDeg)
-        SI.modSignal.connect(self.onModifiedGuess)
-        SI.mySignal.connect(self.onRemoveContinuum)
-        sc.guess = SI
+        sc.guess = SegmentsInteractor(sc.axes, verts, self.zeroDeg)
+        sc.guess.modSignal.connect(self.onModifiedGuess)
+        sc.guess.mySignal.connect(self.onRemoveContinuum)
+        interactors = [sc.guess]
         # Add lines
         if self.emslines > 0:
             sc.lines = self.addLines(self.emslines, x, 'emission')
         else:
             sc.lines = []
         if self.abslines > 0:
-            sc.lines.append(self.addLines(self.abslines, x, 'absorption', self.emslines))
+            sc.lines.extend(self.addLines(self.abslines, x, 'absorption', self.emslines))
+        interactors.extend(sc.lines)
         if self.emslines + self.abslines > 0:
             sc.lguess = []
             for line in sc.lines:
@@ -1794,11 +1795,34 @@ class GUI (QMainWindow):
         xg,yg = zip(*sc.guess.xy)
         print('x limits of guess ', xg)
         sc.xguess = [xg] * self.ncells
-        # 
+        #
+        sc.interactorManager = InteractorManager(sc.axes, interactors)
+        #self.lineManager(sc.axes, interactors)        
+        #
         if sc.displayLines == False:
             sc.displayLines = True
             sc.setLinesVisibility(sc.displayLines)
             sc.fig.canvas.draw_idle()
+
+    #def lineManager(self, axes, interactors):
+    #    self.interactors = interactors
+    #    self.ax = axes
+    #    self.canvas = axes.figure.canvas
+    #    self.canvas.mpl_connect('draw_event', self.line_draw_callback)
+    #    self.canvas.mpl_connect('motion_notify_event', self.line_motion_notify_callback)
+        
+    #def line_draw_callback(self, event):
+    #    self.background = self.canvas.copy_from_bbox(self.ax.bbox)
+    #    for interactor in self.interactors:
+    #        interactor.draw_callback(event)
+                
+    #def line_motion_notify_callback(self, event):
+    #    self.canvas.restore_region(self.background)        
+    #    for interactor in self.interactors:
+    #        interactor.motion_notify_callback(event)
+    #        interactor.draw_callback(event)
+    #    self.canvas.blit(self.ax.bbox)
+
             
     def getLineVelocity(self):
         czline, okPressed = QInputDialog.getDouble(self, "Velocity of line ", "cz", 0, -10000., 50000., 2)
@@ -1831,15 +1855,15 @@ class GUI (QMainWindow):
                 x0 = x[1] + dx + i * 2 * dx
             else:
                 x0 = x0s * ( 1 + self.specCube.redshift)
+            c0 = sc.guess.intcpt + x0 * sc.guess.slope  # continuum at line center
             if As is None:
                 idx = (sc.x > (x0 - dx)) & (sc.x < (x0 + dx))
                 if type == 'emission':
-                    A = np.nanmax(sc.spectrum.flux[idx]) - sc.guess.intcpt - sc.guess.slope * x0
+                    A = np.nanmax(sc.spectrum.flux[idx]) - c0
                 else:
-                    A = np.nanmin(sc.spectrum.flux[idx]) - sc.guess.intcpt - sc.guess.slope * x0
+                    A = np.nanmin(sc.spectrum.flux[idx]) - c0
             else:
                 A = As
-            c0 = sc.guess.intcpt + x0 * sc.guess.slope  # continuum at line center
             LI = LineInteractor(sc.axes, c0, sc.guess.slope, x0, A, fwhm, nid,color=colors[i])
             LI.modSignal.connect(self.onModifiedGuess)
             LI.mySignal.connect(self.onRemoveContinuum)

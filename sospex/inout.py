@@ -190,7 +190,7 @@ def exportGuesses(self):
     
 def importGuesses(self):
     "Import previously defined tessellation and guesses of continuum and lines."
-    from sospex.moments import SegmentsInteractor
+    from sospex.interactors import SegmentsInteractor, InteractorManager
     # Open a dialog
     fd = QFileDialog()
     fd.setLabelText(QFileDialog.Accept, "Import as")
@@ -251,10 +251,10 @@ def importGuesses(self):
         else:
             self.zeroDeg = True
         xy = [(i,j) for (i,j) in zip(x,y)]
-        SI = SegmentsInteractor(sc.axes, xy, self.zeroDeg)
-        SI.modSignal.connect(self.onModifiedGuess)
-        SI.mySignal.connect(self.onRemoveContinuum)
-        sc.guess = SI
+        sc.guess = SegmentsInteractor(sc.axes, xy, self.zeroDeg)
+        sc.guess.modSignal.connect(self.onModifiedGuess)
+        sc.guess.mySignal.connect(self.onRemoveContinuum)
+        interactors = [sc.guess]
         # Initialize continuum
         self.openContinuumTab()
         self.positiveContinuum = False  # Default value
@@ -275,8 +275,9 @@ def importGuesses(self):
                 sc.lines.append(self.addLines(self.abslines, x, 'absorption', nstart=self.emslines, 
                                               x0s=line[0], fwhms=line[1], As=line[2]))
             # Then plot guess and activate tessellation
-            
-        sc.fig.canvas.draw_idle()
+        interactors.extend(sc.lines)
+        sc.interactorManager = InteractorManager(sc.axes, interactors)
+        #sc.fig.canvas.draw_idle()
         # Create Voronoi sites, KDTree, plot Voronoi ridges on image
         self.removeVI()
         if self.ncells > 1:
