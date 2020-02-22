@@ -19,7 +19,7 @@ import scipy.ndimage as ndimage
 import warnings
 
 from sospex.moments import ( multiFitContinuum, multiComputeMoments, ContParams, ContFitParams, 
-                            SlicerDialog, FitCubeDialog, multiFitLines, residualsPsf)
+                            SlicerDialog, FitCubeDialog, multiFitLines, residualsPsf, guessParams)
 from sospex.graphics import  (NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas,
                        cmDialog, ds9cmap, ScrollMessageBox, PsfCanvas)
 from sospex.apertures import (photoAperture, PolygonInteractor, EllipseInteractor,
@@ -355,8 +355,8 @@ class GUI (QMainWindow):
         # Add widgets to panel
         layout.addWidget(self.itabs)
 
-    def addSpectrum(self,b):
-        ''' Add a tab with an image '''
+    def addSpectrum(self, b):
+        ''' Add a tab with a spectrum '''
         t = QWidget()
         t.layout = QVBoxLayout(t)
         t.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored) # Avoid expansion
@@ -365,10 +365,17 @@ class GUI (QMainWindow):
         sc.switchSignal.connect(self.switchUnits)
         # Toolbar
         toolbar = QToolBar()
+        # Check if new aperture
         # Add actions to toolbar
         toolbar.addAction(self.cutAction)
         toolbar.addAction(self.specAction)
-        toolbar.addAction(self.guessAction)
+        print('Aperture is ', b)
+        if b in ['All', 'Pix']:        
+            toolbar.addAction(self.guessAction)
+        else:
+            print('Aperture special actions ')
+            toolbar.addAction(self.guessLinesAction)
+            toolbar.addAction(self.fitLinesAction)            
         # toolbar.addAction(self.sliceAction)
         toolbar.addAction(self.slideAction)
         toolbar.addSeparator()
@@ -838,7 +845,8 @@ class GUI (QMainWindow):
             aper0.rect.angle = angle
 
     def onRemoveContinuum(self, event):
-        sc = self.sci[self.spectra.index('Pix')]
+        istab = self.stabs.currentIndex()
+        sc = self.sci[istab]
         # print('remove continuum event: ', event)
         if event[:-2] == 'line deleted':
             n = int(event[-2:])
@@ -1386,9 +1394,15 @@ class GUI (QMainWindow):
         self.guessAction = self.createAction(os.path.join(self.path0,'icons','guessCont.png'),
                                              'Define cube fitting parameters',
                                              'Ctrl+g',self.guessContinuum)
+        self.guessLinesAction = self.createAction(os.path.join(self.path0,'icons','guess.png'),
+                                             'Define lines fitting parameters',
+                                             'Ctrl+G',self.guessApLines)
+        self.fitLinesAction = self.createAction(os.path.join(self.path0,'icons','fitline.png'),
+                                             'Define lines fitting parameters',
+                                             'Ctrl+F',self.fitApLines)
         self.fitContAction =self.createAction(os.path.join(self.path0,'icons','fit.png'),
                                               'Fit continuum/moments/lines',
-                                              'Ctrl+g',self.ContMomLines)
+                                              'Ctrl+F',self.ContMomLines)
         self.compMomAction = self.createAction(os.path.join(self.path0,'icons','computeMoments.png'),
                                                'Compute moments','Ctrl+g',self.chooseComputeMoments)
         self.fitregionAction = self.createAction(os.path.join(self.path0,'icons','fitregion.png'),
@@ -1541,8 +1555,8 @@ class GUI (QMainWindow):
             self.kernel9.setChecked(k9)
             self.ncells = int(regions)   # Number of Voronoi cells
             print('selected ', self.ncells, ' regions')
-            self.abslines = int(ablines)  # Number of absorption lines
-            self.emslines = int(emlines)  # Number of emission lines
+            sc.abslines = int(ablines)  # Number of absorption lines
+            sc.emslines = int(emlines)  # Number of emission lines
             # Create tessellation
             nx = self.specCube.nx
             ny = self.specCube.ny
@@ -1599,6 +1613,37 @@ class GUI (QMainWindow):
             self.createVI()
         else:
             ic0.fig.canvas.draw_idle()
+
+    def guessApLines(self):
+        """Create a guess of continuum and lines for an aperture."""
+        # We should be able to mask part of spectrum (like in showspectra ... )
+        self.GP = guessParams()
+        if self.GP.exec_() == QDialog.Accepted:
+            cont, em, ab = self.GP.save()
+            if cont == 'Constant':
+                self.zeroDeg = True
+            else:
+                self.zeroDeg = False
+            try:
+                self.onRemoveContinuum('all')
+            except BaseException:
+                pass
+            istab = self.stabs.currentIndex()
+            sc = self.sci[istab]
+            sc.emslines = int(em)
+            sc.abslines = int(ab)
+            self.CS = SegmentsSelector(sc.axes, sc.fig, self.onContinuumSelect, zD=self.zeroDeg)
+        else:
+            return     
+        
+    def fitApLines(self):
+        """Fit lines after defining guesses."""
+        istab = self.stabs.currentIndex()
+        sc = self.sci[istab]
+        if sc.emslines + sc.abslines == 0:
+            return
+        else:
+            print('I can fit lines')
  
     def removeVI(self):
         """Remove Voronoi tessellation if there."""
@@ -1780,49 +1825,34 @@ class GUI (QMainWindow):
         sc.guess.mySignal.connect(self.onRemoveContinuum)
         interactors = [sc.guess]
         # Add lines
-        if self.emslines > 0:
-            sc.lines = self.addLines(self.emslines, x, 'emission')
+        if sc.emslines > 0:
+            sc.lines = self.addLines(sc.emslines, x, 'emission')
         else:
             sc.lines = []
-        if self.abslines > 0:
-            sc.lines.extend(self.addLines(self.abslines, x, 'absorption', self.emslines))
+        if sc.abslines > 0:
+            sc.lines.extend(self.addLines(sc.abslines, x, 'absorption', sc.emslines))
         interactors.extend(sc.lines)
-        if self.emslines + self.abslines > 0:
-            sc.lguess = []
-            for line in sc.lines:
-                sc.lguess.append([[line.x0, line.fwhm, line.A]] * self.ncells) 
-        # Generate a list of limits connected to each Voronoi cell
-        xg,yg = zip(*sc.guess.xy)
-        print('x limits of guess ', xg)
-        sc.xguess = [xg] * self.ncells
-        #
         sc.interactorManager = InteractorManager(sc.axes, interactors)
-        #self.lineManager(sc.axes, interactors)        
+        
+        if istab == self.spectra.index('Pix'):
+            if sc.emslines + sc.abslines > 0:
+                sc.lguess = []
+                for line in sc.lines:
+                    sc.lguess.append([[line.x0, line.fwhm, line.A]] * self.ncells) 
+            # Generate a list of limits connected to each Voronoi cell
+            xg,yg = zip(*sc.guess.xy)
+            print('x limits of guess ', xg)
+            sc.xguess = [xg] * self.ncells
+        else:
+            if sc.emslines + sc.abslines > 0:
+                sc.lguess = []
+                for line in sc.lines:
+                    sc.lguess.append([line.x0, line.fwhm, line.A]) 
         #
         if sc.displayLines == False:
             sc.displayLines = True
             sc.setLinesVisibility(sc.displayLines)
             sc.fig.canvas.draw_idle()
-
-    #def lineManager(self, axes, interactors):
-    #    self.interactors = interactors
-    #    self.ax = axes
-    #    self.canvas = axes.figure.canvas
-    #    self.canvas.mpl_connect('draw_event', self.line_draw_callback)
-    #    self.canvas.mpl_connect('motion_notify_event', self.line_motion_notify_callback)
-        
-    #def line_draw_callback(self, event):
-    #    self.background = self.canvas.copy_from_bbox(self.ax.bbox)
-    #    for interactor in self.interactors:
-    #        interactor.draw_callback(event)
-                
-    #def line_motion_notify_callback(self, event):
-    #    self.canvas.restore_region(self.background)        
-    #    for interactor in self.interactors:
-    #        interactor.motion_notify_callback(event)
-    #        interactor.draw_callback(event)
-    #    self.canvas.blit(self.ax.bbox)
-
             
     def getLineVelocity(self):
         czline, okPressed = QInputDialog.getDouble(self, "Velocity of line ", "cz", 0, -10000., 50000., 2)
@@ -1833,8 +1863,8 @@ class GUI (QMainWindow):
             
     def addLines(self, n, x, type, nstart=0, x0s=None, fwhms=None, As=None):
         lines = []
-        istab = self.spectra.index('Pix')
-        # istab = self.stabs.currentIndex()
+        #istab = self.spectra.index('Pix')
+        istab = self.stabs.currentIndex()
         sc = self.sci[istab]
         nid = nstart
         colors = np.array(['orange','forestgreen','dodgerblue','violet','salmon','peru'])
@@ -1916,7 +1946,7 @@ class GUI (QMainWindow):
             else:
                 moments = False
                 options = []
-            if self.abslines + self.emslines > 0:
+            if sc.abslines + sc.emslines > 0:
                 if self.fitcont:
                     lines = True
                 else:
@@ -5966,7 +5996,7 @@ def main():
     screen_resolution = app.desktop().screenGeometry()
     width = screen_resolution.width()
     gui.setGeometry(width*0.025, width*0.025, width*0.95, width*0.5)
-    gui.hsplitter.setSizes ([width*0.40,width*0.48])
+    gui.hsplitter.setSizes ([width*0.48,width*0.48])
     # Add an icon for the application
     app.setWindowIcon(QIcon(os.path.join(gui.path0,'icons','sospex.png')))
     app.setApplicationName('SOSPEX')

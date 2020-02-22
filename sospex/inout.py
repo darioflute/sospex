@@ -260,24 +260,23 @@ def importGuesses(self):
         self.positiveContinuum = False  # Default value
         # Plot lines
         if sc.lguess is not None:
-            self.emslines = 0
-            self.abslines = 0
+            sc.emslines = 0
+            sc.abslines = 0
             for line in lines:
                 if line[2] >= 0:
-                    self.emslines += 1
+                    sc.emslines += 1
                 else:
-                    self.abslines += 1
-            if self.emslines > 0:
-                sc.lines = self.addLines(self.emslines, x, 'emission', x0s=line[0], fwhms=line[1], As=line[2])
+                    sc.abslines += 1
+            if sc.emslines > 0:
+                sc.lines = self.addLines(sc.emslines, x, 'emission', x0s=line[0], fwhms=line[1], As=line[2])
             else:
                 sc.lines = []
-            if self.abslines > 0:
-                sc.lines.append(self.addLines(self.abslines, x, 'absorption', nstart=self.emslines, 
+            if sc.abslines > 0:
+                sc.lines.append(self.addLines(sc.abslines, x, 'absorption', nstart=sc.emslines, 
                                               x0s=line[0], fwhms=line[1], As=line[2]))
             # Then plot guess and activate tessellation
         interactors.extend(sc.lines)
         sc.interactorManager = InteractorManager(sc.axes, interactors)
-        #sc.fig.canvas.draw_idle()
         # Create Voronoi sites, KDTree, plot Voronoi ridges on image
         self.removeVI()
         if self.ncells > 1:

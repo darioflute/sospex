@@ -396,6 +396,69 @@ class FitCubeDialog(QDialog):
             
     def Cancel(self):
         self.done(0)
+        
+        
+class guessParams(QDialog):
+    """ Dialog window to define guess parameters of continuum and lines fit """
+
+    def __init__(self, parent=None):
+        super().__init__()
+        self.setupUI()
+
+    def setupUI(self):
+
+        self.continuum = self.createGroup('Continuum', ['Constant', 'Slope'], default=0)
+        self.emission = self.createGroup('Emission lines', ['0', '1', '2', '3'], default=1)
+        self.absorption = self.createGroup('Absorption lines', ['0', '1', '2', '3'], default=0)
+
+        hgroup = QGroupBox()
+        hbox = QHBoxLayout()
+        self.button1 = QPushButton("OK")
+        self.button1.clicked.connect(self.OK)
+        self.button2 = QPushButton("Cancel")
+        self.button2.clicked.connect(self.Cancel)
+        hbox.addWidget(self.button1)
+        hbox.addWidget(self.button2)
+        hgroup.setLayout(hbox)
+        grid = QGridLayout()
+        grid.addWidget(self.continuum, 0, 0)
+        grid.addWidget(self.emission, 1, 0)
+        grid.addWidget(self.absorption, 2, 0)
+        grid.addWidget(hgroup, 3, 0)
+        self.setLayout(grid)
+        self.setWindowTitle('Guess parameters')
+        self.resize(400, 300)
+
+    def createGroup(self, title, items, default=0):
+        """Creates a group of radio buttons."""
+        group = QGroupBox(title)
+        group.buttons = QButtonGroup()
+        hbox = QHBoxLayout()
+        buttons = []
+        i = 0
+        for item in items:
+            buttons.append(QRadioButton(item))
+            group.buttons.addButton(buttons[-1], i)
+            hbox.addWidget(buttons[-1])
+            i += 1
+        hbox.addStretch(1)
+        # Set 1st option as default
+        buttons[default].setChecked(True)
+        group.setLayout(hbox)
+        return group
+
+    def OK(self):
+        self.done(1)
+
+    def save(self):
+        continuum = self.continuum.buttons.checkedButton().text()
+        emission = self.emission.buttons.checkedButton().text()
+        absorption = self.absorption.buttons.checkedButton().text()
+        return continuum, emission, absorption
+
+    def Cancel(self):
+        self.done(0)
+
 
 class SlicerDialog(QDialog):
     """Dialog window to define type of slicer."""
