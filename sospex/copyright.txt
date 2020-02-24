@@ -1,5 +1,5 @@
 
-Copyright 2017, 2019 -  Dario Fadda.
+Copyright 2017, 2020 -  Dario Fadda.
 
 SOSPEX stands for SOFIA Spectral Explorer.
 
