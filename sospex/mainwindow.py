@@ -4,7 +4,7 @@ import numpy as np
 from PyQt5.QtWidgets import (QApplication, QWidget, QMainWindow, QTabWidget, QTabBar,QHBoxLayout,
                              QVBoxLayout, QSizePolicy, QStatusBar, QSplitter,
                              QToolBar, QAction, QFileDialog,  QTableView, QComboBox, QAbstractItemView,
-                             QMessageBox, QInputDialog, QDialog, QLabel)
+                             QMessageBox, QInputDialog, QDialog, QLabel, QProxyStyle,QStyle)
 from PyQt5.QtGui import QIcon, QStandardItem, QStandardItemModel, QPixmap, QMovie
 from PyQt5.QtCore import Qt, QSize, QTimer, QThread, QObject, pyqtSignal
 
@@ -31,9 +31,18 @@ from sospex.interactors import (SliderInteractor, SliceInteractor, DistanceSelec
                                 InteractorManager, SegmentsSelector, SegmentsInteractor)
 from sospex.inout import exportAperture, importAperture, exportGuesses, importGuesses
 
+class MyProxyStyle(QProxyStyle):
+    pass
+    def pixelMetric(self, QStyle_PixelMetric, option=None, widget=None):
+
+        if QStyle_PixelMetric == QStyle.PM_SmallIconSize:
+            return 40
+        else:
+            return QProxyStyle.pixelMetric(self, QStyle_PixelMetric, option, widget)
+
+
 class UpdateTabs(QObject):
     newImage = pyqtSignal([cloudImage])
-
 
 class DownloadThread(QThread):
     """Thread to download images from web archives."""
@@ -358,13 +367,14 @@ class GUI (QMainWindow):
     def addSpectrum(self, b):
         ''' Add a tab with a spectrum '''
         t = QWidget()
-        t.layout = QVBoxLayout(t)
+        t.layout = QHBoxLayout(t)
         t.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored) # Avoid expansion
         self.stabs.addTab(t, b)
         sc = SpectrumCanvas(t, width=5.5, height=5.25, dpi=100)
         sc.switchSignal.connect(self.switchUnits)
         # Toolbar
         toolbar = QToolBar()
+        toolbar.setOrientation(Qt.Vertical)
         # Check if new aperture
         # Add actions to toolbar
         toolbar.addAction(self.cutAction)
@@ -384,12 +394,13 @@ class GUI (QMainWindow):
         toolbar.addAction(self.vresizeAction)
         # Navigation toolbar
         sc.toolbar = NavigationToolbar(sc, self)
-        foot = QWidget()
-        foot.layout = QHBoxLayout(foot)
-        foot.layout.addWidget(toolbar)
-        foot.layout.addWidget(sc.toolbar)
-        t.layout.addWidget(sc)
-        t.layout.addWidget(foot)
+        # Panel
+        panel = QWidget()
+        panel.layout = QVBoxLayout(panel)
+        panel.layout.addWidget(sc)
+        panel.layout.addWidget(sc.toolbar)
+        t.layout.addWidget(panel)
+        t.layout.addWidget(toolbar)
         self.stabs.resize(self.stabs.minimumSizeHint())  # Avoid expansion
         # connect image and histogram to  events
         scid1 = sc.mpl_connect('button_release_event', self.onDraw2)
@@ -448,7 +459,7 @@ class GUI (QMainWindow):
     def addImage(self, b):
         '''Add a tab with an image.'''
         t = QWidget()
-        t.layout = QVBoxLayout(t)
+        t.layout = QHBoxLayout(t)
         t.setSizePolicy(QSizePolicy.Ignored,QSizePolicy.Ignored) # Avoid expansion
         if b == 'sv':
             self.itabs.addTab(t, u'\u03c3\u1d65')  # unicode for sigma
@@ -491,6 +502,7 @@ class GUI (QMainWindow):
         ic.toolbar = NavigationToolbar(ic, self)
         # Toolbar
         toolbar = QToolBar()
+        toolbar.setOrientation(Qt.Vertical)
         toolbar.addAction(self.levelsAction)
         toolbar.addAction(self.cmapAction)
         toolbar.addAction(self.blinkAction)
@@ -507,15 +519,14 @@ class GUI (QMainWindow):
         toolbar.addAction(self.psfAction)
         toolbar.addSeparator()
         #toolbar.addWidget(self.apertureAction)        
-        # Foot
-        foot = QWidget()
-        foot.layout = QHBoxLayout(foot)
-        foot.layout.addWidget(toolbar)
-        foot.layout.addWidget(ic.toolbar)        
-        #ic.toolbar.pan('on')
-        t.layout.addWidget(ic)
-        t.layout.addWidget(ih)
-        t.layout.addWidget(foot)
+        # Panel
+        panel = QWidget()
+        panel.layout = QVBoxLayout(panel)
+        panel.layout.addWidget(ic)
+        panel.layout.addWidget(ih)
+        panel.layout.addWidget(ic.toolbar)        
+        t.layout.addWidget(toolbar)
+        t.layout.addWidget(panel)
         self.itabs.resize(self.itabs.minimumSizeHint())  # Avoid expansion
         # connect image and histogram to  events
         cidh = ih.limSignal.connect(self.onChangeIntensity)
@@ -2950,7 +2961,7 @@ class GUI (QMainWindow):
 
 
     def createAction(self,icon,text,shortcut,action):
-        act = QAction(QIcon(icon),text, self)
+        act = QAction(QIcon(icon), text, self)
         act.setShortcut(shortcut)
         act.triggered.connect(action)
         return act
@@ -2978,12 +2989,12 @@ class GUI (QMainWindow):
         self.apView.verticalHeader().setVisible(False) 
         self.apView.horizontalHeader().setVisible(False)
         self.apView.setShowGrid(False)
-        self.apView.setIconSize(QSize(24,24))
+        self.apView.setIconSize(QSize(20,20))
         apertureAction = QComboBox()
         apertureAction.setToolTip("Choose an aperture\n")
         #apertureAction.SizeAdjustPolicy(QComboBox.AdjustToContentsOnFirstShow)
         apertureAction.SizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
-        apertureAction.setIconSize(QSize(24,24))
+        apertureAction.setIconSize(QSize(20, 20))
         apertureAction.setView(self.apView)
         apertureAction.setModel(self.model)
         self.apView.setModel(self.model)
@@ -3023,7 +3034,7 @@ class GUI (QMainWindow):
         self.fitView.verticalHeader().setVisible(False) 
         self.fitView.horizontalHeader().setVisible(False)
         self.fitView.setShowGrid(False)
-        self.fitView.setIconSize(QSize(24,24))
+        self.fitView.setIconSize(QSize(20, 20))
         fitAction = QComboBox()
         fitAction.setToolTip("Fit line and continuum (under construction)\n")
         #apertureAction.SizeAdjustPolicy(QComboBox.AdjustToContentsOnFirstShow)
@@ -5991,11 +6002,14 @@ def main():
     warnings.filterwarnings('ignore')
     print('sospex version: ', __version__)
     app = QApplication(sys.argv)
+    #myStyle = MyProxyStyle('Motif')    # The proxy style should be based on an existing style,
+                                        # like 'Windows', 'Motif', 'Plastique', 'Fusion', ...
+    #app.setStyle(myStyle)
     gui = GUI()    
     # Adjust geometry to size of the screen
     screen_resolution = app.desktop().screenGeometry()
     width = screen_resolution.width()
-    gui.setGeometry(width*0.025, width*0.025, width*0.95, width*0.5)
+    gui.setGeometry(width*0.005, width*0.005, width*0.99, width*0.5)
     gui.hsplitter.setSizes ([width*0.48,width*0.48])
     # Add an icon for the application
     app.setWindowIcon(QIcon(os.path.join(gui.path0,'icons','sospex.png')))
