@@ -1030,8 +1030,12 @@ class SpectrumCanvas(MplCanvas):
         # Prepare legend                
         self.labs = [l.get_label() for l in lns]
         leg = self.axes.legend(lns, self.labs, loc='upper center', bbox_to_anchor=(0.5, -0.1),
-                               fancybox=False, shadow=True, ncol=6)
-        leg.set_draggable(True)   
+                               fancybox=False, shadow=True, ncol=6,
+                               handletextpad=1., handlelength=1.0)
+        # Labels same color as line
+        for l, text in zip( lns, leg.texts ):
+            text.set_color( l.get_color() )
+        leg.set_draggable(True)
         self.lined = dict()
         self.labed = dict()
         for legline, origline, txt in zip(leg.get_lines(), lines, leg.texts):
