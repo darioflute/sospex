@@ -394,6 +394,7 @@ class GUI (QMainWindow):
         toolbar.addAction(self.vresizeAction)
         # Navigation toolbar
         sc.toolbar = NavigationToolbar(sc, self)
+        #sc.toolbar.resize(100,10) 
         # Panel
         panel = QWidget()
         panel.layout = QVBoxLayout(panel)

@@ -781,7 +781,7 @@ class SpectrumCanvas(MplCanvas):
         from sospex.lines import define_lines
         self.Lines = define_lines()
         self.fig.set_edgecolor('none')
-        self.axes = self.fig.add_axes([0.12,0.15,.8,.78])
+        self.axes = self.fig.add_axes([0.12,0.17,.8,.70])
         self.axes.format_coord = lambda x, y: "{:8.4f} um  {:10.4f} Jy".format(x,y)        
         # Checks
         self.displayFlux = True
@@ -844,7 +844,7 @@ class SpectrumCanvas(MplCanvas):
             x0 = s.l0 * (1 + s.redshift)
             self.axes.format_coord = lambda x, y: "{:8.4f} um ({:6.0f} km/s)  {:10.4f} Jy".format(x,(x/x0 - 1)*ckms,y)
             self.axes.fmt_xdata = lambda x: "{:.4f}".format(x)        
-            self.axes.set_xlabel('Wavelength [$\\mu$m]', picker=True)
+            self.axes.set_xlabel('$\lambda$ [$\\mu$m]', picker=True)
             self.x = s.wave
             if s.watran is not None:
                 self.xa = s.watran
@@ -855,7 +855,7 @@ class SpectrumCanvas(MplCanvas):
         elif self.xunit == 'THz':
             x0 = s.l0 * (1 + s.redshift)
             self.axes.format_coord = lambda x, y: "{:6.4f} THz ({:5.0f} km/s)  {:10.4f} Jy".format(x, (ckms/x*1.e-3/x0 - 1)*ckms, y)
-            self.axes.set_xlabel('Frequency [THz]', picker=True)
+            self.axes.set_xlabel('$\\nu$ [THz]', picker=True)
             self.x = ckms/s.wave * 1.e-3
             if s.watran is not None:
                 self.xa = ckms/s.watran * 1.e-3
@@ -872,7 +872,11 @@ class SpectrumCanvas(MplCanvas):
             xlim0 = np.min(s.wave)
             xlim1 = np.max(s.wave)
             self.xlimits = (xlim0, xlim1)
-            self.ylimits = self.axes.get_ylim()
+            ylim0, ylim1 = self.axes.get_ylim()
+            ylim1 *= 1.2
+            self.ylimits = (ylim0, ylim1)
+            #self.axes.set_ylim(self.ylimits)
+            #self.ylimits = self.axes.get_ylim()
         xlim0,xlim1 = self.xlimits
         if self.xunit == 'THz':
             xlim1, xlim0 = ckms /xlim0 * 1.e-3, ckms / xlim1 * 1.e-3
@@ -884,13 +888,13 @@ class SpectrumCanvas(MplCanvas):
         self.linesLayer, = self.linesLine
         # Add redshift value on the plot
         self.zannotation = self.axes.annotate(" cz = {:.1f} km/s".format(ckms*s.redshift),
-                                              xy=(-0.15,-0.07), picker=5, xycoords='axes fraction')
+                                              xy=(-0.15,-0.12), picker=5, xycoords='axes fraction')
         # Add reference wavelength value on the plot
         self.lannotation = self.axes.annotate(" $\\lambda_0$ = {:.4f} $\\mu$m".format(s.l0),
-                                              xy=(-0.15,-0.12), picker=5, xycoords='axes fraction')
+                                              xy=(-0.15,-0.17), picker=5, xycoords='axes fraction')
         if self.auxiliary:
             self.xlannotation = self.axes.annotate(" $\\lambda_x$ = {:.4f} $\\mu$m".format(self.auxl0),
-                                              xy=(-0.15,-0.17), picker=5, xycoords='axes fraction')
+                                              xy=(-0.15,-0.22), picker=5, xycoords='axes fraction')
             
             
         # Check if vel is defined and draw velocity axis            
@@ -1029,12 +1033,24 @@ class SpectrumCanvas(MplCanvas):
 
         # Prepare legend                
         self.labs = [l.get_label() for l in lns]
-        leg = self.axes.legend(lns, self.labs, loc='upper center', bbox_to_anchor=(0.5, -0.1),
-                               fancybox=False, shadow=True, ncol=6,
-                               handletextpad=1., handlelength=1.0)
+        leg = self.axes.legend(lns, self.labs, 
+                               #loc='upper center', 
+                               bbox_to_anchor=(1.05, -0.10),
+                               #bbox_to_anchor=(-0.1, 0.8),
+                               #fancybox=False, shadow=False, 
+                               frameon=False,
+                               ncol=6,
+                               handletextpad=-1, handlelength=0.0)
+        # handlelength = 0 makes lines disappear
         # Labels same color as line
-        for l, text in zip( lns, leg.texts ):
+        self.textlines = dict()
+        self.plottedlines = dict()
+        for l, text, line in zip( lns, leg.texts, lines ):
+            self.textlines[l.get_label()] = text
+            #print('text for line ', text)
+            self.plottedlines[l.get_label()] =  line
             text.set_color( l.get_color() )
+            text.set_picker(5) # Makes the text of labels pickable
         leg.set_draggable(True)
         self.lined = dict()
         self.labed = dict()
@@ -1044,6 +1060,8 @@ class SpectrumCanvas(MplCanvas):
             self.labed[legline] = txt            
 
         # Hide lines
+        #self.visibility = visibility
+        #self.lines = lines
         for line, legline, vis in zip(lines, leg.get_lines(), visibility):
             line.set_visible(vis)
             txt = self.labed[legline]
@@ -1082,15 +1100,15 @@ class SpectrumCanvas(MplCanvas):
                 imin = np.argmin(wdiff)
                 y = s.flux[imin]
                 y1 = y
-                if (ylim1-(y+0.2*dy)) > ((y-0.2*dy)-ylim0):
-                    y2 = y+0.2*dy
+                if (ylim1-(y+0.1*dy)) > ((y-0.1*dy)-ylim0):
+                    y2 = y+0.1*dy
                 else:
-                    y2 = y-0.2*dy
+                    y2 = y-0.1*dy
                 if self.xunit == 'um':
                     xline = wline
                 elif self.xunit == 'THz':
                     xline = ckms/wline * 1.e-3
-                y2 = 0.95  # Axes coordinates
+                y2 = 0.88  # Axes coordinates
                 trans = transforms.blended_transform_factory(self.axes.transData, 
                                                              self.axes.transAxes)
                 annotation = self.axes.annotate(nline, xy=(xline,y1),  xytext=(xline, y2),
@@ -1233,8 +1251,8 @@ class SpectrumCanvas(MplCanvas):
                         umaxf = np.nanmax(uf[n:-n])
                         if umaxf > maxf:
                             maxf = umaxf
-                self.axes.set_ylim(minf, maxf*1.1)
-                self.ylimits = (minf, maxf*1.1)
+                self.ylimits = (minf, maxf*1.2)
+                self.axes.set_ylim(self.ylimits)
                 self.updateYlim(f=f)
                 self.updateGuess(f, ncell)
             if af is not None:
@@ -1463,7 +1481,7 @@ class SpectrumCanvas(MplCanvas):
             else:
                 legline.set_alpha(0.2)
                 txt.set_alpha(0.2)
-                txt.set_text('')
+                #txt.set_text('')  # makes text disappear
                 if label == 'Exp':
                     self.displayExposure = False
                     self.ax3.get_yaxis().set_tick_params(labelright='off', right='off')
@@ -1486,6 +1504,7 @@ class SpectrumCanvas(MplCanvas):
             self.fig.canvas.draw_idle()
         elif isinstance(event.artist, Text):
             text = event.artist.get_text()
+            #print('picker ', text, event.artist)
             if event.artist == self.zannotation:
                 c = 299792.458 #km/s
                 znew = self.getDouble(self.spectrum.redshift*c)
@@ -1504,7 +1523,7 @@ class SpectrumCanvas(MplCanvas):
                         print('Updated spectrum after z change ')
                         # Simulate a release to activate the update of redshift in main program
                         QTest.mouseRelease(self, Qt.LeftButton)
-            if event.artist == self.lannotation:
+            elif event.artist == self.lannotation:
                 lnew = self.getlDouble(self.spectrum.l0)
                 if lnew is not None:
                     if lnew != self.spectrum.l0:
@@ -1517,6 +1536,58 @@ class SpectrumCanvas(MplCanvas):
                         self.fig.canvas.draw_idle()
                         # Simulate a release to activate the update of ref.wavelength in main
                         QTest.mouseRelease(self, Qt.LeftButton)
+            elif text in ['F', 'F$_{u}$', 'Atm', 'E', 'Lines','F$_{x}$']:
+                if text == 'F':
+                    self.displayFlux =  not self.displayFlux
+                    state = self.displayFlux
+                    label = 'Flux'
+                elif text == 'F$_{u}$':
+                    self.displayUFlux = not self.displayUFlux
+                    state = self.displayUFlux
+                    label = 'Uflux'
+                elif text == 'Atm':
+                    self.displayAtran = not self.displayAtran
+                    try:
+                        self.atranLayer2.set_visible(self.displayAtran)
+                    except:
+                        pass
+                    state = self.displayAtran
+                    label = 'Atm'
+                elif text == 'E':
+                    self.displayExposure = not self.displayExposure
+                    state = self.displayExposure
+                    label = 'Exp'
+                elif text == 'F$_{x}$':
+                    self.displayAuxFlux = not self.displayAuxFlux
+                    label == 'F$_{x}$'
+                    state = self.displayAuxFlux
+                elif text == 'Lines':
+                    label = 'Lines'
+                    self.displayLines = not self.displayLines
+                    state = self.displayLines
+                    self.setLinesVisibility(self.displayLines)
+                # Now redisplay
+                if self.displayExposure:
+                    self.ax3.get_yaxis().set_tick_params(labelright='on',right='on',
+                                      direction='out',pad=5,colors='orange')
+                else:
+                    self.ax3.get_yaxis().set_tick_params(labelright='off',right='off')
+                if self.displayAtran:
+                    self.ax2.get_yaxis().set_tick_params(labelright='on',right='on',
+                                      direction='in', pad = -25, colors='red')
+                else:
+                    self.ax2.get_yaxis().set_tick_params(labelright='off',right='off')   
+                if self.shade == True:
+                    self.shadeRegion()
+                txt = self.textlines[text]
+                #print('display flux ', self.displayFlux)
+                if state:
+                    txt.set_alpha(1.0)
+                else:
+                    txt.set_alpha(0.2)
+                # Line visibility 
+                self.plottedlines[text].set_visible(state)
+                self.fig.canvas.draw_idle()
             else:
                 goNext = True
                 if self.auxiliary is not None:
@@ -1536,7 +1607,7 @@ class SpectrumCanvas(MplCanvas):
                                 QTest.mouseRelease(self, Qt.LeftButton)
                         goNext = False
                 if goNext:
-                    if text == 'Wavelength [$\mu$m]' or text == 'Frequency [THz]':
+                    if text == '$\lambda$ [$\mu$m]' or text == '$\\nu$ [THz]':
                         self.switchUnits()
                         self.switchSignal.emit('switched x unit')
                     elif text == 'Flux [Jy]' or text == 'Temperature [K]':
