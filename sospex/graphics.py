@@ -993,7 +993,7 @@ class SpectrumCanvas(MplCanvas):
                 pass
             self.ax3 = self.axes.twinx()
             self.exposureLine = self.ax3.step(self.x, s.exposure,
-                                              color='orange',label='Exp',zorder=7)
+                                              color='orange',label='E',zorder=7)
             self.ax3.set_ylim([np.nanmin(s.exposure)*0.1,np.nanmax(s.exposure)*1.54])
             self.exposureLayer, = self.exposureLine
             self.displayUFlux = False
@@ -1553,10 +1553,21 @@ class SpectrumCanvas(MplCanvas):
                         pass
                     state = self.displayAtran
                     label = 'Atm'
+                    if self.displayAtran:
+                        self.ax2.get_yaxis().set_tick_params(labelright='on',right='on',
+                                                  direction='in', pad = -25, colors='red')
+                    else:
+                        self.ax2.get_yaxis().set_tick_params(labelright='off',right='off')   
                 elif text == 'E':
                     self.displayExposure = not self.displayExposure
                     state = self.displayExposure
                     label = 'Exp'
+                    print('switch exposure')
+                    if self.displayExposure:
+                        self.ax3.get_yaxis().set_tick_params(labelright='on',right='on',
+                                          direction='out',pad=5,colors='orange')
+                    else:
+                        self.ax3.get_yaxis().set_tick_params(labelright='off',right='off')
                 elif text == 'F$_{x}$':
                     self.displayAuxFlux = not self.displayAuxFlux
                     label == 'F$_{x}$'
@@ -1567,25 +1578,13 @@ class SpectrumCanvas(MplCanvas):
                     state = self.displayLines
                     self.setLinesVisibility(self.displayLines)
                 # Now redisplay
-                if self.displayExposure:
-                    self.ax3.get_yaxis().set_tick_params(labelright='on',right='on',
-                                      direction='out',pad=5,colors='orange')
-                else:
-                    self.ax3.get_yaxis().set_tick_params(labelright='off',right='off')
-                if self.displayAtran:
-                    self.ax2.get_yaxis().set_tick_params(labelright='on',right='on',
-                                      direction='in', pad = -25, colors='red')
-                else:
-                    self.ax2.get_yaxis().set_tick_params(labelright='off',right='off')   
                 if self.shade == True:
                     self.shadeRegion()
                 txt = self.textlines[text]
-                #print('display flux ', self.displayFlux)
                 if state:
                     txt.set_alpha(1.0)
                 else:
                     txt.set_alpha(0.2)
-                # Line visibility 
                 self.plottedlines[text].set_visible(state)
                 self.fig.canvas.draw_idle()
             else:
