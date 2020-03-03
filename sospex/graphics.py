@@ -1453,6 +1453,7 @@ class SpectrumCanvas(MplCanvas):
             # Change the alpha on the line in the legend so we can see what lines
             # have been toggled
             if vis:
+                # This is no more used ... since we got rid of lines in the labels
                 legline.set_alpha(1.0)
                 txt.set_alpha(1.0)
                 # print('label is ',label)
@@ -1553,21 +1554,12 @@ class SpectrumCanvas(MplCanvas):
                         pass
                     state = self.displayAtran
                     label = 'Atm'
-                    if self.displayAtran:
-                        self.ax2.get_yaxis().set_tick_params(labelright='on',right='on',
-                                                  direction='in', pad = -25, colors='red')
-                    else:
-                        self.ax2.get_yaxis().set_tick_params(labelright='off',right='off')   
+                    self.ax2.get_yaxis().set_visible(self.displayAtran)
                 elif text == 'E':
                     self.displayExposure = not self.displayExposure
                     state = self.displayExposure
                     label = 'Exp'
-                    print('switch exposure')
-                    if self.displayExposure:
-                        self.ax3.get_yaxis().set_tick_params(labelright='on',right='on',
-                                          direction='out',pad=5,colors='orange')
-                    else:
-                        self.ax3.get_yaxis().set_tick_params(labelright='off',right='off')
+                    self.ax3.get_yaxis().set_visible(self.displayExposure)
                 elif text == 'F$_{x}$':
                     self.displayAuxFlux = not self.displayAuxFlux
                     label == 'F$_{x}$'
