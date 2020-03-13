@@ -58,8 +58,8 @@ class DownloadThread(QThread):
         self.band = band
         self.parent = parent
         
-    def __del__(self):
-        self.wait()
+    #def __del__(self):
+    #    self.wait()
 
     @pyqtSlot()
     def run(self):
@@ -722,11 +722,16 @@ class GUI (QMainWindow):
                         ih0 = self.ihi[itab]
                         # Consider only the part visible in the image
                         x = ima.axes.get_xlim()
-                        y = ima.axes.get_ylim()
-                        verts = [(i, j) for i, j in zip(x, y)]
-                        adverts = np.array([(ima.wcs.all_pix2world(x, y, 0)) for (x,y) in verts])                
-                        verts = [(ic0.wcs.all_world2pix(ra, dec, 0)) for (ra,dec) in adverts]
-                        x, y = zip(*verts)
+                        y = ima.axes.get_ylim()                        
+                        x = [x[0], x[1], x[1], x[0]]
+                        y = [y[0], y[0], y[1], y[1]]
+                        ra,dec = ima.wcs.all_pix2world(x, y, 0)
+                        x, y = ic0.wcs.all_world2pix(ra,dec,0)
+                        x = np.array(x)
+                        y = np.array(y)
+                        x = [np.min(x), np.max(x)]
+                        y = [np.min(y), np.max(y)]
+                        
                         center =  ((x[0]+x[1])*0.5,(y[0]+y[1])*0.5)
                         size = (np.abs((y[1]-y[0]).astype(int)),np.abs((x[1]-x[0]).astype(int)))
                         co = Cutout2D(ic0.oimage, center, size, wcs=ic0.wcs, mode='partial')
@@ -740,7 +745,7 @@ class GUI (QMainWindow):
                         ismo = co.data
                         if nx0 > 2 * nx:
                             # print('Reprojecting image for contours')
-                            from reproject import reproject_interp
+                            from reproject import reproject_interp#, reproject_adaptive
                             from astropy.io import fits
                             hdu = fits.PrimaryHDU(ima.oimage)
                             hdu.header.extend(ima.wcs.to_header())
@@ -748,6 +753,7 @@ class GUI (QMainWindow):
                             hdu0 = fits.PrimaryHDU(ismo)
                             hdu0.header.extend(co.wcs.to_header())
                             array, footprint = reproject_interp(hdu0, hdu.header)
+                            #array, footprint = reproject_adaptive(hdu0, hdu.header)
                             ima.contour = ima.axes.contour(array, levs, colors=self.colorContour[0])
                         else:
                             ima.contour = ima.axes.contour(ismo, levs, colors=self.colorContour[0],
