@@ -41,9 +41,6 @@ class MyProxyStyle(QProxyStyle):
             return QProxyStyle.pixelMetric(self, QStyle_PixelMetric, option, widget)
 
 
-#class UpdateTabs(QObject):
-#    newImage = pyqtSignal([cloudImage])
-
 class DownloadThread(QThread):
     """Thread to download images from web archives."""
     updateTabs = pyqtSignal([cloudImage])
@@ -65,22 +62,17 @@ class DownloadThread(QThread):
     def run(self):
         downloadedImage = cloudImage(self.lon,self.lat,self.xsize,self.ysize,self.band)
         if downloadedImage.data is not None:
-            #self.updateTabs.newImage.emit(downloadedImage)
             self.updateTabs.emit(downloadedImage)
             message = 'New image downloaded'
         else:
             message = 'The selected survey does not cover the displayed image'
         print(message)
         self.sendMessage.emit(message)
-        # Disconnect signal at the end of the thread
-        #self.updateTabs.disconnect()
-        #self.updateTabs.newImage.disconnect()
         
     def stop(self):
         self.terminate()
         
 class UpdateHistogram(QThread):
-    #updateHisto = updateHisto()
     sendMessage = pyqtSignal([str])
                 
     def __init__(self, image, clim, parent=None):
@@ -259,19 +251,6 @@ class GUI (QMainWindow):
                                     triggered=self.guessContinuum))
         continuum.addAction(QAction('Compute',self,shortcut='',
                                     triggered=self.ContMomLines))
-        #continuum.addAction(QAction('Fit all cube',self,shortcut='',triggered=self.fitContAll))
-        #continuum.addAction(QAction('Fit inside region',self,shortcut='',
-        #                            triggered=self.fitContRegion))
-        #continuum.addAction(QAction('Set continuum to zero ',self,shortcut='',
-        #                            triggered=self.setContinuumZero))        
-        #continuum.addAction(QAction('Set continuum to medians ',self,shortcut='',
-        #                            triggered=self.setContinuumMedian))        
-        #moments = tools.addMenu("Compute moments")
-        # moments.addAction(QAction('Define slice',self,shortcut='',triggered=self.sliceCube))
-        #moments.addAction(QAction('Compute all cube',self,shortcut='',
-         #                         triggered=self.computeMomentsAll))
-        #moments.addAction(QAction('Compute inside region',self,shortcut='',
-         #                         triggered=self.computeRegion))
         tools.addAction(QAction(u'Recompute C\u2080, v, \u03c3\u1d65',self,shortcut='',
                                 triggered=self.computeVelocities))
         apertures = tools.addMenu("Select aperture")
@@ -334,8 +313,6 @@ class GUI (QMainWindow):
                     k = k.ljust(8)
                     c = c.ljust(30)
                     h.append('{k:8s} = {v:20s} {c:30s}'.format(k=k,v=vs,c=c))    
-            #message = '\n'.join(h)
-            #QMessageBox.about(self, "Header", message)
             msgBox = ScrollMessageBox(h, None)
             msgBox.setWindowTitle("Header")
             msgBox.exec_()
@@ -359,7 +336,6 @@ class GUI (QMainWindow):
         self.itabs = QTabWidget()
         self.itabs.setTabsClosable(True)
         self.itabs.tabCloseRequested.connect(self.removeTab)
-        #self.itabs.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
         self.itabs.setSizePolicy(QSizePolicy.Minimum,QSizePolicy.Minimum)
         self.itabs.currentChanged.connect(self.onITabChange)  # things to do when changing tab
         self.tabi = []
@@ -672,19 +648,13 @@ class GUI (QMainWindow):
         i = 1
         for stab in range(len(self.stabs)):
             tabname = self.stabs.tabText(stab)
-            #print('tab name ', tabname)
             if tabname in ['All','Pix','PSF']:
                 pass
             else:
                 apname = "{:d}".format(i)
-                #print('Change ', tabname,' into ', apname)
                 self.stabs.setTabText(stab, apname)
                 self.sci[stab].name = apname
                 i += 1
-        #if len(self.stabs) > 2:
-        #    for i in range(2, len(self.stabs)):
-        #        apname = "{:d}".format(i-1)
-        #        self.stabs.setTabText(i,apname)
         
     def onITabChange(self, itab):
         ''' When tab changes check if latest update of ellipse are implemented '''
@@ -694,12 +664,8 @@ class GUI (QMainWindow):
             ima = self.ici[itab]
             if len(self.stabs) > 1:
                 # Check if vertices are activated correctly
-                # istab = self.stabs.currentIndex()
-                #nap = len(self.stabs)-1
                 n = self.nAper()
-                # n = istab-1  # aperture number
                 # Activate interactor (toogle on) and disactivate
-                #nap = len(ima.photApertures)
                 for iap, ap in enumerate(ima.photApertures):
                     #ap = ima.photApertures[iap]
                     if iap == n:
@@ -744,16 +710,13 @@ class GUI (QMainWindow):
                         #ismo = ndimage.gaussian_filter(co.data, sigma=0.1, order=0)
                         ismo = co.data
                         if nx0 > 2 * nx:
-                            # print('Reprojecting image for contours')
-                            from reproject import reproject_interp#, reproject_adaptive
+                            from reproject import reproject_interp
                             from astropy.io import fits
                             hdu = fits.PrimaryHDU(ima.oimage)
                             hdu.header.extend(ima.wcs.to_header())
-                            # print("header", hdu.header)
                             hdu0 = fits.PrimaryHDU(ismo)
                             hdu0.header.extend(co.wcs.to_header())
                             array, footprint = reproject_interp(hdu0, hdu.header)
-                            #array, footprint = reproject_adaptive(hdu0, hdu.header)
                             ima.contour = ima.axes.contour(array, levs, colors=self.colorContour[0])
                         else:
                             ima.contour = ima.axes.contour(ismo, levs, colors=self.colorContour[0],
@@ -835,7 +798,6 @@ class GUI (QMainWindow):
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
         ic0 = self.ici[0]
-        #nap = self.stabs.currentIndex()-1
         nap = self.nAper()
         aper = ic.photApertures[nap]
         aper0 = ic0.photApertures[nap]
@@ -874,7 +836,6 @@ class GUI (QMainWindow):
     def onRemoveContinuum(self, event):
         istab = self.stabs.currentIndex()
         sc = self.sci[istab]
-        # print('remove continuum event: ', event)
         if event[:-2] == 'line deleted':
             n = int(event[-2:])
             print('Disconnect line ', n)
@@ -895,7 +856,6 @@ class GUI (QMainWindow):
         """Interpret signal from apertures."""        
         itab = self.itabs.currentIndex()
         istab = self.stabs.currentIndex()
-        # n = istab-1
         n = self.nAper()
         ap = self.ici[itab].photApertures[n]
         apertype = ap.__class__.__name__
@@ -915,7 +875,6 @@ class GUI (QMainWindow):
         # Grab aperture in the flux image to compute the new fluxes
         istab = self.stabs.currentIndex()
         sc = self.sci[istab]
-        # print('modify aperture on ', sc.name)
         if sc.name == 'PSF': # Ideally it should go to the stab which correspond to the interactor
             # Check activated aperture
             ic = self.ici[itab]
@@ -931,13 +890,10 @@ class GUI (QMainWindow):
         else:
             n = self.nAper()
         if istab > 0:
-            #print('changing apertures')
-            #self.onDraw('changed aperture')
             s = self.specCube
             # I should find a way to know if the aperture has changed
             if itab != 0:
                 self.updateAperture()
-            #aperture = self.ici[0].photApertures[istab-1].aperture
             aperture = self.ici[0].photApertures[n].aperture
             path = aperture.get_path()
             transform = aperture.get_patch_transform()
@@ -1016,16 +972,6 @@ class GUI (QMainWindow):
                     yya = int (yya // 1)
                     try:
                         afluxAll = self.auxSpecCube.flux[:, yya, xxa]
-                        # Normalization
-                        # I should pass the cube and show the scale on the right
-                        #nmax = len(fluxAll) // 3
-                        #fmax = np.nanmax(fluxAll[nmax:-nmax]) # Avoid borders
-                        #fmin = np.nanmedian(fluxAll)
-                        #anmax = len(afluxAll) // 3
-                        #afmax = np.nanmax(afluxAll[anmax:-anmax]) # Avoid borders
-                        #afmin = np.nanmedian(afluxAll)
-                        #afluxAll = (afluxAll - afmin) / (afmax - afmin) * (fmax - fmin) + fmin
-                        # afluxAll *= np.nanmax(fluxAll)/np.nanmax(afluxAll)
                     except:
                         afluxAll = self.auxSpecCube.flux[:,0,0] * np.nan
                         #print('Pixel out of map')
@@ -1059,7 +1005,6 @@ class GUI (QMainWindow):
                     ufluxAll = np.nanmean(s.uflux[:, yy, xx], axis=1)
                     efluxAll = np.sqrt(np.nanmean(s.eflux[:,yy,xx]**2, axis=1))
                     expAll = np.nanmean(s.exposure[:, yy, xx], axis=1)
-                    #print('modified flux ',np.size(xx))
                 else:
                     ufluxAll = np.nansum(s.uflux[:, yy, xx], axis=1)
                     efluxAll = np.sqrt(np.nansum(s.eflux[:, yy, xx]**2, axis=1))
@@ -1067,7 +1012,6 @@ class GUI (QMainWindow):
                 sc.spectrum.uflux = ufluxAll
                 sc.spectrum.eflux = efluxAll
                 sc.spectrum.exposure = expAll
-                #print('updating aperture ...')
                 if sc.auxiliary:
                     sc.updateSpectrum(f=fluxAll, af=afluxAll, uf=ufluxAll, exp=expAll,
                                       cont=cont,cslope=cslope, moments=moments, lines=lines, 
