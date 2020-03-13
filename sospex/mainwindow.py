@@ -41,6 +41,14 @@ class MyProxyStyle(QProxyStyle):
             return QProxyStyle.pixelMetric(self, QStyle_PixelMetric, option, widget)
 
 
+class AuxImage(object):
+    def __init__(self, data, wcs, crota2, source):
+        self.data = data
+        self.wcs = wcs
+        self.source = source
+        self.crota2 = crota2
+        
+
 class DownloadThread(QThread):
     """Thread to download images from web archives."""
     updateTabs = pyqtSignal([cloudImage])
@@ -198,6 +206,7 @@ class GUI (QMainWindow):
         slice.addAction(QAction('no', self, shortcut='', triggered=self.removeSliders))
         level = view.addMenu("Image levels")
         level.addAction(QAction('100.0%',self,shortcut='', triggered=self.changeVisibility100))
+        level.addAction(QAction('99.9%',self,shortcut='', triggered=self.changeVisibility999))
         level.addAction(QAction('99.5%',self,shortcut='', triggered=self.changeVisibility995))
         level.addAction(QAction('99.0%',self,shortcut='', triggered=self.changeVisibility990))
         level.addAction(QAction('98.0%',self,shortcut='', triggered=self.changeVisibility980))
@@ -578,7 +587,7 @@ class GUI (QMainWindow):
             if reply == QMessageBox.No:
                 return
         tabname = self.stabs.tabText(stab)
-        print('Removing spectral tab no ',stab, ' name ', tabname,' canvas name ',self.sci[stab].name)
+        # print('Removing spectral tab no ',stab, ' name ', tabname,' canvas name ',self.sci[stab].name)
         itab = self.itabs.currentIndex()
         ic0 = self.ici[itab]
         if tabname in ['All','Pix']:
@@ -3261,7 +3270,7 @@ class GUI (QMainWindow):
     def activateAperture(self):
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
-        print('aperture is ',self.selAp)
+        #print('aperture is ',self.selAp)
         # Deactivate current aperture
         n = self.nAper()
         if n >= 0:
@@ -3453,9 +3462,9 @@ class GUI (QMainWindow):
             #    image[m0] = np.nan
         mask = np.isfinite(image)
         if np.sum(mask) == 0:
-            self.sb.showMessage("The selected survey does not cover the displayed image", 2000)
+            self.sb.showMessage("The selected image does not have finite values", 2000)
         else:
-            self.sb.showMessage("Image downloaded", 2000)
+            self.sb.showMessage("Image retrieved", 2000)
             band = downloadedImage.source
             self.bands.append(band)
             t,ic,ih,h,c1,c2,c3,c4 = self.addImage(band)
@@ -3558,6 +3567,7 @@ class GUI (QMainWindow):
 
     def addApertures(self, ic):
         """ Add apertures already defined on new image """
+        print('add apertures ')
         ic0 = self.ici[0]
         for aper in ic0.photApertures:
             #apertype = aper.__class__.__name__
@@ -4989,6 +4999,11 @@ class GUI (QMainWindow):
             self.emslines = 0
             # Default to one region
             self.ncells = 1
+            # Open extra images
+            if len(self.extraimages) > 0:
+                for extraimage in self.extraimages:
+                    self.newImageTab(extraimage)
+
         except:
             self.sb.showMessage("ERROR: You have to load a file first", 2000)
             return
@@ -5028,6 +5043,13 @@ class GUI (QMainWindow):
                 self.initializeSlider()
                 if self.specCube.instrument == 'GREAT':
                     self.slideCube('Exp computed')
+                # Open extra images
+                try:
+                    if len(self.extraimages) > 0:
+                        for extraimage in self.extraimages:
+                            self.newImageTab(extraimage)
+                except:
+                    pass
             except:
                 print('No spectral cube is defined')
                 pass
@@ -5054,7 +5076,15 @@ class GUI (QMainWindow):
         try:
             # Remove tabs, image and histo canvases and disconnect them
             # The removal is done in reversed order to get all the tabs
+            self.extraimages = []
             for itab in reversed(range(len(self.ici))):
+                if self.bands[itab] in ['Flux','uFlux','Exp','M0','M1','M2','M3','v','sv','L0','L1']:
+                    pass
+                else:
+                    print('tab ',self.bands[itab],' contains auxiliary image')
+                    # Here I can save the extra-images
+                    ic = self.ici[itab]
+                    self.extraimages.append(AuxImage(ic.oimage, ic.wcs, ic.crota2, self.bands[itab]))
                 self.removeTab(itab, False)
         except BaseException:
             pass
@@ -5130,9 +5160,9 @@ class GUI (QMainWindow):
             self.stabs.currentChanged.disconnect()
             self.stabs.setCurrentIndex(istab)  # Pixel tab
             self.stabs.currentChanged.connect(self.onSTabChange)
-           
+                       
     def initializeImages(self):
-        import time
+        #import time
         #t = time.process_time()
         s = self.specCube
         # Compute initial images
@@ -5140,7 +5170,7 @@ class GUI (QMainWindow):
         print('bands ',self.bands)
         for ima in self.bands:
             #print('ima is ', ima)
-            ts = time.process_time()
+            #ts = time.process_time()
             ic = self.ici[self.bands.index(ima)]
             if ima == 'Flux':
                 image = s.flux[s.n0,:,:]
@@ -5150,9 +5180,9 @@ class GUI (QMainWindow):
                 image = s.uflux[s.n0,:,:]
             elif ima == 'Exp':
                 #print('exposure exists ! ', np.shape(s.exposure))
-                print('n0 is ',s.n0)
+                #print('n0 is ',s.n0)
                 image = s.exposure[s.n0,:,:]
-                print('image is ', np.shape(image), image)
+                #print('image is ', np.shape(image), image)
             elif ima == 'M0':
                 self.computeZeroMoment()
                 image = self.M0
@@ -5162,14 +5192,14 @@ class GUI (QMainWindow):
                 aspect = s.ypixscale/s.pixscale
             else:
                 aspect = 1.
-            print('aspect in mainwindow is ',aspect)
+            # print('spect in mainwindow is ',aspect)
             # t0 = time.process_time()
             # print('Image prepared in ', t0-ts, 's')
             ic.compute_initial_figure(image=image,wcs=s.wcs,title=ima,cMap=self.colorMap,
                                       cMapDir=self.colorMapDirection,stretch=self.stretchMap,
                                       instrument = s.instrument, aspect=aspect)
-            t1 = time.process_time() 
-            print('Image displayed in ', t1-ts,' s')
+            #t1 = time.process_time() 
+            #print('Image displayed in ', t1-ts,' s')
             # print('select output format')
             if ima == 'Exp':
                 ic.image.format_cursor_data = lambda z: "{:10.3f} s".format(float(z))
@@ -5189,19 +5219,19 @@ class GUI (QMainWindow):
             except BaseException:
                 clim = [0, 0]
             ih.compute_initial_figure(image=image, xmin=clim[0], xmax=clim[1])
-            t2 = time.process_time() 
-            print('Histogram computed ', t2-t1, ' s')
+            #t2 = time.process_time() 
+            #print('Histogram computed ', t2-t1, ' s')
             # temporary ...
             x = ic.axes.get_xlim()
             y = ic.axes.get_ylim()
             ic.zoomlimits = [x,y]
-            print('zoom limits ', x, y)
+            #print('zoom limits ', x, y)
         # Re-initialize variables
         self.contours = 'off'
         self.blink = 'off'
         self.slice = 'off'
         self.trimcube = 'off'
-        print('variables off ..')
+        #print('variables off ..')
         self.continuum = None
         self.L0 = None
         self.L1 = None
@@ -5218,14 +5248,14 @@ class GUI (QMainWindow):
         self.ES = None
         self.RS = None
         self.LS = None
-        print('all cleared ..')
+        #print('all cleared ..')
         return image, clim
             
     def initializeSpectra(self):
         print('initializing spectrum ...')
         s = self.specCube
         # Compute initial pixel spectrum
-        print('spectra ', self.spectra)
+        #print('spectra ', self.spectra)
         spectrum = self.spectra[1]
         sc = self.sci[self.spectra.index(spectrum)]
         # Add pixel aperture
@@ -5237,7 +5267,7 @@ class GUI (QMainWindow):
         n = len(self.photoApertures)
         # Define pixel aperture
         data = [r0,d0,ws]
-        print('aperture at ', data)
+        #print('aperture at ', data)
         self.photoApertures.append(photoAperture(n,'pixel',data))
         for ic in self.ici:
             x0, y0 = ic.wcs.all_world2pix(r0, d0, 0)
@@ -5281,7 +5311,7 @@ class GUI (QMainWindow):
         print('initial spectrum computed')
         self.specZoomlimits = [sc.xlimits, sc.ylimits]
         sc.cid = sc.axes.callbacks.connect('xlim_changed' or 'ylim_changed', self.doZoomSpec)
-        print('define span selector')
+        #print('define span selector')
         sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
                                rectprops=dict(alpha=0.3, facecolor='LightGreen'))
         sc.span.active = False
@@ -5352,7 +5382,7 @@ class GUI (QMainWindow):
     def initializeSlider(self):
         s = self.specCube
         sc = self.sci[self.stabs.currentIndex()]
-        print('no is ', s.n0)
+        #print('no is ', s.n0)
         w0 = s.wave[s.n0]
         dw = s.wave[s.n0+1]-w0
         try:
@@ -5629,7 +5659,7 @@ class GUI (QMainWindow):
         # Remove contour lines in the histogram
         for ih in self.ihi:
             if len(ih.lev) > 0:
-                print('There are ',len(ih.lev),len(ih.levels),' contour levels')
+                #print('There are ',len(ih.lev),len(ih.levels),' contour levels')
                 ih.levSignal.disconnect()
                 ih.removeLevels()
         # Update tabContour
@@ -5651,7 +5681,7 @@ class GUI (QMainWindow):
         sc = self.sci[spectrum]
         ic = self.ici[itab]
         if ic.toolbar._active == 'ZOOM':
-            print('called from toolbar', self.bands[itab])
+            #print('called from toolbar', self.bands[itab])
             ic.toolbar.zoom()  # turn off zoom
         ymin, ymax = ic.axes.get_ylim()
         xmin, xmax = ic.axes.get_xlim()
@@ -5718,6 +5748,9 @@ class GUI (QMainWindow):
 
     def changeVisibility100(self):
         self.changeVisibility(percent=100)
+
+    def changeVisibility999(self):
+        self.changeVisibility(percent=99.9)
 
     def changeVisibility995(self):
         self.changeVisibility(percent=99.5)

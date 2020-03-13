@@ -468,7 +468,7 @@ class ImageCanvas(MplCanvas):
             self.image.remove()
         except:
             pass
-        print('aspect is ', self.aspect)
+        #print('aspect is ', self.aspect)
         self.image = self.axes.imshow(image, origin='lower',
                                       cmap=self.colorMap+self.colorMapDirection,
                                       interpolation='nearest',
