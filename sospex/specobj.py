@@ -107,7 +107,11 @@ class specCubeAstro(object):
         except:
             print('File group ID not defined')
             self.filegpid = 'Unknown'
-        self.baryshift = self.header['BARYSHFT']
+        try:
+            self.baryshift = self.header['BARYSHFT']
+        except:
+            print('No baryshift defined in the cube !')
+            self.baryshift = 0.
         self.pixscale = self.header['PIXSCAL']
         self.resolution = self.header['RESOLUN']
         self.za = (self.header['ZA_START'], self.header['ZA_END'])
@@ -119,8 +123,13 @@ class specCubeAstro(object):
             self.redshift = 0.0
         self.flux = hdl['FLUX'].data
         self.eflux = hdl['ERROR'].data
-        self.uflux = hdl['UNCORRECTED_FLUX'].data
-        self.euflux = hdl['UNCORRECTED_ERROR'].data
+        try:
+            self.uflux = hdl['UNCORRECTED_FLUX'].data
+            self.euflux = hdl['UNCORRECTED_ERROR'].data
+        except:
+            self.uflux = self.flux.copy()
+            self.euflux = self.eflux.copy()
+            print('No uncorrected flux defined !')
         self.wave = hdl['WAVELENGTH'].data
         self.n = len(self.wave)
         #self.vel = np.zeros(self.n)  # prepare array of velocities

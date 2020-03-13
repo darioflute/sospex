@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import (QApplication, QWidget, QMainWindow, QTabWidget, QTa
                              QToolBar, QAction, QFileDialog,  QTableView, QComboBox, QAbstractItemView,
                              QMessageBox, QInputDialog, QDialog, QLabel, QProxyStyle,QStyle)
 from PyQt5.QtGui import QIcon, QStandardItem, QStandardItemModel, QPixmap, QMovie
-from PyQt5.QtCore import Qt, QSize, QTimer, QThread, QObject, pyqtSignal
+from PyQt5.QtCore import Qt, QSize, QTimer, QThread, pyqtSignal, pyqtSlot
 
 import matplotlib
 matplotlib.use('Qt5Agg')
@@ -41,12 +41,12 @@ class MyProxyStyle(QProxyStyle):
             return QProxyStyle.pixelMetric(self, QStyle_PixelMetric, option, widget)
 
 
-class UpdateTabs(QObject):
-    newImage = pyqtSignal([cloudImage])
+#class UpdateTabs(QObject):
+#    newImage = pyqtSignal([cloudImage])
 
 class DownloadThread(QThread):
     """Thread to download images from web archives."""
-    updateTabs = UpdateTabs()
+    updateTabs = pyqtSignal([cloudImage])
     sendMessage = pyqtSignal([str])
 
     def __init__(self,lon,lat,xsize,ysize,band, parent = None):
@@ -57,18 +57,27 @@ class DownloadThread(QThread):
         self.ysize = ysize
         self.band = band
         self.parent = parent
+        
+    def __del__(self):
+        self.wait()
 
+    @pyqtSlot()
     def run(self):
         downloadedImage = cloudImage(self.lon,self.lat,self.xsize,self.ysize,self.band)
         if downloadedImage.data is not None:
-            self.updateTabs.newImage.emit(downloadedImage)
+            #self.updateTabs.newImage.emit(downloadedImage)
+            self.updateTabs.emit(downloadedImage)
             message = 'New image downloaded'
         else:
             message = 'The selected survey does not cover the displayed image'
         print(message)
         self.sendMessage.emit(message)
         # Disconnect signal at the end of the thread
-        self.updateTabs.newImage.disconnect()
+        #self.updateTabs.disconnect()
+        #self.updateTabs.newImage.disconnect()
+        
+    def stop(self):
+        self.terminate()
         
 class UpdateHistogram(QThread):
     #updateHisto = updateHisto()
@@ -3438,7 +3447,8 @@ class GUI (QMainWindow):
         else:
             # Here call the thread
             self.downloadThread = DownloadThread(lon, lat, xsize, ysize, band, parent=self)
-            self.downloadThread.updateTabs.newImage.connect(self.newImage)
+            #self.downloadThread.updateTabs.newImage.connect(self.newImage)
+            self.downloadThread.updateTabs.connect(self.newImage)
             self.downloadThread.sendMessage.connect(self.newImageMessage)
             self.downloadThread.start()
             # and start the spinning messagebox
@@ -3456,7 +3466,8 @@ class GUI (QMainWindow):
             self.msgbox.exec_()
        
     def newImageMessage(self, message):
-        """Message sent from download thread."""       
+        """Message sent from download thread.""" 
+        print('new message called')
         self.sb.showMessage(message, 5000)
         try:
             self.msgbox.done(1)
@@ -3465,6 +3476,8 @@ class GUI (QMainWindow):
 
     def newImage(self, downloadedImage):
         "Save and display."
+        print('Save and display called')
+        print('image ', np.shape(downloadedImage.data))
         self.saveDownloadedFits(downloadedImage)
         self.newImageTab(downloadedImage)
 

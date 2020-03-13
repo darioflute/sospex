@@ -730,6 +730,7 @@ class cloudImage(object):
         for v in values:
             if '.'+band+'.unconv.fits' in v:
                 file = 'http:'+v
+                print('File: ', file)
                 
         if file is not None:
             #idx = data.index('FITS-cutout')
@@ -788,6 +789,7 @@ class cloudImage(object):
         for v in values:
             if 'frame-'+band+'-' in v:
                 file = 'https://dr14.sdss.org/'+v
+                print('file ', file)
                 
         if file is not None:
             #idx = data.index(band+'-band FITS')
@@ -799,6 +801,7 @@ class cloudImage(object):
             hdulist=fits.open(fitsfile,memmap=False)
             header = hdulist['PRIMARY'].header
             self.data = hdulist['PRIMARY'].data
+            print('shape ', np.shape(self.data))
             hdulist.close()
             self.wcs = WCS(header)
             h1 = self.wcs.to_header()

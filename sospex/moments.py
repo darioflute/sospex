@@ -1,37 +1,9 @@
 import numpy as np
-from PyQt5.QtCore import pyqtSignal,QObject
 from PyQt5.QtWidgets import (QDialog, QPushButton, QGroupBox, QHBoxLayout, QVBoxLayout,
                              QGridLayout, QRadioButton, QButtonGroup, QLabel, QCheckBox)
-from matplotlib.lines import Line2D
-from matplotlib.artist import Artist
-import matplotlib.transforms as transforms
 import multiprocessing as mp
 from lmfit import Parameters, minimize
 
-#class Guess(object):
-#    """ class to define a spectrum """
-#    def __init__(self, pts, xpts, yc, offset):
-#
-#        self.min = pts[0]
-#        self.max = pts[3]
-#        delta = xpts[2]-xpts[1]
-#        self.mean  = xpts[1]+delta*0.5
-#        self.sigma = delta/5.
-#        self.amp  = yc
-#        self.offset = offset
-#
-#        # initialize boundaries
-#        if self.amp > 0:
-#            self.amplims = [0, self.amp*1.2]
-#        else:
-#            self.amplims = [self.amp*1.2, 0]
-#
-#        self.meanlims = [self.mean-self.sigma, self.mean+self.sigma]
-#        self.sigmalims = [0,self.sigma*1.5]
-#        if self.offset > 0:1
-#            self.offlims = [0,2*self.offset]
-#        else:
-#            self.offlims = [None,None]
 
 def biweight(data, axis=None):
     """Biweight estimation of location and scale according to
@@ -39,7 +11,6 @@ def biweight(data, axis=None):
     formula 4. Tuning constant as at page 417. Location on page 421.
     See also Beers, Flynn, & Gebhardt, 1990, AJ 100:32.
     """
-    #from astropy.stats.funcs import median_absolute_deviation
     import numpy as np
     np.seterr(divide='ignore', invalid='ignore')
     
