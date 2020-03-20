@@ -36,6 +36,10 @@ class specCubeAstro(object):
             self.obsdate = header['DATE-OBS']
         except:
             self.obsdate = header['DATE']
+        try:
+            self.observer = header['OBSERVER']
+        except:
+            self.observer = ''
         # Reading files
         if self.instrument == 'FIFI-LS':     
             self.readFIFI(hdl)
@@ -485,6 +489,10 @@ class specCube(object):
             self.obsdate = self.header['DATE-OBS'].strip()
         except:
             self.obsdate = self.header['DATE'].strip()
+        try:
+            self.observer = self.header['OBSERVER'].strip()
+        except:
+            self.observer = ''
         # Reading files
         if self.instrument == 'FIFI-LS':     
             self.readFIFI(hdl)

@@ -446,8 +446,15 @@ class GUI (QMainWindow):
         self.imagePoints = (xi, yi)
         # Compute distances and fluxes
         dist, flux = self.computePsfData()
+        if self.specCube.instrument == 'FIFI-LS':
+            channel = self.specCube.channel
+            order = self.specCube.order
+        else:
+            channel = None
+            order = None
         sc.compute_initial_psf(distance=dist, flux=flux,
                                instrument=self.specCube.instrument,
+                               channel=channel, order=order,
                                w=self.specCube.l0,
                                pix=ic.pixscale)
 
@@ -5090,7 +5097,8 @@ class GUI (QMainWindow):
             pass
         # Update window title (to include object name)
         self.setWindowTitle(self.title + " [ "+self.specCube.objname+" - "+
-                                            self.specCube.instrument+" ]")
+                                            self.specCube.instrument+
+                                            " - Obs: "+self.specCube.observer+" ]")
         # Initialize
         self.tabi = []
         self.ici  = []

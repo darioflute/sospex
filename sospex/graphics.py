@@ -1781,11 +1781,14 @@ class PsfCanvas(MplCanvas):
         self.axes.spines['top'].set_visible(False)
         self.axes.spines['right'].set_visible(False)
         
-    def compute_initial_psf(self, distance=None, flux=None,
-                            xmax=None, instrument=None, w=None, pix=None):
+    def compute_initial_psf(self, distance=None, flux=None, xmax=None, 
+                            instrument=None, channel=None, order=None,
+                            w=None, pix=None):
         self.name = 'PSF'
         self.w = w
         self.instrument = instrument
+        self.channel = channel
+        self.order = order
         self.pix = pix
         if flux is None:
             ''' initial definition when psf not yet available '''
@@ -1882,7 +1885,19 @@ class PsfCanvas(MplCanvas):
         if m1diam is None:
             self.sigma = None
         else:
-            self.sigma = 1.22*self.w*1e-6/m1diam*180/np.pi*3600 / 2.355
+            if self.instrument == 'FIFI-LS':
+                tFWHM = 1.013 * self.w *1.e-6/m1diam * 3600. * 180/np.pi
+                if self.channel == 'RED':
+                    iFWHM =  3.55*(np.sqrt(0.0156*0.0116)*self.w + np.sqrt(1.3214*1.6466)) - 4.5
+                else:
+                    if self.order == '1':
+                        iFWHM = 3.55 * (np.sqrt(0.0151*0.0179)*self.w + np.sqrt(0.8621*0.2169)) - 2.
+                    else:
+                        iFWHM = 3.55 * (np.sqrt(0.0057*0.0064)*self.w + np.sqrt(1.5699*1.0353)) - 1.0
+                FWHM = np.sqrt(tFWHM * tFWHM + iFWHM * iFWHM)
+                self.sigma = FWHM / 2.355
+            else:
+                self.sigma = 1.22*self.w*1e-6/m1diam*180/np.pi*3600 / 2.355
         
     def fitPsfGauss(self):
         '''Fit a Gaussian on data'''
