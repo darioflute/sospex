@@ -5236,6 +5236,7 @@ class GUI (QMainWindow):
             #print('zoom limits ', x, y)
         # Re-initialize variables
         self.contours = 'off'
+        self.contours2 = 'off' # for the future
         self.blink = 'off'
         self.slice = 'off'
         self.trimcube = 'off'

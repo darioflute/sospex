@@ -1035,11 +1035,12 @@ class SpectrumCanvas(MplCanvas):
         self.labs = [l.get_label() for l in lns]
         leg = self.axes.legend(lns, self.labs, 
                                #loc='upper center', 
-                               bbox_to_anchor=(1.05, -0.10),
+                               bbox_to_anchor=(0.95, -0.15),
                                #bbox_to_anchor=(-0.1, 0.8),
                                #fancybox=False, shadow=False, 
                                frameon=False,
-                               ncol=6,
+                               loc='lower right',
+                               ncol=6, borderaxespad=0.,
                                handletextpad=-1, handlelength=0.0)
         # handlelength = 0 makes lines disappear
         # Labels same color as line
@@ -1438,71 +1439,72 @@ class SpectrumCanvas(MplCanvas):
         """React to onpick events."""
         # print('picked event ', event.artist)
         if isinstance(event.artist, Line2D):
+            pass
             # print('Line ', event.artist)
-            legline = event.artist
-            label = legline.get_label()
-            origline = self.lined[legline]
-            txt = self.labed[legline]
-            vis = not origline.get_visible()
-            origline.set_visible(vis)                    
-            if label == 'Atm':
-                try:
-                    self.atranLayer2.set_visible(vis)
-                except:
-                    pass
-            # Change the alpha on the line in the legend so we can see what lines
-            # have been toggled
-            if vis:
-                # This is no more used ... since we got rid of lines in the labels
-                legline.set_alpha(1.0)
-                txt.set_alpha(1.0)
-                # print('label is ',label)
-                if label == 'E':
-                    self.displayExposure = True
-                    self.ax3.tick_params(labelright='on', right='on',
-                                         direction='in', pad=-30, colors='orange')
-                    txt.set_text('E')
-                elif label == 'Atm':
-                    self.displayAtran = True
-                    self.ax2.get_yaxis().set_tick_params(labelright='on', right='on')            
-                    self.ax2.get_yaxis().set_tick_params(which='both', direction='out',colors='red')
-                    txt.set_text('Atm')
-                elif label == 'F$_{u}$':
-                    self.displayUFlux = True
-                    txt.set_text('F$_{u}$')
-                elif label == 'F':
-                    self.displayFlux = True
-                    txt.set_text('F')
-                elif label == 'Lines':
-                    self.displayLines = True
-                    txt.set_text('Lines')
-                elif label == 'F$_{x}$':
-                    self.displayAuxFlux = True
-                    txt.set_text('F$_{x}$')                    
-            else:
-                legline.set_alpha(0.2)
-                txt.set_alpha(0.2)
-                #txt.set_text('')  # makes text disappear
-                if label == 'Exp':
-                    self.displayExposure = False
-                    self.ax3.get_yaxis().set_tick_params(labelright='off', right='off')
-                elif label == 'Atm':
-                    self.displayAtran = False
-                    self.ax2.get_yaxis().set_tick_params(labelright='off', right='off')            
-                elif label == 'Uflux':
-                    self.displayUFlux = False
-                elif label == 'Flux':
-                    self.displayFlux = False
-                elif label == 'Lines':
-                    self.displayLines = False
-                elif label == 'F$_{x}$':
-                    self.displayAuxFlux = False
-                    
-            if self.shade == True:
-                self.shadeRegion()
-            if label == 'Lines':
-                self.setLinesVisibility(self.displayLines)
-            self.fig.canvas.draw_idle()
+            #legline = event.artist
+            #label = legline.get_label()
+            #origline = self.lined[legline]
+            #txt = self.labed[legline]
+            #vis = not origline.get_visible()
+            #origline.set_visible(vis)                    
+            #if label == 'Atm':
+            #    try:
+            #        self.atranLayer2.set_visible(vis)
+            #    except:
+            #        pass
+            ## Change the alpha on the line in the legend so we can see what lines
+            ## have been toggled
+            #if vis:
+            #    # This is no more used ... since we got rid of lines in the labels
+            #    #legline.set_alpha(1.0)
+            #    txt.set_alpha(1.0)
+            #    # print('label is ',label)
+            #    if label == 'E':
+            #        self.displayExposure = True
+            #        #self.ax3.tick_params(labelright='on', right='on',
+            #        #                     direction='in', pad=-30, colors='orange')
+            #        txt.set_text('E')
+            #    elif label == 'Atm':
+            #        self.displayAtran = True
+            #        #self.ax2.get_yaxis().set_tick_params(labelright='on', right='on')            
+            #        #self.ax2.get_yaxis().set_tick_params(which='both', direction='out',colors='red')
+            #        txt.set_text('Atm')
+            #    elif label == 'F$_{u}$':
+            #        self.displayUFlux = True
+            #        txt.set_text('F$_{u}$')
+            #    elif label == 'F':
+            #        self.displayFlux = True
+            #        txt.set_text('F')
+            #    elif label == 'Lines':
+            #        self.displayLines = True
+            #        txt.set_text('Lines')
+            #    elif label == 'F$_{x}$':
+            #        self.displayAuxFlux = True
+            #        txt.set_text('F$_{x}$')                    
+            #else:
+            #    #legline.set_alpha(0.2)
+            #    txt.set_alpha(0.2)
+            #    #txt.set_text('')  # makes text disappear
+            #    if label == 'Exp':
+            #        self.displayExposure = False
+            #        self.ax3.get_yaxis().set_tick_params(labelright='off', right='off')
+            #    elif label == 'Atm':
+            #        self.displayAtran = False
+            #        self.ax2.get_yaxis().set_tick_params(labelright='off', right='off')            
+            #    elif label == 'Uflux':
+            #        self.displayUFlux = False
+            #    elif label == 'Flux':
+            #        self.displayFlux = False
+            #    elif label == 'Lines':
+            #        self.displayLines = False
+            #    elif label == 'F$_{x}$':
+            #        self.displayAuxFlux = False
+            #        
+            #if self.shade == True:
+            #    self.shadeRegion()
+            #if label == 'Lines':
+            #    self.setLinesVisibility(self.displayLines)
+            #self.fig.canvas.draw_idle()
         elif isinstance(event.artist, Text):
             text = event.artist.get_text()
             #print('picker ', text, event.artist)
