@@ -894,3 +894,145 @@ def histoImage(image, percent, xmin=None, xmax=None):
         
     return ima, nbins, xmin, xmax, hmin, hmax, imedian, imin, imax, sdev, epsilon, nh
     
+# Functions to fit lines inside an aperture
+def contResiduals(p, x, data=None, eps=None):
+    # unpack parameters:
+    #  extract .value attribute for each parameter
+    v = p.valuesdict()
+    intcp = v['intercept']
+    try:
+        slope = v['slope']
+        model = intcp + slope * x
+    except BaseException:
+        model = intcp
+    if data is None:
+        return model
+    else:
+        if eps is None:
+            return (model - data)
+        else:
+            return (model - data) / eps
+
+
+def linesResiduals(p, x, data=None, eps=None):
+    # unpack parameters:
+    # extract .value attribute for each parameter
+    v = p.valuesdict()
+    model = 0
+    n = len(v) // 3
+    for i in range(n):
+        li = 'l' + str(i) + '_'
+        lc = v[li + 'center']
+        la = v[li + 'amplitude']
+        ls = v[li + 'sigma']
+        model += la / (np.sqrt(2 * np.pi) * ls) * np.exp(-(x - lc) * (x - lc) * 0.5 / (ls * ls))
+    if data is None:
+        return model
+    else:
+        if eps is None:
+            return (model - data)
+        else:
+            return (model - data) / eps
+   
+def fitApertureContinuum(sc):
+    """Fit the continuum defined in the guess."""
+    from lmfit import Parameters, minimize
+    
+    slope = sc.guess.slope
+    intcpt = sc.guess.intcpt
+    xg, yg = zip(*sc.guess.xy)
+    xg = np.array(xg)
+    wc = sc.spectrum.wave
+    fc = sc.spectrum.flux
+    ec = sc.spectrum.eflux
+    #c = sp.gal.c
+    idx = ((wc > xg[0]) & (wc < xg[1]) ) | ((wc > xg[2]) & (wc < xg[3]))
+    x = wc[idx]
+    y = fc[idx]
+    e = ec[idx]
+    # Definition of the model
+    fit_params = Parameters()
+    fit_params.add('intercept', value=intcpt)
+    if slope != 0:
+        fit_params.add('slope', value=slope)
+    out = minimize(contResiduals, fit_params, args=(x,), kws={'data':y,'eps':e}, method='leastsq')
+    # out = minimize(contResiduals, fit_params, args=(x,), kws={'data': y, 'eps': e}, method='Nelder')
+    par = out.params#.valuesdict()
+    p1 = par['intercept']
+    ic = p1.value
+    eic = p1.stderr
+    print('error on cont intercept ', eic)
+    try:
+        p2 = par['slope']
+        s = p2.value
+        es = p2.stderr
+    except:
+        s = 0.0
+        es = 0.0
+    return ic, eic, s, es
+
+
+def fitApertureLines(sc, intercept, slope):
+    """Fit the lines defined in the guess."""
+    from lmfit import Parameters, minimize
+    # Select the input values for the fit
+    #z = sc.spectrum.redshift
+    wc = sc.spectrum.wave
+    fc = sc.spectrum.flux
+    ec = sc.spectrum.eflux
+#    cc = sp.gal.c
+    xg, yg = zip(*sc.guess.xy)
+    xg = np.array(xg)
+#    xg *= (1. + z)  # Back to observed
+    idx = (wc > xg[0]) & (wc < xg[3])
+    x = wc[idx]
+    y = fc[idx]
+    e = ec[idx]
+    print(type(x), type(y), type(e))
+    continuum = intercept + slope * x
+    y -= continuum
+    # Normalization
+    #norm = np.abs(np.median(continuum))
+    #print('Normalization factor ', norm)
+    #y /= norm
+    #e /= norm
+    # Define the model
+    fit_params = Parameters()
+    # Define lines
+    for i, line in enumerate(sc.lines):
+        li = 'l' + str(i) + '_'
+        x0 = line.x0 #* (1. + z)
+        fit_params.add(li + 'center', value=x0, min=(x0 - 10), max=(x0 + 10))
+        A = line.A #/ norm
+        print('amplitude ', A)
+        if A > 0:
+            fit_params.add(li + 'amplitude', value=A, min=0.1 * A, max=A * 10)
+        else:
+            fit_params.add(li + 'amplitude', value=A, max=0.1 * A, min=A * 10)
+        sigma = line.fwhm / 2.355 #* (1. + z)
+        fit_params.add(li + 'sigma', value=sigma, min=sigma / 2., max=sigma * 2)
+    # Minimize
+    out = minimize(linesResiduals, fit_params, args=(x,),
+                   kws={'data': y, 'eps': e}, method='leastsq')
+    #               kws={'data': y, 'eps': e}, method='Nelder')
+    # Return lines fitted parameters
+    pars = out.params#.valuesdict()
+    nlines = len(pars) // 3
+    print("Number of lines fitted: ", nlines)
+    linepars = []
+    for i in range(nlines):
+        print('pars: ', pars)
+        li = 'l' + str(i) + '_'
+        center = pars[li + 'center'].value  # Observed
+        centerErr = pars[li + 'center'].stderr  # Observed
+        sigma = pars[li + 'sigma'].value   # Observed
+        sigmaErr = pars[li + 'sigma'].stderr   # Observed
+        A =  pars[li+'amplitude'].value
+        Aerr = pars[li+'amplitude'].stderr
+        print('Aerr ', Aerr, ' sigmaErr ', sigmaErr)
+        amplitude = A  / (np.sqrt(2 * np.pi) * sigma)
+        amplitudeErr = amplitude * (Aerr / A + sigmaErr / sigma)
+        c0 = intercept + slope * center # Continuum at line center
+        linepars.append([c0, slope, center, centerErr, amplitude, amplitudeErr, sigma, sigmaErr])
+    return linepars
+

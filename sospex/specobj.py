@@ -263,7 +263,7 @@ class specCubeAstro(object):
             self.redshift = 0.
         print('Object is ',self.objname)
         self.flux = hdl['image'].data
-        #print('Flux read')
+        self.eflux = hdl['error'].data
         try:
             self.exposure = hdl['coverage'].data
             print('Coverage read')
@@ -751,7 +751,7 @@ class specCube(object):
             self.redshift = 0.
         print('Object is ',self.objname)
         self.flux = hdl[extnames.index('image')].read()
-        #print('Flux read')
+        self.eflux = hdl[extnames.index('error')].read()
         try:
             self.exposure = hdl[extnames.index('coverage')].read()
             print('Coverage read')

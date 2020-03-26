@@ -19,7 +19,8 @@ import scipy.ndimage as ndimage
 import warnings
 
 from sospex.moments import ( multiFitContinuum, multiComputeMoments, ContParams, ContFitParams, 
-                            SlicerDialog, FitCubeDialog, multiFitLines, residualsPsf, guessParams)
+                            SlicerDialog, FitCubeDialog, multiFitLines, residualsPsf, guessParams,
+                            fitApertureContinuum, fitApertureLines)
 from sospex.graphics import  (NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas,
                        cmDialog, ds9cmap, ScrollMessageBox, PsfCanvas)
 from sospex.apertures import (photoAperture, PolygonInteractor, EllipseInteractor,
@@ -1006,14 +1007,16 @@ class GUI (QMainWindow):
             elif s.instrument in ['PACS','FORCAST']:
                 if istab == 1:
                     expAll = np.nanmean(s.exposure[:, yy, xx], axis=1)
+                    efluxAll = np.sqrt(np.nanmean(s.eflux[:,yy,xx]**2, axis=1))
                 else:
                     expAll = np.nansum(s.exposure[:, yy, xx], axis=1)
+                    efluxAll = np.sqrt(np.nansum(s.eflux[:, yy, xx]**2, axis=1))
                 if sc.auxiliary:
-                    sc.updateSpectrum(f=fluxAll, af=afluxAll, exp=expAll, cont=cont, cslope=cslope,
+                    sc.updateSpectrum(f=fluxAll, ef=efluxAll, af=afluxAll, exp=expAll, cont=cont, cslope=cslope,
                                       moments=moments, lines=lines,
                                       noise=noise, ncell=ncell)
                 else:
-                    sc.updateSpectrum(f=fluxAll, exp=expAll, cont=cont, cslope=cslope,
+                    sc.updateSpectrum(f=fluxAll, ef=efluxAll, exp=expAll, cont=cont, cslope=cslope,
                                       moments=moments, lines=lines,
                                       noise=noise, ncell=ncell)
             elif s.instrument == 'FIFI-LS':
@@ -1029,11 +1032,11 @@ class GUI (QMainWindow):
                 sc.spectrum.eflux = efluxAll
                 sc.spectrum.exposure = expAll
                 if sc.auxiliary:
-                    sc.updateSpectrum(f=fluxAll, af=afluxAll, uf=ufluxAll, exp=expAll,
+                    sc.updateSpectrum(f=fluxAll, ef=efluxAll, af=afluxAll, uf=ufluxAll, exp=expAll,
                                       cont=cont,cslope=cslope, moments=moments, lines=lines, 
                                       noise=noise, ncell=ncell)
                 else:
-                    sc.updateSpectrum(f=fluxAll, uf=ufluxAll, exp=expAll,
+                    sc.updateSpectrum(f=fluxAll, ef=efluxAll, uf=ufluxAll, exp=expAll,
                                       cont=cont,cslope=cslope, moments=moments, lines=lines, 
                                       noise=noise, ncell=ncell)
 
@@ -1385,7 +1388,7 @@ class GUI (QMainWindow):
                                              'Define lines fitting parameters',
                                              'Ctrl+G',self.guessApLines)
         self.fitLinesAction = self.createAction(os.path.join(self.path0,'icons','fitline.png'),
-                                             'Define lines fitting parameters',
+                                             'Fit lines and continuum',
                                              'Ctrl+F',self.fitApLines)
         self.fitContAction =self.createAction(os.path.join(self.path0,'icons','fit.png'),
                                               'Fit continuum/moments/lines',
@@ -1630,8 +1633,16 @@ class GUI (QMainWindow):
         if sc.emslines + sc.abslines == 0:
             return
         else:
-            print('I can fit lines')
- 
+            # 1. Fit the continuum
+            ic, eic, s, es = fitApertureContinuum(sc)
+            print('Continuum intercept and slope: ', ic, s)
+            # 2. Fit the lines
+            print('Potentially, I can fit lines')
+            linepars = fitApertureLines(sc, ic, s)
+            # 3. Plot the fit
+            sc.updateSpectrum(aplines=linepars)
+            sc.fig.canvas.draw_idle()     
+    
     def removeVI(self):
         """Remove Voronoi tessellation if there."""
         try:
@@ -1850,7 +1861,6 @@ class GUI (QMainWindow):
             
     def addLines(self, n, x, type, nstart=0, x0s=None, fwhms=None, As=None):
         lines = []
-        #istab = self.spectra.index('Pix')
         istab = self.stabs.currentIndex()
         sc = self.sci[istab]
         nid = nstart
@@ -1861,14 +1871,7 @@ class GUI (QMainWindow):
                 fwhm = dx * 0.5
             else:
                 fwhm = fwhms
-            #x0 = x[1] + dx + i * 2 * dx
-            #print('x0 precomputed is ', x0)
-            # Ask for cz 
             if x0s is None:
-                #czline = self.getLineVelocity()
-                #w0 = self.specCube.l0
-                #c =  299792.458 # km/s
-                #x0 = w0 * (czline / c + self.specCube.redshift + 1)
                 x0 = x[1] + dx + i * 2 * dx
             else:
                 x0 = x0s * ( 1 + self.specCube.redshift)
@@ -1942,15 +1945,18 @@ class GUI (QMainWindow):
                 lines = False
             if self.ncells > 1:
                 options.extend(['Set to medians', 'Set to lowest 25% medians', 
-                                'Set to lowest 50% medians', 'Offset of lowest 25% uncorrected medians',
+                                'Set to lowest 50% medians', 
+                                'Offset of lowest 25% uncorrected medians',
                                 'Fit region', 'Fit all cube', 'Set to zero'])
             else:
                 options.extend(['Set to medians', 'Set to lowest 25% medians', 
-                                'Set to lowest 50% medians', 'Offset of lowest 25% uncorrected medians',
+                                'Set to lowest 50% medians',
+                                'Offset of lowest 25% uncorrected medians',
                                 'Fit all cube', 'Set to zero'])
         else:
             options = ['Set to medians', 'Set to lowest 25% medians', 
-                       'Set to lowest 50% medians','Offset of lowest 25% uncorrected medians','Set to zero']
+                       'Set to lowest 50% medians',
+                       'Offset of lowest 25% uncorrected medians','Set to zero']
             moments = False
             lines = False
         FCD = FitCubeDialog(options, moments, lines)
@@ -2103,7 +2109,6 @@ class GUI (QMainWindow):
 
         sc = self.sci[self.spectra.index('Pix')]
         n = 100 // percent 
-        #print('ncells ', self.ncells)
         if sc.guess is None:
             if uncorrected:
                 sflux = np.sort(self.specCube.uflux, axis=0)
@@ -2121,7 +2126,6 @@ class GUI (QMainWindow):
                     sflux = np.sort(self.specCube.uflux[i0:i3, :, :], axis=0)
                 else:
                     sflux = np.sort(self.specCube.flux[i0:i3, :, :], axis=0)
-                #print('n10 ', n50, 'sflux ', np.shape(sflux))
                 self.C0 = np.nanmedian(sflux[0:npc, :, :], axis=0)
             else:
                 # Otherwise, find the regions
@@ -2562,7 +2566,8 @@ class GUI (QMainWindow):
             # Create/update moment tabs
             #newbands = ['M0','M1','M2','M3','M4']
             #sbands = [self.M0, self.M1, self.M2, self.M3,self.M4]
-            newbands = ['M0', 'M3', 'M4']
+            #newbands = ['M0', 'M3', 'M4']
+            newbands = ['M0']
             if self.specCube.instrument == 'GREAT':
                 t2j = self.specCube.Tb2Jy
             else:
@@ -2768,7 +2773,8 @@ class GUI (QMainWindow):
         # Refresh the plotted images
         #bands = ['M0', 'M1', 'M2', 'M3', 'M4']
         #sbands = [self.M0, self.M1, self.M2, self.M3, self.M4]
-        bands = ['M0', 'M3', 'M4']
+        #bands = ['M0', 'M3', 'M4']
+        bands = ['M0']
         if self.specCube.instrument == 'GREAT':
             t2j = self.specCube.Tb2Jy
         else:
@@ -2933,8 +2939,6 @@ class GUI (QMainWindow):
         sc = self.sci[self.spectra.index('Pix')]
         sc.updateSpectrum(cont=self.continuum[:, j, i], cslope=self.Cs[j,i],lines=lines)
         sc.fig.canvas.draw_idle()
- 
-
 
     def createAction(self,icon,text,shortcut,action):
         act = QAction(QIcon(icon), text, self)
@@ -3086,7 +3090,9 @@ class GUI (QMainWindow):
                             watran=s.watran, uatran=s.uatran)
         elif s.instrument in ['PACS','FORCAST']:
             expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
-            spec = Spectrum(s.wave, fluxAll, exposure=expAll, instrument=s.instrument,
+            efluxAll = np.sqrt(np.nansum(s.eflux[:,yy,xx]**2, axis=1))
+            print('eflux pacs ', np.shape(efluxAll))
+            spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, exposure=expAll, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0 )
         # Inherit the x-units of pix 
         istab = self.spectra.index('Pix')
@@ -5298,7 +5304,8 @@ class GUI (QMainWindow):
                             redshift=s.redshift, l0=s.l0)
         elif s.instrument == 'PACS':
             expAll = s.exposure[:, y0, x0]
-            spec = Spectrum(s.wave, fluxAll, exposure=expAll, instrument=s.instrument,
+            efluxAll = s.eflux[:, y0, x0]
+            spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, exposure=expAll, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0)
         elif s.instrument == 'FORCAST':
             expAll = s.exposure[:, y0, x0]
@@ -5539,7 +5546,9 @@ class GUI (QMainWindow):
                             redshift=s.redshift, l0=s.l0)
         elif s.instrument in ['PACS', 'FORCAST']:
             expAll = np.nansum(s.exposure, axis=(1,2))
-            spec = Spectrum(s.wave, fluxAll, exposure=expAll,instrument=s.instrument,
+            efluxAll = np.sqrt(np.nansum(s.eflux*s.eflux, axis=(1,2)))
+            spec = Spectrum(s.wave, fluxAll,  eflux=efluxAll, 
+                            exposure=expAll,instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0 )
         elif s.instrument == 'FIFI-LS':
             ufluxAll = np.nansum(s.uflux, axis=(1,2))
@@ -5735,11 +5744,13 @@ class GUI (QMainWindow):
             sc.updateSpectrum(f=fluxAll)
         elif s.instrument in ['PACS','FORCAST']:
             expAll = np.nansum(s.exposure[:, y0:y1, x0:x1], axis=(1, 2))
-            sc.updateSpectrum(f=fluxAll,exp=expAll)            
+            efluxAll = np.sqrt(np.nansum(s.eflux[:, y0:y1, x0:x1]**2, axis=(1, 2)))
+            sc.updateSpectrum(f=fluxAll,ef=efluxAll, exp=expAll)            
         elif self.specCube.instrument == 'FIFI-LS':
             ufluxAll = np.nansum(s.uflux[:, y0:y1, x0:x1], axis=(1, 2))
             expAll = np.nansum(s.exposure[:, y0:y1, x0:x1], axis=(1, 2))
-            sc.updateSpectrum(f=fluxAll, uf=ufluxAll, exp=expAll)
+            efluxAll = np.sqrt(np.nansum(s.eflux[:, y0:y1, x0:x1]**2, axis=(1, 2)))
+            sc.updateSpectrum(f=fluxAll, ef=efluxAll, uf=ufluxAll, exp=expAll)
 
     def doZoomSpec(self,event):
         """ In the future impose the same limits to all the spectral tabs """

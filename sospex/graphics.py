@@ -810,6 +810,7 @@ class SpectrumCanvas(MplCanvas):
         self.auxiliary = None
         self.moments = False
         self.fittedlines = False
+        self.fittedaplines = False
         
     def compute_initial_spectrum(self, name=None, spectrum=None, xmin=None, xmax=None):
         if spectrum is None:
@@ -862,8 +863,12 @@ class SpectrumCanvas(MplCanvas):
             if s.instrument == 'FIFI-LS':
                 self.xr = self.x / (1 + s.baryshift)             
                 if s.watran is not None:
-                    self.xar = self.xa / (1 + s.baryshift)             
-        self.fluxLine = self.axes.step(self.x, s.flux, color='blue', label='F', zorder=10)
+                    self.xar = self.xa / (1 + s.baryshift)  
+                    
+        if s.instrument in ['FIFI-LS', 'PACS']:
+            self.efluxLine = self.axes.fill_between(self.x, s.flux - s.eflux, s.flux + s.eflux,
+                                                    color='blue', alpha=0.2)
+        self.fluxLine = self.axes.step(self.x, s.flux, color='blue', label='F', where='mid', zorder=10)
         self.fluxLayer, = self.fluxLine
         self.contLine = self.axes.plot(self.x, s.continuum, color='skyblue', label='Cont', zorder=9)
         self.contLayer, = self.contLine
@@ -875,8 +880,6 @@ class SpectrumCanvas(MplCanvas):
             ylim0, ylim1 = self.axes.get_ylim()
             ylim1 *= 1.2
             self.ylimits = (ylim0, ylim1)
-            #self.axes.set_ylim(self.ylimits)
-            #self.ylimits = self.axes.get_ylim()
         xlim0,xlim1 = self.xlimits
         if self.xunit == 'THz':
             xlim1, xlim0 = ckms /xlim0 * 1.e-3, ckms / xlim1 * 1.e-3
@@ -897,7 +900,7 @@ class SpectrumCanvas(MplCanvas):
                                               xy=(-0.15,-0.22), picker=5, xycoords='axes fraction')
             
             
-        # Check if vel is defined and draw velocity axis            
+        # Check if vel is defined and draw velocity axis  
         try:
             vlims = self.computeVelLimits()         
             try:
@@ -928,32 +931,35 @@ class SpectrumCanvas(MplCanvas):
             self.ax2.set_ylim([0.01,1.1])
             self.ax4.tick_params(labelright='off',right='off')
             self.ax4.set_yticklabels([]) # remove tick labels on the left
-            self.atranLine = self.ax2.step(self.xr, s.atran, color='red', label='Atm', zorder=12)
+            self.atranLine = self.ax2.step(self.xr, s.atran, color='red',
+                                           label='Atm', where='mid', zorder=12)
             if s.uatran is not None:
                 self.atranLine2 = self.ax2.plot(self.xar, s.uatran, color='red', zorder=14, alpha=0.2)
                 self.atranLayer2, = self.atranLine2
-            self.exposureLine = self.ax3.step(self.x, s.exposure,
+            self.exposureLine = self.ax3.step(self.x, s.exposure, where='mid',
                                               color='orange', label='E', zorder=13)
             ymax = np.nanmax(s.flux); ymin = np.nanmin(s.flux)
             yumax = np.nanmax(s.uflux); yumin = np.nanmin(s.uflux)
             if yumax > ymax: ymax=yumax
             if yumin < ymin: ymin=yumin
             self.ax3.set_ylim([0.5,np.nanmax(s.exposure)*1.54])
-            self.ufluxLine = self.ax4.step(self.xr, s.uflux, color='green',
+            self.ufluxLine = self.ax4.step(self.xr, s.uflux, color='green', where='mid',
                                            label='F$_{u}$', zorder=14)
             self.ax4.set_ylim(self.axes.get_ylim())
             self.ufluxLayer, = self.ufluxLine
             self.atranLayer, = self.atranLine
             self.exposureLayer, = self.exposureLine
             lns = self.fluxLine \
-                  +self.ufluxLine \
-                  +self.atranLine \
-                  +self.exposureLine \
-                  +self.linesLine
-            lines = [self.fluxLayer, self.ufluxLayer, self.atranLayer,
+                   +self.ufluxLine \
+                   +self.atranLine \
+                   +self.exposureLine \
+                   +self.linesLine
+            lines = [self.fluxLayer, 
+                     self.ufluxLayer, self.atranLayer,
                      self.exposureLayer, self.linesLayer]
-            visibility = [self.displayFlux, self.displayUFlux, self.displayAtran,
-                          self.displayExposure, self.displayLines]            
+            visibility = [self.displayFlux,
+                          self.displayUFlux, 
+                          self.displayAtran, self.displayExposure, self.displayLines]            
             # Add axes
             if self.displayExposure:
                 self.ax3.get_yaxis().set_tick_params(labelright='on',right='on',
@@ -992,7 +998,7 @@ class SpectrumCanvas(MplCanvas):
             except:
                 pass
             self.ax3 = self.axes.twinx()
-            self.exposureLine = self.ax3.step(self.x, s.exposure,
+            self.exposureLine = self.ax3.step(self.x, s.exposure, where='mid',
                                               color='orange',label='E',zorder=7)
             self.ax3.set_ylim([np.nanmin(s.exposure)*0.1,np.nanmax(s.exposure)*1.54])
             self.exposureLayer, = self.exposureLine
@@ -1020,7 +1026,8 @@ class SpectrumCanvas(MplCanvas):
                 #c =  299792.458 # km/s
                 v = (self.auxw/self.auxl0 - 1. - s.redshift) * ckms
                 print('auxl0 ', self.auxl0)
-                self.afluxLine = self.axu.step(v, self.aflux, color='cyan', label='F$_{x}$', zorder=12)
+                self.afluxLine = self.axu.step(v, self.aflux, color='cyan', label='F$_{x}$', 
+                                               where='mid', zorder=12)
                 # Add scale on the right ?
                 self.axu.get_yaxis().set_tick_params(labelright='on', right='on',
                                           direction='out', pad=5, colors='cyan')
@@ -1034,10 +1041,7 @@ class SpectrumCanvas(MplCanvas):
         # Prepare legend                
         self.labs = [l.get_label() for l in lns]
         leg = self.axes.legend(lns, self.labs, 
-                               #loc='upper center', 
                                bbox_to_anchor=(0.95, -0.15),
-                               #bbox_to_anchor=(-0.1, 0.8),
-                               #fancybox=False, shadow=False, 
                                frameon=False,
                                loc='lower right',
                                ncol=6, borderaxespad=0.,
@@ -1048,7 +1052,6 @@ class SpectrumCanvas(MplCanvas):
         self.plottedlines = dict()
         for l, text, line in zip( lns, leg.texts, lines ):
             self.textlines[l.get_label()] = text
-            #print('text for line ', text)
             self.plottedlines[l.get_label()] =  line
             text.set_color( l.get_color() )
             text.set_picker(5) # Makes the text of labels pickable
@@ -1061,8 +1064,6 @@ class SpectrumCanvas(MplCanvas):
             self.labed[legline] = txt            
 
         # Hide lines
-        #self.visibility = visibility
-        #self.lines = lines
         for line, legline, vis in zip(lines, leg.get_lines(), visibility):
             line.set_visible(vis)
             txt = self.labed[legline]
@@ -1070,7 +1071,6 @@ class SpectrumCanvas(MplCanvas):
                 alpha=1.0
             else:
                 alpha=0.2
-                #txt.set_text('')
             legline.set_alpha(alpha)
             txt.set_alpha(alpha)       
 
@@ -1135,7 +1135,6 @@ class SpectrumCanvas(MplCanvas):
             return (vx2, vx1)
         else:
             return (vx1, vx2)
-        #print('Velocity limits ', vx1, vx2)
 
     def updateXlim(self):
         """Update xlimits."""
@@ -1189,13 +1188,12 @@ class SpectrumCanvas(MplCanvas):
               if y2 > ylim1:
                  y2 = ylim1 - dy / 20.
               a.xy = (xl, y1)
-              # a.set_position((xl, y2))
         except:
            pass
         self.fig.canvas.draw_idle()
 
-    def updateSpectrum(self, f=None, uf=None, exp=None, cont=None, cslope=None, af=None,
-                       moments=None, noise=None, atran=None, lines=None, ncell=0):
+    def updateSpectrum(self, f=None, ef=None, uf=None, exp=None, cont=None, cslope=None, af=None,
+                       moments=None, noise=None, atran=None, lines=None, aplines=None, ncell=0):
         try:
             # Remove moments
             try:
@@ -1208,6 +1206,11 @@ class SpectrumCanvas(MplCanvas):
             try:
                 for voigt in self.voigt:
                     voigt.remove()
+            except:
+                pass
+            try:
+                for gauss in self.apfit:
+                    gauss.remove()
             except:
                 pass
             if atran is not None:
@@ -1224,14 +1227,27 @@ class SpectrumCanvas(MplCanvas):
             if exp is not None:
                 self.exposureLine[0].set_ydata(exp)
                 self.ax3.draw_artist(self.exposureLine[0])
+            if ef is not None:
+                path = self.efluxLine.get_paths()[0]
+                v = path.vertices
+                xf = self.fluxLine[0].get_xdata()
+                n1 = (np.where(xf == np.min(v[:,0])))[0][0]
+                n2 = (np.where(xf == np.max(v[:,0])))[0][0]                    
+                if self.xunit == 'THz':
+                    y1 = (f - ef)[n2:n1+1]
+                    y2 = (f + ef)[n2:n1+1]
+                else:
+                    y1 = (f - ef)[n1:n2+1]
+                    y2 = (f + ef)[n1:n2+1]
+                v[:,1] = np.concatenate(([y2[0]],y1,[y2[-1]],y2[::-1],[y2[0]]))
+                self.axes.draw_artist(self.efluxLine)
             if f is not None:
                 self.fluxLine[0].set_ydata(f)
-                # self.spectrum.flux = f
                 self.axes.draw_artist(self.fluxLine[0])
                 ylim0, ylim1 = self.axes.get_ylim()
                 n = len(f)
                 if self.spectrum.instrument == 'FIFI-LS':
-                    # Ignore regions with atm transmission < 0.5
+                    # Ignore regions with atm transmission < 0.2
                     atm = self.spectrum.atran
                     mask = (atm > 0.2) & np.isfinite(f)
                     n5 = n // 10
@@ -1270,7 +1286,6 @@ class SpectrumCanvas(MplCanvas):
                 self.moments = True
                 # Update position, size, and dispersion from moments
                 x = moments[1]
-                # print('cont ', self.spectrum.continuum)
                 y = np.nanmedian(cont) # self.spectrum.continuum
                 # FWHM of the distribution (assuming Gaussian)
                 dx = np.sqrt(2.*np.log(2))* np.sqrt(moments[2])
@@ -1281,7 +1296,6 @@ class SpectrumCanvas(MplCanvas):
                 if self.xunit == 'THz':
                     dx = (c*dx)/(x*x-dx*dx) * 1.e-6
                     x = c/x * 1.e-6
-                #verts = np.array([(x_,g_) for (x_,g_) in zip(xx,gauss)])
                 self.arrow1 = FancyArrowPatch((x,y),(x,y+A),arrowstyle=style,
                                               mutation_scale=1.0,color='skyblue')
                 self.axes.add_patch(self.arrow1)
@@ -1321,11 +1335,31 @@ class SpectrumCanvas(MplCanvas):
                     # Case of Frequency
                     if self.xunit == 'THz':
                         xx = c/xx * 1.e-6
-                    #model = y + A * np.exp(-(xx-x)**2/(2*sigma*sigma))
                     verts = list(zip(xx,model))
                     voigt = Polygon(verts, fill=False, closed=False,color='purple')
                     self.axes.add_patch(voigt)
                     self.voigt.append(voigt)
+            if aplines is not None:
+                self.aplines = aplines # Conserve the parameters of fitted lines
+                self.fittedaplines = True
+                self.apfit = []
+                for line in aplines:
+                    c0, slope, x, ex, A, eA, sigma, esigma = line
+                    print('amplitude is ', A)
+                    xx = np.arange(x-4*sigma,x+4*sigma,sigma/10.) 
+                    xx2 = (xx-x)**2
+                    y = c0 + slope * xx
+                    model = y + A * np.exp(-xx2/(2*sigma*sigma))
+                    # Case of Frequency
+                    if self.xunit == 'THz':
+                        c = 299792458. # m/s
+                        xx = c/xx * 1.e-6
+                    verts = list(zip(xx,model))
+                    gauss = Polygon(verts, fill=False, closed=False,color='purple')
+                    self.axes.add_patch(gauss)
+                    self.apfit.append(gauss)
+            else:
+                self.aplines = None
         except:
             pass
         
@@ -1440,74 +1474,8 @@ class SpectrumCanvas(MplCanvas):
         # print('picked event ', event.artist)
         if isinstance(event.artist, Line2D):
             pass
-            # print('Line ', event.artist)
-            #legline = event.artist
-            #label = legline.get_label()
-            #origline = self.lined[legline]
-            #txt = self.labed[legline]
-            #vis = not origline.get_visible()
-            #origline.set_visible(vis)                    
-            #if label == 'Atm':
-            #    try:
-            #        self.atranLayer2.set_visible(vis)
-            #    except:
-            #        pass
-            ## Change the alpha on the line in the legend so we can see what lines
-            ## have been toggled
-            #if vis:
-            #    # This is no more used ... since we got rid of lines in the labels
-            #    #legline.set_alpha(1.0)
-            #    txt.set_alpha(1.0)
-            #    # print('label is ',label)
-            #    if label == 'E':
-            #        self.displayExposure = True
-            #        #self.ax3.tick_params(labelright='on', right='on',
-            #        #                     direction='in', pad=-30, colors='orange')
-            #        txt.set_text('E')
-            #    elif label == 'Atm':
-            #        self.displayAtran = True
-            #        #self.ax2.get_yaxis().set_tick_params(labelright='on', right='on')            
-            #        #self.ax2.get_yaxis().set_tick_params(which='both', direction='out',colors='red')
-            #        txt.set_text('Atm')
-            #    elif label == 'F$_{u}$':
-            #        self.displayUFlux = True
-            #        txt.set_text('F$_{u}$')
-            #    elif label == 'F':
-            #        self.displayFlux = True
-            #        txt.set_text('F')
-            #    elif label == 'Lines':
-            #        self.displayLines = True
-            #        txt.set_text('Lines')
-            #    elif label == 'F$_{x}$':
-            #        self.displayAuxFlux = True
-            #        txt.set_text('F$_{x}$')                    
-            #else:
-            #    #legline.set_alpha(0.2)
-            #    txt.set_alpha(0.2)
-            #    #txt.set_text('')  # makes text disappear
-            #    if label == 'Exp':
-            #        self.displayExposure = False
-            #        self.ax3.get_yaxis().set_tick_params(labelright='off', right='off')
-            #    elif label == 'Atm':
-            #        self.displayAtran = False
-            #        self.ax2.get_yaxis().set_tick_params(labelright='off', right='off')            
-            #    elif label == 'Uflux':
-            #        self.displayUFlux = False
-            #    elif label == 'Flux':
-            #        self.displayFlux = False
-            #    elif label == 'Lines':
-            #        self.displayLines = False
-            #    elif label == 'F$_{x}$':
-            #        self.displayAuxFlux = False
-            #        
-            #if self.shade == True:
-            #    self.shadeRegion()
-            #if label == 'Lines':
-            #    self.setLinesVisibility(self.displayLines)
-            #self.fig.canvas.draw_idle()
         elif isinstance(event.artist, Text):
             text = event.artist.get_text()
-            #print('picker ', text, event.artist)
             if event.artist == self.zannotation:
                 c = 299792.458 #km/s
                 znew = self.getDouble(self.spectrum.redshift*c)
@@ -1544,6 +1512,8 @@ class SpectrumCanvas(MplCanvas):
                     self.displayFlux =  not self.displayFlux
                     state = self.displayFlux
                     label = 'Flux'
+                    if self.instrument in ['FIFI-LS', 'PACS']:
+                        self.efluxLine.set_visible(self.displayFlux)
                 elif text == 'F$_{u}$':
                     self.displayUFlux = not self.displayUFlux
                     state = self.displayUFlux
@@ -1659,6 +1629,15 @@ class SpectrumCanvas(MplCanvas):
                 y = np.asarray(y)
                 x = c / x * 1.e-6
                 voigt.set_xy(list(zip(x, y)))
+        if self.fittedaplines:
+            for gauss in self.apfit:
+                xy = gauss.get_xy()
+                x, y = zip(*xy)
+                x = np.asarray(x)
+                y = np.asarray(y)
+                x = c / x * 1.e-6
+                gauss.set_xy(list(zip(x, y)))
+                
         # Redrawing is maybe excessive
         self.drawSpectrum()
         self.fig.canvas.draw_idle()
@@ -1711,10 +1690,8 @@ class SpectrumCanvas(MplCanvas):
 
     def onrelease(self, event):
         if self.dragged is not None and self.pick_pos is not None:
-            #print ('old ', self.dragged.get_position(), ' new ', event.xdata)
             x1 = event.xdata
             x0 = self.pick_pos
-            #print('pick up position is ',x0)
             w0 = np.array([self.Lines[line][1]  for  line in self.Lines.keys()])
             wz = w0 * (1. + self.spectrum.redshift)
             if self.xunit == 'um':
@@ -1726,7 +1703,6 @@ class SpectrumCanvas(MplCanvas):
                 l0 = c / x0 * 1.e-6
             wdiff = abs(l0 - wz)
             self.spectrum.l0 = (w0[(wdiff == wdiff.min())])[0]
-            #print('Reference wavelength is ',self.spectrum.l0)
             self.spectrum.redshift = (1. + self.spectrum.redshift) * (1 + z) - 1.
             for annotation in self.annotations:
                 annotation.remove()
@@ -1826,12 +1802,7 @@ class PsfCanvas(MplCanvas):
                 yg = np.nanmax(self.flux) * np.exp(- 0.5 * (xg/self.sigma)**2)
                 self.unresolved, = self.axes.plot(xg, yg, color = 'red',
                                                   label='FWHM [PSF] = {:2.1f}'.format(self.sigma*2.355))
-                
-        # Fit a Gaussian on data
-        #A, fwhm = self.fitPsfGauss()
-        #xf = np.arange(0, np.nanmax(self.distance), 0.1)
-        #yf = A * np.exp(- 0.5 * (xf/(fwhm/2.355))**2)
-        
+                        
         # Fit a Moffat function on data
         Io, alpha, beta, fwhm = self.fitPsf()
         xf = np.arange(0, np.nanmax(self.distance), 0.1)
@@ -1847,17 +1818,10 @@ class PsfCanvas(MplCanvas):
         self.flux = flux
         maxflux = np.nanmax(flux)
         self.pointScatter.set_data(distance, flux)
-        #self.pointScatter.set_ydata(flux)
         # Plot new data
-        #self.axes.draw_artist(self.pointScatter)
         if self.unresolved is not None:
             yg = self.unresolved.get_ydata()
             self.unresolved.set_ydata(yg/np.nanmax(yg) * maxflux)
-            #self.axes.draw_artist(self.unresolved)
-        # Refit and redisplay
-        #A, fwhm = self.fitPsfGauss()
-        #xf = np.arange(0, np.nanmax(self.distance), 0.1)
-        #yf = A * np.exp(- 0.5 * (xf/(fwhm/2.355))**2)
         
         Io, alpha, beta, fwhm = self.fitPsf()
         xf = np.arange(0, np.nanmax(self.distance), 0.1)
@@ -1865,7 +1829,6 @@ class PsfCanvas(MplCanvas):
         self.resolved.set_data(xf, yf)
         self.resolved.set_label('FWHM [Fit] = {:2.1f}'.format(fwhm))
         self.axes.legend()  # Regenerate legend
-        #self.axes.draw_artist(self.resolved)        
         # Reset y limits if needed
         ylims = self.axes.get_ylim()
         if ylims[1] < maxflux:
@@ -1937,9 +1900,9 @@ class PsfCanvas(MplCanvas):
             sigmaguess = self.sigma
         fwhm = sigmaguess * 2.355
         beta = 4.7
-        alpha = fwhm*0.5/np.sqrt(2**(1/beta)-1)
-        alphamax = 100*0.5/np.sqrt(2**(1/beta)-1)
-        alphamin = 0.1*0.5/np.sqrt(2**(1/beta)-1)
+        alpha = fwhm * 0.5 / np.sqrt(2**(1 / beta) - 1)
+        alphamax = 100 * 0.5 / np.sqrt(2**(1 / beta) - 1)
+        alphamin = 0.1 * 0.5 / np.sqrt(2**(1 / beta) - 1)
         fit_params.add('alpha', value=alpha, min=alphamin, max=alphamax)        
         fit_params.add('beta', value=4.7, min=3, max=5)
         idx = np.isfinite(self.flux)
@@ -1955,7 +1918,6 @@ class PsfCanvas(MplCanvas):
             alpha = out.params['alpha'].value
             beta = out.params['beta'].value
             fwhm = 2*alpha*np.sqrt(2**(1/beta)-1)
-            #print('a,b,i', alpha, beta, Io)
         else:
             Io = np.nan
             alpha = np.nan

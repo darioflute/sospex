@@ -24,41 +24,108 @@ def exportAperture(self):
         nap = istab-1
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
+        istab = self.stabs.currentIndex()
+        sc = self.sci[istab]        
         aperture = ic.photApertures[nap]
         type = aperture.type
-        print('type is ', type)
-        print('rotation angle ', ic.crota2)
+        #print('type is ', type)
+        #print('rotation angle ', ic.crota2)
+        info = [
+                ('waveUnit', 'micrometers'),
+                ('amplitudeUnit', 'Jy'),
+                ('fluxUnit', 'W/m2'),
+                ('raUnit', 'deg'),
+                ('decUnit', 'deg'),
+                ('type', aperture.type)
+                ]
         if type == 'Polygon':
             verts = aperture.poly.get_xy()
-            adverts = np.array([(ic.wcs.wcs_pix2world(x,y,0)) for (x,y) in verts])                
-            data = {
-                'type': aperture.type,
-                'verts': adverts.tolist()
-            }
-        elif (type == 'Square') | (type == 'Rectangle'):
+            adverts = np.array([(ic.wcs.wcs_pix2world(x,y,0)) for (x,y) in verts])
+            info.extend([
+                    ('verts', adverts.tolist())
+                    ] )             
+#            data = {
+#                'type': aperture.type,
+#                'verts': adverts.tolist()
+#            }
+        elif type in ['Square', 'Rectangle']:
             x0,y0 = aperture.rect.get_xy()
             r0,d0 = ic.wcs.wcs_pix2world(x0,y0,0)
-            data = {
-                'type': aperture.type,
-                'width': aperture.rect.get_width()*ic.pixscale,
-                'height': aperture.rect.get_height()*ic.pixscale,
-                'angle': aperture.rect.angle - ic.crota2,
-                'ra0': r0.tolist(),
-                'dec0': d0.tolist()
-                }
-        elif  (type == 'Ellipse') | (type == 'Circle'):
+            info.extend([
+                ('width', aperture.rect.get_width()*ic.pixscale),
+                ('height', aperture.rect.get_height()*ic.pixscale),
+                ('angle', aperture.rect.angle - ic.crota2),
+                ('ra0', r0.tolist()),
+                ('dec0', d0.tolist())
+                ])
+            #data = {
+            #    'type': aperture.type,
+            #    'width': aperture.rect.get_width()*ic.pixscale,
+            #    'height': aperture.rect.get_height()*ic.pixscale,
+            #    'angle': aperture.rect.angle - ic.crota2,
+            #    'ra0': r0.tolist(),
+            #    'dec0': d0.tolist()
+            #    }
+        elif type in['Ellipse', 'Circle']:
             x0,y0 = aperture.ellipse.center
             r0,d0 = ic.wcs.wcs_pix2world(x0,y0,0)
-            data = {
-                    'type': aperture.type,
-                    'width':  aperture.ellipse.width*ic.pixscale,
-                    'height': aperture.ellipse.height*ic.pixscale,
-                    'angle':  aperture.ellipse.angle - ic.crota2,
-                    'ra0': r0.tolist(),
-                    'dec0': d0.tolist()
-                    }
+            info.extend([
+                    ('width',  aperture.ellipse.width*ic.pixscale),
+                    ('height', aperture.ellipse.height*ic.pixscale),
+                    ('angle',  aperture.ellipse.angle - ic.crota2),
+                    ('ra0', r0.tolist()),
+                    ('dec0', d0.tolist())
+                    ])
+             #data = {
+             #       'type': aperture.type,
+             #       'width':  aperture.ellipse.width*ic.pixscale,
+             #       'height': aperture.ellipse.height*ic.pixscale,
+             #       'angle':  aperture.ellipse.angle - ic.crota2,
+             #       'ra0': r0.tolist(),
+             #       'dec0': d0.tolist()
+             #       }
         else:
             data = {}
+        # Add information about line guesses and fitted parameters 
+        if type in ['Polygon', 'Square', 'Rectangle', 'Ellipse', 'Circle']:
+            # Add guess of continuum
+            if sc.guess is not None:            
+                g = sc.guess
+                xg, yg = zip(*g.xy)
+                info.extend([
+                        ('xg', xg),
+                        ('yg', yg)
+                        ])
+            # Add guesses of lines
+            if sc.lguess is not None:
+                info.extend([
+                        ('lines', sc.lguess)
+                        ])
+            print('Info: ', info)
+            # Add fitted parameters for each line
+            data = OrderedDict(info)
+            if sc.aplines is not None:
+                for i, apline in enumerate(sc.aplines):
+                    c0, slope, x, ex, A, eA, sigma, esigma = apline
+                    # Compute FWHM
+                    FWHM = 2 * np.sqrt(2*np.log(2)) * sigma
+                    # Compute intensity of line in W/m2
+                    c = 299792458. # m/s
+                    sigmaNu = 1.e6 * c / sigma
+                    flux = np.sqrt(2 * np.pi) * sigmaNu * 1.e-26 * A
+                    data[i] = {
+                            'c0': c0,
+                            'slope': slope,
+                            'center': x,
+                            'ecenter': ex,
+                            'amplitude': A,
+                            'eamplitude': eA,
+                            'sigma': sigma,
+                            'esigma': esigma,
+                            'FWHM': FWHM,
+                            'flux': flux
+                            }
+                    data.move_to_end(i, last=True)  # Move element to the end
         # Open a dialog
         fd = QFileDialog()
         fd.setLabelText(QFileDialog.Accept, "Export as")
@@ -69,12 +136,15 @@ def exportAperture(self):
             filenames= fd.selectedFiles()
             filename = filenames[0]
             if filename[-5:] != '.json':
-                filename += '.json'              
+                filename += '.json'               
             print("Exporting aperture to file: ", filename)
             with io.open(filename, mode='w') as f:
-                str_= json.dumps(data,indent=2,sort_keys=True,separators=(',',': '),
-                                 ensure_ascii=False)
-                # print(str_)
+                str_= json.dumps(data, indent=2, sort_keys=True, separators=(',', ': '),
+                                 ensure_ascii=False, cls=MyEncoder)
+            #with io.open(filename, mode='w') as f:
+            #    str_= json.dumps(data,indent=2,sort_keys=True,separators=(',',': '),
+            #                     ensure_ascii=False)
+                print(str_)
                 f.write(str_)
             self.sb.showMessage("Aperture exported in file "+filename, 3000)
     else:
