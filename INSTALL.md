@@ -14,7 +14,7 @@ conda update --all -y
 
 The packages *lmfit*, *reproject*, and *fitsio* have to be installed from other channels:
 
-conda install -c GSECARS lmfit -y
+conda install -c cprescher lmfit -y
 
 conda install -c conda-forge reproject -y
 
