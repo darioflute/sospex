@@ -966,6 +966,7 @@ def fitApertureContinuum(sc):
         p2 = par['slope']
         s = p2.value
         es = p2.stderr
+        print('error on slope ', es)
     except:
         s = 0.0
         es = 0.0
@@ -988,10 +989,8 @@ def fitApertureLines(sc, intercept, slope):
     x = wc[idx]
     y = fc[idx]
     e = ec[idx]
-    print(type(x), type(y), type(e))
     continuum = intercept + slope * x
-    y -= continuum
-    # Normalization
+    # Normalization (biggest amplitude ?)
     #norm = np.abs(np.median(continuum))
     #print('Normalization factor ', norm)
     #y /= norm
@@ -1002,18 +1001,17 @@ def fitApertureLines(sc, intercept, slope):
     for i, line in enumerate(sc.lines):
         li = 'l' + str(i) + '_'
         x0 = line.x0 #* (1. + z)
-        fit_params.add(li + 'center', value=x0, min=(x0 - 10), max=(x0 + 10))
-        A = line.A #/ norm
-        print('amplitude ', A)
+        sigma = line.fwhm / 2.355 #* (1. + z)
+        fit_params.add(li + 'center', value=x0, min=(x0 - sigma/3), max=(x0 + sigma/3))
+        A = line.A * (np.sqrt(2*np.pi) * sigma)
         if A > 0:
             fit_params.add(li + 'amplitude', value=A, min=0.1 * A, max=A * 10)
         else:
             fit_params.add(li + 'amplitude', value=A, max=0.1 * A, min=A * 10)
-        sigma = line.fwhm / 2.355 #* (1. + z)
-        fit_params.add(li + 'sigma', value=sigma, min=sigma / 2., max=sigma * 2)
+        fit_params.add(li + 'sigma', value=sigma, min=sigma / 3., max=sigma * 2)
     # Minimize
-    out = minimize(linesResiduals, fit_params, args=(x,),
-                   kws={'data': y, 'eps': e}, method='leastsq')
+    kws = {'data': y-continuum, 'eps': e}
+    out = minimize(linesResiduals, fit_params, args=(x,), kws=kws, method='leastsq')
     #               kws={'data': y, 'eps': e}, method='Nelder')
     # Return lines fitted parameters
     pars = out.params#.valuesdict()

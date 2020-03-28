@@ -380,7 +380,7 @@ class GUI (QMainWindow):
         else:
             print('Aperture special actions ')
             toolbar.addAction(self.guessLinesAction)
-            toolbar.addAction(self.fitLinesAction)            
+            toolbar.addAction(self.fitLinesAction)
         # toolbar.addAction(self.sliceAction)
         toolbar.addAction(self.slideAction)
         toolbar.addSeparator()
@@ -397,7 +397,8 @@ class GUI (QMainWindow):
         panel.layout.addWidget(sc.toolbar)
         t.layout.addWidget(panel)
         t.layout.addWidget(toolbar)
-        self.stabs.resize(self.stabs.minimumSizeHint())  # Avoid expansion
+
+        #self.stabs.resize(self.stabs.minimumSizeHint())  # Avoid expansion
         # connect image and histogram to  events
         scid1 = sc.mpl_connect('button_release_event', self.onDraw2)
         scid2 = sc.mpl_connect('scroll_event', self.onWheel2)
@@ -429,7 +430,7 @@ class GUI (QMainWindow):
         self.stabs.addTab(t, 'PSF')
         t.layout.addWidget(sc)
         t.layout.addWidget(foot)
-        self.stabs.resize(self.stabs.minimumSizeHint())  # Avoid expansion
+        #self.stabs.resize(self.stabs.minimumSizeHint())  # Avoid expansion
         self.stabi.append(t)
         self.sci.append(sc)
         self.scid1.append(None)
@@ -530,7 +531,7 @@ class GUI (QMainWindow):
         panel.layout.addWidget(ic.toolbar)        
         t.layout.addWidget(toolbar)
         t.layout.addWidget(panel)
-        self.itabs.resize(self.itabs.minimumSizeHint())  # Avoid expansion
+        #self.itabs.resize(self.itabs.minimumSizeHint())  # Avoid expansion
         # connect image and histogram to  events
         cidh = ih.limSignal.connect(self.onChangeIntensity)
         cid1 = ic.mpl_connect('button_release_event', self.onDraw)
@@ -1630,9 +1631,7 @@ class GUI (QMainWindow):
         """Fit lines after defining guesses."""
         istab = self.stabs.currentIndex()
         sc = self.sci[istab]
-        if sc.emslines + sc.abslines == 0:
-            return
-        else:
+        try:
             # 1. Fit the continuum
             ic, eic, s, es = fitApertureContinuum(sc)
             print('Continuum intercept and slope: ', ic, s)
@@ -1642,6 +1641,11 @@ class GUI (QMainWindow):
             # 3. Plot the fit
             sc.updateSpectrum(aplines=linepars)
             sc.fig.canvas.draw_idle()     
+        except BaseException:
+            message = 'First define a guess for the fit'
+            self.sb.showMessage(message, 4000)
+            print(message)
+            
     
     def removeVI(self):
         """Remove Voronoi tessellation if there."""

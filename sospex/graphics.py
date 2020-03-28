@@ -1346,16 +1346,19 @@ class SpectrumCanvas(MplCanvas):
                 for line in aplines:
                     c0, slope, x, ex, A, eA, sigma, esigma = line
                     print('amplitude is ', A)
-                    xx = np.arange(x-4*sigma,x+4*sigma,sigma/10.) 
-                    xx2 = (xx-x)**2
-                    y = c0 + slope * xx
-                    model = y + A * np.exp(-xx2/(2*sigma*sigma))
+                    print('c0, slope ', c0, slope)
+                    xx = np.arange(x-4*sigma, x+4*sigma, sigma/10.) 
+                    dx = xx - x
+                    model = c0 + slope * dx + A * np.exp(-(dx/sigma)**2/2)
+                    self.axes.plot(xx, model, color='violet')
+                    self.axes.plot([x,x], [c0,c0+A], color='violet')
+                    self.axes.plot(xx, c0 + slope * dx, color='violet')
                     # Case of Frequency
                     if self.xunit == 'THz':
                         c = 299792458. # m/s
-                        xx = c/xx * 1.e-6
-                    verts = list(zip(xx,model))
-                    gauss = Polygon(verts, fill=False, closed=False,color='purple')
+                        xx = c / xx * 1.e-6
+                    verts = list(zip(xx, model))
+                    gauss = Polygon(verts, fill=False, closed=False,color='violet')
                     self.axes.add_patch(gauss)
                     self.apfit.append(gauss)
             else:
