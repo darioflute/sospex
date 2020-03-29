@@ -950,16 +950,19 @@ class SegmentsInteractor(QObject):
             self.line1.remove()
             self.xl1a.remove()
             self.xl1b.remove()
+            print('line 1 removed')
         except BaseException:
             print('no line 1')
         try:
             self.line2.remove()
             self.xl2a.remove()
             self.xl2b.remove()
+            print('line 2 removed')
         except BaseException:
             print('no line 2')
         try:
             self.line.remove()
+            print('markers removed')
         except BaseException:
             print('no markers')
         self.canvas.draw_idle()

@@ -378,7 +378,7 @@ class GUI (QMainWindow):
         if b in ['All', 'Pix']:        
             toolbar.addAction(self.guessAction)
         else:
-            print('Aperture special actions ')
+            #print('Aperture special actions ')
             toolbar.addAction(self.guessLinesAction)
             toolbar.addAction(self.fitLinesAction)
         # toolbar.addAction(self.sliceAction)
@@ -868,7 +868,17 @@ class GUI (QMainWindow):
             if sc.lines is not None:
                 for line in sc.lines:
                     line.disconnect()
-        sc.fig.canvas.draw_idle()
+            try:
+                sc.interactorManager.disconnect()
+                sc.fig.canvas.draw_idle()
+            except:
+                pass
+            # Remove fits
+            try:
+                for artist in sc.apfit:
+                    artist.remove()
+            except:
+                pass
 
     def onRemoveAperture(self,event):
         """Interpret signal from apertures."""        
@@ -1588,6 +1598,7 @@ class GUI (QMainWindow):
                             2000)        
         # Delete previous guess and select new one
         if sc.guess is not None:
+            # Remove guesses
             self.onRemoveContinuum('segments deleted')
         # I don't know how to disactivate the draggable feature, so I hide the annotations
         # when selecting the continuum
@@ -1607,7 +1618,7 @@ class GUI (QMainWindow):
 
     def guessApLines(self):
         """Create a guess of continuum and lines for an aperture."""
-        # We should be able to mask part of spectrum (like in showspectra ... )
+        # We should be able to mask part of spectrum in future
         self.GP = guessParams()
         if self.GP.exec_() == QDialog.Accepted:
             cont, em, ab = self.GP.save()
@@ -1616,7 +1627,7 @@ class GUI (QMainWindow):
             else:
                 self.zeroDeg = False
             try:
-                self.onRemoveContinuum('all')
+                self.onRemoveContinuum('segments deleted')
             except BaseException:
                 pass
             istab = self.stabs.currentIndex()
@@ -1634,9 +1645,7 @@ class GUI (QMainWindow):
         try:
             # 1. Fit the continuum
             ic, eic, s, es = fitApertureContinuum(sc)
-            print('Continuum intercept and slope: ', ic, s)
             # 2. Fit the lines
-            print('Potentially, I can fit lines')
             linepars = fitApertureLines(sc, ic, s)
             # 3. Plot the fit
             sc.updateSpectrum(aplines=linepars)
@@ -1855,7 +1864,7 @@ class GUI (QMainWindow):
             sc.displayLines = True
             sc.setLinesVisibility(sc.displayLines)
             sc.fig.canvas.draw_idle()
-            
+        
     def getLineVelocity(self):
         czline, okPressed = QInputDialog.getDouble(self, "Velocity of line ", "cz", 0, -10000., 50000., 2)
         if okPressed:
@@ -1872,7 +1881,7 @@ class GUI (QMainWindow):
         for i in range(n):
             if fwhms is None:
                 dx = (x[2] - x[1]) / (2 * n)
-                fwhm = dx * 0.5
+                fwhm = dx * 0.8  # fraction of distance between edges of the continuum
             else:
                 fwhm = fwhms
             if x0s is None:

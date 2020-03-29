@@ -28,27 +28,19 @@ def exportAperture(self):
         sc = self.sci[istab]        
         aperture = ic.photApertures[nap]
         type = aperture.type
-        #print('type is ', type)
-        #print('rotation angle ', ic.crota2)
         info = [
                 ('waveUnit', 'micrometers'),
                 ('amplitudeUnit', 'Jy'),
                 ('fluxUnit', 'W/m2'),
                 ('raUnit', 'deg'),
                 ('decUnit', 'deg'),
-                ('type', aperture.type)
+                ('type', aperture.type),
+                ('redshift', self.specCube.redshift)
                 ]
         if type == 'Polygon':
             verts = aperture.poly.get_xy()
             adverts = np.array([(ic.wcs.wcs_pix2world(x,y,0)) for (x,y) in verts])
-            info.extend([
-                    ('verts', adverts.tolist())
-                    ] )             
-#            data = {
-#                'type': aperture.type,
-#                'verts': adverts.tolist()
-#            }
-        elif type in ['Square', 'Rectangle']:
+            info.append(('verts', adverts.tolist()))             
             x0,y0 = aperture.rect.get_xy()
             r0,d0 = ic.wcs.wcs_pix2world(x0,y0,0)
             info.extend([
@@ -58,14 +50,6 @@ def exportAperture(self):
                 ('ra0', r0.tolist()),
                 ('dec0', d0.tolist())
                 ])
-            #data = {
-            #    'type': aperture.type,
-            #    'width': aperture.rect.get_width()*ic.pixscale,
-            #    'height': aperture.rect.get_height()*ic.pixscale,
-            #    'angle': aperture.rect.angle - ic.crota2,
-            #    'ra0': r0.tolist(),
-            #    'dec0': d0.tolist()
-            #    }
         elif type in['Ellipse', 'Circle']:
             x0,y0 = aperture.ellipse.center
             r0,d0 = ic.wcs.wcs_pix2world(x0,y0,0)
@@ -76,14 +60,6 @@ def exportAperture(self):
                     ('ra0', r0.tolist()),
                     ('dec0', d0.tolist())
                     ])
-             #data = {
-             #       'type': aperture.type,
-             #       'width':  aperture.ellipse.width*ic.pixscale,
-             #       'height': aperture.ellipse.height*ic.pixscale,
-             #       'angle':  aperture.ellipse.angle - ic.crota2,
-             #       'ra0': r0.tolist(),
-             #       'dec0': d0.tolist()
-             #       }
         else:
             data = {}
         # Add information about line guesses and fitted parameters 
@@ -92,40 +68,49 @@ def exportAperture(self):
             if sc.guess is not None:            
                 g = sc.guess
                 xg, yg = zip(*g.xy)
-                info.extend([
-                        ('xg', xg),
-                        ('yg', yg)
-                        ])
+                info.append(('xg', xg))
+                info.append(('yg', yg))
             # Add guesses of lines
             if sc.lguess is not None:
-                info.extend([
-                        ('lines', sc.lguess)
-                        ])
-            print('Info: ', info)
-            # Add fitted parameters for each line
-            data = OrderedDict(info)
-            if sc.aplines is not None:
+                lineguesses = []
+                for line in sc.lines:
+                    lineguesses.append([line.x0, line.fwhm, line.A])
+                info.append(('lines', lineguesses))
+            try:
+                nlines = len(sc.aplines)
+                info.append(('nlines',nlines))
+                data = OrderedDict(info)
+                # Add fitted parameters for each line
                 for i, apline in enumerate(sc.aplines):
                     c0, slope, x, ex, A, eA, sigma, esigma = apline
                     # Compute FWHM
                     FWHM = 2 * np.sqrt(2*np.log(2)) * sigma
                     # Compute intensity of line in W/m2
                     c = 299792458. # m/s
+                    FWHMv = c * FWHM / x / 1000.
+                    eFWHMv = FWHMv / sigma * esigma
                     sigmaNu = 1.e6 * c / sigma
                     flux = np.sqrt(2 * np.pi) * sigmaNu * 1.e-26 * A
-                    data[i] = {
-                            'c0': c0,
-                            'slope': slope,
-                            'center': x,
-                            'ecenter': ex,
-                            'amplitude': A,
-                            'eamplitude': eA,
-                            'sigma': sigma,
-                            'esigma': esigma,
-                            'FWHM': FWHM,
-                            'flux': flux
+                    eflux = flux * (eA / A + esigma/sigma)
+                    line = 'line '+str(i+1)
+                    data[line] = {
+                            'continuum [Jy]': c0,
+                            'slope of continuum': slope,
+                            'center [um]': x,
+                            'errCenter [um]': ex,
+                            'amplitude [Jy]': A,
+                            'errAmplitude [Jy]': eA,
+                            'sigma [um]': sigma,
+                            'errSigma [um]': esigma,
+                            'FWHM [um]': FWHM,
+                            'FWHM [km/s]': FWHMv,
+                            'errFWHM [km/s]': eFWHMv,
+                            'Flux [W/m2]': flux,
+                            'errFlux [W/m2]': eflux
                             }
-                    data.move_to_end(i, last=True)  # Move element to the end
+            except:
+                info.append(('nlines', 0))
+                data = OrderedDict(info)
         # Open a dialog
         fd = QFileDialog()
         fd.setLabelText(QFileDialog.Accept, "Export as")
@@ -139,12 +124,9 @@ def exportAperture(self):
                 filename += '.json'               
             print("Exporting aperture to file: ", filename)
             with io.open(filename, mode='w') as f:
-                str_= json.dumps(data, indent=2, sort_keys=True, separators=(',', ': '),
+                str_= json.dumps(data, indent=2, separators=(',', ': '),
                                  ensure_ascii=False, cls=MyEncoder)
-            #with io.open(filename, mode='w') as f:
-            #    str_= json.dumps(data,indent=2,sort_keys=True,separators=(',',': '),
-            #                     ensure_ascii=False)
-                print(str_)
+                #print(str_)
                 f.write(str_)
             self.sb.showMessage("Aperture exported in file "+filename, 3000)
     else:
@@ -153,6 +135,7 @@ def exportAperture(self):
 
 def importAperture(self):
     """Import an aperture defined in a Json file."""
+    from sospex.interactors import SegmentsInteractor, InteractorManager
     # Open a dialog
     fd = QFileDialog()
     fd.setLabelText(QFileDialog.Accept, "Import")
@@ -164,24 +147,74 @@ def importAperture(self):
         filenames= fd.selectedFiles()
         print("Loading aperture from file: ", filenames[0])
         with open(filenames[0],'r') as f:
-            data = json.load(f)#, object_pairs_hook=OrderedDict)
+            data = json.load(f)
         # Decoding info and opening new tab
         try:
             type = data['type']
             if type == 'Polygon':
                 adverts = data['verts']
-                #verts = np.array([(ic.wcs.all_world2pix(r,d,1)) for (r,d) in adverts])       
                 self.drawNewPolygonAperture(adverts)
             else:
                 itab = self.itabs.currentIndex()
                 ic = self.ici[itab]
-                print('rotation angle ', ic.crota2)
                 r0 = data['ra0']
                 d0 = data['dec0']
                 w = data['width']
                 h = data['height']
                 angle = data['angle'] + ic.crota2
                 self.drawNewAperture(type,r0,d0,w,h,angle)
+            # Import lines
+            if data['nlines'] > 0:
+                istab = self.stabs.currentIndex()
+                sc = self.sci[istab]
+                sc.spectrum.redshift = data['redshift']
+                # Draw segments
+                x = data['xg']
+                y = data['yg']
+                lines = data['lines']
+                sc.xguess = [x]
+                # Add lines
+                if len(lines) > 0:
+                    sc.lguess = lines
+                # Plot continuum guess
+                if y[3] != y[0]:
+                    self.zeroDeg = False
+                else:
+                    self.zeroDeg = True
+                xy = [(i,j) for (i,j) in zip(x,y)]
+                sc.guess = SegmentsInteractor(sc.axes, xy, self.zeroDeg)
+                sc.guess.modSignal.connect(self.onModifiedGuess)
+                sc.guess.mySignal.connect(self.onRemoveContinuum)
+                interactors = [sc.guess]
+                print('Plotted segment interactor')
+                # Plot lines
+                #if len(sc.lguess) > 0:
+                if sc.lguess is not None:
+                    sc.emslines = 0
+                    sc.abslines = 0
+                    for line in lines:
+                        if line[2] >= 0:
+                            sc.emslines += 1
+                        else:
+                            sc.abslines += 1
+                    if sc.emslines > 0:
+                        center = line[0] / (1 + self.specCube.redshift)
+                        sc.lines = self.addLines(sc.emslines, x, 'emission', 
+                                                 x0s=center, fwhms=line[1], As=line[2])
+                    else:
+                        sc.lines = []
+                    if sc.abslines > 0:
+                        center = line[0] / (1 + self.specCube.redshift)
+                        sc.lines.append(self.addLines(sc.abslines, x, 'absorption',
+                                                      nstart=sc.emslines, 
+                                                      x0s=center, fwhms=line[1], As=line[2]))
+                else:
+                    sc.lines = []
+                # Plot guesses
+                interactors.extend(sc.lines)
+                sc.interactorManager = InteractorManager(sc.axes, interactors)
+                # Do the fit
+                self.fitApLines()
         except:
             self.sb.showMessage("The file is not a valide aperture file.", 3000)
     else:
@@ -338,15 +371,17 @@ def importGuesses(self):
                 else:
                     sc.abslines += 1
             if sc.emslines > 0:
-                sc.lines = self.addLines(sc.emslines, x, 'emission', x0s=line[0], fwhms=line[1], As=line[2])
+                sc.lines = self.addLines(sc.emslines, x, 'emission', x0s=line[0],
+                                         fwhms=line[1], As=line[2])
             else:
                 sc.lines = []
             if sc.abslines > 0:
                 sc.lines.append(self.addLines(sc.abslines, x, 'absorption', nstart=sc.emslines, 
                                               x0s=line[0], fwhms=line[1], As=line[2]))
-            # Then plot guess and activate tessellation
+        # Then plot guess and activate tessellation
         interactors.extend(sc.lines)
         sc.interactorManager = InteractorManager(sc.axes, interactors)
+        #sc.fig.canvas.draw_idle()
         # Create Voronoi sites, KDTree, plot Voronoi ridges on image
         self.removeVI()
         if self.ncells > 1:
