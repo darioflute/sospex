@@ -79,35 +79,68 @@ def exportAperture(self):
             try:
                 nlines = len(sc.aplines)
                 info.append(('nlines',nlines))
+                info.append(('model', sc.function))
                 data = OrderedDict(info)
                 # Add fitted parameters for each line
                 for i, apline in enumerate(sc.aplines):
-                    c0, slope, x, ex, A, eA, sigma, esigma = apline
-                    # Compute FWHM
-                    FWHM = 2 * np.sqrt(2*np.log(2)) * sigma
-                    # Compute intensity of line in W/m2
-                    c = 299792458. # m/s
-                    FWHMv = c * FWHM / x / 1000.
-                    eFWHMv = FWHMv / sigma * esigma
-                    sigmaNu = 1.e6 * c / sigma
-                    flux = np.sqrt(2 * np.pi) * sigmaNu * 1.e-26 * A
-                    eflux = flux * (eA / A + esigma/sigma)
-                    line = 'line '+str(i+1)
-                    data[line] = {
-                            'continuum [Jy]': c0,
-                            'slope of continuum': slope,
-                            'center [um]': x,
-                            'errCenter [um]': ex,
-                            'amplitude [Jy]': A,
-                            'errAmplitude [Jy]': eA,
-                            'sigma [um]': sigma,
-                            'errSigma [um]': esigma,
-                            'FWHM [um]': FWHM,
-                            'FWHM [km/s]': FWHMv,
-                            'errFWHM [km/s]': eFWHMv,
-                            'Flux [W/m2]': flux,
-                            'errFlux [W/m2]': eflux
-                            }
+                    if sc.function == 'Gaussian':
+                        c0, slope, x, ex, A, eA, sigma, esigma = apline
+                        # Compute FWHM
+                        FWHM = 2 * np.sqrt(2*np.log(2)) * sigma
+                        c = 299792458. # m/s
+                        FWHMv = c * FWHM / x / 1000.
+                        eFWHMv = FWHMv / sigma * esigma
+                        # Compute intensity of line in W/m2
+                        #sigmaNu = 1.e6 * c / sigma 
+                        sigmaNu = c / (x * 1.e-6) * (sigma / x)
+                        flux = np.sqrt(2 * np.pi) * sigmaNu * 1.e-26 * A
+                        eflux = flux * (eA / A + esigma/sigma)
+                        line = 'line '+str(i+1)
+                        data[line] = {
+                                'continuum [Jy]': c0,
+                                'slope of continuum': slope,
+                                'center [um]': x,
+                                'errCenter [um]': ex,
+                                'amplitude [Jy]': A,
+                                'errAmplitude [Jy]': eA,
+                                'sigma [um]': sigma,
+                                'errSigma [um]': esigma,
+                                'FWHM [um]': FWHM,
+                                'FWHM [km/s]': FWHMv,
+                                'errFWHM [km/s]': eFWHMv,
+                                'Flux [W/m2]': flux,
+                                'errFlux [W/m2]': eflux
+                                }
+                    else:
+                        c0, slope, x, ex, A, eA, sigma, esigma, alpha = apline
+                        # Compute FWHM
+                        FWHM = 2 * sigma
+                        c = 299792458. # m/s
+                        FWHMv = c * FWHM / x / 1000.
+                        eFWHMv = FWHMv / sigma * esigma
+                        # Compute intensity of line in W/m2
+                        #sigmaNu = 1.e6 * c / sigma 
+                        sigmaNu = c / (x * 1.e-6) * (sigma / x)
+                        factor = (1 - alpha)/np.sqrt(np.pi/np.log(2)) + alpha / np.pi
+                        flux = sigmaNu * 1.e-26 * A / factor
+                        eflux = flux * (eA / A + esigma/sigma)
+                        line = 'line '+str(i+1)
+                        data[line] = {
+                                'continuum [Jy]': c0,
+                                'slope of continuum': slope,
+                                'center [um]': x,
+                                'errCenter [um]': ex,
+                                'amplitude [Jy]': A,
+                                'errAmplitude [Jy]': eA,
+                                'sigma [um]': sigma,
+                                'errSigma [um]': esigma,
+                                'alpha': alpha,
+                                'FWHM [um]': FWHM,
+                                'FWHM [km/s]': FWHMv,
+                                'errFWHM [km/s]': eFWHMv,
+                                'Flux [W/m2]': flux,
+                                'errFlux [W/m2]': eflux
+                                }                       
             except:
                 info.append(('nlines', 0))
                 data = OrderedDict(info)
@@ -167,6 +200,7 @@ def importAperture(self):
             if data['nlines'] > 0:
                 istab = self.stabs.currentIndex()
                 sc = self.sci[istab]
+                sc.model = data['model']
                 sc.spectrum.redshift = data['redshift']
                 # Draw segments
                 x = data['xg']

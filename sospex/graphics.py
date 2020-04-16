@@ -866,11 +866,15 @@ class SpectrumCanvas(MplCanvas):
                     self.xar = self.xa / (1 + s.baryshift)  
                     
         if s.instrument in ['FIFI-LS', 'PACS']:
-            self.efluxLine = self.axes.fill_between(self.x, s.flux - s.eflux, s.flux + s.eflux,
+            hiflux = s.flux + s.eflux
+            loflux = s.flux - s.eflux
+            self.efluxLine = self.axes.fill_between(self.x, loflux, hiflux,
                                                     color='blue', alpha=0.2)
-        self.fluxLine = self.axes.step(self.x, s.flux, color='blue', label='F', where='mid', zorder=10)
+        self.fluxLine = self.axes.step(self.x, s.flux, color='blue', label='F', 
+                                       where='mid', zorder=10)
         self.fluxLayer, = self.fluxLine
-        self.contLine = self.axes.plot(self.x, s.continuum, color='skyblue', label='Cont', zorder=9)
+        self.contLine = self.axes.plot(self.x, s.continuum, color='skyblue', 
+                                       label='Cont', zorder=9)
         self.contLayer, = self.contLine
         # Define limits or adjust to previous limits
         if self.xlimits is None:
@@ -1227,20 +1231,6 @@ class SpectrumCanvas(MplCanvas):
             if exp is not None:
                 self.exposureLine[0].set_ydata(exp)
                 self.ax3.draw_artist(self.exposureLine[0])
-            if ef is not None:
-                path = self.efluxLine.get_paths()[0]
-                v = path.vertices
-                xf = self.fluxLine[0].get_xdata()
-                n1 = (np.where(xf == np.min(v[:,0])))[0][0]
-                n2 = (np.where(xf == np.max(v[:,0])))[0][0]                    
-                if self.xunit == 'THz':
-                    y1 = (f - ef)[n2:n1+1]
-                    y2 = (f + ef)[n2:n1+1]
-                else:
-                    y1 = (f - ef)[n1:n2+1]
-                    y2 = (f + ef)[n1:n2+1]
-                v[:,1] = np.concatenate(([y2[0]],y1,[y2[-1]],y2[::-1],[y2[0]]))
-                self.axes.draw_artist(self.efluxLine)
             if f is not None:
                 self.fluxLine[0].set_ydata(f)
                 self.axes.draw_artist(self.fluxLine[0])
@@ -1272,6 +1262,22 @@ class SpectrumCanvas(MplCanvas):
                 self.axes.set_ylim(self.ylimits)
                 self.updateYlim(f=f)
                 self.updateGuess(f, ncell)
+            if ef is not None:
+                path = self.efluxLine.get_paths()[0]
+                v = path.vertices
+                xf = self.fluxLine[0].get_xdata()
+                n1 = (np.where(xf == np.min(v[:,0])))[0][0]
+                n2 = (np.where(xf == np.max(v[:,0])))[0][0]                    
+                if self.xunit == 'THz':
+                    y1 = (f - ef)[n2:n1+1]
+                    y2 = (f + ef)[n2:n1+1]
+                else:
+                    y1 = (f - ef)[n1:n2+1]
+                    y2 = (f + ef)[n1:n2+1]
+                v1 = np.concatenate(([y2[0]],y1,[y2[-1]],y2[::-1],[y2[0]]))
+                v1[np.isnan(v1)] = np.nanmedian(v1) # Add median at borders
+                v[:,1] = v1
+                self.axes.draw_artist(self.efluxLine)
             if af is not None:
                 self.afluxLine[0].set_ydata(af)
                 self.vaxes.draw_artist(self.afluxLine[0])
@@ -1329,7 +1335,6 @@ class SpectrumCanvas(MplCanvas):
                     xx2 = (xx-x)**2
                     gauss = np.exp(-xx2/(2*sigmag*sigmag))/(np.sqrt(2*np.pi) * sigmag)
                     cauchy = sigma/np.pi/(xx2+sigma*sigma)
-                    #y = np.nanmedian(cont) # Better put the real continuum here (works only if constant)
                     y = np.interp(xx, self.contLine[0].get_xdata(), cont)
                     model = y + A * ((1-alpha)* gauss + alpha*cauchy)
                     # Case of Frequency
@@ -1344,15 +1349,25 @@ class SpectrumCanvas(MplCanvas):
                 self.fittedaplines = True
                 self.apfit = []
                 for line in aplines:
-                    c0, slope, x, ex, A, eA, sigma, esigma = line
-                    #print('amplitude is ', A)
-                    #print('c0, slope ', c0, slope)
-                    xx = np.arange(x-4*sigma, x+4*sigma, sigma/10.) 
-                    dx = xx - x
-                    model = c0 + slope * dx + A * np.exp(-(dx/sigma)**2/2)
-                    #self.axes.plot(xx, model, color='violet')
-                    #self.axes.plot([x,x], [c0,c0+A], color='violet')
-                    #self.axes.plot(xx, c0 + slope * dx, ':', color='violet')
+                    if self.function == 'Voigt':
+                        c0, slope, x, ex, A, eA, sigma, esigma, alpha = line
+                        xx = np.arange(x-5*sigma, x+5*sigma, sigma/10.) 
+                        dx = xx - x
+                        model = c0 + slope * dx
+                        s2 = sigma * sigma
+                        sg2 = s2/(2*np.log(2.))
+                        sg = np.sqrt(2 * np.pi * sg2)
+                        dx2 = dx * dx
+                        gauss = np.exp(-0.5 * dx2 / sg2) / sg
+                        cauchy = sigma / ( np.pi * (dx2 + s2))
+                        factor = (1-alpha)/np.sqrt(np.pi/np.log(2)) + alpha/np.pi
+                        A *= sigma / factor
+                        model += A * ((1 - alpha) * gauss + alpha * cauchy)  
+                    else:
+                        c0, slope, x, ex, A, eA, sigma, esigma = line
+                        xx = np.arange(x-5*sigma, x+5*sigma, sigma/10.) 
+                        dx = xx - x
+                        model = c0 + slope * dx + A * np.exp(-(dx/sigma)**2/2)
                     # Case of Frequency
                     if self.xunit == 'THz':
                         c = 299792458. # m/s

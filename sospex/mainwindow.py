@@ -1621,7 +1621,7 @@ class GUI (QMainWindow):
         # We should be able to mask part of spectrum in future
         self.GP = guessParams()
         if self.GP.exec_() == QDialog.Accepted:
-            cont, em, ab = self.GP.save()
+            cont, em, ab, func = self.GP.save()
             if cont == 'Constant':
                 self.zeroDeg = True
             else:
@@ -1634,6 +1634,7 @@ class GUI (QMainWindow):
             sc = self.sci[istab]
             sc.emslines = int(em)
             sc.abslines = int(ab)
+            sc.function = func
             self.CS = SegmentsSelector(sc.axes, sc.fig, self.onContinuumSelect, zD=self.zeroDeg)
         else:
             return     
@@ -1648,6 +1649,7 @@ class GUI (QMainWindow):
             # 2. Fit the lines
             linepars = fitApertureLines(sc, ic, s)
             # 3. Plot the fit
+            print('update with linepars ', linepars)
             sc.updateSpectrum(aplines=linepars)
             sc.fig.canvas.draw_idle()     
         except BaseException:

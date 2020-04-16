@@ -381,6 +381,7 @@ class guessParams(QDialog):
         self.continuum = self.createGroup('Continuum', ['Constant', 'Slope'], default=0)
         self.emission = self.createGroup('Emission lines', ['0', '1', '2', '3'], default=1)
         self.absorption = self.createGroup('Absorption lines', ['0', '1', '2', '3'], default=0)
+        self.function = self.createGroup('Function', ['Gaussian','Voigt'], default=0)
 
         hgroup = QGroupBox()
         hbox = QHBoxLayout()
@@ -395,7 +396,8 @@ class guessParams(QDialog):
         grid.addWidget(self.continuum, 0, 0)
         grid.addWidget(self.emission, 1, 0)
         grid.addWidget(self.absorption, 2, 0)
-        grid.addWidget(hgroup, 3, 0)
+        grid.addWidget(self.function, 3, 0)
+        grid.addWidget(hgroup, 4, 0)
         self.setLayout(grid)
         self.setWindowTitle('Guess parameters')
         self.resize(400, 300)
@@ -425,7 +427,8 @@ class guessParams(QDialog):
         continuum = self.continuum.buttons.checkedButton().text()
         emission = self.emission.buttons.checkedButton().text()
         absorption = self.absorption.buttons.checkedButton().text()
-        return continuum, emission, absorption
+        function = self.function.buttons.checkedButton().text()
+        return continuum, emission, absorption, function
 
     def Cancel(self):
         self.done(0)
@@ -914,7 +917,7 @@ def contResiduals(p, x, data=None, eps=None):
             return (model - data) / eps
 
 
-def linesResiduals(p, x, data=None, eps=None):
+def linesGaussResiduals(p, x, data=None, eps=None):
     # unpack parameters:
     # extract .value attribute for each parameter
     v = p.valuesdict()
@@ -926,6 +929,30 @@ def linesResiduals(p, x, data=None, eps=None):
         la = v[li + 'amplitude']
         ls = v[li + 'sigma']
         model += la / (np.sqrt(2 * np.pi) * ls) * np.exp(-(x - lc) * (x - lc) * 0.5 / (ls * ls))
+    if data is None:
+        return model
+    else:
+        if eps is None:
+            return (model - data)
+        else:
+            return (model - data) / eps
+        
+def linesVoigtResiduals(p, x, data=None, eps=None):
+    """Pseudo-Voigt function."""
+    v = p.valuesdict()
+    model = 0
+    n = len(v) // 4
+    for i in range(n):
+        li = 'l' + str(i) + '_'
+        xc = v[li + 'center']
+        A = v[li + 'amplitude']
+        sigma = v[li + 'sigma']
+        alpha = v[li + 'alpha']
+        sigmag = sigma/np.sqrt(2*np.log(2.))
+        xx2 = (x - xc)**2
+        gauss = np.exp(-xx2 / (2 * sigmag**2)) / (np.sqrt(2*np.pi) * sigmag)
+        cauchy = sigma / np.pi / (xx2 + sigma**2)
+        model += A * ((1-alpha)* gauss + alpha*cauchy)
     if data is None:
         return model
     else:
@@ -1009,14 +1036,22 @@ def fitApertureLines(sc, intercept, slope):
         else:
             fit_params.add(li + 'amplitude', value=A, max=0.1 * A, min=A * 10)
         fit_params.add(li + 'sigma', value=sigma, min=sigma / 3., max=sigma * 2)
+        if sc.function == 'Voigt':
+            fit_params.add(li + 'alpha', value=0.2)
+            
     # Minimize
     kws = {'data': y-continuum, 'eps': e}
-    out = minimize(linesResiduals, fit_params, args=(x,), kws=kws, method='leastsq')
-    #               kws={'data': y, 'eps': e}, method='Nelder')
+    if sc.function == 'Voigt':
+        npars = 4
+        out = minimize(linesVoigtResiduals, fit_params, args=(x,), kws=kws, method='leastsq')
+    else:
+        npars = 3
+        out = minimize(linesGaussResiduals, fit_params, args=(x,), kws=kws, method='leastsq')
     # Return lines fitted parameters
     pars = out.params#.valuesdict()
-    nlines = len(pars) // 3
+    nlines = len(pars) // npars
     print("Number of lines fitted: ", nlines)
+    
     linepars = []
     for i in range(nlines):
         print('pars: ', pars)
@@ -1028,9 +1063,16 @@ def fitApertureLines(sc, intercept, slope):
         A =  pars[li+'amplitude'].value
         Aerr = pars[li+'amplitude'].stderr
         print('Aerr ', Aerr, ' sigmaErr ', sigmaErr)
-        amplitude = A  / (np.sqrt(2 * np.pi) * sigma)
-        amplitudeErr = amplitude * (Aerr / A + sigmaErr / sigma)
         c0 = intercept + slope * center # Continuum at line center
-        linepars.append([c0, slope, center, centerErr, amplitude, amplitudeErr, sigma, sigmaErr])
+        if sc.function == 'Voigt':
+            alpha = pars[li + 'alpha'].value
+            factor = (1-alpha)/np.sqrt(np.pi/np.log(2)) + alpha/np.pi
+            amplitude = A / sigma *  factor
+            amplitudeErr = amplitude * (Aerr / A + sigmaErr / sigma)
+            linepars.append([c0, slope, center, centerErr, amplitude, amplitudeErr, sigma, sigmaErr, alpha])
+        else:
+            amplitude = A  / (np.sqrt(2 * np.pi) * sigma)
+            amplitudeErr = amplitude * (Aerr / A + sigmaErr / sigma)
+            linepars.append([c0, slope, center, centerErr, amplitude, amplitudeErr, sigma, sigmaErr])
     return linepars
 
