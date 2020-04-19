@@ -20,6 +20,7 @@ def exportAperture(self):
     """Export an aperture in Json format."""
     # Check if tab with aperture is open
     istab = self.stabs.currentIndex()
+    instrument = self.specCube.instrument
     if istab > 1:
         nap = istab-1
         itab = self.itabs.currentIndex()
@@ -41,6 +42,7 @@ def exportAperture(self):
             verts = aperture.poly.get_xy()
             adverts = np.array([(ic.wcs.wcs_pix2world(x,y,0)) for (x,y) in verts])
             info.append(('verts', adverts.tolist()))             
+        elif type in ['Square', 'Rectangle']:
             x0,y0 = aperture.rect.get_xy()
             r0,d0 = ic.wcs.wcs_pix2world(x0,y0,0)
             info.extend([
@@ -87,16 +89,20 @@ def exportAperture(self):
                         c0, slope, x, ex, A, eA, sigma, esigma = apline
                         # Compute FWHM
                         FWHM = 2 * np.sqrt(2*np.log(2)) * sigma
+                        eFWHM = 2 * np.sqrt(2*np.log(2)) * esigma
                         c = 299792458. # m/s
                         FWHMv = c * FWHM / x / 1000.
                         eFWHMv = FWHMv / sigma * esigma
                         # Compute intensity of line in W/m2
-                        #sigmaNu = 1.e6 * c / sigma 
-                        sigmaNu = c / (x * 1.e-6) * (sigma / x)
-                        flux = np.sqrt(2 * np.pi) * sigmaNu * 1.e-26 * A
-                        eflux = flux * (eA / A + esigma/sigma)
+                        # The flux is integrated in um, so has to be divided
+                        # by um, then c/x is expressed in m. 1.e-26 factor to
+                        # transform Jy in W/m2/Hz
+                        jy2wm2 = c / (x * x) * 1.e-20 
+                        flux = A * jy2wm2
+                        eflux = eA * jy2wm2
                         line = 'line '+str(i+1)
                         data[line] = {
+                                'instrument': instrument,
                                 'continuum [Jy]': c0,
                                 'slope of continuum': slope,
                                 'center [um]': x,
@@ -106,6 +112,7 @@ def exportAperture(self):
                                 'sigma [um]': sigma,
                                 'errSigma [um]': esigma,
                                 'FWHM [um]': FWHM,
+                                'errFWHM [um]': eFWHM,
                                 'FWHM [km/s]': FWHMv,
                                 'errFWHM [km/s]': eFWHMv,
                                 'Flux [W/m2]': flux,
@@ -115,17 +122,17 @@ def exportAperture(self):
                         c0, slope, x, ex, A, eA, sigma, esigma, alpha = apline
                         # Compute FWHM
                         FWHM = 2 * sigma
+                        eFWHM = 2 * esigma
                         c = 299792458. # m/s
                         FWHMv = c * FWHM / x / 1000.
                         eFWHMv = FWHMv / sigma * esigma
                         # Compute intensity of line in W/m2
-                        #sigmaNu = 1.e6 * c / sigma 
-                        sigmaNu = c / (x * 1.e-6) * (sigma / x)
-                        factor = (1 - alpha)/np.sqrt(np.pi/np.log(2)) + alpha / np.pi
-                        flux = sigmaNu * 1.e-26 * A / factor
-                        eflux = flux * (eA / A + esigma/sigma)
+                        jy2wm2 = c / (x * x) * 1.e-20 
+                        flux = A * jy2wm2
+                        eflux = eA * jy2wm2                        
                         line = 'line '+str(i+1)
                         data[line] = {
+                                'instrument': instrument,
                                 'continuum [Jy]': c0,
                                 'slope of continuum': slope,
                                 'center [um]': x,
@@ -136,6 +143,7 @@ def exportAperture(self):
                                 'errSigma [um]': esigma,
                                 'alpha': alpha,
                                 'FWHM [um]': FWHM,
+                                'errFWHM [um]': eFWHM,
                                 'FWHM [km/s]': FWHMv,
                                 'errFWHM [km/s]': eFWHMv,
                                 'Flux [W/m2]': flux,
@@ -159,7 +167,6 @@ def exportAperture(self):
             with io.open(filename, mode='w') as f:
                 str_= json.dumps(data, indent=2, separators=(',', ': '),
                                  ensure_ascii=False, cls=MyEncoder)
-                #print(str_)
                 f.write(str_)
             self.sb.showMessage("Aperture exported in file "+filename, 3000)
     else:
@@ -200,7 +207,7 @@ def importAperture(self):
             if data['nlines'] > 0:
                 istab = self.stabs.currentIndex()
                 sc = self.sci[istab]
-                sc.model = data['model']
+                sc.function = data['model']
                 sc.spectrum.redshift = data['redshift']
                 # Draw segments
                 x = data['xg']

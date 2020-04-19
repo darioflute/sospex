@@ -1037,7 +1037,7 @@ def fitApertureLines(sc, intercept, slope):
             fit_params.add(li + 'amplitude', value=A, max=0.1 * A, min=A * 10)
         fit_params.add(li + 'sigma', value=sigma, min=sigma / 3., max=sigma * 2)
         if sc.function == 'Voigt':
-            fit_params.add(li + 'alpha', value=0.2)
+            fit_params.add(li + 'alpha', value=0.2, max=0.6)
             
     # Minimize
     kws = {'data': y-continuum, 'eps': e}
@@ -1066,13 +1066,13 @@ def fitApertureLines(sc, intercept, slope):
         c0 = intercept + slope * center # Continuum at line center
         if sc.function == 'Voigt':
             alpha = pars[li + 'alpha'].value
-            factor = (1-alpha)/np.sqrt(np.pi/np.log(2)) + alpha/np.pi
-            amplitude = A / sigma *  factor
-            amplitudeErr = amplitude * (Aerr / A + sigmaErr / sigma)
-            linepars.append([c0, slope, center, centerErr, amplitude, amplitudeErr, sigma, sigmaErr, alpha])
+            #factor = (1-alpha)/np.sqrt(np.pi/np.log(2)) + alpha/np.pi
+            #amplitude = A / sigma *  factor
+            #amplitudeErr = amplitude * (Aerr / A + sigmaErr / sigma)
+            linepars.append([c0, slope, center, centerErr, A, Aerr, sigma, sigmaErr, alpha])
         else:
-            amplitude = A  / (np.sqrt(2 * np.pi) * sigma)
-            amplitudeErr = amplitude * (Aerr / A + sigmaErr / sigma)
-            linepars.append([c0, slope, center, centerErr, amplitude, amplitudeErr, sigma, sigmaErr])
+            #amplitude = A  / (np.sqrt(2 * np.pi) * sigma)
+            #amplitudeErr = amplitude * (Aerr / A + sigmaErr / sigma)
+            linepars.append([c0, slope, center, centerErr, A, Aerr, sigma, sigmaErr])
     return linepars
 

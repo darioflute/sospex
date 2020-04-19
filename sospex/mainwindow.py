@@ -373,16 +373,20 @@ class GUI (QMainWindow):
         # Check if new aperture
         # Add actions to toolbar
         toolbar.addAction(self.cutAction)
+        toolbar.addAction(self.slideAction)
         toolbar.addAction(self.specAction)
         print('Aperture is ', b)
         if b in ['All', 'Pix']:        
             toolbar.addAction(self.guessAction)
+            toolbar.addAction(self.impGuessAction)
+            toolbar.addAction(self.expGuessAction)
+            toolbar.addAction(self.fitContAction)
         else:
             #print('Aperture special actions ')
             toolbar.addAction(self.guessLinesAction)
             toolbar.addAction(self.fitLinesAction)
+            toolbar.addAction(self.expApAction)
         # toolbar.addAction(self.sliceAction)
-        toolbar.addAction(self.slideAction)
         toolbar.addSeparator()
         toolbar.addSeparator()
         toolbar.addAction(self.hresizeAction)
@@ -515,8 +519,9 @@ class GUI (QMainWindow):
         toolbar.addAction(self.cropAction)
         toolbar.addAction(self.cloudAction)
         toolbar.addAction(self.fitsAction)
+        toolbar.addAction(self.impApAction)
         #toolbar.addAction(self.fitregionAction)
-        toolbar.addAction(self.fitContAction)
+        #toolbar.addAction(self.fitContAction)
         # toolbar.addAction(self.compMomAction)
         toolbar.addAction(self.maskAction)
         toolbar.addAction(self.distanceAction)
@@ -1020,7 +1025,7 @@ class GUI (QMainWindow):
                     expAll = np.nanmean(s.exposure[:, yy, xx], axis=1)
                     efluxAll = np.sqrt(np.nanmean(s.eflux[:,yy,xx]**2, axis=1))
                 else:
-                    expAll = np.nansum(s.exposure[:, yy, xx], axis=1)
+                    expAll = np.nanmean(s.exposure[:, yy, xx], axis=1)
                     efluxAll = np.sqrt(np.nansum(s.eflux[:, yy, xx]**2, axis=1))
                 if sc.auxiliary:
                     sc.updateSpectrum(f=fluxAll, ef=efluxAll, af=afluxAll, exp=expAll, cont=cont, cslope=cslope,
@@ -1032,13 +1037,13 @@ class GUI (QMainWindow):
                                       noise=noise, ncell=ncell)
             elif s.instrument == 'FIFI-LS':
                 if istab == 1:
-                    ufluxAll = np.nanmean(s.uflux[:, yy, xx], axis=1)
-                    efluxAll = np.sqrt(np.nanmean(s.eflux[:,yy,xx]**2, axis=1))
+                    ufluxAll = np.nansum(s.uflux[:, yy, xx], axis=1)
+                    efluxAll = np.sqrt(np.nansum(s.eflux[:,yy,xx]**2, axis=1))
                     expAll = np.nanmean(s.exposure[:, yy, xx], axis=1)
                 else:
                     ufluxAll = np.nansum(s.uflux[:, yy, xx], axis=1)
                     efluxAll = np.sqrt(np.nansum(s.eflux[:, yy, xx]**2, axis=1))
-                    expAll = np.nansum(s.exposure[:, yy, xx], axis=1)                    
+                    expAll = np.nanmean(s.exposure[:, yy, xx], axis=1)                    
                 sc.spectrum.uflux = ufluxAll
                 sc.spectrum.eflux = efluxAll
                 sc.spectrum.exposure = expAll
@@ -1380,10 +1385,16 @@ class GUI (QMainWindow):
         self.cloudAction = self.createAction(os.path.join(self.path0,'icons','cloud.png'),
                                              'Download image from cloud',
                                              'Ctrl+D', self.selectDownloadImage)
-        self.fitsAction =  self.createAction(os.path.join(self.path0,'icons','download.png'),
+        self.fitsAction =  self.createAction(os.path.join(self.path0,'icons','camera.png'),
                                              'Save the image as a FITS/PNG/JPG/PDF file',
                                              'Ctrl+S',self.saveFits)
-        self.specAction = self.createAction(os.path.join(self.path0,'icons','download.png'),
+        self.expApAction =  self.createAction(os.path.join(self.path0,'icons','exportAperture.png'),
+                                             'Export aperture/fit as json file',
+                                             'Ctrl+S',self.exportApertureAction)        
+        self.impApAction =  self.createAction(os.path.join(self.path0,'icons','importAperture.png'),
+                                             'Import aperture/fit',
+                                             'Ctrl+S',self.importApertureAction)        
+        self.specAction = self.createAction(os.path.join(self.path0,'icons','camera.png'),
                                             'Save the spectrum as a ASCII/FITS/PNG/JPG/PDF file',
                                             'Ctrl+S',self.saveSpectrum)
         self.vresizeAction = self.createAction(os.path.join(self.path0,'icons','vresize.png'),
@@ -1395,6 +1406,12 @@ class GUI (QMainWindow):
         self.guessAction = self.createAction(os.path.join(self.path0,'icons','guessCont.png'),
                                              'Define cube fitting parameters',
                                              'Ctrl+g',self.guessContinuum)
+        self.impGuessAction = self.createAction(os.path.join(self.path0,'icons','importGuess.png'),
+                                             'Import cube fitting parameters',
+                                             '',self.importGuessesAction)
+        self.expGuessAction = self.createAction(os.path.join(self.path0,'icons','exportGuess.png'),
+                                             'Export cube fitting parameters',
+                                             '',self.exportGuessesAction)
         self.guessLinesAction = self.createAction(os.path.join(self.path0,'icons','guess.png'),
                                              'Define lines fitting parameters',
                                              'Ctrl+G',self.guessApLines)
@@ -3097,14 +3114,14 @@ class GUI (QMainWindow):
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0)
         elif s.instrument == 'FIFI-LS':
             ufluxAll = np.nansum(s.uflux[:,yy,xx], axis=1)
-            expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
+            expAll = np.nanmean(s.exposure[:,yy,xx], axis=1)
             efluxAll = np.sqrt(np.nansum(s.eflux[:,yy,xx]**2, axis=1))
             spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, uflux=ufluxAll,
                             exposure=expAll, atran = s.atran, instrument=s.instrument,
                             redshift=s.redshift, baryshift=s.baryshift, l0=s.l0, 
                             watran=s.watran, uatran=s.uatran)
         elif s.instrument in ['PACS','FORCAST']:
-            expAll = np.nansum(s.exposure[:,yy,xx], axis=1)
+            expAll = np.nanmean(s.exposure[:,yy,xx], axis=1)
             efluxAll = np.sqrt(np.nansum(s.eflux[:,yy,xx]**2, axis=1))
             print('eflux pacs ', np.shape(efluxAll))
             spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, exposure=expAll, instrument=s.instrument,
@@ -5560,14 +5577,14 @@ class GUI (QMainWindow):
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0)
         elif s.instrument in ['PACS', 'FORCAST']:
-            expAll = np.nansum(s.exposure, axis=(1,2))
+            expAll = np.nanmean(s.exposure, axis=(1,2))
             efluxAll = np.sqrt(np.nansum(s.eflux*s.eflux, axis=(1,2)))
             spec = Spectrum(s.wave, fluxAll,  eflux=efluxAll, 
                             exposure=expAll,instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0 )
         elif s.instrument == 'FIFI-LS':
             ufluxAll = np.nansum(s.uflux, axis=(1,2))
-            expAll = np.nansum(s.exposure, axis=(1,2))
+            expAll = np.nanmean(s.exposure, axis=(1,2))
             efluxAll = np.sqrt(np.nansum(s.eflux*s.eflux, axis=(1,2)))
             spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, uflux= ufluxAll,
                             exposure=expAll, atran = s.atran, instrument=s.instrument,
@@ -5758,12 +5775,12 @@ class GUI (QMainWindow):
         elif s.instrument in ['HI','VLA','ALMA','MUSE','IRAM','CARMA','PCWI']:
             sc.updateSpectrum(f=fluxAll)
         elif s.instrument in ['PACS','FORCAST']:
-            expAll = np.nansum(s.exposure[:, y0:y1, x0:x1], axis=(1, 2))
+            expAll = np.nanmean(s.exposure[:, y0:y1, x0:x1], axis=(1, 2))
             efluxAll = np.sqrt(np.nansum(s.eflux[:, y0:y1, x0:x1]**2, axis=(1, 2)))
             sc.updateSpectrum(f=fluxAll,ef=efluxAll, exp=expAll)            
         elif self.specCube.instrument == 'FIFI-LS':
             ufluxAll = np.nansum(s.uflux[:, y0:y1, x0:x1], axis=(1, 2))
-            expAll = np.nansum(s.exposure[:, y0:y1, x0:x1], axis=(1, 2))
+            expAll = np.nanmean(s.exposure[:, y0:y1, x0:x1], axis=(1, 2))
             efluxAll = np.sqrt(np.nansum(s.eflux[:, y0:y1, x0:x1]**2, axis=(1, 2)))
             sc.updateSpectrum(f=fluxAll, ef=efluxAll, uf=ufluxAll, exp=expAll)
 

@@ -1351,7 +1351,7 @@ class SpectrumCanvas(MplCanvas):
                 for line in aplines:
                     if self.function == 'Voigt':
                         c0, slope, x, ex, A, eA, sigma, esigma, alpha = line
-                        xx = np.arange(x-5*sigma, x+5*sigma, sigma/10.) 
+                        xx = np.arange(x-7*sigma, x+7*sigma, sigma/10.) 
                         dx = xx - x
                         model = c0 + slope * dx
                         s2 = sigma * sigma
@@ -1360,20 +1360,22 @@ class SpectrumCanvas(MplCanvas):
                         dx2 = dx * dx
                         gauss = np.exp(-0.5 * dx2 / sg2) / sg
                         cauchy = sigma / ( np.pi * (dx2 + s2))
-                        factor = (1-alpha)/np.sqrt(np.pi/np.log(2)) + alpha/np.pi
-                        A *= sigma / factor
+                        #factor = (1-alpha)/np.sqrt(np.pi/np.log(2)) + alpha/np.pi
+                        #A *= sigma / factor
                         model += A * ((1 - alpha) * gauss + alpha * cauchy)  
                     else:
                         c0, slope, x, ex, A, eA, sigma, esigma = line
-                        xx = np.arange(x-5*sigma, x+5*sigma, sigma/10.) 
+                        xx = np.arange(x-7*sigma, x+7*sigma, sigma/10.) 
                         dx = xx - x
-                        model = c0 + slope * dx + A * np.exp(-(dx/sigma)**2/2)
+                        A /= np.sqrt(2*np.pi) * sigma
+                        model = c0 + slope * dx + A * np.exp(-0.5 * (dx / sigma)**2)
                     # Case of Frequency
                     if self.xunit == 'THz':
                         c = 299792458. # m/s
                         xx = c / xx * 1.e-6
                     verts = list(zip(xx, model))
-                    gauss = Polygon(verts, fill=False, closed=False, color='violet', linewidth=2)
+                    gauss = Polygon(verts, fill=False, closed=False,
+                                    color='violet', linewidth=2)
                     self.axes.add_patch(gauss)
                     self.apfit.append(gauss)
             else:
