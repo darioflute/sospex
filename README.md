@@ -1,7 +1,6 @@
 <a href="//https://ui.adsabs.harvard.edu/abs/2018AAS...23115011F/abstract">
-<img src="sospex/icons/sospexlogo.png" height="200" width="200">
+<img src="sospex/icons/sospexlogo.png" height="100">
 </a>
-
 
 [![Anaconda-Server Badge](https://anaconda.org/darioflute/sospex/badges/version.svg?branch=master)](https://anaconda.org/darioflute/sospex)
 [![Anaconda-Server Badge](https://anaconda.org/darioflute/sospex/badges/latest_release_date.svg?branch=master&kill_cache=1)](https://anaconda.org/darioflute/sospex)
@@ -12,7 +11,7 @@
 **sospex** is a GUI tool to display and analyse [SOFIA](https://www.sofia.usra.edu) ([FIFI-LS](https://www.sofia.usra.edu/science/instruments/fifi-ls) and [GREAT](https://www.sofia.usra.edu/science/instruments/great)) and [Herschel](http://sci.esa.int/herschel/) ([PACS](https://www.cosmos.esa.int/web/herschel/pacs-overview)) spectral cubes.
 
 <a>
-<img src="sospex/icons/sospexScreenshot.png" height=200 width=600)>
+<img src="sospex/icons/sospexScreenshot.png" height=300>
 </a>
     
 - **How to install:** https://github.com/darioflute/sospex/blob/master/INSTALL.md
