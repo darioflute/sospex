@@ -11,7 +11,7 @@
 **sospex** is a GUI tool to display and analyse [SOFIA](https://www.sofia.usra.edu) ([FIFI-LS](https://www.sofia.usra.edu/science/instruments/fifi-ls) and [GREAT](https://www.sofia.usra.edu/science/instruments/great)) and [Herschel](http://sci.esa.int/herschel/) ([PACS](https://www.cosmos.esa.int/web/herschel/pacs-overview)) spectral cubes.
 
 <p class="aligncenter">
-<img src="sospex/icons/sospexScreenshot.png" height=300 alt="M51 FIFI-LS" />
+<img src="readme.gif" height=250 alt="M51 FIFI-LS" />
 </p>
     
 - **How to install:** https://github.com/darioflute/sospex/blob/master/INSTALL.md
