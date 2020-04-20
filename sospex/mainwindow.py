@@ -1383,7 +1383,7 @@ class GUI (QMainWindow):
         self.maskAction =  self.createAction(os.path.join(self.path0,'icons','eraser.png'),
                                              'Erase a region', '', self.maskCube)
         self.cloudAction = self.createAction(os.path.join(self.path0,'icons','cloud.png'),
-                                             'Download image from cloud',
+                                             'Add local image or from online archives',
                                              'Ctrl+D', self.selectDownloadImage)
         self.fitsAction =  self.createAction(os.path.join(self.path0,'icons','camera.png'),
                                              'Save the image as a FITS/PNG/JPG/PDF file',
