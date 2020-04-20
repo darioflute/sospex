@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8" />
-<title>apertures</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
+<title>linefit</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
 
 <style type="text/css">
@@ -11775,7 +11775,7 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<p><a href="croptrim.html">Previous</a> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="linefit.html">Next</a>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="tutorials.html">Tutorials</a> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="Help.html">Help</a></p>
+<p><a href="apertures.html">Previous</a> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="extimages.html">Next</a>&nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="tutorials.html">Tutorials</a> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <a href="Help.html">Help</a></p>
 
 </div>
 </div>
@@ -11784,7 +11784,7 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h2 id="Apertures">Apertures<a class="anchor-link" href="#Apertures">&#182;</a></h2>
+<h2 id="Fit-a-line-inside-an-aperture">Fit a line inside an aperture<a class="anchor-link" href="#Fit-a-line-inside-an-aperture">&#182;</a></h2>
 </div>
 </div>
 </div>
@@ -11800,28 +11800,20 @@ div#notebook {
 </thead>
 <tbody>
 <tr>
-<td style="text-align:center"><img src="../icons/apertures.png" alt="Apertures" style="width: 20px;"/></td>
-<td style="text-align:left">Apertures. Select an aperture.</td>
+<td style="text-align:center"><img src="../icons/guess.png" alt="Guess" style="width: 20px;"/></td>
+<td style="text-align:left">Select guesses for line and continuum</td>
 </tr>
 <tr>
-<td style="text-align:center"><img src="../icons/circle.png" alt="Circle" style="width: 20px;"/></td>
-<td style="text-align:left">Circle. Select a circular aperture.</td>
+<td style="text-align:center"><img src="../icons/fitline.png" alt="Fit line" style="width: 20px;"/></td>
+<td style="text-align:left">Fit line and continuum</td>
 </tr>
 <tr>
-<td style="text-align:center"><img src="../icons/ellipse.png" alt="Ellipse" style="width: 20px;"/></td>
-<td style="text-align:left">Ellipse. Select an elliptical aperture.</td>
+<td style="text-align:center"><img src="../icons/exportAperture.png" alt="Export Aperture" style="width: 20px;"/></td>
+<td style="text-align:left">Export aperture and fit</td>
 </tr>
 <tr>
-<td style="text-align:center"><img src="../icons/square.png" alt="Square" style="width: 20px;"/></td>
-<td style="text-align:left">Square. Select a square aperture.</td>
-</tr>
-<tr>
-<td style="text-align:center"><img src="../icons/rectangle.png" alt="Rectangle" style="width: 20px;"/></td>
-<td style="text-align:left">Rectangle. Select a rectangular aperture.</td>
-</tr>
-<tr>
-<td style="text-align:center"><img src="../icons/polygon.png" alt="Polygon" style="width: 20px;"/></td>
-<td style="text-align:left">Polygon. Select a polygonal aperture.</td>
+<td style="text-align:center"><img src="../icons/importAperture.png" alt="Import Aperture" style="width: 20px;"/></td>
+<td style="text-align:left">Import aperture and line/continumm guesses</td>
 </tr>
 </tbody>
 </table>
@@ -11833,28 +11825,25 @@ div#notebook {
 </div>
 <div class="inner_cell">
 <div class="text_cell_render border-box-sizing rendered_html">
-<h3 id="Aperture-selection">Aperture selection<a class="anchor-link" href="#Aperture-selection">&#182;</a></h3><p>After clicking the "aperture" icon (in the main toolbar), one can select the desired aperture to deploy on the image.
-The choice of a circle, ellipse, square, and rectangle activate the mouse to select the center with pressing the left button and the extension by dragging the mouse and releasing the same button.</p>
-<p>In the case of the polygon, the first click will select the first point of the polygon. Subsequent clicks allow one to select the other vertices. To close the polygon, one has to click again on the initial point.</p>
-<p>Each time an aperture is selected, a new tab in the spectral panel will show the corresponding flux contained inside the aperture.</p>
-<h3 id="Modify-the-aperture">Modify the aperture<a class="anchor-link" href="#Modify-the-aperture">&#182;</a></h3><p>Once an aperture is activated by selecting the respective tab, markers appear on the aperture.
-Clicking and dragging the markers allows one to modify the aperture.</p>
-<p>For circles, ellipses, square, and rectangles, the central marker allows one to move the aperture around.
-The other markers give the possibility to resize and rotate the apertures.</p>
-<p>In the case of the polygonal aperture, clicking on a marker allows one to move it and change the shape of the polygon.</p>
-<p>More actions are available using the keyboard. In particular, by clicking:</p>
-<ul>
-<li><strong>i</strong> on a side of the polygon, a new vertex is inserted allowing the possibility of more complicate shapes</li>
-<li><strong>d</strong> on a vertex of the polygon will delete the same vertex. If only three vertices are left, the entire aperture will be deleted. For the other shapes, clicking <strong>d</strong> removes the aperture</li>
-<li><p><strong>t</strong> toggle the markers. Markers will disappear/appear using <strong>t</strong> on the aperture.</p>
-<p>Another way to remove apertures is simply to remove the tab corresponding to the aperture.</p>
-</li>
-</ul>
-<h3 id="Export/import-aperture">Export/import aperture<a class="anchor-link" href="#Export/import-aperture">&#182;</a></h3><p>Once an aperture is defined, it is possible to export it to a Jyson file through the menu (File -&gt; Aperture I/O -&gt; Export).
-The file will have the name with the number of the aperture.
-It is possible to rename the file using the same extension (*.jsn).</p>
-<p>At this point, it is possible to import the same aperture using another cube (i.e. another band or another instrument).
-To do this, again through the menu (File -&gt; Aperture I/O -&gt; Import) and select the file with the aperture of interest.</p>
+<h3 id="Selecting-continuum-and-line-guesses">Selecting continuum and line guesses<a class="anchor-link" href="#Selecting-continuum-and-line-guesses">&#182;</a></h3><p>After clicking the "guess" icon (in the right side toolbar), a popup window with
+several options will appear.</p>
+<p><img src="../icons/linefitoptions.png" alt="Fit options" style="height: 250px;"/></p>
+<p>After selecting the best options, select two regions around
+the line(s) to define the continuum. by clicking (left button) and dragging twice.
+At this point, the selected number of lines will appear. It is possible to adjust
+continuum and lines by moving with the mouse the dots on the lines.</p>
+<h3 id="Fitting">Fitting<a class="anchor-link" href="#Fitting">&#182;</a></h3><p>Once the optimal selection of continuum and lines is done, click on the icon with the
+line and gears to do the fit.
+If the fit is done, a purple line will be plotted on the spectrum.
+If the results are not good, it is possible to adjust the guesses and retry.</p>
+<p>Otherwise, one can start with a fresh guess and define, for instance, a different model
+for the fitting using a Voigt function instead of a Gaussian.</p>
+<h3 id="Export/import-aperture">Export/import aperture<a class="anchor-link" href="#Export/import-aperture">&#182;</a></h3><p>There are two ways to export/import aperture and fits.</p>
+<p>Through the menu: File -&gt; Aperture I/O -&gt; Export or Import.</p>
+<p>Using the icons on the right side panel (to export) on on the left side panel (to import
+an aperture and guesses).</p>
+<p>Remember that if a file contains the result of the fit, by saving it again this fit will be
+superseeded by the new fit defined.</p>
 
 </div>
 </div>
