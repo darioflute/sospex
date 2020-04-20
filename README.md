@@ -1,4 +1,4 @@
-<a href="//https://ui.adsabs.harvard.edu/abs/2018AAS...23115011F/abstract">
+<a href="https://ui.adsabs.harvard.edu/abs/2018AAS...23115011F/abstract">
 <img src="sospex/icons/sospexlogo.png" height="100">
 </a>
 
