@@ -20,6 +20,7 @@ config = {
         'author_email':'darioflute@gmail.com',
         'url':'https://github.com/darioflute/sospex.git',
         'download_url':'https://github.com/darioflute/sospex',
+        'python_requires':'>=3.7',
         'license':'GPLv3+',
         'packages':['sospex'],
         'scripts':['bin/sospex'],

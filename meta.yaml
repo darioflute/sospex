@@ -33,4 +33,4 @@ about:
   home: https://github.com/darioflute/sospex
   license: GPL3
   license_file: LICENSE
-  description: 'The package displays FIFI-LS and GREAT spectral cubes'
+  description: 'The package displays FIFI-LS, PACS, and GREAT spectral cubes'
