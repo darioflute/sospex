@@ -1053,7 +1053,6 @@ def fitApertureLines(sc, intercept, slope):
     # Return lines fitted parameters
     pars = out.params#.valuesdict()
     nlines = len(pars) // npars
-    #print("Number of lines fitted: ", nlines)
     
     linepars = []
     for i in range(nlines):
@@ -1065,13 +1064,11 @@ def fitApertureLines(sc, intercept, slope):
         sigmaErr = pars[li + 'sigma'].stderr   # Observed
         A =  pars[li+'amplitude'].value
         Aerr = pars[li+'amplitude'].stderr
-        #print('Aerr ', Aerr, ' sigmaErr ', sigmaErr)
         c0 = intc + slop * center # Continuum at line center
         if slop == 0:
             ec0 = eintc
         else:
             ec0 = c0 * (eintc/intc + eslop/slop)
-        #print('continuum after fit ', c0, ec0)
         if sc.function == 'Voigt':
             alpha = pars[li + 'alpha'].value
             #factor = (1-alpha)/np.sqrt(np.pi/np.log(2)) + alpha/np.pi
