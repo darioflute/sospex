@@ -6,7 +6,7 @@ python (https://www.anaconda.com/download).
 **You will have to use the Python 3.7 distribution.**
 
 If you have a previous Python distribution installed, it is advisable to start from scratch
-with a new Anaconda download of Python 3.7.
+with a new Anaconda download of Python 3.7. The program runs also with Python 3.8.
 
 It is a good practice to update all your installed packages to have the latest versions:
 
