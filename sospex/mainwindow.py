@@ -1664,7 +1664,7 @@ class GUI (QMainWindow):
             # 1. Fit the continuum
             ic, eic, s, es = fitApertureContinuum(sc)
             # 2. Fit the lines
-            linepars = fitApertureLines(sc, ic, s)
+            linepars = fitApertureLines(sc, (ic, eic), (s, es))
             # 3. Plot the fit
             print('update with linepars ', linepars)
             sc.updateSpectrum(aplines=linepars)

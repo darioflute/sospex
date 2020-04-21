@@ -86,7 +86,7 @@ def exportAperture(self):
                 # Add fitted parameters for each line
                 for i, apline in enumerate(sc.aplines):
                     if sc.function == 'Gaussian':
-                        c0, slope, x, ex, A, eA, sigma, esigma = apline
+                        c0, ec0, slope, x, ex, A, eA, sigma, esigma = apline
                         # Compute FWHM
                         FWHM = 2 * np.sqrt(2*np.log(2)) * sigma
                         eFWHM = 2 * np.sqrt(2*np.log(2)) * esigma
@@ -104,6 +104,7 @@ def exportAperture(self):
                         data[line] = {
                                 'instrument': instrument,
                                 'continuum [Jy]': c0,
+                                'errContinuum [Jy]': ec0,                                
                                 'slope of continuum': slope,
                                 'center [um]': x,
                                 'errCenter [um]': ex,
@@ -119,7 +120,7 @@ def exportAperture(self):
                                 'errFlux [W/m2]': eflux
                                 }
                     else:
-                        c0, slope, x, ex, A, eA, sigma, esigma, alpha = apline
+                        c0, ec0, slope, x, ex, A, eA, sigma, esigma, alpha = apline
                         # Compute FWHM
                         FWHM = 2 * sigma
                         eFWHM = 2 * esigma
@@ -134,6 +135,7 @@ def exportAperture(self):
                         data[line] = {
                                 'instrument': instrument,
                                 'continuum [Jy]': c0,
+                                'errContinuum [Jy]': ec0,
                                 'slope of continuum': slope,
                                 'center [um]': x,
                                 'errCenter [um]': ex,
