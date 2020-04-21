@@ -6,7 +6,7 @@ python (https://www.anaconda.com/download).
 **You will have to use the Python 3.7 distribution.**
 
 If you have a previous Python distribution installed, it is advisable to start from scratch
-with a new Anaconda download of Python 3.7. The program runs also with Python 3.8.
+with a new Anaconda download of Python 3.7.
 
 It is a good practice to update all your installed packages to have the latest versions:
 
@@ -23,6 +23,22 @@ conda install -c conda-forge fitsio -y
 Now you are ready to install sospex:
 
 conda install -c darioflute sospex -y
+
+### Using an environment
+
+It is possible to install it inside an environment.
+To create it use the command:
+
+conda create -n sospex python=3.7 anaconda
+
+Then activate it:
+
+conda activate sospex
+
+and install sospex by following the installation commands in the previous section.
+To exit the environment, type:
+
+conda deactivate
 
 ### Note for windows users
 
