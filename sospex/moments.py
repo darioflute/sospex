@@ -1056,7 +1056,7 @@ def fitApertureLines(sc, intercept, slope):
     
     linepars = []
     for i in range(nlines):
-        print('pars: ', pars)
+        #print('pars: ', pars)
         li = 'l' + str(i) + '_'
         center = pars[li + 'center'].value  # Observed
         centerErr = pars[li + 'center'].stderr  # Observed
