@@ -1351,7 +1351,6 @@ class SpectrumCanvas(MplCanvas):
                 for line in aplines:
                     if self.function == 'Voigt':
                         c0, ec0, slope, x, ex, A, eA, sigma, esigma, alpha = line
-                        print('continuum ',c0 ,ec0)
                         xx = np.arange(x-7*sigma, x+7*sigma, sigma/10.) 
                         dx = xx - x
                         model = c0 + slope * dx
@@ -1364,7 +1363,6 @@ class SpectrumCanvas(MplCanvas):
                         #factor = (1-alpha)/np.sqrt(np.pi/np.log(2)) + alpha/np.pi
                         #A *= sigma / factor
                         model += A * ((1 - alpha) * gauss + alpha * cauchy) 
-                        #print('model ', model)
                     else:
                         c0, ec0, slope, x, ex, A, eA, sigma, esigma = line
                         xx = np.arange(x-7*sigma, x+7*sigma, sigma/10.) 
