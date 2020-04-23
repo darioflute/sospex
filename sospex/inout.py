@@ -15,6 +15,25 @@ class MyEncoder(json.JSONEncoder):
         else:
             return super(MyEncoder, self).default(obj)
 
+def computeAreaPolygon(verts):
+    """ Compute area of polygon as sum of trapezoids """
+    x = verts[:,0] * np.cos(verts[:,1]*np.pi/180.)
+    y = verts[:,1]
+    x -= np.nanmin(x)
+    y -= np.nanmin(y)
+    x *= 60
+    y *= 60
+    area = 0
+    for i, (xi, yi) in enumerate(zip(x, y)):
+        if i == 0:
+            xi1 = xi
+            yi1 = yi
+        else:
+            area += (xi - xi1) * (yi + yi1) * 0.5
+            xi1 = xi
+            yi1 = yi            
+    return area
+
 
 def exportAperture(self):
     """Export an aperture in Json format."""
@@ -35,19 +54,28 @@ def exportAperture(self):
                 ('fluxUnit', 'W/m2'),
                 ('raUnit', 'deg'),
                 ('decUnit', 'deg'),
+                ('areaUnit','sq arcmin'),
                 ('type', aperture.type),
                 ('redshift', self.specCube.redshift)
                 ]
         if type == 'Polygon':
             verts = aperture.poly.get_xy()
             adverts = np.array([(ic.wcs.wcs_pix2world(x,y,0)) for (x,y) in verts])
-            info.append(('verts', adverts.tolist()))             
+            area = computeAreaPolygon(verts)
+            info.append([
+                ('area', area),
+                ('verts', adverts.tolist())
+                ])
         elif type in ['Square', 'Rectangle']:
             x0,y0 = aperture.rect.get_xy()
             r0,d0 = ic.wcs.wcs_pix2world(x0,y0,0)
+            width = aperture.rect.get_width()*ic.pixscale
+            height = aperture.rect.get_height()*ic.pixscale
+            area = width * height * 3600. # area in sq arcmin
             info.extend([
-                ('width', aperture.rect.get_width()*ic.pixscale),
-                ('height', aperture.rect.get_height()*ic.pixscale),
+                ('area', area),
+                ('width', width),
+                ('height', height),
                 ('angle', aperture.rect.angle - ic.crota2),
                 ('ra0', r0.tolist()),
                 ('dec0', d0.tolist())
@@ -55,9 +83,13 @@ def exportAperture(self):
         elif type in['Ellipse', 'Circle']:
             x0,y0 = aperture.ellipse.center
             r0,d0 = ic.wcs.wcs_pix2world(x0,y0,0)
+            ax1 = aperture.ellipse.width * ic.pixscale * 0.5
+            ax2 = aperture.ellipse.height * ic.pixscale * 0.5
+            area = np.pi * ax1 * ax2 * 3600. # area in sq arcmin
             info.extend([
-                    ('width',  aperture.ellipse.width*ic.pixscale),
-                    ('height', aperture.ellipse.height*ic.pixscale),
+                    ('area', area),
+                    ('width',  ax1 * 2),
+                    ('height', ax2 * 2),
                     ('angle',  aperture.ellipse.angle - ic.crota2),
                     ('ra0', r0.tolist()),
                     ('dec0', d0.tolist())
