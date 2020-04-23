@@ -17,7 +17,7 @@ class MyEncoder(json.JSONEncoder):
 
 def computeAreaPolygon(verts):
     """ Compute area of polygon as sum of trapezoids """
-    x = verts[:,0] * np.cos(verts[:,1]*np.pi/180.)
+    x = verts[:,0] * np.cos(verts[:,1] * np.pi / 180.)
     y = verts[:,1]
     x -= np.nanmin(x)
     y -= np.nanmin(y)
@@ -54,23 +54,23 @@ def exportAperture(self):
                 ('fluxUnit', 'W/m2'),
                 ('raUnit', 'deg'),
                 ('decUnit', 'deg'),
-                ('areaUnit','sq arcmin'),
+                ('areaUnit', 'sq arcmin'),
                 ('type', aperture.type),
                 ('redshift', self.specCube.redshift)
                 ]
         if type == 'Polygon':
             verts = aperture.poly.get_xy()
             adverts = np.array([(ic.wcs.wcs_pix2world(x,y,0)) for (x,y) in verts])
-            area = computeAreaPolygon(verts)
-            info.append([
+            area = computeAreaPolygon(adverts)
+            info.extend([
                 ('area', area),
                 ('verts', adverts.tolist())
                 ])
         elif type in ['Square', 'Rectangle']:
             x0,y0 = aperture.rect.get_xy()
             r0,d0 = ic.wcs.wcs_pix2world(x0,y0,0)
-            width = aperture.rect.get_width()*ic.pixscale
-            height = aperture.rect.get_height()*ic.pixscale
+            width = aperture.rect.get_width() * ic.pixscale
+            height = aperture.rect.get_height() * ic.pixscale
             area = width * height * 3600. # area in sq arcmin
             info.extend([
                 ('area', area),
