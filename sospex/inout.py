@@ -16,22 +16,22 @@ class MyEncoder(json.JSONEncoder):
             return super(MyEncoder, self).default(obj)
 
 def computeAreaPolygon(verts):
-    """ Compute area of polygon as sum of trapezoids """
-    x = verts[:,0] * np.cos(verts[:,1] * np.pi / 180.)
-    y = verts[:,1]
+    """ 
+    Compute area of polygon as sum of trapezoids.
+    Coordinates of vertices are passed in degrees.
+    The output area is expressed in square arcminutes.
+    """
+    x = verts[:,0] * np.cos(verts[:,1] * np.pi / 180.) * 60
+    y = verts[:,1] * 60
     x -= np.nanmin(x)
     y -= np.nanmin(y)
-    x *= 60
-    y *= 60
     area = 0
-    for i, (xi, yi) in enumerate(zip(x, y)):
-        if i == 0:
-            xi1 = xi
-            yi1 = yi
-        else:
-            area += (xi - xi1) * (yi + yi1) * 0.5
-            xi1 = xi
-            yi1 = yi            
+    x_ = x[0]
+    y_ = y[0]
+    for xi, yi in zip(x, y):
+        area += (xi - x_) * (yi + y_) * 0.5
+        x_ = xi
+        y_ = yi
     return area
 
 

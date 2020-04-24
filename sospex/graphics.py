@@ -730,22 +730,27 @@ class ImageHistoCanvas(MplCanvas):
                     self.span.active = True
         elif event.key == 'i':
             x = event.xdata
-            n = len(self.lev)
-            # Add to contour list
-            self.levels.append(x)
+            # Insert new level
+            n = 0
+            for level in self.levels:
+                if x > level:
+                    n += 1
+            self.levels.insert(n, x)
             lev = self.axes.axvline(x=x,color='cyan',animated='True')
-            self.lev.append(lev)
-            # Sort the levels in increasing order
-            levels = np.array(self.levels)
-            idx = np.argsort(levels)
-            self.lev = [self.lev[i] for i in idx]
-            self.levels = list(levels[idx])
+            self.lev.insert(n, lev)
             # Emit signal to communicate it to images (add 1000 to tell that this is a new level)
-            n = self.levels.index(x)
             self.levSignal.emit(1000+n)
         # Update image
         self.fig.canvas.draw_idle()
 
+    def sort_levels(self):
+        # Sort the levels in increasing order
+        levels = np.array(self.levels)
+        idx = np.argsort(levels)
+        self.lev = [self.lev[i] for i in idx]
+        self.levels = list(levels[idx])
+        print('sorted levels: ', self.levels)
+        
     def motion_notify_callback(self, event):
         'on mouse movement - this should be allowed only if the image size is reasonably small'
         if not self.showLevels:
@@ -757,6 +762,14 @@ class ImageHistoCanvas(MplCanvas):
         if not event.inaxes:
             return
         x = event.xdata
+        # Check to avoid overlapping
+        if len(self.levels) > 1:
+            if self._ind < len(self.levels) - 1:
+                if x >= self.levels[self._ind + 1]:
+                    return
+            if self._ind > 0:
+                if x <= self.levels[self._ind - 1]:
+                    return
         self.levels[self._ind] = x
         lev = self.lev[self._ind]
         xl,yl = lev.get_data()

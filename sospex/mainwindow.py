@@ -728,7 +728,9 @@ class GUI (QMainWindow):
                         # to speed-up the computation
                         ny0, nx0 = np.shape(co.data)
                         ny ,nx = np.shape(ima.oimage)
-                        levs =  sorted(ih0.levels)
+                        # Sort the histrogram levels
+                        # ih0.sort_levels()
+                        levs = ih0.levels
                         # Smooth data
                         #ismo = ndimage.gaussian_filter(co.data, sigma=0.1, order=0)
                         ismo = co.data
@@ -4799,7 +4801,7 @@ class GUI (QMainWindow):
         if self.bands[itab] == 'Cov':
             ih0.levels = list(np.arange(ih0.min,ih0.max,(ih0.max-ih0.min)/8))
         else:
-            levels = ih0.median + np.array([-1,0,1,2,3,5,10]) * ih0.sdev
+            levels = ih0.median + np.array([0.1,1,2,3,5,10]) * ih0.sdev
             mask = levels < ih0.max
             ih0.levels = list(levels[mask])
         #print('Contour levels are: ',ih0.levels)
@@ -4844,12 +4846,12 @@ class GUI (QMainWindow):
                 # Insert new contour in the contour collection
                 ic0.contour.collections.insert(n, new.collections[0])                
             elif n <= -1000:
-                n += 1000
+                n = - n - 1000
                 # Remove contour from image
                 if n < ncontours:
                     ic0.axes.collections.remove(ic0.contour.collections[n])
                     # Delete element from contour collection list
-                    del ic0.contour.collections[n]
+                    ic0.contour.collections.pop(n)
                 else:
                     print('contour ',n,' does not exist')
             else:
