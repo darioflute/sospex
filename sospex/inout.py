@@ -14,6 +14,59 @@ class MyEncoder(json.JSONEncoder):
             return obj.tolist()
         else:
             return super(MyEncoder, self).default(obj)
+        
+def exportContours(self):
+    """Export defined contours."""
+    itab = self.itabs.currentIndex()
+    ic0 = self.ici[itab]
+    ih0 = self.ihi[itab]
+    if ic0.contour is not None:
+        if ic0.title in ['Flux','Coverage map','Flux [no atm. corr.]']:
+            source = self.specCube.instrument
+        else:
+            source = ic0.title
+        info = [
+                ('source', source),
+                ('levels', ih0.levels)
+                ]
+        data = OrderedDict(info)
+        # Open a dialog
+        fd = QFileDialog()
+        fd.setLabelText(QFileDialog.Accept, "Export as")
+        fd.setNameFilters(["Json Files (*.json)","All Files (*)"])
+        fd.setOptions(QFileDialog.DontUseNativeDialog)
+        fd.setViewMode(QFileDialog.List)
+        if (fd.exec()):
+            filenames= fd.selectedFiles()
+            filename = filenames[0]
+            if filename[-5:] != '.json':
+                filename += '.json'               
+            print("Exporting contour levels to file: ", filename)
+            with io.open(filename, mode='w') as f:
+                str_= json.dumps(data, indent=2, separators=(',', ': '),
+                                 ensure_ascii=False, cls=MyEncoder)
+                f.write(str_)
+            self.sb.showMessage("Aperture exported in file "+filename, 3000)
+    else:
+        return
+
+    
+def importContours(self):
+    """Import defined contours.""" 
+    # Open a dialog
+    fd = QFileDialog()
+    fd.setLabelText(QFileDialog.Accept, "Import")
+    fd.setNameFilters(["Json Files (*.json)","All Files (*)"])
+    fd.setOptions(QFileDialog.DontUseNativeDialog)
+    fd.setViewMode(QFileDialog.List)
+    fd.setFileMode(QFileDialog.ExistingFile)
+    if (fd.exec()):
+        filenames= fd.selectedFiles()
+        print("Loading contour levels from file: ", filenames[0])
+        with open(filenames[0],'r') as f:
+            data = json.load(f)
+    self.drawContours(data['levels'])          
+    
 
 def computeAreaPolygon(verts):
     """ 

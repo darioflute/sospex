@@ -30,7 +30,9 @@ from sospex.cloud import cloudImage
 from sospex.interactors import (SliderInteractor, SliceInteractor, DistanceSelector,
                                 VoronoiInteractor, LineInteractor, PsfInteractor,
                                 InteractorManager, SegmentsSelector, SegmentsInteractor)
-from sospex.inout import exportAperture, importAperture, exportGuesses, importGuesses
+from sospex.inout import (exportAperture, importAperture, 
+                          exportGuesses, importGuesses,
+                          exportContours, importContours)
 
 class MyProxyStyle(QProxyStyle):
     pass
@@ -198,7 +200,11 @@ class GUI (QMainWindow):
         aperture.addAction(QAction('Import',self,shortcut='',triggered=self.importApertureAction))
         guesses = file.addMenu("Guesses I/O")
         guesses.addAction(QAction('Export', self, shortcut='', triggered=self.exportGuessesAction))
-        guesses.addAction(QAction('Import', self, shortcut='', triggered=self.importGuessesAction))        
+        guesses.addAction(QAction('Import', self, shortcut='', triggered=self.importGuessesAction))
+        guesses = file.addMenu("Contours I/O")
+        guesses.addAction(QAction('Export', self, shortcut='', triggered=self.exportContoursAction))
+        guesses.addAction(QAction('Import', self, shortcut='', triggered=self.importContoursAction))
+        
         # View
         view = bar.addMenu("View")
         slice = view.addMenu("Show slider")
@@ -291,6 +297,12 @@ class GUI (QMainWindow):
     def importGuessesAction(self):
         importGuesses(self)
         print('Imported ', self.ncells, ' cells.')
+        
+    def exportContoursAction(self):
+        exportContours(self)
+        
+    def importContoursAction(self):
+        importContours(self)
 
     def showHeader(self):
         """ Show header of the spectral cube """
@@ -4788,7 +4800,7 @@ class GUI (QMainWindow):
             ic0.changed = False
             self.sb.showMessage('Contours deleted ', 1000)
 
-    def drawContours(self):
+    def drawContours(self, levels=None):
         """ Draw contours of image """
         itab = self.itabs.currentIndex()
         ic0 = self.ici[itab]
@@ -4798,12 +4810,15 @@ class GUI (QMainWindow):
         if ih0.median is None or ih0.sdev is None:
             print('updating histogram')
             ih0.update_figure(image=ic0.oimage)
-        if self.bands[itab] == 'Cov':
-            ih0.levels = list(np.arange(ih0.min,ih0.max,(ih0.max-ih0.min)/8))
+        if levels is None:
+            if self.bands[itab] == 'Cov':
+                ih0.levels = list(np.arange(ih0.min,ih0.max,(ih0.max-ih0.min)/8))
+            else:
+                levels = ih0.median + np.array([0.1,1,2,3,5,10]) * ih0.sdev
+                mask = levels < ih0.max
+                ih0.levels = list(levels[mask])
         else:
-            levels = ih0.median + np.array([0.1,1,2,3,5,10]) * ih0.sdev
-            mask = levels < ih0.max
-            ih0.levels = list(levels[mask])
+            ih0.levels = levels
         #print('Contour levels are: ',ih0.levels)
         if self.specCube.instrument != 'FIFI-LS':
             ismo = ndimage.gaussian_filter(ic0.oimage, sigma=1.0, order=0)
@@ -4833,8 +4848,8 @@ class GUI (QMainWindow):
         itab = self.itabs.currentIndex()
         ic0 = self.ici[itab]
         ih0 = self.ihi[itab]
-        ncontours = len(ic0.contour.collections)
         if ic0.contour is not None:
+            ncontours = len(ic0.contour.collections)
             if n >= 1000:
                 # Add a brand new level
                 n -= 1000
