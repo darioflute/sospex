@@ -65,7 +65,10 @@ def importContours(self):
         print("Loading contour levels from file: ", filenames[0])
         with open(filenames[0],'r') as f:
             data = json.load(f)
-    self.drawContours(data['levels'])          
+    if self.contours == 'on':
+        self.removeContours()
+    self.drawContours(data['levels']) 
+    self.contours = 'on'
     
 
 def computeAreaPolygon(verts):
