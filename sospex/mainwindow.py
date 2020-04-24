@@ -689,6 +689,7 @@ class GUI (QMainWindow):
                 apname = "{:d}".format(i)
                 self.stabs.setTabText(stab, apname)
                 self.sci[stab].name = apname
+                self.spectra[stab] = apname # update spectra ?
                 i += 1
         
     def onITabChange(self, itab):
