@@ -5259,6 +5259,7 @@ class GUI (QMainWindow):
             # print('spect in mainwindow is ',aspect)
             # t0 = time.process_time()
             # print('Image prepared in ', t0-ts, 's')
+            #print('Display image ...', s.n0)
             ic.compute_initial_figure(image=image,wcs=s.wcs,title=ima,cMap=self.colorMap,
                                       cMapDir=self.colorMapDirection,stretch=self.stretchMap,
                                       instrument = s.instrument, aspect=aspect)
