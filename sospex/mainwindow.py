@@ -4578,9 +4578,11 @@ class GUI (QMainWindow):
                     ic0.updateImage(image)
                     ic0.updateScale(cmin,cmax)
                 # mask C0, Mi, v, sv
-                sbands = [self.C0, self.M0, self.M1, self.M2, self.M3, self.M4, 
-                          self.v, self.sv,self.L0, self.L1]
-                bands = ['C0','M0','M1','M2','M3','M4','v','sv','L0','L1']
+                #sbands = [self.C0, self.M0, self.M1, self.M2, self.M3, self.M4, 
+                #          self.v, self.sv,self.L0, self.L1]
+                #bands = ['C0','M0','M1','M2','M3','M4','v','sv','L0','L1']
+                sbands = [self.C0, self.M0, self.v, self.sv,self.L0, self.L1]
+                bands = ['C0','M0','v','sv','L0','L1']
                 for b,sb in zip(bands,sbands):
                     if sb is not None:
                         itab = self.bands.index(b)
