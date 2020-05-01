@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 import sys,os
 import numpy as np
-from PyQt5.QtWidgets import (QApplication, QWidget, QMainWindow, QTabWidget, QTabBar,QHBoxLayout,
-                             QVBoxLayout, QSizePolicy, QStatusBar, QSplitter,
-                             QToolBar, QAction, QFileDialog,  QTableView, QComboBox, QAbstractItemView,
-                             QMessageBox, QInputDialog, QDialog, QLabel, QProxyStyle,QStyle)
+from PyQt5.QtWidgets import (QApplication, QWidget, QMainWindow, QTabWidget, 
+                             QTabBar,QHBoxLayout, QVBoxLayout, QSizePolicy, 
+                             QStatusBar, QSplitter, QToolBar, QAction, 
+                             QFileDialog,  QTableView, QComboBox, 
+                             QAbstractItemView, QMessageBox, QInputDialog, 
+                             QDialog, QLabel, QProxyStyle,QStyle)
 from PyQt5.QtGui import QIcon, QStandardItem, QStandardItemModel, QPixmap, QMovie
 from PyQt5.QtCore import Qt, QSize, QTimer, QThread, pyqtSignal, pyqtSlot
 
@@ -18,11 +20,13 @@ import scipy.ndimage as ndimage
 # To avoid excessive warning messages
 import warnings
 
-from sospex.moments import ( multiFitContinuum, multiComputeMoments, ContParams, ContFitParams, 
-                            SlicerDialog, FitCubeDialog, multiFitLines, residualsPsf, guessParams,
+from sospex.moments import ( multiFitContinuum, multiComputeMoments,
+                            multiFitLines, residualsPsf, 
                             fitApertureContinuum, fitApertureLines)
-from sospex.graphics import  (NavigationToolbar, ImageCanvas, ImageHistoCanvas, SpectrumCanvas,
-                       cmDialog, ds9cmap, ScrollMessageBox, PsfCanvas)
+from sospex.dialogs import (ContParams, ContFitParams, SlicerDialog, guessParams,
+                            FitCubeDialog, cmDialog)
+from sospex.graphics import  (NavigationToolbar, ImageCanvas, ImageHistoCanvas,
+                              SpectrumCanvas, ds9cmap, ScrollMessageBox, PsfCanvas)
 from sospex.apertures import (photoAperture, PolygonInteractor, EllipseInteractor,
                               RectangleInteractor, PixelInteractor)
 from sospex.specobj import specCube, specCubeAstro, Spectrum, ExtSpectrum
@@ -162,20 +166,78 @@ class GUI (QMainWindow):
         # Load lines
         from sospex.lines import define_lines
         self.Lines = define_lines()
+        # Check new versions (possibly with a thread ?)
+        new = self.checkVersion()
         # Welcome message
-        self.welcomeMessage()
+        self.welcomeMessage(new)
         # Menu
         self.createMenu()
+        
+    def checkVersion(self):
+        """Check for new versions"""
+        from sospex import __version__
+        from sys import platform
+        import os
+        # Only for Unix versions
+        if platform in ["linux", "darwin"]:
+            pass
+        else:
+            return
+        # Look for latest version
+        try:
+            # Check for versions 
+            #command = 'conda search "darioflute::*[name=sospex, version=*beta, build=*py37*]" | tail -1'
+            command = 'conda search "darioflute::*[name=sospex]" | tail -1'
+            with os.popen(command) as stream:
+                output = stream.read()
+            self.newversion = output.split()[1]
+            if self.newversion > __version__:
+                message = self.newversionDialog()
+                return message
+            else:
+                print('You have the latest version')
+                return None
+        except:
+            return None
+        
+    def newversionDialog(self):
+        flags = QMessageBox.Yes 
+        flags |= QMessageBox.No
+        question = "Do you want to install the new version "+self.newversion+" ?"
+        response = QMessageBox.question(self, "Question",
+                                        question,
+                                        flags)            
+        if response == QMessageBox.Yes:
+            message = self.installNewVersion()
+            return message
+        else:
+            self.sb.showMessage("You can manually install the new version with " +
+                                " the command: conda update -c darioflute sospex")
+            return None
 
-    def welcomeMessage(self):
+    def installNewVersion(self):
+        try:
+            self.sb.showMessage("Installing the version "+self.newversion)            
+            os.system('conda install -c darioflute sospex=='+self.newversion+' -y')
+            self.sb.showMessage("Restart sospex to use the new version")
+            return 'new version installed'
+        except:
+            print('Installation failed')
+            return None
+
+    def welcomeMessage(self, message=None):
         self.wbox = QMessageBox()
         pixmap = QPixmap(os.path.join(self.path0,'icons','sospex.png'))
         self.wbox.setIconPixmap(pixmap)
         self.wbox.setText("Welcome to SOSPEX")
-        self.wbox.setInformativeText('SOFIA SPectral EXplorer\n\n '+\
-                                     '* Click on folder icon to load spectra\n\n'+\
-                                     '* Click on running men icon to exit\n\n'+\
-                                     '* Click on question mark for further help')
+        if message is None:
+            self.wbox.setInformativeText('SOFIA SPectral EXplorer\n\n '+\
+                                         '* Click on folder icon to load spectra\n\n'+\
+                                             '* Click on running men icon to exit\n\n'+\
+                                        '* Click on question mark for further help')
+        else:
+            self.wbox.setInformativeText('A new version has been just installed\n'+\
+                                         'Plese, restart SOSPEX to use the new version.')
         self.wbox.show()
 
     def createMenu(self):
@@ -3444,7 +3506,8 @@ class GUI (QMainWindow):
             self.newImageMessage(message)
         elif band == 'local spectral cube':
             print('Uploading auxiliary spectral cube')
-            downloadedCube = cloudImage(lon, lat, xsize, ysize, band)
+            downloadedCube = cloudImage(lon, lat, xsize, ysize, band,
+                                        self.specCube.pixscale)
             self.auxSpecCube = downloadedCube.data
             if self.auxSpecCube is not None:
                 message = 'Auxiliary spectral cube downloaded'

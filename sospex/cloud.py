@@ -42,7 +42,7 @@ class MyHTMLParser(HTMLParser):
             self.data.append(data)
 
 class cloudImage(object):
-    def __init__(self, lon, lat, xsize, ysize, source):
+    def __init__(self, lon, lat, xsize, ysize, source, pixscale=None):
 
         self.lon = lon
         self.lat = lat
@@ -51,6 +51,8 @@ class cloudImage(object):
         self.source = source
         self.data = None
         self.wcs = None
+        if pixscale is not None:
+            self.pixscale = pixscale
 
         if source == 'local image':
             self.openLocal()
@@ -182,18 +184,28 @@ class cloudImage(object):
                     self.data = specCube(cube_file)
                 except:
                     self.data = specCubeAstro(cube_file)
-                print('data read ')
                 self.wcs = self.data.wcs
-                print('wcs read ')
+                newpixel = self.data.pixscale
+                pixel = self.pixscale
+                ratio = (pixel/newpixel)**2
+                print('area ratio: ', ratio)
+                self.data.flux *= ratio                    
                 # Check if coordinates are inside the image
-                x,y = self.wcs.wcs_world2pix(self.lon, self.lat, 0)
-                print('x y ',x,y)
-                if x >= 0 and x <= self.data.nx and y >= 0 and y  <= self.data.ny:
-                    print('Source inside the FITS cube')
-                else:
-                    self.data = None
-                    self.wcs = None
-                    print('The selected  FITS is not a valid file')
+                # This should be modified to check if the cube is inside the axes
+                #x, y = self.wcs.wcs_world2pix(self.lon, self.lat, 0)
+                #print('x y ', x, y)
+                #if x >= 0 and x <= self.data.nx and y >= 0 and y  <= self.data.ny:
+                #    print('Source inside the FITS cube')
+                #    # At this point the fluxes are rescaled to the pixel size
+                #    # of the original cube
+                #    newpixel = self.data.pixscale
+                #    pixel = self.specCube.pixscale
+                #    ratio = (newpixel/pixel)**2
+                #    self.data.flux *= ratio                    
+                #else:
+                #    self.data = None
+                #    self.wcs = None
+                #    print('The selected  FITS is not a valid file')
             except:
                 self.data = None
                 self.wcs = None
