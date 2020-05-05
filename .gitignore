@@ -22,4 +22,5 @@ notebooks/*.ipynb
 old
 build
 dist
-
+sospex/noarch
+notebooks
