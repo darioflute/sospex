@@ -355,7 +355,7 @@ def fitLines(p, m,w,f,lines):
             #    params[li+'amplitude'].set(A, min=2 * A, max=A * 0.1)
                 
             params[li+'sigma'].set(sigma, min=sigma / 2., max=sigma * 2)
-            params[li + 'fraction'].set(0.0, vary=False, max = 0.3)  # No Cauchy part (i.e. Gauss)
+            params[li + 'fraction'].set(0.4, vary=True, min=0, max = 0.45)  # No Cauchy part (i.e. Gauss)
         # Minimize
         out = model.fit(y, params, x=x, method='nelder')
         #               kws={'data': y, 'eps': e}, method='leastsq')

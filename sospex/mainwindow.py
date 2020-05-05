@@ -1797,7 +1797,12 @@ class GUI (QMainWindow):
                     x = l * (3 * i )
                 else:
                     x = l * (1.5 + (nxc - 1 - i) * 3)
-                self.sites.append([x, y])   
+                # Check if point falls inside region with signal
+                # or it lies on the perimeter
+                values = self.specCube.flux[:,int(y),int(x)]
+                nvalues = np.sum(np.isfinite(values))
+                if (nvalues > 10) | (x < lx) | (x > nx-lx) | (y < ly) | (y > ny-ly):
+                    self.sites.append([x, y])   
         self.sites = np.array(self.sites)
         self.ncells = len(self.sites)
         print('Computed ', self.ncells, ' regions')
@@ -3931,7 +3936,7 @@ class GUI (QMainWindow):
             itab = self.itabs.currentIndex()
             ic = self.ici[itab]
             band = self.bands[itab]
-            if band == 'Flux' or band == 'Uflux' or band == 'Exp':
+            if band in ['Flux','Uflux','Exp','C0','M0','v','sv','I0','I1']:
                 instrument = self.specCube.instrument
             else:
                 instrument = band
