@@ -1743,14 +1743,54 @@ class GUI (QMainWindow):
             # 2. Fit the lines
             linepars = fitApertureLines(sc, (ic, eic), (s, es))
             # 3. Plot the fit
-            print('update with linepars ', linepars)
             sc.updateSpectrum(aplines=linepars)
-            sc.fig.canvas.draw_idle()     
+            sc.fig.canvas.draw_idle()
+            # 4. Dialog window with results
+            self.fitMessage(linepars, sc.function)
+
         except BaseException:
             message = 'First define a guess for the fit'
             self.sb.showMessage(message, 4000)
             print(message)
             
+    def fitMessage(self, lines, function):
+        self.fbox = QMessageBox()
+        self.fbox.setIcon(QMessageBox.Question)
+        self.fbox.setText("Fitted parameters")
+    
+        message = ''
+        for i, line in enumerate(lines):
+            print(line)
+            if function == 'Voigt':
+                c0, ec0, slope, x, ex, A, eA, sigma, esigma, alpha = line
+            else:
+                c0, ec0, slope, x, ex, A, eA, sigma, esigma = line
+            print('c0 ',c0)
+            # Compute FWHM
+            FWHM = 2 * np.sqrt(2*np.log(2)) * sigma
+            eFWHM = 2 * np.sqrt(2*np.log(2)) * esigma
+            c = 299792458. # m/s
+            FWHMv = c * FWHM / x / 1000.
+            eFWHMv = FWHMv / sigma * esigma
+            # Compute intensity of line in W/m2
+            # The flux is integrated in um, so has to be divided
+            # by um, then c/x is expressed in m. 1.e-26 factor to
+            # transform Jy in W/m2/Hz
+            jy2wm2 = c / (x * x) * 1.e-20 
+            flux = A * jy2wm2
+            message += '{:d}'.format(i+1)
+            message += u'   \u03bb\u2080:      {:4.2f} \u03bcm\n'.format(x)
+            message += u'    FWHM: {:5.2f} km/s\n'.format(FWHMv)
+            message += u'    Flux:  {:.2e} W/m\u00b2\n\n'.format(flux)
+        self.fbox.setStandardButtons(QMessageBox.Close|QMessageBox.Save)
+        self.fbox.setDefaultButton(QMessageBox.Close)
+        self.fbox.setInformativeText(message)
+        self.fbox.buttonClicked.connect(self.fitMessageButton)
+        self.fbox.show()
+        
+    def fitMessageButton(self, event):
+        if event.text() == 'Save':
+            self.exportApertureAction()
     
     def removeVI(self):
         """Remove Voronoi tessellation if there."""

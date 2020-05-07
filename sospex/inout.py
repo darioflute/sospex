@@ -75,10 +75,10 @@ def computeAreaPolygon(verts):
     """ 
     Compute area of polygon as sum of trapezoids.
     Coordinates of vertices are passed in degrees.
-    The output area is expressed in square arcminutes.
+    The output area is expressed in square arcsec.
     """
-    x = verts[:,0] * np.cos(verts[:,1] * np.pi / 180.) * 60
-    y = verts[:,1] * 60
+    x = verts[:,0] * np.cos(verts[:,1] * np.pi / 180.) * 3600
+    y = verts[:,1] * 3600
     x -= np.nanmin(x)
     y -= np.nanmin(y)
     area = 0
@@ -110,7 +110,7 @@ def exportAperture(self):
                 ('fluxUnit', 'W/m2'),
                 ('raUnit', 'deg'),
                 ('decUnit', 'deg'),
-                ('areaUnit', 'sq arcmin'),
+                ('areaUnit', 'sq arcsec'),
                 ('type', aperture.type),
                 ('redshift', self.specCube.redshift)
                 ]
@@ -127,7 +127,7 @@ def exportAperture(self):
             r0,d0 = ic.wcs.wcs_pix2world(x0,y0,0)
             width = aperture.rect.get_width() * ic.pixscale
             height = aperture.rect.get_height() * ic.pixscale
-            area = width * height * 3600. # area in sq arcmin
+            area = width * height  # area in sq arcsec
             info.extend([
                 ('area', area),
                 ('width', width),
@@ -141,7 +141,7 @@ def exportAperture(self):
             r0,d0 = ic.wcs.wcs_pix2world(x0,y0,0)
             ax1 = aperture.ellipse.width * ic.pixscale * 0.5
             ax2 = aperture.ellipse.height * ic.pixscale * 0.5
-            area = np.pi * ax1 * ax2 * 3600. # area in sq arcmin
+            area = np.pi * ax1 * ax2  # area in sq arcsec
             info.extend([
                     ('area', area),
                     ('width',  ax1 * 2),

@@ -1259,7 +1259,7 @@ class SpectrumCanvas(MplCanvas):
                     if self.xunit == 'THz':
                         xx = c/xx * 1.e-6
                     verts = list(zip(xx,model))
-                    voigt = Polygon(verts, fill=False, closed=False,color='purple')
+                    voigt = Polygon(verts, fill=False, closed=False,color='purple',linewidth=3)
                     self.axes.add_patch(voigt)
                     self.voigt.append(voigt)
             if aplines is not None:
