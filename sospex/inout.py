@@ -244,6 +244,7 @@ def exportAperture(self):
                 data = OrderedDict(info)
         # Open a dialog
         fd = QFileDialog()
+        fd.setWindowTitle('Export aperture/fit')
         fd.setLabelText(QFileDialog.Accept, "Export as")
         fd.setNameFilters(["Json Files (*.json)","All Files (*)"])
         fd.setOptions(QFileDialog.DontUseNativeDialog)
@@ -268,6 +269,7 @@ def importAperture(self):
     from sospex.interactors import SegmentsInteractor, InteractorManager
     # Open a dialog
     fd = QFileDialog()
+    fd.setWindowTitle('Import aperture/fit')
     fd.setLabelText(QFileDialog.Accept, "Import")
     fd.setNameFilters(["Json Files (*.json)","All Files (*)"])
     fd.setOptions(QFileDialog.DontUseNativeDialog)
@@ -406,6 +408,7 @@ def exportGuesses(self):
             data.move_to_end(i, last=True)  # Move element to the end
     # Open a dialog
     fd = QFileDialog()
+    fd.setWindowTitle('Export guesses')
     fd.setLabelText(QFileDialog.Accept, "Export as")
     fd.setNameFilters(["Json Files (*.json)","All Files (*)"])
     fd.setOptions(QFileDialog.DontUseNativeDialog)
@@ -427,6 +430,7 @@ def importGuesses(self):
     from sospex.interactors import SegmentsInteractor, InteractorManager
     # Open a dialog
     fd = QFileDialog()
+    fd.setWindowTitle('Import guesses')
     fd.setLabelText(QFileDialog.Accept, "Import as")
     fd.setNameFilters(["Json Files (*.json)","All Files (*)"])
     fd.setOptions(QFileDialog.DontUseNativeDialog)

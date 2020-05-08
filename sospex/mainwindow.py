@@ -1755,7 +1755,10 @@ class GUI (QMainWindow):
             
     def fitMessage(self, lines, function):
         self.fbox = QMessageBox()
-        self.fbox.setIcon(QMessageBox.Question)
+        pixmap = QPixmap(os.path.join(self.path0,'icons','sospex.png'))
+        self.fbox.setIconPixmap(pixmap)
+        #self.fbox.setIcon(QMessageBox.Information)
+        self.fbox.setWindowTitle("Line fits")
         self.fbox.setText("Fitted parameters")
     
         message = ''
@@ -1765,7 +1768,6 @@ class GUI (QMainWindow):
                 c0, ec0, slope, x, ex, A, eA, sigma, esigma, alpha = line
             else:
                 c0, ec0, slope, x, ex, A, eA, sigma, esigma = line
-            print('c0 ',c0)
             # Compute FWHM
             FWHM = 2 * np.sqrt(2*np.log(2)) * sigma
             eFWHM = 2 * np.sqrt(2*np.log(2)) * esigma
@@ -1773,17 +1775,14 @@ class GUI (QMainWindow):
             FWHMv = c * FWHM / x / 1000.
             eFWHMv = FWHMv / sigma * esigma
             # Compute intensity of line in W/m2
-            # The flux is integrated in um, so has to be divided
-            # by um, then c/x is expressed in m. 1.e-26 factor to
-            # transform Jy in W/m2/Hz
             jy2wm2 = c / (x * x) * 1.e-20 
             flux = A * jy2wm2
             message += '{:d}'.format(i+1)
             message += u'   \u03bb\u2080:      {:4.2f} \u03bcm\n'.format(x)
             message += u'    FWHM: {:5.2f} km/s\n'.format(FWHMv)
             message += u'    Flux:  {:.2e} W/m\u00b2\n\n'.format(flux)
-        self.fbox.setStandardButtons(QMessageBox.Close|QMessageBox.Save)
-        self.fbox.setDefaultButton(QMessageBox.Close)
+        self.fbox.setStandardButtons(QMessageBox.Discard|QMessageBox.Save)
+        self.fbox.setDefaultButton(QMessageBox.Discard)
         self.fbox.setInformativeText(message)
         self.fbox.buttonClicked.connect(self.fitMessageButton)
         self.fbox.show()
@@ -1791,6 +1790,7 @@ class GUI (QMainWindow):
     def fitMessageButton(self, event):
         if event.text() == 'Save':
             self.exportApertureAction()
+            self.saveSpectrum()
     
     def removeVI(self):
         """Remove Voronoi tessellation if there."""
@@ -3965,6 +3965,7 @@ class GUI (QMainWindow):
         from astropy.io import fits        
         # Dialog to save file
         fd = QFileDialog()
+        fd.setWindowTitle('Save image')
         fd.setLabelText(QFileDialog.Accept, "Save as")
         fd.setNameFilters(["Fits Files (*.fits)","PNG Files (*.png)",
                            "JPG Files (*.jpg)","PDF Files (*.pdf)","All Files (*)"])
@@ -3993,7 +3994,7 @@ class GUI (QMainWindow):
                 hdul = fits.HDUList([hdu])
                 hdul.writeto(outfile,overwrite=True) # clobber true  allows rewriting
                 hdul.close()
-            elif file_extension == '.png' or file_extension == '.pdf' or file_extension == '.jpg':
+            elif file_extension in ['.png', '.pdf', '.jpg']:
                 ic.fig.savefig(outfile)
             else:
                 message = 'extension has to be *.fits, *.png, *.jpg or *.pdf' 
@@ -4005,6 +4006,7 @@ class GUI (QMainWindow):
         from astropy.io import fits        
         # Dialog to save file
         fd = QFileDialog()
+        fd.setWindowTitle('Save spectrum')
         fd.setLabelText(QFileDialog.Accept, "Save as")
         fd.setNameFilters(["Fits Files (*.fits)","PNG Files (*.png)","JPG Files (*.jpg)",
                            "PDF Files (*.pdf)","ASCII Files (*.txt)", "CSV Files (*.csv)","All Files (*)"])
@@ -4110,7 +4112,7 @@ class GUI (QMainWindow):
                 hdul = fits.HDUList(hdlist)
                 hdul.writeto(outfile,overwrite=True) # clobber true  allows rewriting
                 hdul.close()
-            elif file_extension == '.txt' or file_extension == '.csv':
+            elif file_extension in ['.txt', '.csv']:
                 header = "# Object name: "+self.specCube.objname
                 header += "\n# Instrument: "+self.specCube.instrument
                 header += "\n# z: {:.8f}".format(self.specCube.redshift)
@@ -4182,10 +4184,10 @@ class GUI (QMainWindow):
                         file.write(header.encode())
                         file.write(b'\n"wavelength","flux"\n')
                         np.savetxt(file, np.column_stack((w,f)), fmt=fmt, delimiter=delimiter)                
-            elif file_extension == '.png' or file_extension == '.pdf' or file_extension == '.jpg':
+            elif file_extension in ['.png', '.pdf', '.jpg']:
                 sc.fig.savefig(outfile)
             else:
-                message = "Extension has to be *.fits, *.txt, *.csv, *.png, *.jpg, or *.pdf "
+                message = "Extension accepted: *.fits, *.txt, *.csv, *.png, *.jpg, *.pdf "
                 self.sb.showMessage(message, 2000)
                 print(message)
     
