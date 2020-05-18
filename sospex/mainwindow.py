@@ -1782,6 +1782,8 @@ class GUI (QMainWindow):
             message += u'    FWHM: {:5.2f} km/s\n'.format(FWHMv)
             message += u'    Flux:  {:.2e} W/m\u00b2\n\n'.format(flux)
         self.fbox.setStandardButtons(QMessageBox.Discard|QMessageBox.Save)
+        self.discardbutton = self.fbox.button(QMessageBox.Discard)
+        self.discardbutton.setText('Continue')
         self.fbox.setDefaultButton(QMessageBox.Discard)
         self.fbox.setInformativeText(message)
         self.fbox.buttonClicked.connect(self.fitMessageButton)
@@ -5117,12 +5119,20 @@ class GUI (QMainWindow):
                 wt, atran, altitudes, wvs = atrandata
                 imin = np.argmin(np.abs(altitudes-altitude))
                 at = atran[imin]
+                
                 angle = za * np.pi/180.
-                cos_angle = np.cos(angle)
-                #depth = 1. / cos_angle  # Flat Earth approximation
-                r = 6383.5/50.  # assuming r_earth = 6371 km, altitude = 12.5 km, and 50 km of more stratosphere
-                rcos = r * cos_angle
-                depth = -rcos + np.sqrt(rcos * rcos + 1 + 2 * r) # Taking into account Earth curvature
+                a = 6371 + 12.5  # Earth radius + altitude (~12.5 km)
+                c = 38           # Rest of stratosphere (~ 38 km)
+                b = a + c      
+                alpha = np.arcsin(a/b * np.sin(angle)) # From law of sinus
+                dx = np.sqrt(a*a + b*b - 2*a*b*np.cos(angle-alpha)) # From law of cosinus
+                depth = dx / c
+                #angle = za * np.pi/180.
+                #cos_angle = np.cos(angle)
+                ##depth = 1. / cos_angle  # Flat Earth approximation
+                #r = 6383.5/50.  # assuming r_earth = 6371 km, altitude = 12.5 km, and 50 km of more stratosphere
+                #rcos = r * cos_angle
+                #depth = -rcos + np.sqrt(rcos * rcos + 1 + 2 * r) # Taking into account Earth curvature
                 imin = np.argmin(np.abs(wvs-wvz))
                 at = at[imin]**depth
                 atmed = np.interp(self.specCube.wave, wt , at)
