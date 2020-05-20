@@ -277,7 +277,7 @@ class ImageCanvas(MplCanvas):
                 elif title == 'Exp':
                     title = 'Coverage map'
                 elif title == 'C0':
-                    title = 'Continuum at ref. wavelength $\lambda_0$'
+                    title = 'Continuum at $\lambda_0$'
                 elif title == 'M0':
                     title = 'M$_0$'
                 elif title == 'M1':
@@ -1268,7 +1268,9 @@ class SpectrumCanvas(MplCanvas):
                 self.apfit = []
                 for line in aplines:
                     if self.function == 'Voigt':
-                        c0, ec0, slope, x, ex, A, eA, sigma, esigma, alpha = line
+                        c0, ec0, slope, x, ex, A, eA, sigma, esigma, alpha = line                        
+                        c = 299792458. # m/s
+                        A = A * 1.e20  * x * x / c  # Retransform in Jy
                         xx = np.arange(x-7*sigma, x+7*sigma, sigma/10.) 
                         dx = xx - x
                         model = c0 + slope * dx
@@ -1283,6 +1285,8 @@ class SpectrumCanvas(MplCanvas):
                         model += A * ((1 - alpha) * gauss + alpha * cauchy) 
                     else:
                         c0, ec0, slope, x, ex, A, eA, sigma, esigma = line
+                        c = 299792458. # m/s
+                        A = A * 1.e20  * x * x / c  # Retransform in Jy
                         xx = np.arange(x-7*sigma, x+7*sigma, sigma/10.) 
                         dx = xx - x
                         A /= np.sqrt(2*np.pi) * sigma

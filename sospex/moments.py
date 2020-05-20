@@ -312,7 +312,7 @@ def multiFitContinuum(m, w, f, c, c0, w0, points, slope, intcp, posCont, kernel,
 
 # Fit of lines
 
-def fitLines(p, m,w,f,lines):
+def fitLines(p, m, w, f, lines, model):
     """Fit the lines defined in the guess."""
     from lmfit.models import PseudoVoigtModel
     # f is flux without continuum
@@ -326,12 +326,6 @@ def fitLines(p, m,w,f,lines):
         c = 299792458. # m/s
         #  W/m2 = Jy*Hz*1.e-26 and c -> c*1.e6 um ...
         y  = c * y / (x * x ) *1.e-20 # Jy * Hz / um --> W/m2 after integration in um
-        # Normalization
-        norm = np.abs(np.median(y))
-        if norm < 0.01:
-            norm = 1.
-        #print('Normalization factor ', norm)
-        y /= norm
         # Define lines
         for i, line in enumerate(lines):
             li = 'l' + str(i) + '_'
@@ -344,18 +338,28 @@ def fitLines(p, m,w,f,lines):
                 model += vmodel
             x0 = line[0]
             sigma = line[1] / 2.355
-            A = line[2] * c / (x0*x0) * 1.e-20 / norm # same units as flux
+            A = line[2] * c / (x0*x0) * 1.e-20  # same units as flux
+            if A != 0:
+                norm = np.abs(A)
+            else:
+                norm = 1
+                
+            y /= norm
+            A /= norm
             params[li+'center'].set(x0, min=(x0 - sigma/2.), max=(x0 + sigma/2.))
-            params[li+'amplitude'].set(A)
-            #if A > 0:
-            #    params[li+'amplitude'].set(A, min=0.1 * A, max=A * 2)
-            #elif A == 0:
-            #    params[li+'amplitude'].set(A)
-            #else:
-            #    params[li+'amplitude'].set(A, min=2 * A, max=A * 0.1)
+            #params[li+'amplitude'].set(A)
+            if A > 0:
+                params[li+'amplitude'].set(A, min=0, max=1.1)
+            elif A == 0:
+                params[li+'amplitude'].set(A, vary=False)
+            else:
+                params[li+'amplitude'].set(A, max=-1.1, min=0)# min=2 * A)
                 
             params[li+'sigma'].set(sigma, min=sigma / 2., max=sigma * 2)
-            params[li + 'fraction'].set(0.4, vary=True, min=0, max = 0.45)  # No Cauchy part (i.e. Gauss)
+            if model == 'Gauss':
+                    params[li + 'fraction'].set(0.0, vary=False)
+            else:
+                params[li + 'fraction'].set(0.4, vary=True, min=0, max = 0.45)  # No Cauchy part (i.e. Gauss)
         # Minimize
         out = model.fit(y, params, x=x, method='nelder')
         #               kws={'data': y, 'eps': e}, method='leastsq')
@@ -381,7 +385,7 @@ def fitLines(p, m,w,f,lines):
         nlines = len(lines)
         return p, np.full((nlines, 4), np.nan)
 
-def multiFitLines(m, w, f, c, lineguesses, linefits, points):
+def multiFitLines(m, w, f, c, lineguesses, model, linefits, points):
 
     # To avoid forking error in MAC OS-X
     try:
@@ -395,7 +399,7 @@ def multiFitLines(m, w, f, c, lineguesses, linefits, points):
                                  m[:, p[1],p[0]], 
                                  w, 
                                  f[:,p[1],p[0]]-c[:,p[1],p[0]], 
-                                 lineguesses)
+                                 lineguesses, model)
                                 ) for p in points]
         results = [r.get() for r in res]
 
@@ -623,13 +627,22 @@ def fitApertureLines(sc, intercept, slope):
     e = ec[idx]
     intc, eintc = intercept
     slop, eslop = slope
-    
     continuum = intc + slop * x
-    # Normalization (biggest amplitude ?)
-    #norm = np.abs(np.median(continuum))
-    #print('Normalization factor ', norm)
-    #y /= norm
-    #e /= norm
+
+    # Transform F_nu into F_lambda to do integration        
+    # Normalization (biggest amplitude)
+    amplitudes = []
+    c = 299792458. # m/s
+    for line in sc.lines:
+        sigma = line.fwhm / 2.355
+        x0 = line.x0
+        A = line.A * (np.sqrt(2*np.pi) * sigma) * c / x0**2 * 1.e-20  # same units as flux
+        amplitudes.append(A)
+    amplitudes = np.array(amplitudes)
+    norm = np.nanmax(np.abs(amplitudes))
+    y *= c / x**2 * 1.e-20 / norm
+    e *= c / x**2 * 1.e-20 / norm
+    continuum *= c / x**2 * 1.e-20 / norm
     # Define the model
     fit_params = Parameters()
     # Define lines
@@ -638,11 +651,12 @@ def fitApertureLines(sc, intercept, slope):
         x0 = line.x0 #* (1. + z)
         sigma = line.fwhm / 2.355 #* (1. + z)
         fit_params.add(li + 'center', value=x0, min=(x0 - sigma/3), max=(x0 + sigma/3))
-        A = line.A * (np.sqrt(2*np.pi) * sigma)
+        A = line.A * (np.sqrt(2*np.pi) * sigma) * c / x0**2 * 1.e-20 / norm
+        print('A ', A)
         if A > 0:
-            fit_params.add(li + 'amplitude', value=A, min=0.1 * A, max=A * 10)
+            fit_params.add(li + 'amplitude', value=A, min=0., max=A * 1.5)
         else:
-            fit_params.add(li + 'amplitude', value=A, max=0.1 * A, min=A * 10)
+            fit_params.add(li + 'amplitude', value=A, max=0., min=A * 1.5)
         fit_params.add(li + 'sigma', value=sigma, min=sigma / 3., max=sigma * 2)
         if sc.function == 'Voigt':
             fit_params.add(li + 'alpha', value=0.2, max=0.6)
@@ -661,14 +675,13 @@ def fitApertureLines(sc, intercept, slope):
     
     linepars = []
     for i in range(nlines):
-        #print('pars: ', pars)
         li = 'l' + str(i) + '_'
         center = pars[li + 'center'].value  # Observed
         centerErr = pars[li + 'center'].stderr  # Observed
         sigma = pars[li + 'sigma'].value   # Observed
         sigmaErr = pars[li + 'sigma'].stderr   # Observed
-        A =  pars[li+'amplitude'].value
-        Aerr = pars[li+'amplitude'].stderr
+        A =  pars[li+'amplitude'].value * norm
+        Aerr = pars[li+'amplitude'].stderr * norm
         c0 = intc + slop * center # Continuum at line center
         if slop == 0:
             ec0 = eintc

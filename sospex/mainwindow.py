@@ -1619,7 +1619,7 @@ class GUI (QMainWindow):
         # Dialog to select continuum fit paramenters
         self.CP = ContParams(self.kernel)
         if self.CP.exec_() == QDialog.Accepted:
-            function, boundary, kernel, regions, emlines, ablines = self.CP.save()
+            function, boundary, kernel, regions, emlines, ablines, model = self.CP.save()
             if function == 'Constant':
                 self.zeroDeg = True
             else:
@@ -1652,6 +1652,7 @@ class GUI (QMainWindow):
             print('selected ', self.ncells, ' regions')
             sc.abslines = int(ablines)  # Number of absorption lines
             sc.emslines = int(emlines)  # Number of emission lines
+            sc.model = model # Model used to fit line
             # Create tessellation
             nx = self.specCube.nx
             ny = self.specCube.ny
@@ -1775,8 +1776,8 @@ class GUI (QMainWindow):
             FWHMv = c * FWHM / x / 1000.
             eFWHMv = FWHMv / sigma * esigma
             # Compute intensity of line in W/m2
-            jy2wm2 = c / (x * x) * 1.e-20 
-            flux = A * jy2wm2
+            #jy2wm2 = c / (x * x) * 1.e-20 
+            flux = A #* jy2wm2
             message += '{:d}'.format(i+1)
             message += u'   \u03bb\u2080:      {:4.2f} \u03bcm\n'.format(x)
             message += u'    FWHM: {:5.2f} km/s\n'.format(FWHMv)
@@ -2208,7 +2209,6 @@ class GUI (QMainWindow):
             xg,yg = zip(*xy)
             xg = np.array(xg); yg = np.array(yg)
             if sc.xunit == 'THz':
-
                 c = 299792458.0  # speed of light in m/s
                 xg = c/xg * 1.e-6  # THz to um
         else:
@@ -2995,7 +2995,7 @@ class GUI (QMainWindow):
         f = self.specCube.flux
         w = self.specCube.wave
         c = self.continuum
-        multiFitLines(m, w, f, c, lineguesses, self.lines, points)
+        multiFitLines(m, w, f, c, lineguesses, sc.model, self.lines, points)
         print('Number of lines ',len(self.lines))
         # Update L0 and L1 (first two lines)
         self.L0 = self.lines[0][2] # the plane no 2 corresponds to the amplitude
@@ -3051,7 +3051,7 @@ class GUI (QMainWindow):
         f = self.specCube.flux
         w = self.specCube.wave
         c = self.continuum
-        multiFitLines(m, w, f, c, lineguesses, self.lines, points)
+        multiFitLines(m, w, f, c, lineguesses, sc.model, self.lines, points)
         # Update L0 and L1 (first two lines)
         self.L0 = self.lines[0][2] # the plane no 2 corresponds to the amplitude
         if len(self.lines) == 2:

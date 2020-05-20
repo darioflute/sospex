@@ -185,9 +185,9 @@ def exportAperture(self):
                         # The flux is integrated in um, so has to be divided
                         # by um, then c/x is expressed in m. 1.e-26 factor to
                         # transform Jy in W/m2/Hz
-                        jy2wm2 = c / (x * x) * 1.e-20 
-                        flux = A * jy2wm2
-                        eflux = eA * jy2wm2
+                        #jy2wm2 = c / (x * x) * 1.e-20 
+                        flux = A #* jy2wm2
+                        eflux = eA #* jy2wm2
                         line = 'line '+str(i+1)
                         data[line] = {
                                 'instrument': instrument,
@@ -216,9 +216,9 @@ def exportAperture(self):
                         FWHMv = c * FWHM / x / 1000.
                         eFWHMv = FWHMv / sigma * esigma
                         # Compute intensity of line in W/m2
-                        jy2wm2 = c / (x * x) * 1.e-20 
-                        flux = A * jy2wm2
-                        eflux = eA * jy2wm2                        
+                        #jy2wm2 = c / (x * x) * 1.e-20 
+                        flux = A #* jy2wm2
+                        eflux = eA #* jy2wm2                        
                         line = 'line '+str(i+1)
                         data[line] = {
                                 'instrument': instrument,
@@ -359,6 +359,10 @@ def exportGuesses(self):
     sc = self.sci[istab]
     if sc.guess is None:
         return
+    try:
+        model = sc.model
+    except:
+        model = ''
     info = [('ncells', self.ncells),
             ('waveUnit', 'micrometers'),
             ('fluxUnit', 'Jy/pixel'),
@@ -366,7 +370,8 @@ def exportGuesses(self):
             ('decUnit', 'deg'),
             ('redshift', self.specCube.redshift),
             ('wavref', self.specCube.l0),
-            ('kernel', self.kernel)
+            ('kernel', self.kernel),
+            ('model', model)
             ]
     if self.ncells == 1:
         xg,yg = zip(*sc.guess.xy)
@@ -447,6 +452,9 @@ def importGuesses(self):
         self.stabs.setCurrentIndex(istab)
         sc.spectrum.redshift = data['redshift']
         sc.spectrum.l0 = data['wavref']
+        model = data['model']
+        if model != '':
+            sc.model = model
         # Update 
         self.onDraw2(1)
         imtab = self.bands.index('Flux')
