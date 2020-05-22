@@ -326,6 +326,17 @@ def fitLines(p, m, w, f, lines, model):
         c = 299792458. # m/s
         #  W/m2 = Jy*Hz*1.e-26 and c -> c*1.e6 um ...
         y  = c * y / (x * x ) *1.e-20 # Jy * Hz / um --> W/m2 after integration in um
+        
+        # Find normalization
+        amplitudes = []
+        for line in lines:
+            sigma = line[1] / 2.355
+            x0 = line[0]
+            A = line[2] * c / x0**2 * 1.e-20  # same units as flux
+        amplitudes.append(A)
+        amplitudes = np.array(amplitudes)
+        norm = np.nanmax(np.abs(amplitudes))
+        y /= norm  
         # Define lines
         for i, line in enumerate(lines):
             li = 'l' + str(i) + '_'
@@ -339,12 +350,6 @@ def fitLines(p, m, w, f, lines, model):
             x0 = line[0]
             sigma = line[1] / 2.355
             A = line[2] * c / (x0*x0) * 1.e-20  # same units as flux
-            if A != 0:
-                norm = np.abs(A)
-            else:
-                norm = 1
-                
-            y /= norm
             A /= norm
             params[li+'center'].set(x0, min=(x0 - sigma/2.), max=(x0 + sigma/2.))
             #params[li+'amplitude'].set(A)
@@ -414,14 +419,14 @@ def multiFitLines(m, w, f, c, lineguesses, model, linefits, points):
             
     return 1
 
-def multiFitLines2(m, w, f, c, lineguesses, linefits, points):
+def multiFitLinesSingle(m, w, f, c, lineguesses, model, linefits, points):
 
     for p in points:
         res = fitLines(p, 
                        m[:, p[1],p[0]], 
                        w, 
                        f[:,p[1],p[0]]-c[:,p[1],p[0]], 
-                       lineguesses)
+                       lineguesses, model)
 
         n = len(lineguesses)
         pp, linepars = res
@@ -650,14 +655,14 @@ def fitApertureLines(sc, intercept, slope):
         li = 'l' + str(i) + '_'
         x0 = line.x0 #* (1. + z)
         sigma = line.fwhm / 2.355 #* (1. + z)
-        fit_params.add(li + 'center', value=x0, min=(x0 - sigma/3), max=(x0 + sigma/3))
+        fit_params.add(li + 'center', value=x0, min=(x0 - 0.5 * sigma), max=(x0 + 0.5 * sigma))
         A = line.A * (np.sqrt(2*np.pi) * sigma) * c / x0**2 * 1.e-20 / norm
-        print('A ', A)
+        #print('A ', A)
         if A > 0:
-            fit_params.add(li + 'amplitude', value=A, min=0., max=A * 1.5)
+            fit_params.add(li + 'amplitude', value=A, min=0., max=A * 2)
         else:
-            fit_params.add(li + 'amplitude', value=A, max=0., min=A * 1.5)
-        fit_params.add(li + 'sigma', value=sigma, min=sigma / 3., max=sigma * 2)
+            fit_params.add(li + 'amplitude', value=A, max=0., min=A * 2)
+        fit_params.add(li + 'sigma', value=sigma, min=sigma * 0.5, max=sigma * 2)
         if sc.function == 'Voigt':
             fit_params.add(li + 'alpha', value=0.2, max=0.6)
             
@@ -671,6 +676,7 @@ def fitApertureLines(sc, intercept, slope):
         out = minimize(linesGaussResiduals, fit_params, args=(x,), kws=kws, method='leastsq')
     # Return lines fitted parameters
     pars = out.params#.valuesdict()
+    #print('out pars ', pars)
     nlines = len(pars) // npars
     
     linepars = []

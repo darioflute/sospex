@@ -198,6 +198,7 @@ class GUI (QMainWindow):
                 print('You have the latest version')
                 return None
         except:
+            print('Not possible to check the version. Are you online ?')
             return None
         
     def newversionDialog(self):
@@ -452,9 +453,9 @@ class GUI (QMainWindow):
         print('Aperture is ', b)
         if b in ['All', 'Pix']:        
             toolbar.addAction(self.guessAction)
+            toolbar.addAction(self.fitContAction)
             toolbar.addAction(self.impGuessAction)
             toolbar.addAction(self.expGuessAction)
-            toolbar.addAction(self.fitContAction)
         else:
             #print('Aperture special actions ')
             toolbar.addAction(self.guessLinesAction)
@@ -594,6 +595,8 @@ class GUI (QMainWindow):
         toolbar.addAction(self.cloudAction)
         toolbar.addAction(self.fitsAction)
         toolbar.addAction(self.impApAction)
+        #toolbar.addAction(self.impVoronoiAction)
+        #toolbar.addAction(self.expVoronoiAction)        
         #toolbar.addAction(self.fitregionAction)
         #toolbar.addAction(self.fitContAction)
         # toolbar.addAction(self.compMomAction)
@@ -1357,12 +1360,14 @@ class GUI (QMainWindow):
                 factor=0.9
             elif eb == 'down':
                 factor=1.1
-            new_width = (curr_xlim[1]-curr_xlim[0])*factor*0.5
-            new_height= (curr_ylim[1]-curr_ylim[0])*factor*0.5
-            sc.xlimits = (curr_x0-new_width,curr_x0+new_width)
-            sc.updateXlim()
-            sc.ylimits = (curr_y0-new_height,curr_y0+new_height)
-            sc.updateYlim()
+            if event.key in ['control','cmd','shift','alt']:
+                new_height= (curr_ylim[1]-curr_ylim[0])*factor*0.5
+                sc.ylimits = (curr_y0-new_height,curr_y0+new_height)
+                sc.updateYlim()
+            else:
+                new_width = (curr_xlim[1]-curr_xlim[0])*factor*0.5
+                sc.xlimits = (curr_x0-new_width,curr_x0+new_width)
+                sc.updateXlim()
                
     def onMotion2(self, event):
         """Reacts to movements of the mouse."""
@@ -1471,6 +1476,12 @@ class GUI (QMainWindow):
         self.impApAction =  self.createAction(os.path.join(self.path0,'icons','importAperture.png'),
                                              'Import aperture/fit',
                                              'Ctrl+S',self.importApertureAction)        
+        #self.expVoronoiAction =  self.createAction(os.path.join(self.path0,'icons','exportVoronoi.png'),
+        #                                     'Export guesses as json file',
+        #                                     'Ctrl+S',self.exportGuessesAction)        
+        #self.impVoronoiAction =  self.createAction(os.path.join(self.path0,'icons','importVoronoi.png'),
+        #                                     'Import guesses',
+        #                                     'Ctrl+S',self.importGuessesAction)        
         self.specAction = self.createAction(os.path.join(self.path0,'icons','camera.png'),
                                             'Save the spectrum as a ASCII/FITS/PNG/JPG/PDF file',
                                             'Ctrl+S',self.saveSpectrum)
@@ -1748,9 +1759,11 @@ class GUI (QMainWindow):
             sc.fig.canvas.draw_idle()
             # 4. Dialog window with results
             self.fitMessage(linepars, sc.function)
-
         except BaseException:
-            message = 'First define a guess for the fit'
+            if sc.emslines+sc.abslines > 0:
+                message = 'Fit not feasible: change guesses / use Gaussian model'                
+            else:
+                message = 'First define a guess for the fit'
             self.sb.showMessage(message, 4000)
             print(message)
             
@@ -1821,20 +1834,23 @@ class GUI (QMainWindow):
         nx = self.specCube.nx
         ny = self.specCube.ny
         area = nx * ny
+        # Number of hexagons covering the area
         l = np.sqrt(area  * 2 / (3 * np.sqrt(3) * self.ncells))
+        # Apothema of hexagon
         l2 = l * np.sqrt(3) / 2.
-        nxc = int((nx - 2 * l)// (3 * l))
+        nxc = int((nx - 2 * l) // (3 * l))
         nyc = int((ny - 2 * l2) // l2)
         # Second estimate from sides
         ly = ny / np.sqrt(3.) / (nyc / 2. + 1)
         lx = nx / (3  * nxc + 2)
         l = np.max(np.array([lx,ly]))
         l2 = l * np.sqrt(3) / 2.
-        nxc = int(nx // (3 * l) + 1)
+        nxc = int(nx // (3 * l)) + 1
         nyc = int(ny // l2)
         self.sites = []
         for j in range(nyc):
-            y = l2 * (j + 1)
+            #y = l2 * (j + 1)
+            y = l2 * j
             for i in range(nxc):
                 if j % 2 == 1:
                     x = l * (3 * i )
@@ -1842,8 +1858,11 @@ class GUI (QMainWindow):
                     x = l * (1.5 + (nxc - 1 - i) * 3)
                 # Check if point falls inside region with signal
                 # or it lies on the perimeter
-                values = self.specCube.flux[:,int(y),int(x)]
-                nvalues = np.sum(np.isfinite(values))
+                try:
+                    values = self.specCube.flux[:,int(y),int(x)]
+                    nvalues = np.sum(np.isfinite(values))
+                except:
+                    nvalues = 0
                 if (nvalues > 10) | (x < lx) | (x > nx-lx) | (y < ly) | (y > ny-ly):
                     self.sites.append([x, y])   
         self.sites = np.array(self.sites)
