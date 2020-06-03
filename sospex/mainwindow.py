@@ -178,6 +178,16 @@ class GUI (QMainWindow):
         from sospex import __version__
         from sys import platform
         import os
+        #Check if connected
+        import urllib
+        
+        req = urllib.request.Request('http://www.google.com')
+        try: 
+            urllib.request.urlopen(req)
+        except urllib.error.URLError as e:
+            print("Network is off: ", e.reason)
+            return
+       
         # Only for Unix versions
         if platform in ["linux", "darwin"]:
             pass
@@ -191,6 +201,7 @@ class GUI (QMainWindow):
             with os.popen(command) as stream:
                 output = stream.read()
             self.newversion = output.split()[1]
+            print('new version is ', self.newversion)
             if self.newversion > __version__:
                 message = self.newversionDialog()
                 return message
@@ -802,27 +813,28 @@ class GUI (QMainWindow):
                         center =  ((x[0]+x[1])*0.5,(y[0]+y[1])*0.5)
                         size = (np.abs((y[1]-y[0]).astype(int)),np.abs((x[1]-x[0]).astype(int)))
                         co = Cutout2D(ic0.oimage, center, size, wcs=ic0.wcs, mode='partial')
+                        #print('Cutout wcs ', co.wcs)
                         # If the contour image is much large, one should lower the resolution
                         # to speed-up the computation
                         ny0, nx0 = np.shape(co.data)
-                        ny ,nx = np.shape(ima.oimage)
+                        ny, nx = np.shape(ima.oimage)
                         # Sort the histrogram levels
                         # ih0.sort_levels()
                         levs = ih0.levels
                         # Smooth data
                         #ismo = ndimage.gaussian_filter(co.data, sigma=0.1, order=0)
-                        ismo = co.data
+                        #ismo = co.data
                         if nx0 > 2 * nx:
                             from reproject import reproject_interp
                             from astropy.io import fits
                             hdu = fits.PrimaryHDU(ima.oimage)
                             hdu.header.extend(ima.wcs.to_header())
-                            hdu0 = fits.PrimaryHDU(ismo)
+                            hdu0 = fits.PrimaryHDU(co.data)
                             hdu0.header.extend(co.wcs.to_header())
                             array, footprint = reproject_interp(hdu0, hdu.header)
                             ima.contour = ima.axes.contour(array, levs, colors=self.colorContour[0])
                         else:
-                            ima.contour = ima.axes.contour(ismo, levs, colors=self.colorContour[0],
+                            ima.contour = ima.axes.contour(co.data, levs, colors=self.colorContour[0],
                                                            transform=ima.axes.get_transform(co.wcs))
                         ima.contour0 = None
                 ima.fig.canvas.draw_idle()
@@ -1026,7 +1038,8 @@ class GUI (QMainWindow):
                             yc = ny - 1
                         if xc >= nx:
                             xc = nx - 1
-                        ncell = self.regions[int(yc), int(xc)]
+                        #ncell = self.regions[int(yc), int(xc)]
+                        ncell = self.tree.query([xc,yc])[1]
                     else:
                         ncell = 0
                 else:
@@ -1093,7 +1106,7 @@ class GUI (QMainWindow):
             else:
                 fluxAll = np.nansum(s.flux[:, yy, xx], axis=1)
             sc.spectrum.flux = fluxAll
-            if s.instrument in ['GREAT','HI','VLA','ALMA','MUSE','IRAM','CARMA','PCWI']:
+            if s.instrument in ['GREAT','HI','HALPHA','VLA','ALMA','MUSE','IRAM','CARMA','PCWI']:
                 if sc.auxiliary:
                     sc.updateSpectrum(f=fluxAll*t2j, af=afluxAll, cont=cont, cslope=cslope, moments=moments, 
                                       lines=lines, noise=noise, ncell=ncell)
@@ -1824,8 +1837,8 @@ class GUI (QMainWindow):
         ny = self.specCube.ny
         imtab = self.bands.index('Flux')
         ic0 = self.ici[imtab]
-        tree = KDTree(self.sites)
-        tq = tree.query(self.specCube.points)
+        self.tree = KDTree(self.sites)
+        tq = self.tree.query(self.specCube.points)
         self.regions = tq[1].reshape(ny, nx)
         self.VI = VoronoiInteractor(ic0.axes, self.sites)
         self.VI.modSignal.connect(self.updateKDTree)
@@ -1875,8 +1888,8 @@ class GUI (QMainWindow):
         nx = self.specCube.nx
         ny = self.specCube.ny
         self.sites = self.VI.sites
-        tree = KDTree(self.sites)
-        tq = tree.query(self.specCube.points)
+        self.tree = KDTree(self.sites)
+        tq = self.tree.query(self.specCube.points)
         self.regions = tq[1].reshape(ny, nx)
         self.ncells = len(self.sites)
         if event == 'voronoi modified':
@@ -2079,7 +2092,8 @@ class GUI (QMainWindow):
                 aperture = self.ici[0].photApertures[0].aperture
                 xc, yc = aperture.xy
                 if self.ncells > 1:
-                    ncell = self.regions[int(yc), int(xc)]
+                    #ncell = self.regions[int(yc), int(xc)]
+                    ncell = self.tree.query([xc,yc])[1]
                 else:
                     ncell = 0
                 # Update the guess limits for cell
@@ -2091,7 +2105,8 @@ class GUI (QMainWindow):
                 aperture = self.ici[0].photApertures[0].aperture
                 xc, yc = aperture.xy
                 if self.ncells > 1:
-                    ncell = self.regions[int(yc), int(xc)]
+                    #ncell = self.regions[int(yc), int(xc)]
+                    ncell = self.tree.query([xc,yc])[1]
                 else:
                     ncell = 0
                 # N line
@@ -2567,7 +2582,8 @@ class GUI (QMainWindow):
         if self.ncells > 1:
             aperture = self.ici[0].photApertures[0].aperture
             xc, yc = aperture.xy
-            ncell = self.regions[int(yc), int(xc)]
+            #ncell = self.regions[int(yc), int(xc)]
+            ncell = self.tree.query([xc,yc])[1]
             exp = np.nansum(self.specCube.exposure, axis=0)
             mask = (self.regions == ncell) & (exp > 0)
             mask[0, :] = False
@@ -2813,7 +2829,8 @@ class GUI (QMainWindow):
 
             aperture = self.ici[0].photApertures[0].aperture
             xc, yc = aperture.xy
-            ncell = self.regions[int(yc), int(xc)]
+            #ncell = self.regions[int(yc), int(xc)]
+            ncell = self.tree.query([xc,yc])[1]
             print('region is ', ncell)
             exp = np.nansum(self.specCube.exposure, axis=0)
             mask = (self.regions == ncell) & (exp > 0)
@@ -2838,6 +2855,15 @@ class GUI (QMainWindow):
     def fitLinesAll(self):
         """Fit defined lines in the cell occupied by the cursor."""
             
+        if self.ncells > 1:        
+            try:
+                self.removeContours()
+            except BaseException:
+                pass
+        else:
+            print('There are no defined regions')
+            return
+
         for ncell in range(self.ncells):
             exp = np.nansum(self.specCube.exposure, axis=0)
             mask = (self.regions == ncell) & (exp > 0)
@@ -2862,10 +2888,15 @@ class GUI (QMainWindow):
     def fitLinesRegion(self):
         """Fit defined lines in the cell occupied by the cursor."""
         if self.ncells > 1:
+            try:
+                self.removeContours()
+            except BaseException:
+                pass
             aperture = self.ici[0].photApertures[0].aperture
             xc, yc = aperture.xy
-            ncell = self.regions[int(yc), int(xc)]
-            print('region is ', ncell)
+            #ncell = self.regions[int(yc), int(xc)]
+            ncell = self.tree.query([xc,yc])[1]
+            print('region is ', ncell, ' in ', xc, yc)
             exp = np.nansum(self.specCube.exposure, axis=0)
             mask = (self.regions == ncell) & (exp > 0)
             mask[0, :] = False
@@ -3006,7 +3037,8 @@ class GUI (QMainWindow):
         # Select cell          
         aperture = self.ici[0].photApertures[0].aperture
         xc, yc = aperture.xy
-        ncell = self.regions[int(yc), int(xc)]
+        #ncell = self.regions[int(yc), int(xc)]
+        ncell = self.tree.query([xc,yc])[1]
         lineguesses = []
         for guess in sc.lguess:
             g = guess[ncell]
@@ -3253,7 +3285,7 @@ class GUI (QMainWindow):
         if s.instrument == 'GREAT':
             spec = Spectrum(s.wave, fluxAll*s.Tb2Jy, instrument=s.instrument, 
                             redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy, bunit=s.bunit)
-        elif s.instrument in ['HI','VLA','ALMA','MUSE','IRAM','CARMA','PCWI']:
+        elif s.instrument in ['HI','HALPHA','VLA','ALMA','MUSE','IRAM','CARMA','PCWI']:
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0)
         elif s.instrument == 'FIFI-LS':
             ufluxAll = np.nansum(s.uflux[:,yy,xx], axis=1)
@@ -3548,7 +3580,8 @@ class GUI (QMainWindow):
         """Download an image covering the cube."""
         # Compute center and size of image (in arcmin)
         nz,ny,nx = np.shape(self.specCube.flux)
-        lon, lat = self.specCube.wcs.celestial.all_pix2world(ny//2, nx//2, 0)
+        #lon, lat = self.specCube.wcs.celestial.all_pix2world(ny//2, nx//2, 0)
+        lon, lat = self.specCube.wcs.all_pix2world(ny//2, nx//2, 0)
         xsize = nx * self.specCube.pixscale / 60. #size in arcmin
         ysize = ny * self.specCube.pixscale / 60. #size in arcmin
         # Compute center and size (arcmin) of the displayed image 
@@ -5190,7 +5223,7 @@ class GUI (QMainWindow):
             self.initializeImages()
             self.initializeSpectra()
             self.initializeSlider()
-            if self.specCube.instrument in ['GREAT','HI','VLA','ALMA','MUSE','IRAM','CARMA','PCWI']:
+            if self.specCube.instrument in ['GREAT','HI','HALPHA','VLA','ALMA','MUSE','IRAM','CARMA','PCWI']:
                 self.specCube.computeExpFromNan()
                 #idx = np.isfinite(self.specCube.flux)
                 #print('No of bad ', np.sum(~idx))
@@ -5236,7 +5269,7 @@ class GUI (QMainWindow):
                 print('images initialized ')
                 self.initializeSpectra()
                 print('spectra initialized ')
-                if self.specCube.instrument in ['GREAT','HI','VLA','ALMA','MUSE','IRAM','CARMA','PCWI']:
+                if self.specCube.instrument in ['GREAT','HI','HALPHA','VLA','ALMA','MUSE','IRAM','CARMA','PCWI']:
                     #print('compute Exp from Nan')
                     self.specCube.computeExpFromNan()
                 self.all = False
@@ -5318,7 +5351,7 @@ class GUI (QMainWindow):
         if self.specCube.instrument == 'FIFI-LS':
             self.bands = ['Flux','uFlux','Exp']
             self.spectra = ['All','Pix']
-        elif self.specCube.instrument in ['GREAT','HI','VLA','ALMA','MUSE','IRAM','CARMA','PCWI']: 
+        elif self.specCube.instrument in ['GREAT','HI','HALPHA','VLA','ALMA','MUSE','IRAM','CARMA','PCWI']: 
             self.bands = ['Flux']
             self.spectra = ['All','Pix']
         elif self.specCube.instrument == 'FORCAST':
@@ -5400,10 +5433,11 @@ class GUI (QMainWindow):
             # print('spect in mainwindow is ',aspect)
             # t0 = time.process_time()
             # print('Image prepared in ', t0-ts, 's')
-            #print('Display image ...', s.n0)
+            print('Display image ...', s.n0)
             ic.compute_initial_figure(image=image,wcs=s.wcs,title=ima,cMap=self.colorMap,
                                       cMapDir=self.colorMapDirection,stretch=self.stretchMap,
                                       instrument = s.instrument, aspect=aspect)
+            print('Image displayed')
             #t1 = time.process_time() 
             #print('Image displayed in ', t1-ts,' s')
             # print('select output format')
@@ -5491,7 +5525,7 @@ class GUI (QMainWindow):
             #print('max flux is ', np.nanmax(fluxAll*s.Tb2Jy))
             spec = Spectrum(s.wave, fluxAll*s.Tb2Jy, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy, bunit=s.bunit)
-        elif s.instrument in ['HI','VLA','ALMA','MUSE','IRAM','CARMA','PCWI']:
+        elif s.instrument in ['HI','HALPHA','VLA','ALMA','MUSE','IRAM','CARMA','PCWI']:
             spec = Spectrum(s.wave, fluxAll,instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0)
         elif s.instrument == 'PACS':
@@ -5636,7 +5670,8 @@ class GUI (QMainWindow):
             w = c / w * 1.e-6
         n = np.argmin(np.abs(self.specCube.wave - w))
        # Display channel n of the spectral cube
-        if self.specCube.instrument in ['GREAT','HI','VLA','ALMA','MUSE','IRAM','CARMA','PCWI']:
+        if self.specCube.instrument in ['GREAT','HI','HALPHA',
+                                        'VLA','ALMA','MUSE','IRAM','CARMA','PCWI']:
             imas = ['Flux']
         elif self.specCube.instrument in ['PACS', 'FORCAST']:
             imas = ['Flux','Exp']
@@ -5733,7 +5768,7 @@ class GUI (QMainWindow):
         if s.instrument == 'GREAT':
             spec = Spectrum(s.wave, fluxAll*s.Tb2Jy, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy, bunit=s.bunit)
-        elif s.instrument in ['HI','VLA','ALMA','MUSE','IRAM','CARMA','PCWI']:
+        elif s.instrument in ['HI','HALPHA','VLA','ALMA','MUSE','IRAM','CARMA','PCWI']:
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0)
         elif s.instrument in ['PACS', 'FORCAST']:
@@ -5831,7 +5866,7 @@ class GUI (QMainWindow):
         indmin, indmax = np.searchsorted(self.specCube.wave, (xmin, xmax))
         indmax = min(len(self.specCube.wave) - 1, indmax)
         sc.regionlimits = [xmin,xmax]
-        if self.specCube.instrument in ['GREAT','HI','VLA','ALMA','MUSE','IRAM','CARMA','PCWI']:
+        if self.specCube.instrument in ['GREAT','HI','HALPHA','VLA','ALMA','MUSE','IRAM','CARMA','PCWI']:
             imas = ['Flux']
         elif self.specCube.instrument in ['PACS','FORCAST']:
             imas = ['Flux','Exp']
@@ -5932,7 +5967,7 @@ class GUI (QMainWindow):
         if s.instrument in ['GREAT']:
             t2j = self.specCube.Tb2Jy
             sc.updateSpectrum(f=fluxAll*t2j)
-        elif s.instrument in ['HI','VLA','ALMA','MUSE','IRAM','CARMA','PCWI']:
+        elif s.instrument in ['HI','HALPHA','VLA','ALMA','MUSE','IRAM','CARMA','PCWI']:
             sc.updateSpectrum(f=fluxAll)
         elif s.instrument in ['PACS','FORCAST']:
             expAll = np.nanmean(s.exposure[:, y0:y1, x0:x1], axis=(1, 2))

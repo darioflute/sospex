@@ -57,6 +57,8 @@ class specCubeAstro(object):
             self.readIRAM(hdl)
         elif self.instrument == 'PCWI':
             self.readPCWI(hdl)
+        elif self.instrument == 'HALPHA':
+            self.readHalpha(hdl)
         #elif self.instrument == 'OVRO': # Case of Carma data
         #    se
         else:
@@ -342,6 +344,56 @@ class specCubeAstro(object):
         self.crval3 = w[0]
         self.cdelt3 = np.median(w[1:] - w[:-1])
         
+    def readHalpha(self, hdl):
+        """Case of Halpha images."""
+        self.objname = self.header['OBJECT']
+        print('Object of HALPHA is ',self.objname)
+        self.header = hdl['PRIMARY'].header
+        self.redshift = 0.
+        data = hdl['PRIMARY'].data
+        naxis = self.header['NAXIS']
+        if naxis == 3:
+            self.flux = data
+        elif naxis == 4: # polarization
+            self.flux = data[0,:,:,:]
+        nz, ny, nx = np.shape(self.flux)
+        self.n = nz
+        print('nz: ',nz, self.header['NAXIS3'])
+        
+
+        self.crpix3 = self.header['CRPIX3']
+        self.crval3 = self.header['CRVAL3']
+        self.cdelt3 = self.header['CDELT3']
+        ctype3 = self.header['CTYPE3']
+        if ctype3 in ['VELO-HEL','VELO-LSR','VOPT']:
+            velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3 # m/s
+            # Neutral Hydrogen (HI)
+            nu0 = self.header['RESTFREQ']
+            print('reference frequency', nu0)
+            c = 299792458.0 # m/s
+            # self.l0 = 21.1061140542 * 1.e4 #um
+            self.l0 = c/nu0 * 1.e6 #um
+            print('Rest wavelength ', self.l0)
+            self.wave = self.l0 * (1 + velocity/c) #um
+        
+        #hdr3D = self.header.copy()
+        #for key in hdr3D.keys():
+        #    if '3' in key:
+        #        del hdr3D[key]
+        #hdr3D['WCSAXES'] = 2
+        #hdr3D['NAXIS'] = 2
+        #print('Header ', hdr3D)
+        #wcs = WCS(hdr3D)
+        #self.wcs = wcs
+        self.wcs = WCS(self.header).celestial
+        print('WCS ', self.wcs)
+        self.pixscale, ypixscale = proj_plane_pixel_scales(wcs) * 3600. # Pixel scale in arcsec
+        print('scale is ', self.pixscale)
+        # Back to wavelength
+        w = self.wave
+        self.crval3 = w[0]
+        self.cdelt3 = np.median(w[1:] - w[:-1])
+        
     def readIRAM(self, hdl):
         """Case of generic radio cube (in this case HI cubes from Westerbrock)."""
         #self.objname = self.header['OBJECT']
@@ -511,6 +563,8 @@ class specCube(object):
             self.readVLA(hdl)
         elif self.instrument == 'MUSE':
             self.readMUSE(hdl)
+        elif self.instrument == 'HALPHA':
+            self.readHalpha(hdl)
         else:
             print('This is not a supported spectral cube')
         hdl.close()
@@ -522,7 +576,7 @@ class specCube(object):
         if self.n0 <= 0:
             self.n0 = self.nz // 2
         xi = np.arange(self.nx); yi = np.arange(self.ny)
-        xi,yi = np.meshgrid(xi, yi)
+        xi, yi = np.meshgrid(xi, yi)
         # Compute rotation angle
         h1 = self.wcs.to_header()
         try:
@@ -816,6 +870,53 @@ class specCube(object):
             # self.l0 = 21.1061140542 * 1.e4 #um
             self.l0 = c/nu0 * 1.e6 #um
             self.wave = self.l0 * (1 + velocity/c) #um
+        self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
+        print('scale is ', self.pixscale)
+        # Back to wavelength
+        w = self.wave
+        self.crval3 = w[0]
+        self.cdelt3 = np.median(w[1:] - w[:-1])
+
+    def readHalpha(self, hdl):
+        """Case of generic H-alpha cube."""
+        self.objname = self.header['OBJECT'].strip()
+        print('Object of Halpha is ',self.objname)
+        #self.header = hdl[0].read_header()
+        self.redshift = 0.
+        data = hdl[0].read()
+        naxis = self.header['NAXIS']
+        if naxis == 3:
+            self.flux = data
+        elif naxis == 4: # polarization
+            self.flux = data[0,:,:,:]
+        nz, ny, nx = np.shape(self.flux)
+        self.n = nz
+        print('nz: ',nz, self.header['NAXIS3'])
+        
+        self.crpix3 = self.header['CRPIX3']
+        self.crval3 = self.header['CRVAL3']
+        self.cdelt3 = self.header['CDELT3']
+        ctype3 = self.header['CTYPE3'].strip()
+        if ctype3 in ['VELO-HEL', 'VELO-LSR', 'VOPT']:
+            velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3 # m/s
+            # Neutral Hydrogen (HI)
+            nu0 = self.header['RESTFREQ'] # H-alpha
+            print('reference frequency', nu0)
+            c = 299792458.0 # m/s
+            # self.l0 = 21.1061140542 * 1.e4 #um
+            self.l0 = c/nu0 * 1.e6 #um
+            print('Rest wavelength ', self.l0)
+            self.wave = self.l0 * (1 + velocity/c) #um
+            
+        #hdr3D = self.header.copy()
+        #for key in hdr3D.keys():
+        #    if '3' in key:
+        #        del hdr3D[key]
+        #hdr3D['WCSAXES'] = 2
+        #hdr3D['NAXIS'] = 2
+        ##print('Header ', hdr3D)
+        #self.wcs = WCS(hdr3D)
+        self.wcs = WCS(self.header).celestial
         self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
         print('scale is ', self.pixscale)
         # Back to wavelength

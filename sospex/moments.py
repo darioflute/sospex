@@ -460,9 +460,10 @@ def residualsPsf(p, x, y, data=None, err=None):
             return (model - data.flatten())/err.flatten()
 
 def histoImage(image, percent, xmin=None, xmax=None):
-    ima = image.ravel()
-    mask = np.isfinite(ima)
-    ima = ima[mask]
+    #ima = image.ravel()
+    #mask = np.isfinite(ima)
+    #ima = ima[mask]
+    ima = image[np.isfinite(image)]
     nh = len(ima)
     if nh > 0:
         ima = np.sort(ima)
@@ -479,7 +480,7 @@ def histoImage(image, percent, xmin=None, xmax=None):
         smax = min(int(s*p2)-1,s-1)
         nbins=256
         imedian = np.median(ima)
-        sdev = np.std(ima[smin:smax])
+        sdev = np.nanmedian(np.abs(ima - np.nanmedian(ima))) * 1.4826 # Gauss distr
         imin = np.min(ima)
         imax = np.max(ima)
         epsilon = sdev/3.            

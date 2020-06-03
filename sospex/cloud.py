@@ -248,7 +248,9 @@ class cloudImage(object):
                 naxis = header['NAXIS']
                 if naxis == 2:
                     self.data = hdulist['PRIMARY'].data
-                elif naxis > 2:
+                elif naxis == 3:
+                    self.data = hdulist['PRIMARY'].data[0,:,:]
+                elif naxis > 3:
                     self.data = hdulist['PRIMARY'].data[0,0,:,:]
                 elif naxis == 0:
                     # Switch to image extensions if exists.
