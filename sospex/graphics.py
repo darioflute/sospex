@@ -1749,6 +1749,7 @@ class PsfCanvas(MplCanvas):
                         
         # Fit a Moffat function on data
         Io, alpha, beta, fwhm = self.fitPsf()
+        print('Moffat with I0 ',Io,' alpha ',alpha,' beta ',beta)
         xf = np.arange(0, np.nanmax(self.distance), 0.1)
         yf = Io * (1 + (xf/alpha)**2)**(-beta)
         self.resolved, = self.axes.plot(xf, yf, color = 'green',

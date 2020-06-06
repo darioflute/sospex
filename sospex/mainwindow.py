@@ -4063,7 +4063,8 @@ class GUI (QMainWindow):
         fd.setWindowTitle('Save spectrum')
         fd.setLabelText(QFileDialog.Accept, "Save as")
         fd.setNameFilters(["Fits Files (*.fits)","PNG Files (*.png)","JPG Files (*.jpg)",
-                           "PDF Files (*.pdf)","ASCII Files (*.txt)", "CSV Files (*.csv)","All Files (*)"])
+                           "PDF Files (*.pdf)","ASCII Files (*.txt)", "CSV Files (*.csv)",
+                           "ECSV Topcat Files (*.ecsv)", "All Files (*)"])
         fd.setOptions(QFileDialog.DontUseNativeDialog)
         fd.setViewMode(QFileDialog.List)
         if (fd.exec()):
@@ -4166,8 +4167,23 @@ class GUI (QMainWindow):
                 hdul = fits.HDUList(hdlist)
                 hdul.writeto(outfile,overwrite=True) # clobber true  allows rewriting
                 hdul.close()
-            elif file_extension in ['.txt', '.csv']:
-                header = "# Object name: "+self.specCube.objname
+            elif file_extension in ['.txt', '.csv','.ecsv']:
+                if file_extension == '.ecsv':
+                    header = "# %ECSV 0.9"
+                    header += "\n# ---"
+                    header += "\n# delimiter: ','"
+                    header += "\n# datatype: ["
+                    header += "\n#   { name: index,   datatype: int32   },"
+                    header += "\n#   { name: wavelength, datatype: float64  },"
+                    header += "\n#   { name: flux, datatype: float64  },"
+                    header += "\n#   { name: eflux, datatype: float64  },"
+                    header += "\n#   { name: uflux, datatype: float64  },"
+                    header += "\n#   { name: exposure, datatype: float64  },"
+                    header += "\n#   { name: atran, datatype: float64  },"
+                    header += "\n# ]"
+                    header += "\n# Object name: "+self.specCube.objname
+                else:
+                    header = "# Object name: "+self.specCube.objname
                 header += "\n# Instrument: "+self.specCube.instrument
                 header += "\n# z: {:.8f}".format(self.specCube.redshift)
                 header += "\n# Ref. Wav.: {:.8f}".format(self.specCube.l0)
@@ -4217,6 +4233,7 @@ class GUI (QMainWindow):
                 #
                 w = sc.spectrum.wave
                 f = sc.spectrum.flux
+                ind = np.arange(len(f))
                 if file_extension == '.txt':
                     delimiter = ' '
                 else:
@@ -4227,21 +4244,21 @@ class GUI (QMainWindow):
                     e  = sc.spectrum.exposure
                     a  = self.specCube.atran
                     # Normal ASCII file
-                    fmt = delimiter.join(["%10.6e"]*6)
+                    fmt = delimiter.join(["%d","%10.6e","%10.6e","%10.6e","%10.6e","%10.6e","%10.6e"])
                     with open(outfile, 'wb') as file:
                         file.write(header.encode())
-                        file.write(b'\n"wavelength","flux","eflux","uflux","exposure","atran"\n')
-                        np.savetxt(file, np.column_stack((w,f,ef,uf,e,a)), fmt=fmt, delimiter=delimiter)
+                        file.write(b'\n index,wavelength,flux,eflux,uflux,exposure,atran\n')
+                        np.savetxt(file, np.column_stack((ind,w,f,ef,uf,e,a)), fmt=fmt, delimiter=delimiter)
                 else:
-                    fmt = delimiter.join(["%10.6e"]*2)
+                    fmt = delimiter.join(["%d","%10.6e","%10.6e"])
                     with open(outfile, 'wb') as file:
                         file.write(header.encode())
-                        file.write(b'\n"wavelength","flux"\n')
-                        np.savetxt(file, np.column_stack((w,f)), fmt=fmt, delimiter=delimiter)                
+                        file.write(b'\n index,wavelength,flux\n')
+                        np.savetxt(file, np.column_stack((ind,w,f)), fmt=fmt, delimiter=delimiter)                
             elif file_extension in ['.png', '.pdf', '.jpg']:
                 sc.fig.savefig(outfile)
             else:
-                message = "Extension accepted: *.fits, *.txt, *.csv, *.png, *.jpg, *.pdf "
+                message = "Extension accepted: *.fits, *.txt, *.csv, *.ecsv, *.png, *.jpg, *.pdf "
                 self.sb.showMessage(message, 2000)
                 print(message)
     
