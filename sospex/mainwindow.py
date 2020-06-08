@@ -1807,7 +1807,8 @@ class GUI (QMainWindow):
             message += '{:d}'.format(i+1)
             message += u'   \u03bb\u2080:      {:4.2f} \u03bcm\n'.format(x)
             message += u'    FWHM: {:5.2f} km/s\n'.format(FWHMv)
-            message += u'    Flux:  {:.2e} W/m\u00b2\n\n'.format(flux)
+            message += u'    Flux:  {:.2e} W/m\u00b2\n'.format(flux)
+            message += u'    Cont:  {:.2e} Jy\n\n'.format(c0)
         self.fbox.setStandardButtons(QMessageBox.Discard|QMessageBox.Save)
         self.discardbutton = self.fbox.button(QMessageBox.Discard)
         self.discardbutton.setText('Continue')
@@ -4625,8 +4626,30 @@ class GUI (QMainWindow):
         # Compute new distance and flux
         dist, flux = self.computePsfData()
         # Update figure of PSF
-        sc.updatePSF(dist, flux)    
-        
+        Io, alpha, beta, fwhm = sc.updatePSF(dist, flux)    
+        if event == 'center changed':
+            self.psfMessage(Io, alpha, beta, fwhm)
+            
+    def psfMessage(self, Io, alpha, beta , fwhm):
+        self.fbox = QMessageBox()
+        pixmap = QPixmap(os.path.join(self.path0,'icons','sospex.png'))
+        self.fbox.setIconPixmap(pixmap)
+        #self.fbox.setIcon(QMessageBox.Information)
+        self.fbox.setWindowTitle("PSF fit")
+        self.fbox.setText("Fitted parameters")
+    
+        message = 'Moffat function:\n\n'
+        message += u'    I\u2080: {:4.2f} \n'.format(Io)
+        message += u'    \u03b1: {:4.2f} \n'.format(alpha)
+        message += u'    \u03b2: {:4.2f} \n'.format(beta)
+        message += u'    FWHM: {:5.2f}\u2033\n'.format(fwhm)
+        self.fbox.setStandardButtons(QMessageBox.Discard)
+        self.discardbutton = self.fbox.button(QMessageBox.Discard)
+        self.discardbutton.setText('Continue')
+        self.fbox.setDefaultButton(QMessageBox.Discard)
+        self.fbox.setInformativeText(message)
+        self.fbox.show()
+
     def centroidPSF(self, event):
         """Recenter the PSF aperture on centroid of intensity."""
         x0, y0 = self.PsfI.innerCircle.center
@@ -4646,9 +4669,7 @@ class GUI (QMainWindow):
         self.PsfI.innerCircle.center = x0, y0
         self.PsfI.outerCircle.center = x0, y0
         # Update interactor
-        self.PsfI.updateInteractor()
-        # Update plot
-        self.onModifiedPsf('center changed')
+        self.PsfI.updateInteractor()            
         
     def centerPSF(self, event):
         """Recenter the PSF aperture optimizing the center with a fit"""
@@ -4696,6 +4717,9 @@ class GUI (QMainWindow):
             self.PsfI.updateInteractor()
             # Update plot
             self.onModifiedPsf('center changed')
+            # Pop-up window with parameters of the PSF
+            
+            
         except:
             print('Fit has failed')
         

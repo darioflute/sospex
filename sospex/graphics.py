@@ -1781,6 +1781,7 @@ class PsfCanvas(MplCanvas):
         if ylims[1] > maxflux/2.:
             self.axes.set_ylim(ylims[0], maxflux*1.1)
         self.fig.canvas.draw_idle()
+        return Io, alpha, beta, fwhm
 
     def unresolvedPsf(self):
         if self.instrument in ['FIFI-LS', 'GREAT']:
