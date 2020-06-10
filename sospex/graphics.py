@@ -787,6 +787,11 @@ class SpectrumCanvas(MplCanvas):
         if s.instrument in ['FIFI-LS', 'PACS']:
             hiflux = s.flux + s.eflux
             loflux = s.flux - s.eflux
+            # Repair NaNs
+            idx = np.isnan(hiflux)
+            hiflux[idx] = np.interp(self.x[idx], self.x[~idx], hiflux[~idx])
+            idx = np.isnan(loflux)
+            loflux[idx] = np.interp(self.x[idx], self.x[~idx], loflux[~idx])
             self.efluxLine = self.axes.fill_between(self.x, loflux, hiflux,
                                                     color='blue', alpha=0.2)
         self.fluxLine = self.axes.step(self.x, s.flux, color='blue', label='F', 
@@ -1114,6 +1119,13 @@ class SpectrumCanvas(MplCanvas):
         except:
            pass
         self.fig.canvas.draw_idle()
+    
+    def repairNaN(f):
+        x = np.arange(len(f))
+        idx = np.isnan(f)
+        if np.sum(idx) > 0:
+            f[idx] = np.interp(x[idx], x[~idx], f[~idx])
+        return f
 
     def updateSpectrum(self, f=None, ef=None, uf=None, exp=None, cont=None, cslope=None, af=None,
                        moments=None, noise=None, atran=None, lines=None, aplines=None, ncell=0):
@@ -1186,7 +1198,7 @@ class SpectrumCanvas(MplCanvas):
                 v = path.vertices
                 xf = self.fluxLine[0].get_xdata()
                 n1 = (np.where(xf == np.min(v[:,0])))[0][0]
-                n2 = (np.where(xf == np.max(v[:,0])))[0][0]                    
+                n2 = (np.where(xf == np.max(v[:,0])))[0][0] 
                 if self.xunit == 'THz':
                     y1 = (f - ef)[n2:n1+1]
                     y2 = (f + ef)[n2:n1+1]
@@ -1194,7 +1206,7 @@ class SpectrumCanvas(MplCanvas):
                     y1 = (f - ef)[n1:n2+1]
                     y2 = (f + ef)[n1:n2+1]
                 v1 = np.concatenate(([y2[0]],y1,[y2[-1]],y2[::-1],[y2[0]]))
-                v1[np.isnan(v1)] = np.nanmedian(v1) # Add median at borders
+                v1[np.isnan(v1)] = np.nanmedian(v1) # Put medians on NaNs
                 v[:,1] = v1
                 self.axes.draw_artist(self.efluxLine)
             if af is not None:

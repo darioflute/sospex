@@ -322,6 +322,8 @@ class GUI (QMainWindow):
                                     checkable=True,triggered=self.overlapContours))
         # Tools
         tools = bar.addMenu("Tools")
+        tools.addAction(QAction(u'Repair spectrum',self,shortcut='',
+                                triggered=self.repairSpectrum))
         flux = tools.addMenu("Recompute flux")
         flux.addAction(QAction('.. with atm. transmission at ref. wavelength',self,shortcut='',
                                triggered=self.fluxRefWavAT))        
@@ -1773,9 +1775,10 @@ class GUI (QMainWindow):
             # 4. Dialog window with results
             self.fitMessage(linepars, sc.function)
         except BaseException:
-            if sc.emslines+sc.abslines > 0:
-                message = 'Fit not feasible: change guesses / use Gaussian model'                
-            else:
+            try:
+                if sc.emslines+sc.abslines > 0:
+                    message = 'Fit not feasible: change guesses / use Gaussian model'                
+            except:
                 message = 'First define a guess for the fit'
             self.sb.showMessage(message, 4000)
             print(message)
@@ -2337,7 +2340,6 @@ class GUI (QMainWindow):
         self.Cs = self.C0.copy() * 0. # Set all slopes to 0
         self.refreshContinuum()
         self.fitcont = True
-    
 
     def refreshContinuum(self):
         """Refresh the plotted image of the continuuum."""
@@ -6278,7 +6280,26 @@ class GUI (QMainWindow):
             sc.vaxes.set_ylim(np.nanmin(sc.aflux), np.nanmax(sc.aflux))
         # Slightly higher maximum
         sc.ylimits = (ylim0,ylim1*1.1)
-        sc.updateYlim()     
+        sc.updateYlim()  
+        
+    def repairSpectrum(self):
+        """Substitute NaN with interpolated values"""
+        
+        for i in range(self.specCube.nx):
+            for j in range(self.specCube.ny):
+                s = self.specCube.flux[:,j,i]
+                w = self.specCube.wave
+                idx = np.isnan(s)
+                if (np.sum(idx) > 0) & (np.sum(idx) < (np.sum(~idx) // 10)):
+                    s[idx] = np.interp(w[idx],w[~idx],s[~idx])
+                if self.specCube.instrument in ['PACS','FIFI']:
+                    e = self.specCube.eflux[:,j,i]
+                    idx = np.isnan(s)
+                    if (np.sum(idx) > 0) & (np.sum(idx) < (np.sum(~idx) // 10)):
+                        e[idx] = np.interp(w[idx],w[~idx],e[~idx])
+                        
+        self.onModifiedAperture('Repaired spectrum')
+        
         
 def main():
     from sospex import __version__
