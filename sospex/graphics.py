@@ -290,9 +290,21 @@ class ImageCanvas(MplCanvas):
                 elif title == 'M4':
                     title = 'Kurtosis Excess'
                 elif title == 'sv':
-                    title = '$\sigma_v$ [km/s]'
+                    title = '$FWHM$'
                 elif title == 'v':
-                   title = 'v [km/s]'
+                   title = 'v'
+                elif title == 'L0':
+                   title = 'I$_0$'
+                elif title == 'L1':
+                   title = 'I$_1$'
+                elif title == 'v0':
+                   title = 'v$_0$'
+                elif title == 'v1':
+                   title = 'v$_1$'
+                elif title == 'd0':
+                   title = 'FWHM$_0$'
+                elif title == 'd1':
+                   title = 'FWHM$_1$'
                 elif title == 'unknown':
                    title = ''
                 self.fig.suptitle(title)

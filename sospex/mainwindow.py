@@ -343,7 +343,8 @@ class GUI (QMainWindow):
                                     triggered=self.guessContinuum))
         continuum.addAction(QAction('Compute',self,shortcut='',
                                     triggered=self.ContMomLines))
-        tools.addAction(QAction(u'Recompute C\u2080, v, \u03c3\u1d65',self,shortcut='',
+        #tools.addAction(QAction(u'Recompute C\u2080, v, \u03c3\u1d65',self,shortcut='',
+        tools.addAction(QAction(u'Recompute C\u2080, v, \u0394',self,shortcut='',
                                 triggered=self.computeVelocities))
         apertures = tools.addMenu("Select aperture")
         apertures.addAction(QAction('Square',self,shortcut='',triggered=self.selectSquareAperture))
@@ -558,7 +559,8 @@ class GUI (QMainWindow):
         t.layout = QHBoxLayout(t)
         t.setSizePolicy(QSizePolicy.Ignored,QSizePolicy.Ignored) # Avoid expansion
         if b == 'sv':
-            self.itabs.addTab(t, u'\u03c3\u1d65')  # unicode for sigma
+            #self.itabs.addTab(t, u'\u03c3\u1d65')  # unicode for sigma
+            self.itabs.addTab(t, u'\u0394')  # unicode for Delta
         elif b == 'Flux':
             self.itabs.addTab(t, u'F')  # unicode
         elif b == 'uFlux':
@@ -585,10 +587,18 @@ class GUI (QMainWindow):
             self.itabs.addTab(t, u'I\u2080')  # unicode 0
         elif b == 'L1':
             self.itabs.addTab(t, u'I\u2081')  # unicode 1      
+        elif b == 'v0':
+            self.itabs.addTab(t, u'v\u2080')  # unicode 0
+        elif b == 'v1':
+            self.itabs.addTab(t, u'v\u2081')  # unicode 1      
+        elif b == 'd0':
+            self.itabs.addTab(t, u'\u0394\u2080')  # unicode Delta 0
+        elif b == 'd1':
+            self.itabs.addTab(t, u'\u0394\u2081')  # unicode Delta 1      
         else:
             self.itabs.addTab(t, b)
         ic = ImageCanvas(t, width=11, height=10.5, dpi=100)
-        if b in ['Flux','uFlux','Exp','C0','M0','M1','M2','M3','M4','L0','L1']:
+        if b in ['Flux','uFlux','Exp','C0','M0','M1','M2','M3','M4','L0','L1','v0','v1','d0','d1']:
             ic.crota2 = self.specCube.crota2
         # No contours available
         ic.contours = None
@@ -681,6 +691,11 @@ class GUI (QMainWindow):
         elif b == 'sv': self.sv = None
         elif b == 'L0': self.L0 = None
         elif b == 'L1': self.L1 = None
+        elif b == 'v0': self.v0 = None
+        elif b == 'v1': self.v1 = None
+        elif b == 'd0': self.d0 = None  # Dispersion (FWHM)
+        elif b == 'd1': self.d1 = None
+        
         # Remove band from band list
         del self.bands[itab]
 
@@ -1804,7 +1819,7 @@ class GUI (QMainWindow):
             c = 299792458. # m/s
             FWHMv = c * FWHM / x / 1000.
             eFWHMv = FWHMv / sigma * esigma
-            # Compute intensity of line in W/m2
+            # Compute intensity of line in 
             #jy2wm2 = c / (x * x) * 1.e-20 
             flux = A #* jy2wm2
             message += '{:d}'.format(i+1)
@@ -1969,6 +1984,14 @@ class GUI (QMainWindow):
             image = self.L0
         elif band == 'L1':
             image = self.L1
+        elif band == 'v0':
+            image = self.v0
+        elif band == 'v1':
+            image = self.v1
+        elif band == 'd0':
+            image = self.d0
+        elif band == 'd1':
+            image = self.d1
         if s.instrument == 'PCWI':
             aspect = s.ypixscale/s.pixscale
         else:
@@ -1977,7 +2000,7 @@ class GUI (QMainWindow):
         ic.compute_initial_figure(image=image, wcs=self.specCube.wcs, title=band,
                                   cMap=self.colorMap, cMapDir=self.colorMapDirection,
                                   stretch=self.stretchMap, aspect=aspect)
-        if band in ['M0','M1','M2','M3','M4','C0','v','sv','L0','L1']:
+        if band in ['M0','M1','M2','M3','M4','C0','v','sv','L0','L1','v0','v1','d0','d1']:
             ic.crota2 = self.specCube.crota2
         ih = self.ihi[self.bands.index(band)]
         ih.compute_initial_figure(image=None)
@@ -2416,7 +2439,7 @@ class GUI (QMainWindow):
             item = elist[oldpos]
             elist.remove(item)
             elist.insert(newpos, item)
-
+            
     def computeVelocities(self):
         """ Compute velocity and vel. dispersion from the moments """
         if self.M0 is not None:
@@ -2437,7 +2460,7 @@ class GUI (QMainWindow):
             w0 = self.specCube.l0
             z = self.specCube.redshift
             self.v = (self.M1/w0 -1. - z)* c # km/s
-            self.sv = np.sqrt(self.M2) * c/w0  # km/s
+            self.sv = np.sqrt(self.M2) * c/w0  * 2.355 # km/s
             # Refresh the plotted images
             bands = ['v', 'sv']
             sbands = [self.v, self.sv]
@@ -2448,9 +2471,9 @@ class GUI (QMainWindow):
                 if (b == 'sv') & (self.specCube.instrument == 'FIFI-LS'):
                     R = self.specCube.getResolutionFIFI()
                     c = 299792.458 # km/s
-                    sR = c/R/2.355
-                    ic.fig.suptitle('$\sigma_v$ [km/s]  (R = '+str(int(R)) + 
-                                    ", $\sigma_R$ = {:.1f} km/s)".format(sR))
+                    sR = c/R
+                    ic.fig.suptitle('$FWHM$ (R: '+str(int(R)) + 
+                                    ", $\Delta_i$: {:.1f} km/s)".format(sR))
                 ic.image.format_cursor_data = lambda z: "{:.1f} km/s".format(float(z))
                 ih = self.ihi[itab]
                 ih.compute_initial_figure(image = sb)
@@ -2478,6 +2501,7 @@ class GUI (QMainWindow):
         else:
             message = 'First compute the moments'
             self.sb.showMessage(message, 4000)
+
 
     def fitRegion(self):
         """Fit the guess over a square region."""
@@ -2550,7 +2574,7 @@ class GUI (QMainWindow):
         # if tab is not flux, uflux, exp, or m0 recompute the values
         itab = self.itabs.currentIndex()
         band = self.bands[itab]
-        if (band == 'Flux') | (band == 'uFlux') | (band =='Exp') | (band == 'M0'):
+        if band in ['Flux','uFlux','Exp','M0']:
             pass
         else:
             # Transform into original cube coordinates
@@ -2794,11 +2818,11 @@ class GUI (QMainWindow):
             ic0 = self.ici[itab]
             # Create/update moment tabs
             if nlines == 1:
-                newbands = ['L0']
-                sbands = [self.L0]                
+                newbands = ['L0','v0','d0']
+                sbands = [self.L0, self.v0, self.d0]                
             elif nlines == 2:
-                newbands = ['L0','L1']
-                sbands = [self.L0, self.L1]
+                newbands = ['L0','L1','v0','v1','d0','d1']
+                sbands = [self.L0, self.L1, self.v0, self.v1, self.d0, self.d1]
             for new,sb in zip(newbands,sbands):
                 if new not in self.bands:
                     self.addBand(new)
@@ -3052,21 +3076,33 @@ class GUI (QMainWindow):
         multiFitLines(m, w, f, c, lineguesses, sc.model, self.lines, points)
         print('Number of lines ',len(self.lines))
         # Update L0 and L1 (first two lines)
-        self.L0 = self.lines[0][2] # the plane no 2 corresponds to the amplitude
+        self.L0 = self.lines[0][2] # Amplitude == intensity
+        # Center of line transformed into velocity wrt ref wav
+        w0 = self.specCube.l0
+        z = self.specCube.redshift
+        c = 299792.458 # km/s 
+        self.v0 = (self.lines[0][0]/w0 - 1 -z) * c 
+        # FWHM from sigma (in km/s)
+        self.d0 = self.lines[0][1] * 2.355 * c / w0
         if len(self.lines) == 2:
             self.L1 = self.lines[1][2]
+            self.v1 = (self.lines[1][0]/w0 - 1 -z) * c 
+            self.d1 = self.lines[1][1] * 2.355 * c / w0
         # Then display them
         if len(self.lines) == 2:
-            bands = ['L0', 'L1']
-            sbands = [self.L0, self.L1]
+            bands = ['L0', 'L1','v0','v1','d0','d1']
+            sbands = [self.L0, self.L1,self.v0,self,v1,self.d0,self.d1]
         else:
-            bands = ['L0']
-            sbands = [self.L0]
+            bands = ['L0','v0','d0']
+            sbands = [self.L0,self.v0,self.d0]
         for b, sb in zip(bands, sbands):
             itab = self.bands.index(b)
             ic = self.ici[itab]
             ic.showImage(image=sb)
-            ic.image.format_cursor_data = lambda z: "{:.2e} W/m2".format(float(z))
+            if b in ['L0','L1']:
+                ic.image.format_cursor_data = lambda z: "{:.2e} W/m2".format(float(z))
+            else:
+                ic.image.format_cursor_data = lambda z: "{:.2f} km/s".format(float(z))
             ih = self.ihi[itab]
             ih.compute_initial_figure(image=sb)
             ih.update_figure(image=sb)
@@ -3108,22 +3144,33 @@ class GUI (QMainWindow):
         multiFitLines(m, w, f, c, lineguesses, sc.model, self.lines, points)
         # Update L0 and L1 (first two lines)
         self.L0 = self.lines[0][2] # the plane no 2 corresponds to the amplitude
+        w0 = self.specCube.l0
+        z = self.specCube.redshift
+        c = 299792.458 # km/s 
+        self.v0 = (self.lines[0][0]/w0 - 1 -z) * c 
+        # FWHM from sigma
+        self.d0 = self.lines[0][1] * 2.355 / w0 * c
         if len(self.lines) == 2:
             self.L1 = self.lines[1][2]
+            self.v1 = (self.lines[1][0]/w0 - 1 - z) / w0 * c 
+            self.d1 = self.lines[1][1] * 2.355 / w0 * c
         
     def fitLinesDisplay(self):
         # Display images after fitting
         if len(self.lines) == 2:
-            bands = ['L0', 'L1']
-            sbands = [self.L0, self.L1]
+            bands = ['L0', 'L1','v0','v1','d0','d1']
+            sbands = [self.L0, self.L1, self.v0, self.v1, self.d0, self.d1]
         else:
-            bands = ['L0']
-            sbands = [self.L0]
+            bands = ['L0','v0','d0']
+            sbands = [self.L0,self.v0,self.d0]
         for b, sb in zip(bands, sbands):
             itab = self.bands.index(b)
             ic = self.ici[itab]
             ic.showImage(image=sb)
-            ic.image.format_cursor_data = lambda z: "{:.2e} W/m2".format(float(z))
+            if b in ['L0','L1']:
+                ic.image.format_cursor_data = lambda z: "{:.2e} W/m2".format(float(z))
+            else:
+                ic.image.format_cursor_data = lambda z: "{:.2f} km/s".format(float(z))
             ih = self.ihi[itab]
             ih.compute_initial_figure(image=sb)
             ih.update_figure(image=sb)
@@ -4034,7 +4081,8 @@ class GUI (QMainWindow):
             itab = self.itabs.currentIndex()
             ic = self.ici[itab]
             band = self.bands[itab]
-            if band in ['Flux','Uflux','Exp','C0','M0','v','sv','I0','I1']:
+            print('Band is: ', band)
+            if band in ['Flux','Uflux','Exp','C0','M0','v','sv','I0','I1','v0','v1','d0','d1']:
                 instrument = self.specCube.instrument
             else:
                 instrument = band
@@ -4785,11 +4833,9 @@ class GUI (QMainWindow):
                     ic0.updateImage(image)
                     ic0.updateScale(cmin,cmax)
                 # mask C0, Mi, v, sv
-                #sbands = [self.C0, self.M0, self.M1, self.M2, self.M3, self.M4, 
-                #          self.v, self.sv,self.L0, self.L1]
-                #bands = ['C0','M0','M1','M2','M3','M4','v','sv','L0','L1']
-                sbands = [self.C0, self.M0, self.v, self.sv,self.L0, self.L1]
-                bands = ['C0','M0','v','sv','L0','L1']
+                sbands = [self.C0, self.M0, self.v, self.sv,
+                          self.L0, self.L1,self.v0,self.v1,self.d0,self.d1]
+                bands = ['C0','M0','v','sv','L0','L1','v0','v1','d0','d1']
                 for b,sb in zip(bands,sbands):
                     if sb is not None:
                         itab = self.bands.index(b)
@@ -4812,7 +4858,8 @@ class GUI (QMainWindow):
         # Start a Selector to define a polygon aperture
         itab = self.itabs.currentIndex()
         band = self.bands[itab]
-        if band not in ['Flux','uFlux','Exp','C0','M0','M1','M2','M3','M4','v','sv','L0','L1']:
+        if band not in ['Flux','uFlux','Exp','C0','M0','M1','M2','M3','M4',
+                        'v','sv','L0','L1','v0','v1','d0','d1']:
             itab = 0
             self.itabs.setCurrentIndex(itab)            
         ic = self.ici[itab]
@@ -4829,7 +4876,8 @@ class GUI (QMainWindow):
         # Start a Selector to define a polygon aperture
         itab = self.itabs.currentIndex()
         band = self.bands[itab]
-        if band not in ['Flux','uFlux','Exp','C0','M0','M1','M2','M3','M4','v','sv','L0','L1']:
+        if band not in ['Flux','uFlux','Exp','C0','M0','M1','M2','M3','M4',
+                        'v','sv','L0','L1','v0','v1','d0','d1']:
             itab = 0
             self.itabs.setCurrentIndex(itab)            
         ic = self.ici[itab]
@@ -4889,8 +4937,9 @@ class GUI (QMainWindow):
                 ic0.updateImage(image)
                 ic0.updateScale(cmin,cmax)
             # mask C0, Mi, v, sv
-            sbands = [self.C0, self.M0, self.M1, self.M2, self.M3, self.M4, self.v, self.sv,self.L0,self.L1]
-            bands = ['C0','M0','M1','M2','M3','M4','v','sv','L0','L1']
+            sbands = [self.C0, self.M0, self.M1, self.M2, self.M3, self.M4, 
+                      self.v, self.sv,self.L0,self.L1,self.v0,self.v1,self.d0,self.d1]
+            bands = ['C0','M0','M1','M2','M3','M4','v','sv','L0','L1','v0','v1','d0','d1']
             for b,sb in zip(bands,sbands):
                 if sb is not None:
                     itab = self.bands.index(b)
@@ -5358,7 +5407,8 @@ class GUI (QMainWindow):
             # The removal is done in reversed order to get all the tabs
             self.extraimages = []
             for itab in reversed(range(len(self.ici))):
-                if self.bands[itab] in ['Flux','uFlux','Exp','M0','M1','M2','M3','v','sv','L0','L1']:
+                if self.bands[itab] in ['Flux','uFlux','Exp','M0','M1','M2','M3',
+                                        'v','sv','L0','L1','v0','v1','d0','d1']:
                     pass
                 else:
                     print('tab ',self.bands[itab],' contains auxiliary image')
@@ -5519,6 +5569,10 @@ class GUI (QMainWindow):
         self.continuum = None
         self.L0 = None
         self.L1 = None
+        self.v0 = None
+        self.v1 = None
+        self.d0 = None
+        self.d1 = None
         self.M0 = None
         self.M1 = None
         self.M2 = None
@@ -5909,7 +5963,8 @@ class GUI (QMainWindow):
         indmin, indmax = np.searchsorted(self.specCube.wave, (xmin, xmax))
         indmax = min(len(self.specCube.wave) - 1, indmax)
         sc.regionlimits = [xmin,xmax]
-        if self.specCube.instrument in ['GREAT','HI','HALPHA','VLA','ALMA','MUSE','IRAM','CARMA','PCWI']:
+        if self.specCube.instrument in ['GREAT','HI','HALPHA','VLA','ALMA',
+                                        'MUSE','IRAM','CARMA','PCWI']:
             imas = ['Flux']
         elif self.specCube.instrument in ['PACS','FORCAST']:
             imas = ['Flux','Exp']
