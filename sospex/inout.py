@@ -321,7 +321,6 @@ def importAperture(self):
                 interactors = [sc.guess]
                 print('Plotted segment interactor')
                 # Plot lines
-                #if len(sc.lguess) > 0:
                 if sc.lguess is not None:
                     sc.emslines = 0
                     sc.abslines = 0

@@ -24,7 +24,7 @@ from sospex.moments import ( multiFitContinuum, multiComputeMoments,
                             multiFitLines, residualsPsf, 
                             fitApertureContinuum, fitApertureLines)
 from sospex.dialogs import (ContParams, ContFitParams, SlicerDialog, guessParams,
-                            FitCubeDialog, cmDialog)
+                            FitCubeDialog, cmDialog, ApertureParams)
 from sospex.graphics import  (NavigationToolbar, ImageCanvas, ImageHistoCanvas,
                               SpectrumCanvas, ds9cmap, ScrollMessageBox, PsfCanvas)
 from sospex.apertures import (photoAperture, PolygonInteractor, EllipseInteractor,
@@ -346,7 +346,7 @@ class GUI (QMainWindow):
         #tools.addAction(QAction(u'Recompute C\u2080, v, \u03c3\u1d65',self,shortcut='',
         tools.addAction(QAction(u'Recompute C\u2080, v, \u0394',self,shortcut='',
                                 triggered=self.computeVelocities))
-        apertures = tools.addMenu("Select aperture")
+        apertures = tools.addMenu("Select interactive aperture")
         apertures.addAction(QAction('Square',self,shortcut='',triggered=self.selectSquareAperture))
         apertures.addAction(QAction('Rectangle',self,shortcut='',
                                     triggered=self.selectRectangleAperture))
@@ -355,6 +355,8 @@ class GUI (QMainWindow):
                                     triggered=self.selectEllipseAperture))
         apertures.addAction(QAction('Polygon',self,shortcut='',
                                     triggered=self.selectPolygonAperture))
+        tools.addAction(QAction(u'Add circular aperture',self,shortcut='',
+                                triggered=self.addCircularAperture))
         # Help 
         help = bar.addMenu("Help")
         help.addAction(QAction('About', self, shortcut='Ctrl+a',triggered=self.about))
@@ -926,6 +928,32 @@ class GUI (QMainWindow):
             ic.axes.set_xlim(x)
             ic.axes.set_ylim(y)
             ic.fig.canvas.draw_idle()
+            
+            
+    def addCircularAperture(self):
+        """Add aperture with center and radius from dialog"""
+        # Dialog for center and radius
+        self.AP = ApertureParams()
+        if self.AP.exec_() == QDialog.Accepted:
+            ra, dec, radius = self.AP.save()
+            # Check if inside the cube
+            ic = self.ici[0]
+            x, y = ic.wcs.all_world2pix(ra, dec, 0)
+            nx, ny = self.specCube.nx, self.specCube.ny
+            if radius <= 0:
+                message = 'Wrong values'
+                self.sb.showMessage(message, 10000)
+                return
+            if (x > nx) or (x < 0) or (y > ny) or (y < 0):
+                message = 'Position is outside of image'
+                self.sb.showMessage(message, 10000)
+                return
+            # Add aperture (radius in pixels)
+            itab = self.itabs.currentIndex()
+            ic0 = self.ici[itab]
+            radius *= ic0.pixscale
+            self.drawNewAperture('Circle', ra, dec, radius, radius, 0.)
+        
 
     def updateAperture(self):
         itab = self.itabs.currentIndex()
