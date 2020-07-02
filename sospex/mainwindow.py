@@ -456,6 +456,7 @@ class GUI (QMainWindow):
         self.stabs.addTab(t, b)
         sc = SpectrumCanvas(t, width=5.5, height=5.25, dpi=100)
         sc.switchSignal.connect(self.switchUnits)
+        sc.modifyAperture.connect(self.modifyAperture)
         # Toolbar
         toolbar = QToolBar()
         toolbar.setOrientation(Qt.Vertical)
@@ -938,7 +939,7 @@ class GUI (QMainWindow):
             adverts = np.array([(ic.wcs.all_pix2world(x, y, 0)) for (x,y) in verts])                
             verts = [(ic0.wcs.all_world2pix(ra, dec, 0)) for (ra,dec) in adverts]
             aper0.poly.set_xy(verts)
-        elif aper.type == 'Ellipse' or aper.type == 'Circle':
+        elif aper.type in ['Ellipse', 'Circle']:
             x0,y0 = aper.ellipse.center
             w0    = aper.ellipse.width
             h0    = aper.ellipse.height
@@ -951,7 +952,7 @@ class GUI (QMainWindow):
             aper0.ellipse.width = w0
             aper0.ellipse.height = h0
             aper0.ellipse.angle = angle
-        elif aper.type == 'Rectangle' or aper.type == 'Square' or aper.type == 'Pixel':
+        elif aper.type in ['Rectangle', 'Square', 'Pixel']:
             x0,y0 = aper.rect.get_xy()
             w0    = aper.rect.get_width()
             h0    = aper.rect.get_height()
@@ -1008,6 +1009,11 @@ class GUI (QMainWindow):
             self.removeSpecTab(istab, False)
             self.stabs.setCurrentIndex(1)  # Pixel tab
             self.stabs.currentChanged.connect(self.onSTabChange)
+            try:
+                sc = self.sci[istab]
+                sc.rannotation.remove()
+            except:
+                pass
         else:
             print(event)
 
@@ -1037,6 +1043,18 @@ class GUI (QMainWindow):
             if itab != 0:
                 self.updateAperture()
             aperture = self.ici[0].photApertures[n].aperture
+            # Check if aperture is circle, then update the aperture radius
+            if self.ici[0].photApertures[n].type == 'Circle':
+                #print('Updated radius ', aperture.width)
+                r = aperture.width * 0.5
+                try:
+                    sc.rannotation.remove()
+                except:
+                    pass
+                sc.r = r
+                sc.rannotation = sc.axes.annotate("r = {:.1f} arcsec".format(r),
+                                              xy=(0.8,-0.18), picker=5,
+                                              xycoords='axes fraction')
             path = aperture.get_path()
             transform = aperture.get_patch_transform()
             npath = transform.transform_path(path)
@@ -1105,26 +1123,29 @@ class GUI (QMainWindow):
                 lines = None
             if istab == 1: # case of pixel (with different kernels)
                 fluxAll = np.nanmean(s.flux[:, yy, xx], axis=1)
-                if sc.auxiliary:
+                if sc.auxiliary1:
                     # Get the pixel of the auxiliary cube from aperture pixel in an image
                     x0, y0 = aperture.get_xy()
                     ic0 = self.ici[0]
                     ra0, dec0 = ic0.wcs.all_pix2world(x0, y0, 0) 
-                    xxa, yya = self.auxSpecCube.wcs.all_world2pix(ra0, dec0, 0)
+                    xxa, yya = self.auxSpecCube1.wcs.all_world2pix(ra0, dec0, 0)
                     xxa = int (xxa // 1)
                     yya = int (yya // 1)
                     try:
-                        afluxAll = self.auxSpecCube.flux[:, yya, xxa]
+                        if (xxa >= 0) and (yya >= 0):
+                            afluxAll = self.auxSpecCube1.flux[:, yya, xxa]
+                        else:
+                            afluxAll = self.auxSpecCube1.flux[:,0,0] * np.nan
                     except:
-                        afluxAll = self.auxSpecCube.flux[:,0,0] * np.nan
-                        #print('Pixel out of map')
+                        afluxAll = self.auxSpecCube1.flux[:,0,0] * np.nan
+                        print('Pixel out of map')
                     # Normalization
-                    sc.aflux = afluxAll
+                    sc.aflux1 = afluxAll
             else:
                 fluxAll = np.nansum(s.flux[:, yy, xx], axis=1)
             sc.spectrum.flux = fluxAll
             if s.instrument in ['GREAT','HI','HALPHA','VLA','ALMA','MUSE','IRAM','CARMA','PCWI']:
-                if sc.auxiliary:
+                if sc.auxiliary1:
                     sc.updateSpectrum(f=fluxAll*t2j, af=afluxAll, cont=cont, cslope=cslope, moments=moments, 
                                       lines=lines, noise=noise, ncell=ncell)
                 else:
@@ -1137,7 +1158,7 @@ class GUI (QMainWindow):
                 else:
                     expAll = np.nanmean(s.exposure[:, yy, xx], axis=1)
                     efluxAll = np.sqrt(np.nansum(s.eflux[:, yy, xx]**2, axis=1))
-                if sc.auxiliary:
+                if sc.auxiliary1:
                     sc.updateSpectrum(f=fluxAll, ef=efluxAll, af=afluxAll, exp=expAll, cont=cont, cslope=cslope,
                                       moments=moments, lines=lines,
                                       noise=noise, ncell=ncell)
@@ -1157,7 +1178,7 @@ class GUI (QMainWindow):
                 sc.spectrum.uflux = ufluxAll
                 sc.spectrum.eflux = efluxAll
                 sc.spectrum.exposure = expAll
-                if sc.auxiliary:
+                if sc.auxiliary1:
                     sc.updateSpectrum(f=fluxAll, ef=efluxAll, af=afluxAll, uf=ufluxAll, exp=expAll,
                                       cont=cont,cslope=cslope, moments=moments, lines=lines, 
                                       noise=noise, ncell=ncell)
@@ -1166,6 +1187,23 @@ class GUI (QMainWindow):
                                       cont=cont,cslope=cslope, moments=moments, lines=lines, 
                                       noise=noise, ncell=ncell)
 
+    def onpick(self, event):
+        """React to pick events."""
+        istab = self.stabs.currentIndex()
+        sc = self.sci[istab]
+        print('event onpick ', event)
+        if event.artist == sc.rannotation:
+            n = self.nAper()
+            aperture = self.ici[0].photApertures[n].aperture           
+            r = aperture.width * 0.5
+            rnew = self.getDouble(r)
+            sc.rannotation.remove()
+            sc.rannotation = sc.axes.annotate("r = {:.1f} arcsec".format(r),
+                                              xy=(0.8,-0.18), picker=5,
+                                              xycoords='axes fraction')
+            sc.aperture.width = rnew * 2
+            sc.draw_idle()
+            self.onModifiedAperture('modified aperture')
            
     def onDraw(self,event):
         if len(self.ici) <= 1:
@@ -1190,7 +1228,7 @@ class GUI (QMainWindow):
                 ntab = int(tabname)
             aper = ic.photApertures[ntab]
             #apertype = aper.__class__.__name__
-            if aper.type == 'Ellipse' or aper.type == 'Circle':
+            if aper.type in ['Ellipse', 'Circle']:
                 x0,y0 = aper.ellipse.center
                 w0    = aper.ellipse.width
                 h0    = aper.ellipse.height
@@ -1207,7 +1245,7 @@ class GUI (QMainWindow):
                     ap.ellipse.angle = angle - ic.crota2 + ima.crota2
                     ap.updateMarkers()
                     ima.changed = True
-            if aper.type == 'Rectangle' or aper.type == 'Square' or aper.type == 'Pixel':
+            if aper.type in ['Rectangle', 'Square', 'Pixel']:
                 x0,y0 = aper.rect.get_xy()
                 w0    = aper.rect.get_width()
                 h0    = aper.rect.get_height()
@@ -1305,7 +1343,7 @@ class GUI (QMainWindow):
                         sc_.fig.canvas.draw_idle()
                     else:
                         pass
-            elif QMessageBox.No:
+            elif response == QMessageBox.No:
                 self.sb.showMessage("Redshift value unchanged ", 2000)
                 sc.spectrum.redshift = self.specCube.redshift
                 for annotation in sc.annotations:
@@ -1344,7 +1382,7 @@ class GUI (QMainWindow):
                         sc_.fig.canvas.draw_idle()
                     else:
                         pass
-            elif QMessageBox.No:
+            elif response == QMessageBox.No:
                 self.sb.showMessage("Redshift value unchanged ", 2000)
                 sc.spectrum.l0 = self.specCube.l0
                 for annotation in sc.annotations:
@@ -3091,7 +3129,7 @@ class GUI (QMainWindow):
         # Then display them
         if len(self.lines) == 2:
             bands = ['L0', 'L1','v0','v1','d0','d1']
-            sbands = [self.L0, self.L1,self.v0,self,v1,self.d0,self.d1]
+            sbands = [self.L0, self.L1,self.v0,self.v1,self.d0,self.d1]
         else:
             bands = ['L0','v0','d0']
             sbands = [self.L0,self.v0,self.d0]
@@ -3363,6 +3401,14 @@ class GUI (QMainWindow):
         sc.span.active = False
         # Select new tab
         self.stabs.setCurrentIndex(len(self.stabs)-1)
+        # Add aperture info
+        if self.ici[0].photApertures[n].type == 'Circle':
+            r = aperture.width * 0.5
+            sc.r = r
+            sc.rannotation = sc.axes.annotate("r = {:.1f} arcsec".format(r),
+                                                  xy=(0.8,-0.18), picker=5,
+                                                  xycoords='axes fraction')        
+
                    
     def onRectSelect(self, eclick, erelease):
         """eclick and erelease are the press and release events."""       
@@ -3657,16 +3703,16 @@ class GUI (QMainWindow):
             print('Uploading auxiliary spectral cube')
             downloadedCube = cloudImage(lon, lat, xsize, ysize, band,
                                         self.specCube.pixscale)
-            self.auxSpecCube = downloadedCube.data
-            if self.auxSpecCube is not None:
+            self.auxSpecCube1 = downloadedCube.data
+            if self.auxSpecCube1 is not None:
                 message = 'Auxiliary spectral cube downloaded'
                 # Add the spectrum to the Pix tab
                 istab = self.spectra.index('Pix')
                 sc = self.sci[istab]
-                sc.displayAuxFlux = True
-                sc.auxiliary = True
-                sc.auxl0 = self.auxSpecCube.l0
-                sc.auxw = self.auxSpecCube.wave
+                sc.displayAuxFlux1 = True
+                sc.auxiliary1 = True
+                sc.aux1l0 = self.auxSpecCube1.l0
+                sc.aux1w = self.auxSpecCube1.wave
                 #sc.drawSpectrum()
                 self.onModifiedAperture('Auxiliary spectrum')  # Update the spectrum plot
                 sc.spectrum.l0 = self.specCube.l0
@@ -4478,6 +4524,21 @@ class GUI (QMainWindow):
                 header['RESTFRQ'] = self.specCube.header['RESTFRQ']
                 header['ALTRVAL'] = self.specCube.header['ALTRVAL']
                 header['ALTRPIX'] = self.specCube.header['ALTRPIX']
+                header['CTYPE3'] = self.specCube.header['CTYPE3']
+                header['CRPIX3'] = self.specCube.header['CRPIX3']
+                header['CRVAL3'] = self.specCube.header['CRVAL3']
+                header['CDELT3'] = self.specCube.header['CDELT3']
+                header['CUNIT3'] = ('m/s','Velocity unit')
+                hdu = fits.PrimaryHDU(flux)
+                hdu.header.extend(header)
+                hdul = fits.HDUList([hdu])
+                hdul.writeto(outfile,overwrite=True) 
+                hdul.close()
+            elif self.specCube.instrument == 'HALPHA':
+                header['NAXIS'] = (3,'Number of axis')
+                header['OBJECT'] = (self.specCube.objname, 'Object Name')
+                header['INSTRUME'] = self.specCube.header['INSTRUME']
+                header['RESTFREQ'] = self.specCube.header['RESTFREQ']
                 header['CTYPE3'] = self.specCube.header['CTYPE3']
                 header['CRPIX3'] = self.specCube.header['CRPIX3']
                 header['CRVAL3'] = self.specCube.header['CRVAL3']
@@ -5838,6 +5899,22 @@ class GUI (QMainWindow):
             for sc in sci:
                 sc.switchFluxUnits()
             
+    def modifyAperture(self, event):
+        """React to input of new aperture."""
+        rnew = float(event)
+        n = self.nAper()
+        for ic in self.ici:
+            aperture = ic.photApertures[n].aperture
+            aperture.width = rnew * 2.
+            aperture.height = rnew * 2.
+            ic.photApertures[n].updateMarkers()
+        # Refresh image
+        itab = self.itabs.currentIndex()
+        ic = self.ici[itab]
+        ic.draw_idle()
+        # Send to modified aperture
+        self.onModifiedAperture('modified aperture')
+                
 
     def sliderSwitchUnits(self):
         c = 299792458.0  # speed of light in m/s
@@ -6331,8 +6408,8 @@ class GUI (QMainWindow):
             u1 = np.nanmax(spec.uflux)
             if u0 < ylim0: ylim0 = u0
             if u1 > ylim1: ylim1 = u1
-        if sc.displayAuxFlux:
-            sc.vaxes.set_ylim(np.nanmin(sc.aflux), np.nanmax(sc.aflux))
+        if sc.displayAuxFlux1:
+            sc.vaxes.set_ylim(np.nanmin(sc.aflux1), np.nanmax(sc.aflux1))
         # Slightly higher maximum
         sc.ylimits = (ylim0,ylim1*1.1)
         sc.updateYlim()  

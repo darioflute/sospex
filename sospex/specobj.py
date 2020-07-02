@@ -227,9 +227,10 @@ class specCubeAstro(object):
         self.Tb2Jy *= pixfraction
         # Multiplication is delayed in the code to speed up reading
         # self.flux *= self.Tb2Jy   # Transformed from temperature to S_nu [Jy] per pixel
-        vel = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3
+        pix0=0
+        vel = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3
         self.l0 = l0
-        self.wave = l0 + l0*vel/c
+        self.wave = l0 + l0 * vel / c
         
     def readFORCAST(self, hdl): 
         print('This is a FORCAST spectral cube')
@@ -250,7 +251,8 @@ class specCubeAstro(object):
         exp = hdl['EXPOSURE'].data.astype(float) * exptime
         self.exposure = np.broadcast_to(exp, np.shape(self.flux))
         print('shape of exposure is ', np.shape(self.exposure))
-        self.wave = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3
+        pix0=0
+        self.wave = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3
         self.l0 = np.nanmedian(self.wave)
 
     def readPACS(self, hdl):
@@ -302,7 +304,7 @@ class specCubeAstro(object):
         self.wcs = WCS(hdu.header).celestial
         print('astrometry ', self.wcs)
         self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
-        self.crpix3 = 1
+        self.crpix3 = 0
         w = self.wave
         self.crval3 = w[0]
         self.cdelt3 = np.median(w[1:] - w[:-1])
@@ -329,7 +331,8 @@ class specCubeAstro(object):
         self.cdelt3 = self.header['CDELT3']
         ctype3 = self.header['CTYPE3']
         if (ctype3 == 'VELO-HEL') or (ctype3 == 'VELO-LSR'):
-            velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3 # m/s
+            pix0 = 0 # it's 1 normally ...
+            velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3 # m/s
             # Neutral Hydrogen (HI)
             nu0 = self.header['RESTFREQ']
             print('reference frequency', nu0)
@@ -359,14 +362,13 @@ class specCubeAstro(object):
         nz, ny, nx = np.shape(self.flux)
         self.n = nz
         print('nz: ',nz, self.header['NAXIS3'])
-        
-
+        pix0 = 0
         self.crpix3 = self.header['CRPIX3']
         self.crval3 = self.header['CRVAL3']
         self.cdelt3 = self.header['CDELT3']
         ctype3 = self.header['CTYPE3']
         if ctype3 in ['VELO-HEL','VELO-LSR','VOPT']:
-            velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3 # m/s
+            velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3 # m/s
             # Neutral Hydrogen (HI)
             nu0 = self.header['RESTFREQ']
             print('reference frequency', nu0)
@@ -417,8 +419,9 @@ class specCubeAstro(object):
         self.crval3 = self.header['CRVAL3']
         self.cdelt3 = self.header['CDELT3']
         ctype3 = self.header['CTYPE3']
+        pix0 = 0
         if ctype3 == 'VELOCITY':
-            velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3 # m/s
+            velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3 # m/s
             # Neutral Hydrogen (HI)
             nu0 = self.header['RESTFREQ']
             print('reference frequency', nu0)
@@ -447,7 +450,8 @@ class specCubeAstro(object):
         self.crval3 = self.header['CRVAL3']
         self.cdelt3 = self.header['CD3_3']
         #ctype3 = self.header['CTYPE3'].strip()
-        self.wave = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3 # Angstrom
+        pix0=0
+        self.wave = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3 # Angstrom
         self.wave *= 1.e-4  # um
         #print('min wave ', np.nanmin(self.wave))
         self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
@@ -471,12 +475,19 @@ class specCubeAstro(object):
         self.crpix3 = self.header['CRPIX3']
         self.crval3 = self.header['CRVAL3']
         self.cdelt3 = self.header['CD3_3']
-        self.wave = self.cdelt3 * (np.arange(self.n) + 1 - self.crpix3) + self.crval3 # Angstrom
+        pix0=0
+        self.wave = self.cdelt3 * (np.arange(self.n) + pix0 - self.crpix3) + self.crval3 # Angstrom
         self.wave *= 1.e-4  # um
         self.pixscale, self.ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
         print('scale is ', self.pixscale, self.ypixscale)
-        self.redshift = 0
-        self.l0 = self.header['WAVMID']*1.e-4 
+        try:
+            self.redshift = self.header['REDSHIFT']
+        except:
+            self.redshift = 0
+        try:
+            self.l0 = self.header['RESTWAV']
+        except:
+            self.l0 = self.header['WAVMID']*1.e-4 
     
     def getResolutionFIFI(self):
         """Compute resolution at reference wavelength for FIFI-LS"""
@@ -762,7 +773,8 @@ class specCube(object):
         t1 = time.process_time()
         print('Flux reading completed in ', t1-t,' s')
         #self.flux *= self.Tb2Jy   # Transformed from temperature to S_nu [Jy]  Move this to code
-        vel = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3
+        pix0 = 0
+        vel = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3
         self.l0 = l0
         self.wave = l0 + l0 * vel / c
         #t2 = time.process_time()
@@ -788,7 +800,8 @@ class specCube(object):
         exp = hdl[extnames.index('EXPOSURE')].read().astype(float) * exptime
         self.exposure = np.broadcast_to(exp, np.shape(self.flux))
         print('shape of exposure is ', np.shape(self.exposure))
-        self.wave = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3
+        pix0 =0 
+        self.wave = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3
         self.l0 = np.nanmedian(self.wave)
 
     def readPACS(self, hdl):
@@ -861,8 +874,9 @@ class specCube(object):
         self.crval3 = self.header['CRVAL3']
         self.cdelt3 = self.header['CDELT3']
         ctype3 = self.header['CTYPE3'].strip()
+        pix0 = 0
         if (ctype3 == 'VELO-HEL') or (ctype3 == 'VELO-LSR'):
-            velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3 # m/s
+            velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3 # m/s
             # Neutral Hydrogen (HI)
             nu0 = self.header['RESTFREQ']
             print('reference frequency', nu0)
@@ -897,8 +911,9 @@ class specCube(object):
         self.crval3 = self.header['CRVAL3']
         self.cdelt3 = self.header['CDELT3']
         ctype3 = self.header['CTYPE3'].strip()
+        pix0=0
         if ctype3 in ['VELO-HEL', 'VELO-LSR', 'VOPT']:
-            velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3 # m/s
+            velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3 # m/s
             # Neutral Hydrogen (HI)
             nu0 = self.header['RESTFREQ'] # H-alpha
             print('reference frequency', nu0)
@@ -948,8 +963,9 @@ class specCube(object):
         self.crval3 = self.header['CRVAL3']
         self.cdelt3 = self.header['CDELT3']
         ctype3 = self.header['CTYPE3'].strip()
+        pix0=0
         if ctype3 == 'VELOCITY':
-            velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3 # m/s
+            velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3 # m/s
             # Neutral Hydrogen (HI)
             nu0 = self.header['RESTFREQ']
             print('reference frequency', nu0)
@@ -980,7 +996,11 @@ class specCube(object):
             self.flux = data
         elif naxis == 4: # polarization
             self.flux = data[0,:,:,:]
-        self.redshift = 0.
+        try:
+            self.redshift = self.header['REDSHIFT']
+            print('Redshift ', self.redshift)
+        except:
+            self.redshift = 0.
         nz, ny, nx = np.shape(self.flux)
         self.n = nz
         print('nz: ',nz, self.header['NAXIS3'])
@@ -991,6 +1011,7 @@ class specCube(object):
         self.cdelt3 = self.header['CDELT3']
         ctype3 = self.header['CTYPE3'].strip()
         print('ctype 3 is ', ctype3)
+        pix0 =0 
         if ctype3 == 'FREQ':
             if self.instrument in ['VLA','CARMA']:
                 nu0 = self.header['RESTFREQ']
@@ -1004,10 +1025,15 @@ class specCube(object):
                 faltrval = nu0 * (1 - altrval/c)  # alt crval3
                 if np.abs(vcrval3 - altrval) > 20:
                     self.crval3 = faltrval
-                self.redshift = altrval/c
+                #self.redshift = altrval/c
             except:
                 pass
-            freq = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3 
+            try:
+                altrpix = self.header['ALTRPIX'] # Ref pixel for 3rd dimension
+                self.crpix3 = altrpix
+            except:
+                pass
+            freq = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3 
             self.l0 = c/nu0 * 1.e6 #um
             self.wave = c/freq * 1.e6 #um
             # Reorder wave (and flux)
@@ -1015,7 +1041,7 @@ class specCube(object):
             self.wave = self.wave[idx]
             self.flux = self.flux[idx, :, :]
         elif ctype3 in ['VELO-HEL', 'VELO-LSR', 'VRAD','FELO-HEL']:
-            velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3 # m/s
+            velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3 # m/s
             if self.instrument == 'VLA':
                 nu0 = self.header['RESTFREQ']
             elif self.instrument in ['ALMA', 'CARMA']:
@@ -1029,11 +1055,10 @@ class specCube(object):
                 altrpix = self.header['ALTRPIX']  # ref pixel
                 vcrval3 = c * (1. - altrval/nu0)
                 #faltrval = nu0 * (1 - altrval/c)  # alt crval3
-                if np.abs(self.crval3 - vcrval3) > 20:
-                    self.crval3 = vcrval3
-                    self.crpix3 = altrpix
-                    self.redshift = vcrval3 / c
-                    velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3 # m/s
+                #if np.abs(self.crval3 - vcrval3) > 20:
+                self.crval3 = vcrval3
+                self.crpix3 = altrpix
+                velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3 # m/s
             except:
                 pass
             self.wave = self.l0 * (1 + velocity/c) #um
@@ -1059,7 +1084,8 @@ class specCube(object):
         self.crval3 = self.header['CRVAL3']
         self.cdelt3 = self.header['CDELT3']
         #ctype3 = self.header['CTYPE3'].strip()
-        self.wave = self.cdelt3 * (np.arange(self.n) - self.crpix3 + 1) + self.crval3 # Angstrom
+        pix0=0
+        self.wave = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3 # Angstrom
         self.wave *= 1.e4  # um
         self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
         print('scale is ', self.pixscale)

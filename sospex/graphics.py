@@ -707,6 +707,8 @@ class SpectrumCanvas(MplCanvas):
     """ Canvas to plot spectra """
     
     switchSignal = pyqtSignal(str)
+    modifyAperture = pyqtSignal(str)
+
     def __init__(self, *args, **kwargs):
         MplCanvas.__init__(self, *args, **kwargs)
         from sospex.lines import define_lines
@@ -720,7 +722,7 @@ class SpectrumCanvas(MplCanvas):
         self.displayAtran = True
         self.displayExposure = True
         self.displayLines = True
-        self.displayAuxFlux = False # Auxiliary spectral cube
+        self.displayAuxFlux1 = False # Auxiliary spectral cube
         self.shade = False
         self.regionlimits = None
         self.xunit = 'um'  # Alternatives are THz or km/s
@@ -738,10 +740,11 @@ class SpectrumCanvas(MplCanvas):
         self.lguess = None
         self.lines = None
         self.dragged = None
-        self.auxiliary = None
+        self.auxiliary1 = None
         self.moments = False
         self.fittedlines = False
         self.fittedaplines = False
+        self.r = None # radius of aperture
         
     def compute_initial_spectrum(self, name=None, spectrum=None, xmin=None, xmax=None):
         if spectrum is None:
@@ -835,9 +838,9 @@ class SpectrumCanvas(MplCanvas):
         # Add reference wavelength value on the plot
         self.lannotation = self.axes.annotate(" $\\lambda_0$ = {:.4f} $\\mu$m".format(s.l0),
                                               xy=(-0.15,-0.17), picker=5, xycoords='axes fraction')
-        if self.auxiliary:
-            self.xlannotation = self.axes.annotate(" $\\lambda_x$ = {:.4f} $\\mu$m".format(self.auxl0),
-                                              xy=(-0.15,-0.22), picker=5, xycoords='axes fraction')
+        if self.auxiliary1:
+            self.x1lannotation = self.axes.annotate(" $\\lambda_x$ = {:.4f} $\\mu$m".format(self.aux1l0),
+                                              xy=(-0.15,-0.22), picker=5, xycoords='axes fraction', color='cyan')
             
             
         # Check if vel is defined and draw velocity axis  
@@ -957,24 +960,25 @@ class SpectrumCanvas(MplCanvas):
         # It is possible to draw an external cube only if the vaxis is defined
         try:
             try:
-                self.fig.delaxes(self.axu)
+                self.fig.delaxes(self.axu1)
             except:
                 pass
-            if self.auxiliary:
+            if self.auxiliary1:
                 # Draw auxiliary flux
-                self.axu = self.vaxes.twinx()
+                self.axu1 = self.vaxes.twinx()
                 #c =  299792.458 # km/s
-                v = (self.auxw/self.auxl0 - 1. - s.redshift) * ckms
-                print('auxl0 ', self.auxl0)
-                self.afluxLine = self.axu.step(v, self.aflux, color='cyan', label='F$_{x}$', 
-                                               where='mid', zorder=12)
+                v1 = (self.aux1w / self.aux1l0 - 1. - s.redshift) * ckms
+                print('aux1l0 ', self.aux1l0)
+                self.afluxLine1 = self.axu1.step(v1, self.aflux1, color='cyan', 
+                                                 label='F$_{x}$', 
+                                                 where='mid', zorder=12)
                 # Add scale on the right ?
-                self.axu.get_yaxis().set_tick_params(labelright='on', right='on',
+                self.axu1.get_yaxis().set_tick_params(labelright='on', right='on',
                                           direction='out', pad=5, colors='cyan')
-                self.afluxLayer, = self.afluxLine
-                lns += self.afluxLine
-                lines.append(self.afluxLayer)
-                visibility.append(self.displayAuxFlux)
+                self.afluxLayer1, = self.afluxLine1
+                lns += self.afluxLine1
+                lines.append(self.afluxLayer1)
+                visibility.append(self.displayAuxFlux1)
         except:
             print('l0 is not defined') 
 
@@ -1222,15 +1226,15 @@ class SpectrumCanvas(MplCanvas):
                 v[:,1] = v1
                 self.axes.draw_artist(self.efluxLine)
             if af is not None:
-                self.afluxLine[0].set_ydata(af)
-                self.vaxes.draw_artist(self.afluxLine[0])
+                self.afluxLine1[0].set_ydata(af)
+                self.vaxes.draw_artist(self.afluxLine1[0])
                 # If similar wavelength, it should have same limits as main cube
-                if np.abs(self.spectrum.l0 - self.auxl0) < 1:  # less than 1 micrometer
-                    self.axu.set_ylim(self.ylimits)
+                if np.abs(self.spectrum.l0 - self.aux1l0) < 1:  # less than 1 micrometer
+                    self.axu1.set_ylim(self.ylimits)
                 else:
                     minf = np.nanmin(af)
                     maxf = np.nanmax(af)
-                    self.axu.set_ylim(minf, maxf*1.1)
+                    self.axu1.set_ylim(minf, maxf*1.1)
             if moments is not None:
                 self.moments = True
                 # Update position, size, and dispersion from moments
@@ -1455,8 +1459,8 @@ class SpectrumCanvas(MplCanvas):
                             annotation.remove()
                         self.zannotation.remove()
                         self.lannotation.remove()
-                        if self.auxiliary:
-                            self.xlannotation.remove()
+                        if self.auxiliary1:
+                            self.x1lannotation.remove()
                         self.drawSpectrum()
                         self.fig.canvas.draw_idle()
                         print('Updated spectrum after z change ')
@@ -1475,6 +1479,13 @@ class SpectrumCanvas(MplCanvas):
                         self.fig.canvas.draw_idle()
                         # Simulate a release to activate the update of ref.wavelength in main
                         QTest.mouseRelease(self, Qt.LeftButton)
+            elif event.artist == self.rannotation:
+                print('click for new data')
+                rnew = self.getrDouble(self.r)
+                if rnew is not None:
+                    if rnew != self.r:
+                        self.r = rnew
+                        self.modifyAperture.emit(str(self.r))
             elif text in ['F', 'F$_{u}$', 'Atm', 'E', 'Lines','F$_{x}$']:
                 if text == 'F':
                     self.displayFlux =  not self.displayFlux
@@ -1501,9 +1512,9 @@ class SpectrumCanvas(MplCanvas):
                     label = 'Exp'
                     self.ax3.get_yaxis().set_visible(self.displayExposure)
                 elif text == 'F$_{x}$':
-                    self.displayAuxFlux = not self.displayAuxFlux
-                    label == 'F$_{x}$'
-                    state = self.displayAuxFlux
+                    self.displayAuxFlux1 = not self.displayAuxFlux1
+                    label = 'F$_{x}$'
+                    state = self.displayAuxFlux1
                 elif text == 'Lines':
                     label = 'Lines'
                     self.displayLines = not self.displayLines
@@ -1521,15 +1532,15 @@ class SpectrumCanvas(MplCanvas):
                 self.fig.canvas.draw_idle()
             else:
                 goNext = True
-                if self.auxiliary is not None:
-                    if event.artist == self.xlannotation:
-                        lnew = self.getlDouble(self.auxl0)
+                if self.auxiliary1 is not None:
+                    if event.artist == self.x1lannotation:
+                        lnew = self.getlDouble(self.aux1l0)
                         if lnew is not None:
-                            if lnew != self.auxl0:
-                                self.auxl0 = lnew
+                            if lnew != self.aux1l0:
+                                self.aux1l0 = lnew
                                 for annotation in self.annotations:
                                     annotation.remove()
-                                self.xlannotation.remove()
+                                self.x1lannotation.remove()
                                 self.lannotation.remove()
                                 self.zannotation.remove()
                                 self.drawSpectrum()
@@ -1655,6 +1666,15 @@ class SpectrumCanvas(MplCanvas):
             return lnew
         else:
             return None
+
+    def getrDouble(self, r):
+        rnew, okPressed = QInputDialog.getDouble(self, "Aperture radius",
+                                                 "r [arcsec] ", r, 0.1, 100., 4)
+        if okPressed:
+            return rnew
+        else:
+            return None
+
 
     def onrelease(self, event):
         if self.dragged is not None and self.pick_pos is not None:
