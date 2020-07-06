@@ -985,7 +985,7 @@ class SpectrumCanvas(MplCanvas):
         # Prepare legend                
         self.labs = [l.get_label() for l in lns]
         leg = self.axes.legend(lns, self.labs, 
-                               bbox_to_anchor=(0.95, -0.15),
+                               bbox_to_anchor=(0.95, -0.20),
                                frameon=False,
                                loc='lower right',
                                ncol=6, borderaxespad=0.,

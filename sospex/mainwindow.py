@@ -1888,11 +1888,14 @@ class GUI (QMainWindow):
             # Compute intensity of line in 
             #jy2wm2 = c / (x * x) * 1.e-20 
             flux = A #* jy2wm2
+            eflux = eA
             message += '{:d}'.format(i+1)
-            message += u'   \u03bb\u2080:      {:4.2f} \u03bcm\n'.format(x)
-            message += u'    FWHM: {:5.2f} km/s\n'.format(FWHMv)
-            message += u'    Flux:  {:.2e} W/m\u00b2\n'.format(flux)
-            message += u'    Cont:  {:.2e} Jy\n\n'.format(c0)
+            message += u'   \u03bb\u2080:      {0:6.4f} \u00b1 {1:6.4f} \u03bcm\n'.format(x, ex)
+            message += u'    FWHM: {0:5.2f} \u00b1 {1:5.2} km/s\n'.format(FWHMv, eFWHMv)
+            message += u'    Flux:  {0:.2e} \u00b1 {1:.2e} W/m\u00b2\n'.format(flux, eflux)
+            message += u'    Cont:  {0:.2e} \u00b1 {1:.2e} Jy\n\n'.format(c0, ec0)
+        message += u'\nSave fitting parameters and spectrum in\n json and FITS files '+\
+                    'by choosing save on exit.'
         self.fbox.setStandardButtons(QMessageBox.Discard|QMessageBox.Save)
         self.discardbutton = self.fbox.button(QMessageBox.Discard)
         self.discardbutton.setText('Continue')
@@ -1904,7 +1907,7 @@ class GUI (QMainWindow):
     def fitMessageButton(self, event):
         if event.text() == 'Save':
             self.exportApertureAction()
-            self.saveSpectrum()
+            self.saveSpectrum("fits")
     
     def removeVI(self):
         """Remove Voronoi tessellation if there."""
@@ -4180,7 +4183,7 @@ class GUI (QMainWindow):
                 print(message)
                 self.sb.showMessage(message, 2000)
 
-    def saveSpectrum(self):
+    def saveSpectrum(self, type=None):
         """ Save the displayed spectrum as a FITS/ASCII file or as PNG/PDF image """
         from astropy.io import fits        
         # Dialog to save file
@@ -4196,6 +4199,10 @@ class GUI (QMainWindow):
             fileName = fd.selectedFiles()
             outfile = fileName[0]
             filename, file_extension = os.path.splitext(outfile)
+            # apply type
+            if (type is not None) & (file_extension == ''):
+                file_extension = '.' + type
+                outfile = filename + file_extension
             # Tabs
             istab = self.stabs.currentIndex()
             itab = self.itabs.currentIndex()
@@ -5315,9 +5322,11 @@ class GUI (QMainWindow):
         for i in range(ny):
             for j in range(nx):
                 uflux = self.specCube.uflux[:, i, j]
+                euflux = self.specCube.euflux[:, i, j]
                 offset = 0
                 #offset = np.nanmedian(uflux)
                 self.specCube.flux[:, i, j] = np.interp(x, xr, (uflux - offset)/ atmed + offset)
+                self.specCube.eflux[:, i, j] = np.interp(x, xr, (euflux - offset)/ atmed + offset)
         
     def readAtran(self, detchan, order):
         import os
