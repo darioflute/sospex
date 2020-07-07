@@ -744,6 +744,7 @@ class SpectrumCanvas(MplCanvas):
         self.moments = False
         self.fittedlines = False
         self.fittedaplines = False
+        self.rannotation = None
         self.r = None # radius of aperture
         
     def compute_initial_spectrum(self, name=None, spectrum=None, xmin=None, xmax=None):
@@ -1450,7 +1451,7 @@ class SpectrumCanvas(MplCanvas):
             text = event.artist.get_text()
             if event.artist == self.zannotation:
                 c = 299792.458 #km/s
-                znew = self.getDouble(self.spectrum.redshift*c)
+                znew = self.getDouble(self.spectrum.redshift * c)
                 if znew is not None:
                     znew /= c
                     if znew != self.spectrum.redshift:

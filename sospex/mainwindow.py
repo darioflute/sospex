@@ -1080,8 +1080,8 @@ class GUI (QMainWindow):
                 except:
                     pass
                 sc.r = r
-                sc.rannotation = sc.axes.annotate("r = {:.1f} arcsec".format(r),
-                                              xy=(0.8,-0.18), picker=5,
+                sc.rannotation = sc.axes.annotate(u"r = {:.1f}\u2033".format(r),
+                                              xy=(-0.14,-0.07), picker=5,
                                               xycoords='axes fraction')
             path = aperture.get_path()
             transform = aperture.get_patch_transform()
@@ -1226,8 +1226,8 @@ class GUI (QMainWindow):
             r = aperture.width * 0.5
             rnew = self.getDouble(r)
             sc.rannotation.remove()
-            sc.rannotation = sc.axes.annotate("r = {:.1f} arcsec".format(r),
-                                              xy=(0.8,-0.18), picker=5,
+            sc.rannotation = sc.axes.annotate(u"r = {:.1f}\u2033".format(r),
+                                              xy=(-0.14,-0.07), picker=5,
                                               xycoords='axes fraction')
             sc.aperture.width = rnew * 2
             sc.draw_idle()
@@ -3436,8 +3436,8 @@ class GUI (QMainWindow):
         if self.ici[0].photApertures[n].type == 'Circle':
             r = aperture.width * 0.5
             sc.r = r
-            sc.rannotation = sc.axes.annotate("r = {:.1f} arcsec".format(r),
-                                                  xy=(0.8,-0.18), picker=5,
+            sc.rannotation = sc.axes.annotate(u"r = {:.1f}\u2033".format(r),
+                                                  xy=(-0.14,-0.07), picker=5,
                                                   xycoords='axes fraction')        
 
                    
