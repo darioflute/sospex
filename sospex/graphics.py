@@ -1481,7 +1481,6 @@ class SpectrumCanvas(MplCanvas):
                         # Simulate a release to activate the update of ref.wavelength in main
                         QTest.mouseRelease(self, Qt.LeftButton)
             elif event.artist == self.rannotation:
-                print('click for new data')
                 rnew = self.getrDouble(self.r)
                 if rnew is not None:
                     if rnew != self.r:

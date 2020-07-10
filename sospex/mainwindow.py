@@ -1074,7 +1074,7 @@ class GUI (QMainWindow):
             # Check if aperture is circle, then update the aperture radius
             if self.ici[0].photApertures[n].type == 'Circle':
                 #print('Updated radius ', aperture.width)
-                r = aperture.width * 0.5
+                r = aperture.width * 0.5 * self.specCube.pixscale
                 try:
                     sc.rannotation.remove()
                 except:
@@ -1215,23 +1215,25 @@ class GUI (QMainWindow):
                                       cont=cont,cslope=cslope, moments=moments, lines=lines, 
                                       noise=noise, ncell=ncell)
 
-    def onpick(self, event):
-        """React to pick events."""
-        istab = self.stabs.currentIndex()
-        sc = self.sci[istab]
-        print('event onpick ', event)
-        if event.artist == sc.rannotation:
-            n = self.nAper()
-            aperture = self.ici[0].photApertures[n].aperture           
-            r = aperture.width * 0.5
-            rnew = self.getDouble(r)
-            sc.rannotation.remove()
-            sc.rannotation = sc.axes.annotate(u"r = {:.1f}\u2033".format(r),
-                                              xy=(-0.14,-0.07), picker=5,
-                                              xycoords='axes fraction')
-            sc.aperture.width = rnew * 2
-            sc.draw_idle()
-            self.onModifiedAperture('modified aperture')
+    #def onpick(self, event):
+    #    """React to pick events."""
+    #    istab = self.stabs.currentIndex()
+    #    sc = self.sci[istab]
+    #    print('event onpick ', event)
+    #    if event.artist == sc.rannotation:
+    #        n = self.nAper()
+    #        aperture = self.ici[0].photApertures[n].aperture           
+    #        r = aperture.width * 0.5 * self.specCube.pixscale
+    #        rnew = self.getDouble(r)
+    #        #sc.rannotation.remove()
+    #        #sc.rannotation = sc.axes.annotate(u"r = {:.1f}\u2033".format(r),
+    #        #                                  xy=(-0.14,-0.07), picker=5,
+    #        #                                  xycoords='axes fraction')
+    #        print('rnew ', rnew)
+    #        sc.aperture.width = rnew * 2 / self.specCube.pixscale
+    #        print('width ', sc.aperture.width)
+    #        sc.draw_idle()
+    #        self.onModifiedAperture('modified aperture')
            
     def onDraw(self,event):
         if len(self.ici) <= 1:
@@ -3434,7 +3436,7 @@ class GUI (QMainWindow):
         self.stabs.setCurrentIndex(len(self.stabs)-1)
         # Add aperture info
         if self.ici[0].photApertures[n].type == 'Circle':
-            r = aperture.width * 0.5
+            r = aperture.width * 0.5 * self.specCube.pixscale
             sc.r = r
             sc.rannotation = sc.axes.annotate(u"r = {:.1f}\u2033".format(r),
                                                   xy=(-0.14,-0.07), picker=5,
@@ -5942,8 +5944,8 @@ class GUI (QMainWindow):
         n = self.nAper()
         for ic in self.ici:
             aperture = ic.photApertures[n].aperture
-            aperture.width = rnew * 2.
-            aperture.height = rnew * 2.
+            aperture.width = rnew * 2. / self.specCube.pixscale
+            aperture.height = rnew * 2. / self.specCube.pixscale
             ic.photApertures[n].updateMarkers()
         # Refresh image
         itab = self.itabs.currentIndex()
