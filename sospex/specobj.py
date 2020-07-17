@@ -524,9 +524,13 @@ class specCube(object):
         self.filename = infile
         # Change internal file name to external file name
         self.header['FILENAME']=self.filename
+        print('Using FITSIO ...')
         try:
             self.instrument = self.header['INSTRUME'].strip()
             print('Instrument: ', self.instrument)
+            if self.instrument == 'OVRO MMA':
+                self.telescope = 'OVRO'
+                self.instrument = 'MMA'
         except:
             try:
                 origin = self.header['ORIGIN'].strip()
@@ -569,8 +573,7 @@ class specCube(object):
             self.readHI(hdl)
         elif self.instrument == 'IRAM':
             self.readIRAM(hdl)
-        elif self.instrument in ['VLA','ALMA','CARMA']:
-            print('Ok on VLA')
+        elif self.instrument in ['VLA','ALMA','CARMA','MMA']:
             self.readVLA(hdl)
         elif self.instrument == 'MUSE':
             self.readMUSE(hdl)
@@ -1001,6 +1004,9 @@ class specCube(object):
             print('Redshift ', self.redshift)
         except:
             self.redshift = 0.
+        if self.instrument == 'MMA':
+            idx = np.isfinite(self.flux)
+            self.flux[~idx] = np.nan            
         nz, ny, nx = np.shape(self.flux)
         self.n = nz
         print('nz: ',nz, self.header['NAXIS3'])
@@ -1046,10 +1052,14 @@ class specCube(object):
                 nu0 = self.header['RESTFREQ']
             elif self.instrument in ['ALMA', 'CARMA']:
                 nu0 = self.header['RESTFRQ']
+            elif self.instrument == 'MMA':
+                nu0 = self.header['FREQ0']
             print('reference frequency', nu0)
             c = 299792458.0 # m/s
             # self.l0 = 21.1061140542 * 1.e4 #um
             self.l0 = c/nu0 * 1.e6 #um
+            if self.instrument == 'MMA':
+                c = 299792.458 # km/s
             try:
                 altrval = self.header['ALTRVAL']  # ref frequency
                 altrpix = self.header['ALTRPIX']  # ref pixel
