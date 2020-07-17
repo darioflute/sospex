@@ -824,9 +824,9 @@ class SpectrumCanvas(MplCanvas):
             ylim0, ylim1 = self.axes.get_ylim()
             ylim1 *= 1.2
             self.ylimits = (ylim0, ylim1)
-        xlim0,xlim1 = self.xlimits
+        xlim0, xlim1 = self.xlimits
         if self.xunit == 'THz':
-            xlim1, xlim0 = ckms /xlim0 * 1.e-3, ckms / xlim1 * 1.e-3
+            xlim1, xlim0 = ckms / xlim0 * 1.e-3, ckms / xlim1 * 1.e-3
         self.axes.set_xlim(xlim0, xlim1)
         self.axes.set_ylim(self.ylimits)
         # Fake line to have the lines in the legend
@@ -915,7 +915,7 @@ class SpectrumCanvas(MplCanvas):
                                   direction='in', pad = -25, colors='red')
             else:
                 self.ax2.get_yaxis().set_tick_params(labelright='off',right='off')   
-        elif s.instrument in ['GREAT','HI','HALPHA','VLA','','IRAM','CARMA','MMA','PCWI','MUSE']:
+        elif s.instrument in ['GREAT','HI','HALPHA','VLA','ALMA','IRAM','CARMA','MMA','PCWI','MUSE']:
             self.displayUFlux = False
             self.displayAtran = False
             self.displayExposure = False

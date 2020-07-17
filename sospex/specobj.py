@@ -1041,6 +1041,7 @@ class specCube(object):
                 pass
             freq = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3 
             self.l0 = c/nu0 * 1.e6 #um
+            print('Reference wavelength at ', self.l0)
             self.wave = c/freq * 1.e6 #um
             # Reorder wave (and flux)
             idx = np.argsort(self.wave)

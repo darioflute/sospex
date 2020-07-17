@@ -5746,7 +5746,7 @@ class GUI (QMainWindow):
             spec = Spectrum(s.wave, fluxAll*s.Tb2Jy, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy, bunit=s.bunit)
         elif s.instrument in ['HI','HALPHA','VLA','ALMA','MUSE','IRAM','CARMA','MMA','PCWI']:
-            spec = Spectrum(s.wave, fluxAll,instrument=s.instrument,
+            spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0)
         elif s.instrument == 'PACS':
             expAll = s.exposure[:, y0, x0]
@@ -5767,7 +5767,6 @@ class GUI (QMainWindow):
                             exposure=expAll, atran = s.atran, instrument=s.instrument,
                             redshift=s.redshift, baryshift=s.baryshift, l0=s.l0,
                             watran=s.watran, uatran=s.uatran)
-            #print('spectrum defined')
         print('compute initial spectrum')
         sc.compute_initial_spectrum(name='Pix', spectrum=spec)
         print('initial spectrum computed')
