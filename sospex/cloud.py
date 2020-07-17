@@ -153,10 +153,10 @@ class cloudImage(object):
             output = response.read()
             fitsfile= BytesIO(output)  # Read the downloaded FITS data
             hdulist = fits.open(fitsfile,memmap=False)
-            header = hdulist['PRIMARY'].header
+            self.header = hdulist['PRIMARY'].header
             self.data = hdulist['PRIMARY'].data
             hdulist.close()
-            self.wcs = WCS(header).celestial
+            self.wcs = WCS(self.header).celestial
         else:
             self.data = None
             self.wcs = None
@@ -260,6 +260,9 @@ class cloudImage(object):
                         self.data = hdu.data
                     except:
                         print('This is not an image')
+                # NaN for infinite values
+                idx = np.isfinite(self.data)
+                self.data[~idx] = np.nan
                 self.wcs = WCS(header).celestial
                 print(self.wcs)
                 # Check if coordinates are inside the image
@@ -386,6 +389,10 @@ class cloudImage(object):
                     else:
                         print('This is not an image')
                         return
+                # NaN for infinite values
+                idx = np.isfinite(self.data)
+                self.data[~idx] = np.nan
+
                 print('header: ',header)
                 self.wcs = WCS(header).celestial
                 print(self.wcs)
@@ -527,10 +534,10 @@ class cloudImage(object):
 
         hdulist = fits.open(image_file,memmap=False)
         #hdulist.info()
-        header = hdulist['PRIMARY'].header
+        self.header = hdulist['PRIMARY'].header
         self.data = hdulist['PRIMARY'].data
         hdulist.close()
-        self.wcs = WCS(header)
+        self.wcs = WCS(self.header)
 
 
     def downloadFIRST(self):
@@ -560,10 +567,10 @@ class cloudImage(object):
         # If a FITS file was downloaded pass image and header, otherwise failes
         try:
             hdulist = fits.open(fitsfile,memmap=False)
-            header = hdulist['PRIMARY'].header
+            self.header = hdulist['PRIMARY'].header
             self.data = hdulist['PRIMARY'].data
             hdulist.close()
-            self.wcs = WCS(header).celestial
+            self.wcs = WCS(self.header).celestial
         except:
             self.data = None
             self.wcs = None
@@ -614,10 +621,10 @@ class cloudImage(object):
             fitsfile= BytesIO(output)  # Read the downloaded FITS data
             hdulist = fits.open(fitsfile,memmap=False)
             hdulist.info()
-            header = hdulist['PRIMARY'].header
+            self.header = hdulist['PRIMARY'].header
             self.data = hdulist['PRIMARY'].data[0,0,:,:]
             hdulist.close()
-            self.wcs = WCS(header).celestial
+            self.wcs = WCS(self.header).celestial
         except:
             self.data = None
             self.wcs = None
@@ -673,10 +680,10 @@ class cloudImage(object):
             output = response.read()
             fitsfile= BytesIO(output)  # Read the downloaded FITS data
             hdulist = fits.open(fitsfile,memmap=False)
-            header = hdulist['PRIMARY'].header
+            self.header = hdulist['PRIMARY'].header
             self.data = hdulist['PRIMARY'].data
             hdulist.close()
-            self.wcs = WCS(header).celestial
+            self.wcs = WCS(self.header).celestial
         else:
             self.data = None
             self.wcs = None
@@ -754,10 +761,10 @@ class cloudImage(object):
                 content= response.read()
                 fitsfile = BytesIO(content)
                 hdulist = fits.open(fitsfile,memmap=False)
-                header = hdulist['PRIMARY'].header
+                self.header = hdulist['PRIMARY'].header
                 self.data = hdulist['PRIMARY'].data
                 hdulist.close()
-                self.wcs = WCS(header).celestial
+                self.wcs = WCS(self.header).celestial
             except:
                 print('Problems with connection')
         else:
@@ -781,10 +788,10 @@ class cloudImage(object):
         c = SkyCoord(ra=self.lon*u.degree, dec=self.lat*u.degree, frame='icrs')
         cra = c.ra.hms
         cdec = c.dec.dms
-        url0="https://dr14.sdss.org/fields/raDec?ra="
-        ras = "{:02.0f}+{:.0f}+{:.1f}".format(cra[0],cra[1],cra[2])
+        url0="https://dr12.sdss.org/fields/raDec?ra="
+        ras = "{:02.0f}+{:02.0f}+{:.1f}".format(cra[0],cra[1],cra[2])
         if self.lat > 0:
-            url = url0+ras+"+&dec=+{:02.0f}+{:02.0f}+{:02.0f}".format(cdec[0],cdec[1],cdec[2])
+            url = url0+ras+"+&dec={:02.0f}+{:02.0f}+{:02.0f}".format(cdec[0],cdec[1],cdec[2])
         else:
             url = url0+ras+"+&dec=-{:02.0f}+{:02.0f}+{:02.0f}".format(-cdec[0],-cdec[1],-cdec[2])
 
@@ -813,11 +820,11 @@ class cloudImage(object):
             content= response.read()        
             fitsfile = BytesIO(bz2.decompress(content))
             hdulist=fits.open(fitsfile,memmap=False)
-            header = hdulist['PRIMARY'].header
+            self.header = hdulist['PRIMARY'].header
             self.data = hdulist['PRIMARY'].data
             print('shape ', np.shape(self.data))
             hdulist.close()
-            self.wcs = WCS(header)
+            self.wcs = WCS(self.header)
             h1 = self.wcs.to_header()
             self.crota2 = np.arctan2(-h1["PC2_1"], h1["PC2_2"]) * 180./np.pi
             print('rotation angle ', self.crota2)
