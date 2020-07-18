@@ -210,15 +210,17 @@ def exportAperture(self):
                     else:
                         c0, ec0, slope, x, ex, A, eA, sigma, esigma, alpha = apline
                         # Compute FWHM
-                        FWHM = 2 * sigma
-                        eFWHM = 2 * esigma
+                        FWHM = 2 * np.sqrt(2*np.log(2)) * sigma
+                        eFWHM = 2 * np.sqrt(2*np.log(2)) * esigma
                         c = 299792458. # m/s
                         FWHMv = c * FWHM / x / 1000.
                         eFWHMv = FWHMv / sigma * esigma
                         # Compute intensity of line in W/m2
                         #jy2wm2 = c / (x * x) * 1.e-20 
                         flux = A #* jy2wm2
-                        eflux = eA #* jy2wm2                        
+                        eflux = eA #* jy2wm2   
+                        A = A * 1.e20  * x * x / c
+                        eA = eA * 1.e20  * x * x / c
                         line = 'line '+str(i+1)
                         data[line] = {
                                 'instrument': instrument,
