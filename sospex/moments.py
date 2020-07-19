@@ -582,22 +582,31 @@ def fitApertureContinuum(sc):
     
     slope = sc.guess.slope
     intcpt = sc.guess.intcpt
+    print('Guess values ', intcpt, slope)
     xg, yg = zip(*sc.guess.xy)
     xg = np.array(xg)
     wc = sc.spectrum.wave
     fc = sc.spectrum.flux
-    ec = sc.spectrum.eflux
+    try:
+        ec = sc.spectrum.eflux
+    except:
+        ec = None
     #c = sp.gal.c
-    idx = ((wc > xg[0]) & (wc < xg[1]) ) | ((wc > xg[2]) & (wc < xg[3]))
+    idx = ((wc > xg[0]) & (wc < xg[1]) ) | ((wc > xg[2]) & (wc < xg[3])) & np.isfinite(fc)
     x = wc[idx]
     y = fc[idx]
-    e = ec[idx]
+    if ec is not None:
+        e = ec[idx]
     # Definition of the model
     fit_params = Parameters()
     fit_params.add('intercept', value=intcpt)
     if slope != 0:
         fit_params.add('slope', value=slope)
-    out = minimize(contResiduals, fit_params, args=(x,), kws={'data':y,'eps':e}, method='leastsq')
+    print('Fit continuum ... ')
+    if ec is None:
+        out = minimize(contResiduals, fit_params, args=(x,), kws={'data':y}, method='leastsq')
+    else:
+        out = minimize(contResiduals, fit_params, args=(x,), kws={'data':y,'eps':e}, method='leastsq')
     # out = minimize(contResiduals, fit_params, args=(x,), kws={'data': y, 'eps': e}, method='Nelder')
     par = out.params#.valuesdict()
     p1 = par['intercept']
@@ -622,19 +631,25 @@ def fitApertureLines(sc, intercept, slope):
     #z = sc.spectrum.redshift
     wc = sc.spectrum.wave
     fc = sc.spectrum.flux
-    ec = sc.spectrum.eflux
+    try:
+        ec = sc.spectrum.eflux
+    except:
+        print('No errors given')
+        ec = None
 #    cc = sp.gal.c
     xg, yg = zip(*sc.guess.xy)
     xg = np.array(xg)
 #    xg *= (1. + z)  # Back to observed
-    idx = (wc > xg[0]) & (wc < xg[3])
+    idx = (wc > xg[0]) & (wc < xg[3]) & np.isfinite(fc)
     x = wc[idx]
     y = fc[idx]
-    e = ec[idx]
+    if ec is not None:
+        e = ec[idx]
     intc, eintc = intercept
     slop, eslop = slope
     continuum = intc + slop * x
 
+    print('variables defined')
     # Transform F_nu into F_lambda to do integration        
     # Normalization (biggest amplitude)
     amplitudes = []
@@ -644,10 +659,13 @@ def fitApertureLines(sc, intercept, slope):
         x0 = line.x0
         A = line.A * (np.sqrt(2*np.pi) * sigma) * c / x0**2 * 1.e-20  # same units as flux
         amplitudes.append(A)
+        print('x0, sigma, A, flux', x0, sigma, line.A, A)
     amplitudes = np.array(amplitudes)
     norm = np.nanmax(np.abs(amplitudes))
+    print('Fit normalization ', norm)
     y *= c / x**2 * 1.e-20 / norm
-    e *= c / x**2 * 1.e-20 / norm
+    if ec is not None:
+        e *= c / x**2 * 1.e-20 / norm
     continuum *= c / x**2 * 1.e-20 / norm
     # Define the model
     fit_params = Parameters()
@@ -668,7 +686,10 @@ def fitApertureLines(sc, intercept, slope):
             fit_params.add(li + 'alpha', value=0.2, max=0.6)
             
     # Minimize
-    kws = {'data': y - continuum, 'eps': e}
+    if ec is None:
+        kws = {'data': y - continuum}
+    else:
+        kws = {'data': y - continuum, 'eps': e}
     if sc.function == 'Voigt':
         npars = 4
         out = minimize(linesVoigtResiduals, fit_params, args=(x,), kws=kws, method='leastsq')

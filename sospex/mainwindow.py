@@ -258,30 +258,32 @@ class GUI (QMainWindow):
         bar = self.menuBar()
         file = bar.addMenu("File")
         file.addAction(QAction("Quit",self,shortcut='Ctrl+q',triggered=self.fileQuit))
-        file.addAction(QAction("Open cube",self,shortcut='Ctrl+n',triggered=self.newFile))
-        file.addAction(QAction("Reload cube",self,shortcut='Ctrl+n',triggered=self.reloadFile))
-        file.addAction(QAction("Import image",self,shortcut='Ctrl+d',
+        file.addAction(QAction("Open cube",self,shortcut='',triggered=self.newFile))
+        file.addAction(QAction("Reload cube",self,shortcut='',triggered=self.reloadFile))
+        
+        io = bar.addMenu("I/O")
+        io.addAction(QAction("Import image/cube",self,shortcut='',
                                triggered=self.selectDownloadImage))
-        cube = file.addMenu("Save cube")
+        cube = io.addMenu("Save cube")
         cube.addAction(QAction('Trimmed', self, shortcut='',triggered=self.trimCube))
         cube.addAction(QAction('Cropped', self, shortcut='',triggered=self.cropCube))
         cube.addAction(QAction('Continuum subtracted', self, shortcut='',triggered=self.savelCube))
         cube.addAction(QAction('Current status', self, shortcut='',triggered=self.saveMaskedCube))
-        file.addAction(QAction('Save image', self, shortcut='',triggered=self.saveFits))
-        file.addAction(QAction('Save spectrum', self, shortcut='',triggered=self.saveSpectrum))
-        aperture = file.addMenu("Aperture I/O")
+        io.addAction(QAction('Save image', self, shortcut='',triggered=self.saveFits))
+        io.addAction(QAction('Save spectrum', self, shortcut='',triggered=self.saveSpectrum))
+        aperture = io.addMenu("Aperture I/O")
         aperture.addAction(QAction('Export',self,shortcut='',triggered=self.exportApertureAction))
         aperture.addAction(QAction('Import',self,shortcut='',triggered=self.importApertureAction))
-        guesses = file.addMenu("Guesses I/O")
+        guesses = io.addMenu("Guesses I/O")
         guesses.addAction(QAction('Export', self, shortcut='', triggered=self.exportGuessesAction))
         guesses.addAction(QAction('Import', self, shortcut='', triggered=self.importGuessesAction))
-        guesses = file.addMenu("Contours I/O")
+        guesses = io.addMenu("Contours I/O")
         guesses.addAction(QAction('Export', self, shortcut='', triggered=self.exportContoursAction))
         guesses.addAction(QAction('Import', self, shortcut='', triggered=self.importContoursAction))
-        
         # View
         view = bar.addMenu("View")
-        slice = view.addMenu("Show slider")
+        view.addAction(QAction('Header',self,shortcut='',triggered=self.showHeader))
+        slice = view.addMenu("Spectral slider")
         slice.addAction(QAction('on channel', self, shortcut='', triggered=self.initializeSlider))
         slice.addAction(QAction('on slice', self, shortcut='', triggered=self.initializeSlicer))
         slice.addAction(QAction('no', self, shortcut='', triggered=self.removeSliders))
@@ -298,11 +300,10 @@ class GUI (QMainWindow):
         #                         checkable = True, triggered=self.changeVisibility)
         #view.addAction(self.menuHisto)
         view.addAction(QAction('Colors and stretch',self,shortcut='',triggered=self.changeColorMap))
-        view.addAction(QAction('Show header',self,shortcut='',triggered=self.showHeader))
-        magnify = view.addMenu("Magnify image")
+        magnify = view.addMenu("Magnification")
         magnify.addAction(QAction('+10%',self,shortcut='',triggered=self.zoomUp))
         magnify.addAction(QAction('-10%',self,shortcut='',triggered=self.zoomDown))
-        kernel = view.addMenu("Choose kernel for spectrum")
+        kernel = view.addMenu("Kernel for spectrum")
         self.kernel1 = QAction('1 pixel',self,shortcut='',checkable=True,
                                triggered=self.kernel1pixel)
         self.kernel5 = QAction('5 pixels',self,shortcut='',checkable=True,
@@ -359,9 +360,9 @@ class GUI (QMainWindow):
                                 triggered=self.addCircularAperture))
         # Help 
         help = bar.addMenu("Help")
-        help.addAction(QAction('About', self, shortcut='Ctrl+a',triggered=self.about))
-        help.addAction(QAction('Tutorials', self, shortcut='Ctrl+h',triggered=self.onHelp))
-        help.addAction(QAction('Issues', self, shortcut='Ctrl+i',triggered=self.onIssue))
+        help.addAction(QAction('About sospex', self, shortcut='',triggered=self.about))
+        help.addAction(QAction('Tutorials', self, shortcut='',triggered=self.onHelp))
+        help.addAction(QAction('Report issue', self, shortcut='',triggered=self.onIssue))
         bar.setNativeMenuBar(False)
         
     def exportApertureAction(self):
@@ -1847,10 +1848,13 @@ class GUI (QMainWindow):
         """Fit lines after defining guesses."""
         istab = self.stabs.currentIndex()
         sc = self.sci[istab]
+        print('Fitting lines ')
         try:
             # 1. Fit the continuum
+            print('Fit continuum ')
             ic, eic, s, es = fitApertureContinuum(sc)
             # 2. Fit the lines
+            print('Fit lines ')
             linepars = fitApertureLines(sc, (ic, eic), (s, es))
             # 3. Plot the fit
             sc.updateSpectrum(aplines=linepars)
@@ -1896,7 +1900,8 @@ class GUI (QMainWindow):
             message += u'    FWHM: {0:5.2f} \u00b1 {1:5.2} km/s\n'.format(FWHMv, eFWHMv)
             message += u'    Flux:  {0:.2e} \u00b1 {1:.2e} W/m\u00b2\n'.format(flux, eflux)
             message += u'    Cont:  {0:.2e} \u00b1 {1:.2e} Jy\n\n'.format(c0, ec0)
-        message += u'\nSave fitting parameters and spectrum in\n json and FITS files '+\
+        message += u'\n *** HOW TO SAVE YOUR FITS ***\n'
+        message += u'\nYou can save fits results and spectrum\n'+\
                     'by choosing save on exit.'
         self.fbox.setStandardButtons(QMessageBox.Discard|QMessageBox.Save)
         self.discardbutton = self.fbox.button(QMessageBox.Discard)

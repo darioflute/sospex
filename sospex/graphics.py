@@ -914,7 +914,7 @@ class SpectrumCanvas(MplCanvas):
                 self.ax2.get_yaxis().set_tick_params(labelright='on',right='on',
                                   direction='in', pad = -25, colors='red')
             else:
-                self.ax2.get_yaxis().set_tick_params(labelright='off',right='off')   
+                self.ax2.get_yaxis().set_tick_params(labelright='off',right='off')
         elif s.instrument in ['GREAT','HI','HALPHA','VLA','ALMA','IRAM','CARMA','MMA','PCWI','MUSE']:
             self.displayUFlux = False
             self.displayAtran = False
@@ -933,9 +933,11 @@ class SpectrumCanvas(MplCanvas):
                     self.Taxes.set_ylabel('T$_{mb}$ [K]')
                 else:
                     self.Taxes.set_ylabel('T$^{*}_{A}$ [K]')
-                #print('limits in Flux ', self.axes.get_ylim())
-                #print('limits in Tb ', self.axes.get_ylim()/self.spectrum.Tb2Jy)
-                self.Taxes.set_ylim(self.axes.get_ylim()/self.spectrum.Tb2Jy)
+                ylims = self.axes.get_ylim()
+                print('limits in Flux ', ylims)
+                print('Tb 2 Jy ', self.spectrum.Tb2Jy)
+                print('limits in Tb ', ylims[0]/ self.spectrum.Tb2Jy)
+                self.Taxes.set_ylim(ylims[0]/self.spectrum.Tb2Jy, ylims[1]/self.spectrum.Tb2Jy)
         elif s.instrument in ['PACS', 'FORCAST']:
             try:
                 self.fig.delaxes(self.ax3)
@@ -1103,7 +1105,7 @@ class SpectrumCanvas(MplCanvas):
             self.ax3.set_ylim([0.5, np.nanmax(s.exposure) * 1.54])
             self.ax2.set_ylim([0.01, 1.1])
         if self.instrument == 'GREAT':
-            self.Taxes.set_ylim(ylims/s.Tb2Jy)
+            self.Taxes.set_ylim(ylims[0]/s.Tb2Jy, ylims[1]/s.Tb2Jy)
         # Adjust line labels if they exist
         try:
            ylim0, ylim1 = ylims

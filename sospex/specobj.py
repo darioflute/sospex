@@ -222,12 +222,16 @@ class specCubeAstro(object):
         bmaj = self.header['BMAJ'] * 3600. # Beam major axis in arcsec
         bmin = self.header['BMIN'] * 3600. # Beam minor axis in arcsec
         # Multiply by the flux fraction in the pixel assuming a 2D Gaussian curve                    
-        pixfraction = 0.5 * erf(self.pixscale*0.5/bmaj) * erf(ypixscale*0.5/bmin)
-        print('Beam fraction on pixel ', pixfraction)
-        self.Tb2Jy *= pixfraction
+        #pixfraction = 0.5 * erf(self.pixscale*0.5/bmaj) * erf(ypixscale*0.5/bmin)
+        #print('Beam fraction on pixel ', pixfraction)
+        toJyPerPixel = 1.331 * bmaj * bmin / (self.pixscale * ypixscale)
+        # Flux in K (not K/beam). So divide by the beam and multiply by pixel
+        self.flux /= toJyPerPixel
+        print('Tb2Jy ', self.Tb2Jy)
+        #self.Tb2Jy *= pixfraction
         # Multiplication is delayed in the code to speed up reading
         # self.flux *= self.Tb2Jy   # Transformed from temperature to S_nu [Jy] per pixel
-        pix0=0
+        pix0 = 0
         vel = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3
         self.l0 = l0
         self.wave = l0 + l0 * vel / c
@@ -763,16 +767,22 @@ class specCube(object):
         bmin = self.header['BMIN'] * 3600. # Beam minor axis in arcsec
         xsigma = 2 * bmaj / 2.355 / np.sqrt(2) # sigma from FWHM divided by sqrt(2)
         ysigma = 2 * bmin / 2.355 / np.sqrt(2)
-        # Multiply by the flux fraction in the pixel assuming a 2D Gaussian curve                    
+        ## Multiply by the flux fraction in the pixel assuming a 2D Gaussian curve                    
         pixfraction = erf(self.pixscale*0.5/xsigma) * erf(ypixscale*0.5/ysigma)
         print('Beam fraction on pixel ', pixfraction)
-        self.Tb2Jy *= pixfraction
+        # Transform Jy/beam to Jy/pixel
+        toJyPerPixel = 1.331 * bmaj * bmin / (self.pixscale * ypixscale)
+        print('toJyPerPixel', toJyPerPixel)
+        print('Tb2Jy ', self.Tb2Jy)
+        #self.Tb2Jy *= pixfraction
         naxes = self.header['NAXIS']
         print('no of axes ', naxes)
         if naxes == 4:
             self.flux = (hdl[0].read())[0,:,:,:]
         else:
             self.flux = hdl[0].read()
+        # Flux in K, non in K/beam - so  divided by beam and multiply by pix area
+        self.flux /= toJyPerPixel
         t1 = time.process_time()
         print('Flux reading completed in ', t1-t,' s')
         #self.flux *= self.Tb2Jy   # Transformed from temperature to S_nu [Jy]  Move this to code
@@ -1075,12 +1085,21 @@ class specCube(object):
             self.wave = self.l0 * (1 + velocity/c) #um
         else:
             print('Ctype3 ', ctype3,' is not supported')
-        self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
-        print('scale is ', self.pixscale)
+        pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) # Pixel scale in arcsec
         # Back to wavelength
         w = self.wave
         self.crval3 = w[0]
         self.cdelt3 = np.median(w[1:] - w[:-1])
+        try:
+            # Flux conversion from Jy/beam to Jy/pixel
+            bmaj = self.header['BMAJ']
+            bmin = self.header['BMIN']
+            area_pixel = pixscale * ypixscale
+            self.flux *= 1.331 * bmaj * bmin / area_pixel
+        except:
+            print('No beam size given in the header')
+        self.pixscale = pixscale * 3600.0 # pixel scale in arcsec
+        print('scale is ', self.pixscale)
        
     def readMUSE(self, hdl):
         "MUSE integral field spectrometer at VLT"
