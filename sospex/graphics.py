@@ -1187,6 +1187,7 @@ class SpectrumCanvas(MplCanvas):
                 self.fluxLine[0].set_ydata(f)
                 self.axes.draw_artist(self.fluxLine[0])
                 ylim0, ylim1 = self.axes.get_ylim()
+                xlim0, xlim1 = self.axes.get_xlim()
                 n = len(f)
                 if self.spectrum.instrument == 'FIFI-LS':
                     # Ignore regions with atm transmission < 0.2
@@ -1198,9 +1199,10 @@ class SpectrumCanvas(MplCanvas):
                     n5 = n // 20
                 mask[0:n5] = 0
                 mask[-n5:] = 0
-                if np.sum(mask) > 0:    
-                    maxf = np.nanmax(f[mask])
-                    minf = np.nanmin(f[mask])
+                if np.sum(mask) > 0: 
+                    idx = (mask == 1) & (self.x > xlim0) & (self.x < xlim1)
+                    maxf = np.nanmax(f[idx])
+                    minf = np.nanmin(f[idx])
                 else:
                     maxf = ylim1 / 1.1
                     minf = ylim0 
@@ -1208,6 +1210,7 @@ class SpectrumCanvas(MplCanvas):
                     if uf is not None:
                         n = len(uf) // 5
                         umaxf = np.nanmax(uf[n:-n])
+                        umaxf = np.nanmax(uf[idx])
                         if umaxf > maxf:
                             maxf = umaxf
                 self.ylimits = (minf, maxf*1.2)
