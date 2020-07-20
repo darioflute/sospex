@@ -643,6 +643,7 @@ class specCube(object):
         self.crpix3 = self.header['CRPIX3']
         self.crval3 = self.header['CRVAL3']
         self.cdelt3 = self.header['CDELT3']
+        self.bunit = self.header['BUNIT']
         self.objname = self.header['OBJ_NAME'].strip()
         print('Name :', self.objname)
         try:
@@ -1170,7 +1171,7 @@ class Spectrum(object):
     def __init__(self, wave, flux, eflux=None, uflux=None, exposure=None,
                  atran=None, uatran=None, watran=None,
                  instrument=None, baryshift=None, redshift=None, l0=None, area=None, Tb2Jy=None,
-                 bunit=None):
+                 bunit=None, yunit=None):
         self.wave = wave
         self.flux = flux
         if eflux is not None:
@@ -1203,4 +1204,8 @@ class Spectrum(object):
             self.Tb2Jy = Tb2Jy
         if bunit is not None:
             self.bunit = bunit
+        if yunit is None:
+            self.yunit = 'Jy/pix'
+        else:
+            self.yunit = yunit
         self.continuum =  np.full(len(wave), np.nan)

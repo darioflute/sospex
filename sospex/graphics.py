@@ -726,7 +726,7 @@ class SpectrumCanvas(MplCanvas):
         self.shade = False
         self.regionlimits = None
         self.xunit = 'um'  # Alternatives are THz or km/s
-        self.yunit = 'Jy'  # Alternative for GREAT is K (Temperature)
+        self.yunit = 'Jy/pix'
         self.xlimits = None
         self.ylimits = None        
         self.axes.spines['top'].set_visible(False)
@@ -754,6 +754,7 @@ class SpectrumCanvas(MplCanvas):
             # Spectrum
             self.name = name
             self.spectrum = spectrum
+            self.yunit = self.spectrum.yunit
             self.instrument = spectrum.instrument
             self.drawSpectrum()
             # Activate focus
@@ -768,17 +769,18 @@ class SpectrumCanvas(MplCanvas):
         self.axes.yaxis.set_major_formatter(ScalarFormatter(useOffset=False))
         s = self.spectrum        
         # Write labels
-        if s.instrument == 'GREAT':
-            if self.yunit == 'Jy':
-                self.axes.set_ylabel('Flux [Jy]', picker=True)
-            else:
-                self.axes.set_ylabel('Temperature [K]', picker=True)
-        else:
-            self.axes.set_ylabel('Flux [Jy]')
+        #if s.instrument == 'GREAT':
+        #    if self.yunit == 'Jy':
+        #        self.axes.set_ylabel('Flux [Jy]', picker=True)
+        #    else:
+        #        self.axes.set_ylabel('Temperature [K]', picker=True)
+        #else:
+        self.axes.set_ylabel('Flux ['+self.yunit+']')
         ckms = 299792.458  # speed of light in km/s
         if self.xunit == 'um':
             x0 = s.l0 * (1 + s.redshift)
-            self.axes.format_coord = lambda x, y: "{:8.4f} um ({:6.0f} km/s)  {:10.4f} Jy".format(x,(x/x0 - 1)*ckms,y)
+            sy = self.yunit
+            self.axes.format_coord = lambda x, y:u"{:8.4f} \u03bcm ({:5.0f} km/s)  {:10.4f} ".format(x, (x / x0 - 1) * ckms, y) + sy 
             self.axes.fmt_xdata = lambda x: "{:.4f}".format(x)        
             self.axes.set_xlabel('$\lambda$ [$\\mu$m]', picker=True)
             self.x = s.wave
@@ -790,7 +792,7 @@ class SpectrumCanvas(MplCanvas):
                     self.xar = self.xa * (1+s.baryshift)
         elif self.xunit == 'THz':
             x0 = s.l0 * (1 + s.redshift)
-            self.axes.format_coord = lambda x, y: "{:6.4f} THz ({:5.0f} km/s)  {:10.4f} Jy".format(x, (ckms/x*1.e-3/x0 - 1)*ckms, y)
+            self.axes.format_coord = lambda x, y: u"{:6.4f} THz ({:5.0f} km/s)  {:10.4f} ".format(x, (ckms/x*1.e-3/x0 - 1)*ckms, y)+sy
             self.axes.set_xlabel('$\\nu$ [THz]', picker=True)
             self.x = ckms/s.wave * 1.e-3
             if s.watran is not None:
@@ -1554,7 +1556,7 @@ class SpectrumCanvas(MplCanvas):
                     if text == '$\lambda$ [$\mu$m]' or text == '$\\nu$ [THz]':
                         self.switchUnits()
                         self.switchSignal.emit('switched x unit')
-                    elif text == 'Flux [Jy]' or text == 'Temperature [K]':
+                    elif text == 'Flux ['+self.yunit+']' or text == 'Temperature [K]':
                         self.switchFluxUnits()
                         self.switchSignal.emit('switched y unit')
                     else:

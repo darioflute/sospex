@@ -3143,12 +3143,12 @@ class GUI (QMainWindow):
         w0 = self.specCube.l0
         z = self.specCube.redshift
         c = 299792.458 # km/s 
-        self.v0 = (self.lines[0][0]/w0 - 1 -z) * c 
+        self.v0 = (self.lines[0][0] / w0 - 1 -z) * c 
         # FWHM from sigma (in km/s)
         self.d0 = self.lines[0][1] * 2.355 * c / w0
         if len(self.lines) == 2:
             self.L1 = self.lines[1][2]
-            self.v1 = (self.lines[1][0]/w0 - 1 -z) * c 
+            self.v1 = (self.lines[1][0] / w0 - 1 -z) * c 
             self.d1 = self.lines[1][1] * 2.355 * c / w0
         # Then display them
         if len(self.lines) == 2:
@@ -3215,12 +3215,12 @@ class GUI (QMainWindow):
         w0 = self.specCube.l0
         z = self.specCube.redshift
         c = 299792.458 # km/s 
-        self.v0 = (self.lines[0][0]/w0 - 1 -z) * c 
+        self.v0 = (self.lines[0][0] / w0 - 1 -z) * c 
         # FWHM from sigma
         self.d0 = self.lines[0][1] * 2.355 / w0 * c
         if len(self.lines) == 2:
             self.L1 = self.lines[1][2]
-            self.v1 = (self.lines[1][0]/w0 - 1 - z) / w0 * c 
+            self.v1 = (self.lines[1][0] / w0 - 1 - z) / w0 * c 
             self.d1 = self.lines[1][1] * 2.355 / w0 * c
         
     def fitLinesDisplay(self):
@@ -3402,9 +3402,9 @@ class GUI (QMainWindow):
         fluxAll = np.nansum(s.flux[:,yy,xx], axis=1)
         if s.instrument == 'GREAT':
             spec = Spectrum(s.wave, fluxAll*s.Tb2Jy, instrument=s.instrument, 
-                            redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy, bunit=s.bunit)
+                            redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy, bunit=s.bunit, yunit='Jy')
         elif s.instrument in ['HI','HALPHA','VLA','ALMA','MUSE','IRAM','CARMA','MMA','PCWI']:
-            spec = Spectrum(s.wave, fluxAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0)
+            spec = Spectrum(s.wave, fluxAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0, yunit='Jy')
         elif s.instrument == 'FIFI-LS':
             ufluxAll = np.nansum(s.uflux[:,yy,xx], axis=1)
             expAll = np.nanmean(s.exposure[:,yy,xx], axis=1)
@@ -3412,13 +3412,13 @@ class GUI (QMainWindow):
             spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, uflux=ufluxAll,
                             exposure=expAll, atran = s.atran, instrument=s.instrument,
                             redshift=s.redshift, baryshift=s.baryshift, l0=s.l0, 
-                            watran=s.watran, uatran=s.uatran)
+                            watran=s.watran, uatran=s.uatran, yunit='Jy')
         elif s.instrument in ['PACS','FORCAST']:
             expAll = np.nanmean(s.exposure[:,yy,xx], axis=1)
             efluxAll = np.sqrt(np.nansum(s.eflux[:,yy,xx]**2, axis=1))
             print('eflux pacs ', np.shape(efluxAll))
             spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, exposure=expAll, instrument=s.instrument,
-                            redshift=s.redshift, l0=s.l0 )
+                            redshift=s.redshift, l0=s.l0, yunit='Jy' )
         # Inherit the x-units of pix 
         istab = self.spectra.index('Pix')
         sc.xunit = self.sci[istab].xunit
@@ -5848,23 +5848,22 @@ class GUI (QMainWindow):
         y0 = s.ny // 2
         fluxAll = s.flux[:,y0,x0]
         if s.instrument == 'GREAT':
-            #print('max flux is ', np.nanmax(fluxAll*s.Tb2Jy))
             spec = Spectrum(s.wave, fluxAll*s.Tb2Jy, instrument=s.instrument,
-                            redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy, bunit=s.bunit)
+                            redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy, bunit=s.bunit, yunit='Jy/pix')
         elif s.instrument in ['HI','HALPHA','VLA','ALMA','MUSE','IRAM','CARMA','MMA','PCWI']:
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
-                            redshift=s.redshift, l0=s.l0)
+                            redshift=s.redshift, l0=s.l0, yunit='Jy/pix')
         elif s.instrument == 'PACS':
             expAll = s.exposure[:, y0, x0]
             efluxAll = s.eflux[:, y0, x0]
             spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, exposure=expAll, instrument=s.instrument,
-                            redshift=s.redshift, l0=s.l0)
+                            redshift=s.redshift, l0=s.l0, yunit='Jy/pix')
         elif s.instrument == 'FORCAST':
             expAll = s.exposure[:, y0, x0]
             efluxAll = s.eflux[:, y0, x0]
             spec = Spectrum(s.wave, fluxAll, eflux=efluxAll,
                             exposure=expAll, instrument=s.instrument,
-                            redshift=s.redshift, l0=s.l0)
+                            redshift=s.redshift, l0=s.l0, yunit='Jy/pix')
         elif s.instrument == 'FIFI-LS':
             ufluxAll = s.uflux[:, y0, x0]
             expAll = s.exposure[:, y0, x0]
@@ -5872,7 +5871,7 @@ class GUI (QMainWindow):
             spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, uflux= ufluxAll,
                             exposure=expAll, atran = s.atran, instrument=s.instrument,
                             redshift=s.redshift, baryshift=s.baryshift, l0=s.l0,
-                            watran=s.watran, uatran=s.uatran)
+                            watran=s.watran, uatran=s.uatran, yunit='Jy/pix')
         print('compute initial spectrum')
         sc.compute_initial_spectrum(name='Pix', spectrum=spec)
         print('initial spectrum computed')
@@ -6108,23 +6107,23 @@ class GUI (QMainWindow):
         fluxAll = np.nansum(s.flux, axis=(1,2))
         if s.instrument == 'GREAT':
             spec = Spectrum(s.wave, fluxAll*s.Tb2Jy, instrument=s.instrument,
-                            redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy, bunit=s.bunit)
+                            redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy, bunit=s.bunit, yunit='Jy')
         elif s.instrument in ['HI','HALPHA','VLA','ALMA','MUSE','IRAM','CARMA','MMA','PCWI']:
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
-                            redshift=s.redshift, l0=s.l0)
+                            redshift=s.redshift, l0=s.l0, yunit='Jy')
         elif s.instrument in ['PACS', 'FORCAST']:
             expAll = np.nanmean(s.exposure, axis=(1,2))
             efluxAll = np.sqrt(np.nansum(s.eflux*s.eflux, axis=(1,2)))
             spec = Spectrum(s.wave, fluxAll,  eflux=efluxAll, 
                             exposure=expAll,instrument=s.instrument,
-                            redshift=s.redshift, l0=s.l0 )
+                            redshift=s.redshift, l0=s.l0, yunit='Jy')
         elif s.instrument == 'FIFI-LS':
             ufluxAll = np.nansum(s.uflux, axis=(1,2))
             expAll = np.nanmean(s.exposure, axis=(1,2))
             efluxAll = np.sqrt(np.nansum(s.eflux*s.eflux, axis=(1,2)))
             spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, uflux= ufluxAll,
                             exposure=expAll, atran = s.atran, instrument=s.instrument,
-                            redshift=s.redshift, baryshift = s.baryshift, l0=s.l0)
+                            redshift=s.redshift, baryshift = s.baryshift, l0=s.l0, yunit='Jy')
         sc.compute_initial_spectrum(name='All', spectrum=spec)
         self.specZoomlimits = [sc.xlimits,sc.ylimits]
         sc.cid = sc.axes.callbacks.connect('xlim_changed' or 'ylim_changed', self.doZoomSpec)
