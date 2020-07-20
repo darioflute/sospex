@@ -1179,10 +1179,11 @@ class GUI (QMainWindow):
             sc.spectrum.flux = fluxAll
             if s.instrument in ['GREAT','HI','HALPHA','VLA','ALMA','MUSE','IRAM','CARMA','MMA','PCWI']:
                 if sc.auxiliary1:
-                    sc.updateSpectrum(f=fluxAll*t2j, af=afluxAll, cont=cont, cslope=cslope, moments=moments, 
+                    sc.updateSpectrum(f=fluxAll*t2j, af=afluxAll, cont=cont,
+                                      cslope=cslope, moments=moments, 
                                       lines=lines, noise=noise, ncell=ncell)
                 else:
-                    sc.updateSpectrum(f=fluxAll*t2j, cont=cont,cslope=cslope, moments=moments, 
+                    sc.updateSpectrum(f=fluxAll*t2j, cont=cont, cslope=cslope, moments=moments, 
                                       lines=lines, noise=noise, ncell=ncell)
             elif s.instrument in ['PACS','FORCAST']:
                 if istab == 1:
@@ -1192,11 +1193,13 @@ class GUI (QMainWindow):
                     expAll = np.nanmean(s.exposure[:, yy, xx], axis=1)
                     efluxAll = np.sqrt(np.nansum(s.eflux[:, yy, xx]**2, axis=1))
                 if sc.auxiliary1:
-                    sc.updateSpectrum(f=fluxAll, ef=efluxAll, af=afluxAll, exp=expAll, cont=cont, cslope=cslope,
+                    sc.updateSpectrum(f=fluxAll, ef=efluxAll, af=afluxAll, 
+                                      exp=expAll, cont=cont, cslope=cslope,
                                       moments=moments, lines=lines,
                                       noise=noise, ncell=ncell)
                 else:
-                    sc.updateSpectrum(f=fluxAll, ef=efluxAll, exp=expAll, cont=cont, cslope=cslope,
+                    sc.updateSpectrum(f=fluxAll, ef=efluxAll, exp=expAll,
+                                      cont=cont, cslope=cslope,
                                       moments=moments, lines=lines,
                                       noise=noise, ncell=ncell)
             elif s.instrument == 'FIFI-LS':
@@ -1212,33 +1215,14 @@ class GUI (QMainWindow):
                 sc.spectrum.eflux = efluxAll
                 sc.spectrum.exposure = expAll
                 if sc.auxiliary1:
-                    sc.updateSpectrum(f=fluxAll, ef=efluxAll, af=afluxAll, uf=ufluxAll, exp=expAll,
-                                      cont=cont,cslope=cslope, moments=moments, lines=lines, 
-                                      noise=noise, ncell=ncell)
+                    sc.updateSpectrum(f=fluxAll, ef=efluxAll, af=afluxAll,
+                                      uf=ufluxAll, exp=expAll,
+                                      cont=cont,cslope=cslope, moments=moments,
+                                      lines=lines, noise=noise, ncell=ncell)
                 else:
                     sc.updateSpectrum(f=fluxAll, ef=efluxAll, uf=ufluxAll, exp=expAll,
-                                      cont=cont,cslope=cslope, moments=moments, lines=lines, 
-                                      noise=noise, ncell=ncell)
-
-    #def onpick(self, event):
-    #    """React to pick events."""
-    #    istab = self.stabs.currentIndex()
-    #    sc = self.sci[istab]
-    #    print('event onpick ', event)
-    #    if event.artist == sc.rannotation:
-    #        n = self.nAper()
-    #        aperture = self.ici[0].photApertures[n].aperture           
-    #        r = aperture.width * 0.5 * self.specCube.pixscale
-    #        rnew = self.getDouble(r)
-    #        #sc.rannotation.remove()
-    #        #sc.rannotation = sc.axes.annotate(u"r = {:.1f}\u2033".format(r),
-    #        #                                  xy=(-0.14,-0.07), picker=5,
-    #        #                                  xycoords='axes fraction')
-    #        print('rnew ', rnew)
-    #        sc.aperture.width = rnew * 2 / self.specCube.pixscale
-    #        print('width ', sc.aperture.width)
-    #        sc.draw_idle()
-    #        self.onModifiedAperture('modified aperture')
+                                      cont=cont,cslope=cslope, moments=moments,
+                                      lines=lines, noise=noise, ncell=ncell)
            
     def onDraw(self,event):
         if len(self.ici) <= 1:
@@ -1249,7 +1233,6 @@ class GUI (QMainWindow):
         if ic.toolbar._active == "PAN":
             ic.toolbar.pan()
         # Update patch in all the images
-        # a status should be added to the apertures to avoid unnecessary redrawings
         istab = self.stabs.currentIndex()
         ici = self.ici.copy()
         ici.remove(ic)
@@ -1503,7 +1486,7 @@ class GUI (QMainWindow):
         self.stabs.setTabsClosable(True)
         self.stabs.tabCloseRequested.connect(self.removeSpecTab)
         self.stabs.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Expanding)
-        self.stabs.currentChanged.connect(self.onSTabChange)  # things to do when changing tab
+        self.stabs.currentChanged.connect(self.onSTabChange) # things to do when changing tab
         self.stabi = []
         self.sci  = []
         self.scid1 = []
@@ -1803,7 +1786,7 @@ class GUI (QMainWindow):
             pixel.rect.set_xy((x,y))
             ic.changed = True
         # Help on status bar
-        self.sb.showMessage("Click and drag the mouse over the spectrum to select two continuum regions ",
+        self.sb.showMessage("Click and drag over the spectrum to select two continuum regions ",
                             2000)        
         # Delete previous guess and select new one
         if sc.guess is not None:
@@ -2386,7 +2369,6 @@ class GUI (QMainWindow):
                 # Otherwise, find the regions
                 for ncell in range(self.ncells):
                     i0, i1, i2, i3 = self.getContinuumGuess(ncell)
-                    #print('cell ',ncell, 'is', i0,i1,i2,i3)
                     mask = np.zeros(len(self.specCube.flux), dtype=bool)
                     mask[i0:i1] = True
                     mask[i2:i3] = True
@@ -4657,6 +4639,12 @@ class GUI (QMainWindow):
                 hdu = fits.PrimaryHDU()
                 hdu.header.extend(header)
                 hdul = [hdu]
+                # Check if GREAT
+                if self.specCube.instrument == 'GREAT':
+                    t2j = self.specCube.Tb2Jy
+                else:
+                    t2j = 1
+                w = self.specCube.wave
                 # Extensions                
                 for i, line in enumerate(self.lines):
                     if len(self.lines) > 1:
@@ -4664,6 +4652,9 @@ class GUI (QMainWindow):
                     else:
                         istr = ''
                     x, sigma, A, alpha, ex, esigma, eA = line
+                    # Find closest wavelength
+                    imin = np.argmin(np.abs(x - w))
+                    continuum = self.continuum[wmin] * t2j
                     # Compute FWHM
                     FWHM = 2 * np.sqrt(2*np.log(2)) * sigma
                     eFWHM = 2 * np.sqrt(2*np.log(2)) * esigma
@@ -4671,6 +4662,7 @@ class GUI (QMainWindow):
                     FWHMv = c * FWHM / x / 1000.
                     eFWHMv = FWHMv / sigma * esigma
                     # Add extensions
+                    hdul.append(self.addExtension(continuum,'CONTINUUM'+istr,'um',header))
                     hdul.append(self.addExtension(x,'CENTER'+istr,'um',header))
                     hdul.append(self.addExtension(ex,'ERRCENTER'+istr,'um',header))
                     hdul.append(self.addExtension(FWHMv,'FWHM'+istr,'km/s',header))
