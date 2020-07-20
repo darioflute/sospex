@@ -366,29 +366,33 @@ def fitLines(p, m, w, f, lines, model):
             else:
                 params[li + 'fraction'].set(0.4, vary=True, min=0, max = 0.45)  # No Cauchy part (i.e. Gauss)
         # Minimize
-        out = model.fit(y, params, x=x, method='nelder')
-        #               kws={'data': y, 'eps': e}, method='leastsq')
+        out = model.fit(y, params, x=x, method='leastsq')
         # Return lines fitted parameters
         pars = out.params#.valuesdict()
         nlines = len(lines)
-        #print("Number of lines fitted: ", nlines)
         linepars = []
         for i in range(nlines):
             li = 'l' + str(i) + '_'
             center = pars[li + 'center'].value  # Observed
-            #centerErr = pars[li + 'center'].stderr  # Observed
+            centerErr = pars[li + 'center'].stderr  # Observed
+            if centerErr is None:
+                centerErr = np.nan
             sigma = pars[li + 'sigma'] .value   # Observed
-            #sigmaErr = pars[li + 'sigma'] .stderr   # Observed
-            A =  pars[li+'amplitude'].value
-            #Aerr = pars[li+'amplitude'].stderr
-            amplitude = A * norm
-            #amplitudeErr = amplitude * (Aerr/A + sigmaErr/sigma)
+            sigmaErr = pars[li + 'sigma'].stderr   # Observed
+            if sigmaErr is None:
+                sigmaErr = np.nan
+            A =  pars[li+'amplitude'].value * norm
+            Aerr = pars[li+'amplitude'].stderr
+            if Aerr is None:
+                Aerr = np.nan
+            else:
+                Aerr *= norm
             alpha = pars[li+'fraction'].value
-            linepars.append([center, sigma, amplitude, alpha])
+            linepars.append([center, sigma, A, alpha, centerErr, sigmaErr, Aerr])
         return p, linepars
     else:
         nlines = len(lines)
-        return p, np.full((nlines, 4), np.nan)
+        return p, np.full((nlines, 7), np.nan)
 
 def multiFitLines(m, w, f, c, lineguesses, model, linefits, points):
 
@@ -412,10 +416,8 @@ def multiFitLines(m, w, f, c, lineguesses, model, linefits, points):
     for p, linepars in results:
         i,j = p
         for k in range(n):
-            linefits[k][0][j,i] = linepars[k][0]
-            linefits[k][1][j,i] = linepars[k][1]
-            linefits[k][2][j,i] = linepars[k][2]
-            linefits[k][3][j,i] = linepars[k][3]
+            for l in range(7):
+                linefits[k][l][j,i] = linepars[k][l]
             
     return 1
 
@@ -433,10 +435,8 @@ def multiFitLinesSingle(m, w, f, c, lineguesses, model, linefits, points):
         i,j = pp
         print(np.shape(linepars), np.shape(linefits))
         for k in range(n):
-            linefits[k][0][j,i] = linepars[k][0]
-            linefits[k][1][j,i] = linepars[k][1]
-            linefits[k][2][j,i] = linepars[k][2]
-            linefits[k][3][j,i] = linepars[k][3]
+            for l in range(7):
+                linefits[k][l][j,i] = linepars[k][l]
                 
     return 1
 

@@ -1272,7 +1272,7 @@ class SpectrumCanvas(MplCanvas):
                 self.voigt = []
                 for line in lines:
                     #print('line is ', line)
-                    x, sigma, A, alpha = line
+                    x, sigma, A, alpha, xerr, sigmaerr, Aerr = line
                     c = 299792458. # m/s
                     A = A * 1.e20  * x * x / c  # Retransform in Jy
                     # Add redshift

@@ -271,6 +271,8 @@ class GUI (QMainWindow):
         cube.addAction(QAction('Current status', self, shortcut='',triggered=self.saveMaskedCube))
         io.addAction(QAction('Save image', self, shortcut='',triggered=self.saveFits))
         io.addAction(QAction('Save spectrum', self, shortcut='',triggered=self.saveSpectrum))
+        io.addAction(QAction('Save moments', self, shortcut='',triggered=self.saveMoments))
+        io.addAction(QAction('Save lines', self, shortcut='',triggered=self.saveLines))
         aperture = io.addMenu("Aperture I/O")
         aperture.addAction(QAction('Export',self,shortcut='',triggered=self.exportApertureAction))
         aperture.addAction(QAction('Import',self,shortcut='',triggered=self.importApertureAction))
@@ -1135,7 +1137,9 @@ class GUI (QMainWindow):
                         lines = []
                         for line in self.lines:
                             lines.append([line[0][j, i], line[1][j, i], 
-                                          line[2][j, i], line[3][j, i]])
+                                          line[2][j, i], line[3][j, i],
+                                          line[4][j, i], line[5][j, i],
+                                          line[6][j, i]])
                     except:
                         lines = None
                 else:
@@ -2888,7 +2892,7 @@ class GUI (QMainWindow):
             self.L1 = np.full((s.ny,s.nx), np.nan) #  2nd line integral
             sc = self.sci[self.spectra.index('Pix')]
             nlines = len(sc.lguess)
-            self.lines = np.full((nlines, 4, s.ny, s.nx), np.nan) # Fitted parameters of lines
+            self.lines = np.full((nlines, 7, s.ny, s.nx), np.nan) # Fitted parameters of lines
             # Current canvas
             itab = self.itabs.currentIndex()
             ic0 = self.ici[itab]
@@ -3201,7 +3205,13 @@ class GUI (QMainWindow):
         i = int(np.rint(xc)); j = int(np.rint(yc))
         lines = []
         for line in self.lines:
-            lines.append([line[0][j, i], line[1][j, i], line[2][j, i], line[3][j, i]])
+            lines.append([line[0][j, i], 
+                          line[1][j, i], 
+                          line[2][j, i], 
+                          line[3][j, i],
+                          line[4][j, i], 
+                          line[5][j, i], 
+                          line[6][j, i]])
         sc.updateSpectrum(cont=self.continuum[:, j, i], cslope=self.Cs[j,i], lines=lines)
         sc.fig.canvas.draw_idle()
         
@@ -4616,6 +4626,103 @@ class GUI (QMainWindow):
                 hdul.close()
             else:
                 pass  
+        
+    def saveLines(self):
+        """Save fitted continuum and lines."""
+        if self.lines is None:
+            message = 'No lines to save'
+            print(message)
+            self.sb.showMessage(message, 1000)
+        else:
+            from astropy.io import fits
+            # Dialog to save file
+            fd = QFileDialog()
+            fd.setLabelText(QFileDialog.Accept, "Save as")
+            fd.setNameFilters(["Fits Files (*.fits)","All Files (*)"])
+            fd.setOptions(QFileDialog.DontUseNativeDialog)
+            fd.setViewMode(QFileDialog.List)            
+            if (fd.exec()):
+                fileName = fd.selectedFiles()
+                outfile = fileName[0]
+                filename, file_extension = os.path.splitext(outfile)
+                if file_extension != '.fits' :
+                    file_extension = '.fits'
+                    outfile = filename + file_extension
+                header = self.specCube.wcs.to_header()
+                header.remove('WCSAXES')
+                header['INSTRUME'] = (self.specCube.instrument, 'Instrument')
+                header['DATE-OBS'] = (self.specCube.obsdate, 'Date of the observation')  
+                header['OBJECT'] = (self.specCube.objname, 'Object Name')
+                # Primary header
+                hdu = fits.PrimaryHDU()
+                hdu.header.extend(header)
+                hdul = [hdu]
+                # Extensions                
+                for i, line in enumerate(self.lines):
+                    if len(self.lines) > 1:
+                        istr = '_'+str(i)
+                    else:
+                        istr = ''
+                    x, sigma, A, alpha, ex, esigma, eA = line
+                    # Compute FWHM
+                    FWHM = 2 * np.sqrt(2*np.log(2)) * sigma
+                    eFWHM = 2 * np.sqrt(2*np.log(2)) * esigma
+                    c = 299792458. # m/s
+                    FWHMv = c * FWHM / x / 1000.
+                    eFWHMv = FWHMv / sigma * esigma
+                    # Add extensions
+                    hdul.append(self.addExtension(x,'CENTER'+istr,'um',header))
+                    hdul.append(self.addExtension(ex,'ERRCENTER'+istr,'um',header))
+                    hdul.append(self.addExtension(FWHMv,'FWHM'+istr,'km/s',header))
+                    hdul.append(self.addExtension(eFWHMv,'ERRFWHM'+istr,'km/s',header))
+                    hdul.append(self.addExtension(A,'FLUX'+istr,'W/m2',header))
+                    hdul.append(self.addExtension(eA,'ERRFLUX'+istr,'W/m2',header))
+                hdul = fits.HDUList(hdul)
+                hdul.writeto(outfile,overwrite=True) 
+                hdul.close()
+ 
+    
+    def saveMoments(self):
+        """Save continuum and moments."""
+        if self.M0 is None:
+            message = 'No moments to save'
+            print(message)
+            self.sb.showMessage(message, 1000)
+        else:
+            from astropy.io import fits
+            # Dialog to save file
+            fd = QFileDialog()
+            fd.setLabelText(QFileDialog.Accept, "Save as")
+            fd.setNameFilters(["Fits Files (*.fits)","All Files (*)"])
+            fd.setOptions(QFileDialog.DontUseNativeDialog)
+            fd.setViewMode(QFileDialog.List)            
+            if (fd.exec()):
+                fileName = fd.selectedFiles()
+                outfile = fileName[0]
+                filename, file_extension = os.path.splitext(outfile)
+                if file_extension != '.fits' :
+                    file_extension = '.fits'
+                    outfile = filename + file_extension
+                header = self.specCube.wcs.to_header()
+                header.remove('WCSAXES')
+                header['INSTRUME'] = (self.specCube.instrument, 'Instrument')
+                header['DATE-OBS'] = (self.specCube.obsdate, 'Date of the observation')  
+                header['OBJECT'] = (self.specCube.objname, 'Object Name')
+                header['RESTWAV'] = (self.specCube.l0, 'Reference wavelength')
+                header['REDSHIFT'] = (self.specCube.redshift, 'Redshift')
+                # Primary header
+                hdu = fits.PrimaryHDU()
+                hdu.header.extend(header)
+                hdul = [hdu]
+                # self.C0, self.M0, self.v, self.sv
+                hdul.append(self.addExtension(self.C0, 'CONTINUUM', 'Jy', header))
+                hdul.append(self.addExtension(self.M0, 'INTENSITY', 'W/m2', header))
+                hdul.append(self.addExtension(self.v, 'VELOCITY', 'km/s', header))
+                hdul.append(self.addExtension(self.sv, 'FWHM', 'km/s', header))
+                hdul = fits.HDUList(hdul)
+                hdul.writeto(outfile,overwrite=True) 
+                hdul.close()
+            
 
     def addExtension(self,data, extname, unit, hdr):
         from astropy.io import fits
@@ -5619,6 +5726,7 @@ class GUI (QMainWindow):
             self.stabs.currentChanged.disconnect()
             self.stabs.setCurrentIndex(istab)  # Pixel tab
             self.stabs.currentChanged.connect(self.onSTabChange)
+        
                        
     def initializeImages(self):
         #import time
@@ -5709,6 +5817,7 @@ class GUI (QMainWindow):
         self.C0 = None
         self.v  = None
         self.sv = None
+        self.lines = None
         # Selectors
         self.PS = None
         self.ES = None
