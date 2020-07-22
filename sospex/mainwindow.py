@@ -3916,7 +3916,6 @@ class GUI (QMainWindow):
 
     def addApertures(self, ic):
         """ Add apertures already defined on new image """
-        print('add apertures ')
         ic0 = self.ici[0]
         for aper in ic0.photApertures:
             #apertype = aper.__class__.__name__
