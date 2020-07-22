@@ -21,7 +21,7 @@ import scipy.ndimage as ndimage
 import warnings
 
 from sospex.moments import ( multiFitContinuum, multiComputeMoments,
-                            multiFitLines, residualsPsf, 
+                            multiFitLines, multiFitLinesSingle, residualsPsf, 
                             fitApertureContinuum, fitApertureLines)
 from sospex.dialogs import (ContParams, ContFitParams, SlicerDialog, guessParams,
                             FitCubeDialog, cmDialog, ApertureParams)

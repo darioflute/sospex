@@ -5,4 +5,5 @@ def main():
     mainwindow.main()
 
 if __name__ == "__main__":
+    __spec__ = None
     main()    

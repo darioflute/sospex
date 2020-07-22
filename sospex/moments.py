@@ -433,7 +433,7 @@ def multiFitLinesSingle(m, w, f, c, lineguesses, model, linefits, points):
         n = len(lineguesses)
         pp, linepars = res
         i,j = pp
-        print(np.shape(linepars), np.shape(linefits))
+        #print(np.shape(linepars), np.shape(linefits))
         for k in range(n):
             for l in range(7):
                 linefits[k][l][j,i] = linepars[k][l]
