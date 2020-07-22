@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 """Setup script to install sospex."""
 
-#from distutils.core import setup
-import setuptools
-from setuptools import setup
+from distutils.core import setup
+#import setuptools
+#from setuptools import setup
 import json
 
 with open('sospex/version.json') as fp:

@@ -233,6 +233,7 @@ def multiComputeMoments(m,w,f,c,moments,points):
     # To avoid forking error in MAC OS-X
     try:
         mp.set_start_method('spawn')
+        print('started spawing')
     except RuntimeError:
         pass
 
@@ -269,6 +270,7 @@ def multiFitContinuum(m, w, f, c, c0, w0, points, slope, intcp, posCont, kernel,
     # To avoid forking error in MAC OS-X
     try:
         mp.set_start_method('spawn')
+        print('started spawing')
     except RuntimeError:
         pass
     if kernel == 1:
@@ -399,6 +401,7 @@ def multiFitLines(m, w, f, c, lineguesses, model, linefits, points):
     # To avoid forking error in MAC OS-X
     try:
         mp.set_start_method('spawn')
+        print('started spawing')
     except RuntimeError:
         pass
 

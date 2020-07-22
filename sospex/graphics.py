@@ -255,7 +255,7 @@ class ImageCanvas(MplCanvas):
         else:
             # import time
             # t = time.process_time()
-            print('WCS ', wcs)
+            #print('WCS ', wcs)
             self.wcs = wcs
             try:
                 self.fig.delaxes(self.axes)
