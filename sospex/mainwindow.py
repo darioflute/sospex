@@ -2149,11 +2149,11 @@ class GUI (QMainWindow):
                 dx = (x[2] - x[1]) / (2 * n)
                 fwhm = dx * 0.8  # fraction of distance between edges of the continuum
             else:
-                fwhm = fwhms
+                fwhm = fwhms[i]
             if x0s is None:
                 x0 = x[1] + dx + i * 2 * dx
             else:
-                x0 = x0s * ( 1 + self.specCube.redshift)
+                x0 = x0s[i] * ( 1 + self.specCube.redshift)
             c0 = sc.guess.intcpt + x0 * sc.guess.slope  # continuum at line center
             if As is None:
                 idx = (sc.x > (x0 - dx)) & (sc.x < (x0 + dx))
@@ -2162,7 +2162,8 @@ class GUI (QMainWindow):
                 else:
                     A = np.nanmin(sc.spectrum.flux[idx]) - c0
             else:
-                A = As
+                A = As[i]
+            print('added line at ', x0)
             LI = LineInteractor(sc.axes, c0, sc.guess.slope, x0, A, fwhm, nid,color=colors[i])
             LI.modSignal.connect(self.onModifiedGuess)
             LI.mySignal.connect(self.onRemoveContinuum)

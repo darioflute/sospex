@@ -677,7 +677,7 @@ def fitApertureLines(sc, intercept, slope):
         li = 'l' + str(i) + '_'
         x0 = line.x0 #* (1. + z)
         sigma = line.fwhm / 2.355 #* (1. + z)
-        fit_params.add(li + 'center', value=x0, min=(x0 - 0.5 * sigma), max=(x0 + 0.5 * sigma))
+        fit_params.add(li + 'center', value=x0, min=(x0 -  sigma), max=(x0 +  sigma))
         A = line.A * (np.sqrt(2*np.pi) * sigma) * c / x0**2 * 1.e-20 / norm
         #print('A ', A)
         if A > 0:

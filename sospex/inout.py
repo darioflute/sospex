@@ -328,22 +328,40 @@ def importAperture(self):
                 if sc.lguess is not None:
                     sc.emslines = 0
                     sc.abslines = 0
+                    ax0s = []
+                    ex0s = []
+                    afwhms = []
+                    efwhms = []
+                    aAs = []
+                    eAs = []
                     for line in lines:
                         if line[2] >= 0:
                             sc.emslines += 1
+                            ex0s.append(line[0]/( 1 + sc.spectrum.redshift))
+                            efwhms.append(line[1])
+                            eAs.append(line[2])
                         else:
                             sc.abslines += 1
+                            ax0s.append(line[0]/( 1 + sc.spectrum.redshift))
+                            afwhms.append(line[1])
+                            aAs.append(line[2])
                     if sc.emslines > 0:
-                        center = line[0] / (1 + self.specCube.redshift)
+                        print('There are ', sc.emslines, ' emission lines')
+                        ex0s = np.array(ex0s)
+                        efwhms = np.array(efwhms)
+                        eAs = np.array(eAs)
                         sc.lines = self.addLines(sc.emslines, x, 'emission', 
-                                                 x0s=center, fwhms=line[1], As=line[2])
+                                                  x0s=ex0s, fwhms=efwhms, As=eAs)
                     else:
                         sc.lines = []
                     if sc.abslines > 0:
-                        center = line[0] / (1 + self.specCube.redshift)
-                        sc.lines.append(self.addLines(sc.abslines, x, 'absorption',
-                                                      nstart=sc.emslines, 
-                                                      x0s=center, fwhms=line[1], As=line[2]))
+                        print('There are ', sc.abslines, ' absorption lines')
+                        ax0s = np.array(ax0s)
+                        afwhms = np.array(afwhms)
+                        aAs = np.array(aAs)
+                        sc.lines.extend(self.addLines(sc.abslines, x, 'absorption',
+                                                  nstart=sc.emslines, 
+                                                  x0s=ax0s, fwhms=afwhms, As=aAs))
                 else:
                     sc.lines = []
                 # Plot guesses
