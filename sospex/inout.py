@@ -304,7 +304,9 @@ def importAperture(self):
                 istab = self.stabs.currentIndex()
                 sc = self.sci[istab]
                 sc.function = data['model']
+                # Update redshift
                 sc.spectrum.redshift = data['redshift']
+                self.specCube.redshift = data['redshift']
                 # Draw segments
                 x = data['xg']
                 y = data['yg']
@@ -367,6 +369,8 @@ def importAperture(self):
                 # Plot guesses
                 interactors.extend(sc.lines)
                 sc.interactorManager = InteractorManager(sc.axes, interactors)
+                # 
+                sc.drawSpectrum()
                 # Do the fit
                 self.fitApLines()
         except:
