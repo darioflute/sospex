@@ -16,7 +16,7 @@ config = {
         'description':'SOFIA SPectral EXplorer',
         'long_description':long_description,
         'long_description_type':"text/markdown",
-        'author':'Dario Fadda',
+        'author':_info['author'],
         'author_email':'darioflute@gmail.com',
         'url':'https://github.com/darioflute/sospex.git',
         'download_url':'https://github.com/darioflute/sospex',

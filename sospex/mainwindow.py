@@ -4652,14 +4652,22 @@ class GUI (QMainWindow):
                         istr = ''
                     x, sigma, A, alpha, ex, esigma, eA = line
                     # Find closest wavelength
-                    imin = np.argmin(np.abs(x - w))
-                    continuum = self.continuum[wmin] * t2j
+                    ny, nx = np.shape(x)
+                    continuum = np.zeros((ny, nx))
+                    for ix in range(nx):
+                        for iy in range(ny):
+                            if np.isnan(x[iy,ix]):
+                                continuum[iy,ix] = np.nan
+                            else:
+                                wmin = np.argmin(np.abs(x[iy, ix] - w))
+                                continuum[iy,ix] = self.continuum[wmin, iy, ix] * t2j
                     # Compute FWHM
                     FWHM = 2 * np.sqrt(2*np.log(2)) * sigma
                     eFWHM = 2 * np.sqrt(2*np.log(2)) * esigma
                     c = 299792458. # m/s
                     FWHMv = c * FWHM / x / 1000.
                     eFWHMv = FWHMv / sigma * esigma
+                    # To check if t2j is required for GREAT ....
                     # Add extensions
                     hdul.append(self.addExtension(continuum,'CONTINUUM'+istr,'um',header))
                     hdul.append(self.addExtension(x,'CENTER'+istr,'um',header))

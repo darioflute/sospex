@@ -188,6 +188,8 @@ def exportAperture(self):
                         #jy2wm2 = c / (x * x) * 1.e-20 
                         flux = A #* jy2wm2
                         eflux = eA #* jy2wm2
+                        A = A * 1.e20  * x * x / c
+                        eA = eA * 1.e20  * x * x / c
                         line = 'line '+str(i+1)
                         data[line] = {
                                 'instrument': instrument,
