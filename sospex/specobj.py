@@ -1096,7 +1096,8 @@ class specCube(object):
             bmaj = self.header['BMAJ']
             bmin = self.header['BMIN']
             area_pixel = pixscale * ypixscale
-            self.flux *= 1.331 * bmaj * bmin / area_pixel
+            npix_per_beam = 1.331 * bmaj * bmin / area_pixel
+            self.flux /= npix_per_beam
         except:
             print('No beam size given in the header')
         self.pixscale = pixscale * 3600.0 # pixel scale in arcsec
