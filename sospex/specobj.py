@@ -210,7 +210,10 @@ class specCubeAstro(object):
         self.bunit = self.header['BUNIT']
         eta_fss=0.97
         eta_mb =0.67
-        calib = 971.
+        calib = 971. # approx calibration
+        # Compute calibration at reference frequency
+        calibnu = 2 * 1.38e-16 * (nu0/(c*100))**2
+        print('calibration at nu ', calibnu)
         if self.bunit == 'K (Tmb)':
             self.Tb2Jy = calib*eta_fss*eta_mb
         else: # Case of K (Ta*)
@@ -224,9 +227,9 @@ class specCubeAstro(object):
         # Multiply by the flux fraction in the pixel assuming a 2D Gaussian curve                    
         #pixfraction = 0.5 * erf(self.pixscale*0.5/bmaj) * erf(ypixscale*0.5/bmin)
         #print('Beam fraction on pixel ', pixfraction)
-        toJyPerPixel = 1.331 * bmaj * bmin / (self.pixscale * ypixscale)
-        # Flux in K (not K/beam). So divide by the beam and multiply by pixel
-        self.flux /= toJyPerPixel
+        npix_per_beam = 1.331 * bmaj * bmin / (self.pixscale * ypixscale)
+        # Flux in K /beam. So divide by the number of pixels per beam to have K/pix
+        self.flux /= npix_per_beam
         print('Tb2Jy ', self.Tb2Jy)
         #self.Tb2Jy *= pixfraction
         # Multiplication is delayed in the code to speed up reading
@@ -373,32 +376,34 @@ class specCubeAstro(object):
         ctype3 = self.header['CTYPE3']
         if ctype3 in ['VELO-HEL','VELO-LSR','VOPT']:
             velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3 # m/s
-            # Neutral Hydrogen (HI)
             nu0 = self.header['RESTFREQ']
             print('reference frequency', nu0)
             c = 299792458.0 # m/s
-            # self.l0 = 21.1061140542 * 1.e4 #um
-            self.l0 = c/nu0 * 1.e6 #um
+            self.l0 = c / nu0 * 1.e6 #um
             print('Rest wavelength ', self.l0)
-            self.wave = self.l0 * (1 + velocity/c) #um
-        
-        #hdr3D = self.header.copy()
-        #for key in hdr3D.keys():
-        #    if '3' in key:
-        #        del hdr3D[key]
-        #hdr3D['WCSAXES'] = 2
-        #hdr3D['NAXIS'] = 2
-        #print('Header ', hdr3D)
-        #wcs = WCS(hdr3D)
-        #self.wcs = wcs
+            self.wave = self.l0 * (1 + velocity / c) #um
         self.wcs = WCS(self.header).celestial
-        print('WCS ', self.wcs)
+        #print('WCS ', self.wcs)
         self.pixscale, ypixscale = proj_plane_pixel_scales(wcs) * 3600. # Pixel scale in arcsec
         print('scale is ', self.pixscale)
         # Back to wavelength
         w = self.wave
         self.crval3 = w[0]
         self.cdelt3 = np.median(w[1:] - w[:-1])
+        # Rescale flux
+        bscale = self.header['BSCALE']
+        bzero = self.header['BZERO']
+        print('bzero, bscale ', bzero, bscale)
+        self.flux = bzero + self.flux * bscale   # Flux in units of erg/cm2/s/A
+        # Transform into Jy
+        btype = self.header['BTYPE']
+        #if btype == 'erg/cm2/s/A':
+        print('Transform into F_lambda [erg/cm2/s/A] into F_nu [Jy] ...')
+        c = 299792458.0 # m/s
+        wA = w * 1.e4 # Wavelength in A (1 um = 1.e4 A)
+        self.flux *=  3.33564095e4 * wA**2
+        #self.flux = (w * 1.e4) * self.flux  * (w * 1.e-6)/c * 1.e23 # F_nu
+
         
     def readIRAM(self, hdl):
         """Case of generic radio cube (in this case HI cubes from Westerbrock)."""
@@ -755,12 +760,16 @@ class specCube(object):
         eta_fss=0.97
         eta_mb =0.67
         calib = 971.
+        nu0 = self.header['RESTFREQ']  # MHz
+        # Compute trasformation from K -> Jy using definition of Ta
+        # Rayleigh-Jeans approximation is appropriate in GREAT range
+        calibnu = 2 * 1.38e-16 * (nu0*1.e6/(c*100))**2
+        print('calibration at nu ', calibnu)
+        print('rest freq ', nu0)
         if self.bunit == 'K (Tmb)':
             self.Tb2Jy = calib*eta_fss*eta_mb
         else: # Case of K (Ta*)
             self.Tb2Jy = calib
-        nu0 = self.header['RESTFREQ']  # MHz
-        print('rest freq ', nu0)
         l0 = c/nu0  # in micron
         # Transform in Jy/pixel
         # Compute the beam size at the wavelength
@@ -772,8 +781,8 @@ class specCube(object):
         pixfraction = erf(self.pixscale*0.5/xsigma) * erf(ypixscale*0.5/ysigma)
         print('Beam fraction on pixel ', pixfraction)
         # Transform Jy/beam to Jy/pixel
-        toJyPerPixel = 1.331 * bmaj * bmin / (self.pixscale * ypixscale)
-        print('toJyPerPixel', toJyPerPixel)
+        npix_per_beam = 1.331 * bmaj * bmin / (self.pixscale * ypixscale)
+        print('Pixels per beam', npix_per_beam)
         print('Tb2Jy ', self.Tb2Jy)
         #self.Tb2Jy *= pixfraction
         naxes = self.header['NAXIS']
@@ -783,7 +792,7 @@ class specCube(object):
         else:
             self.flux = hdl[0].read()
         # Flux in K, non in K/beam - so  divided by beam and multiply by pix area
-        self.flux /= toJyPerPixel
+        self.flux /= npix_per_beam
         t1 = time.process_time()
         print('Flux reading completed in ', t1-t,' s')
         #self.flux *= self.Tb2Jy   # Transformed from temperature to S_nu [Jy]  Move this to code
@@ -936,15 +945,6 @@ class specCube(object):
             self.l0 = c/nu0 * 1.e6 #um
             print('Rest wavelength ', self.l0)
             self.wave = self.l0 * (1 + velocity/c) #um
-            
-        #hdr3D = self.header.copy()
-        #for key in hdr3D.keys():
-        #    if '3' in key:
-        #        del hdr3D[key]
-        #hdr3D['WCSAXES'] = 2
-        #hdr3D['NAXIS'] = 2
-        ##print('Header ', hdr3D)
-        #self.wcs = WCS(hdr3D)
         self.wcs = WCS(self.header).celestial
         self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
         print('scale is ', self.pixscale)
@@ -952,6 +952,22 @@ class specCube(object):
         w = self.wave
         self.crval3 = w[0]
         self.cdelt3 = np.median(w[1:] - w[:-1])
+        # Rescale flux
+        bscale = self.header['BSCALE']
+        bzero = self.header['BZERO']
+        print('bzero, bscale ',bzero, bscale)
+        self.flux = bzero + self.flux * bscale   # Flux in units of erg/cm2/s/A
+        # Transform into Jy
+        btype = self.header['BTYPE']
+        #if btype == 'erg/cm2/s/A':
+        print('Transform into Jy ...')
+        c = 299792458.0 # m/s
+        wA = self.wave * 1.e4
+        print(np.nanmean(33356.4095 * wA**2))
+        print(np.nanmean(self.flux))
+        for f, w in zip(self.flux, wA):
+            f *= 33356.4095 * w**2
+        #self.flux = (w * 1.e4) * self.flux  * (w * 1.e-6)/c * 1.e-23 # F_nu
 
     def readIRAM(self, hdl):
         """Case of Heracles observations with IRAM 30M."""

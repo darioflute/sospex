@@ -533,19 +533,40 @@ def importGuesses(self):
         if sc.lguess is not None:
             sc.emslines = 0
             sc.abslines = 0
+            ax0s = []
+            ex0s = []
+            afwhms = []
+            efwhms = []
+            aAs = []
+            eAs = []
             for line in lines:
                 if line[2] >= 0:
                     sc.emslines += 1
+                    ex0s.append(line[0])
+                    efwhms.append(line[1])
+                    eAs.append(line[2])
                 else:
                     sc.abslines += 1
+                    ax0s.append(line[0])
+                    afwhms.append(line[1])
+                    aAs.append(line[2])
             if sc.emslines > 0:
-                sc.lines = self.addLines(sc.emslines, x, 'emission', x0s=line[0],
-                                         fwhms=line[1], As=line[2])
+                print('There are ', sc.emslines, ' emission lines')
+                ex0s = np.array(ex0s)
+                efwhms = np.array(efwhms)
+                eAs = np.array(eAs)
+                sc.lines = self.addLines(sc.emslines, x, 'emission', 
+                                         x0s=ex0s, fwhms=efwhms, As=eAs)
             else:
                 sc.lines = []
-            if sc.abslines > 0:
-                sc.lines.append(self.addLines(sc.abslines, x, 'absorption', nstart=sc.emslines, 
-                                              x0s=line[0], fwhms=line[1], As=line[2]))
+                if sc.abslines > 0:
+                    print('There are ', sc.abslines, ' absorption lines')
+                    ax0s = np.array(ax0s)
+                    afwhms = np.array(afwhms)
+                    aAs = np.array(aAs)
+                    sc.lines.extend(self.addLines(sc.abslines, x, 'absorption',
+                                              nstart=sc.emslines, 
+                                              x0s=ax0s, fwhms=afwhms, As=aAs))
         # Then plot guess and activate tessellation
         interactors.extend(sc.lines)
         sc.interactorManager = InteractorManager(sc.axes, interactors)

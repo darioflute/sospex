@@ -75,6 +75,9 @@ class DownloadThread(QThread):
 
     @pyqtSlot()
     def run(self):
+        self.keeprunning = True
+        if (not self.keeprunning):
+            return
         downloadedImage = cloudImage(self.lon,self.lat,self.xsize,self.ysize,self.band)
         if downloadedImage.data is not None:
             self.updateTabs.emit(downloadedImage)
@@ -85,7 +88,72 @@ class DownloadThread(QThread):
         self.sendMessage.emit(message)
         
     def stop(self):
-        self.terminate()
+        #self.terminate()
+        self.keeprunning = False
+        self.quit()
+        
+        
+class CheckVersion(QThread):
+    """Thread to check for new anaconda version."""
+    sendMessage = pyqtSignal([str])  
+    newVersion = pyqtSignal([str])  
+      
+    def __init__(self, parent = None):
+        super().__init__(parent)
+        from sospex import __version__
+        from sys import platform
+        self.version = __version__
+        self.platform = platform
+        
+    @pyqtSlot()
+    def run(self):
+        import os
+        #Check if connected
+        import urllib
+        req = urllib.request.Request('http://www.google.com')
+        try: 
+            urllib.request.urlopen(req)
+        except urllib.error.URLError as e:
+            print("Network is off: ", e.reason)
+            self.terminate()
+        
+        # Only for Unix versions
+        if self.platform in ["linux", "darwin"]:
+            pass
+        else:
+            self.stop()
+            
+        # Look for latest version
+        try:
+            # Check for versions 
+            self.keeprunning = True
+            if (not self.keeprunning):
+                return
+            #command = 'conda search "darioflute::*[name=sospex, version=*beta, build=*py37*]" | tail -1'
+            command = 'conda search "darioflute::*[name=sospex]" | tail -1'
+            with os.popen(command) as stream:
+                output = stream.read()
+            self.newversion = output.split()[1]
+            print('latest version is: ', self.newversion)
+            if self.newversion > self.version:
+                print('There is a new version ! ')
+                self.newVersionEmit(self.newversion)
+                message = 'New version reached'
+                self.stop()
+            else:
+                message = 'You have the latest version'
+                self.stop()
+            self.sendMessage.emit(message)
+        except:
+            print('Not possible to check the version. Are you online ?')
+            self.stop()        
+        
+    def stop(self):
+        self.keeprunning = False
+        self.quit()
+        #self.terminate()
+
+
         
 class UpdateHistogram(QThread):
     sendMessage = pyqtSignal([str])
@@ -167,13 +235,18 @@ class GUI (QMainWindow):
         from sospex.lines import define_lines
         self.Lines = define_lines()
         # Check new versions (possibly with a thread ?)
-        new = self.checkVersion()
+        # Here call the thread
+        self.checkVersion = CheckVersion(parent=self)
+        self.checkVersion.newVersion.connect(self.newversionDialog)
+        self.checkVersion.sendMessage.connect(self.newVersionMessage)
+        self.checkVersion.start()        
+        # new = self.checkVersion()
         # Welcome message
-        self.welcomeMessage(new)
+        self.welcomeMessage()
         # Menu
         self.createMenu()
         
-    def checkVersion(self):
+    def checkVersionOld(self):
         """Check for new versions"""
         from sospex import __version__
         from sys import platform
@@ -212,9 +285,14 @@ class GUI (QMainWindow):
             print('Not possible to check the version. Are you online ?')
             return None
         
-    def newversionDialog(self):
+    def newVersionMessage(self, message):
+        print(message)
+        self.sb.showMessage(message, 1000)
+        
+    def newversionDialog(self, newversion):
         flags = QMessageBox.Yes 
         flags |= QMessageBox.No
+        self.newversion = newversion
         question = "Do you want to install the new version "+self.newversion+" ?"
         response = QMessageBox.question(self, "Question",
                                         question,
@@ -1901,7 +1979,7 @@ class GUI (QMainWindow):
     def fitMessageButton(self, event):
         if event.text() == 'Save':
             self.exportApertureAction()
-            self.saveSpectrum("fits")
+            self.saveSpectrum()
     
     def removeVI(self):
         """Remove Voronoi tessellation if there."""
@@ -4010,6 +4088,10 @@ class GUI (QMainWindow):
         
     def fileQuit(self):
         """ Quitting the program """
+        try:
+            self.checkVersion.stop()
+        except:
+            pass
         self.close()
 
     def trimCubeOld(self):  
@@ -4183,7 +4265,7 @@ class GUI (QMainWindow):
                 print(message)
                 self.sb.showMessage(message, 2000)
 
-    def saveSpectrum(self, type=None):
+    def saveSpectrum(self):
         """ Save the displayed spectrum as a FITS/ASCII file or as PNG/PDF image """
         from astropy.io import fits        
         # Dialog to save file
@@ -4199,9 +4281,11 @@ class GUI (QMainWindow):
             fileName = fd.selectedFiles()
             outfile = fileName[0]
             filename, file_extension = os.path.splitext(outfile)
-            # apply type
-            if (type is not None) & (file_extension == ''):
-                file_extension = '.' + type
+            print('filename ', filename)
+            print('file ext ', file_extension, type(file_extension))
+            # Apply type
+            if file_extension == '':
+                file_extension = '.fits'
                 outfile = filename + file_extension
             # Tabs
             istab = self.stabs.currentIndex()
@@ -4548,6 +4632,7 @@ class GUI (QMainWindow):
                 hdul.writeto(outfile,overwrite=True) 
                 hdul.close()
             elif self.specCube.instrument == 'CARMA':
+                # This works only for cropped (not trimmed) cubes
                 header['NAXIS'] = (3,'Number of axis')
                 c = 299792458.0  # speed of light in m/s 
                 header['TELESCOP'] = self.specCube.header['TELESCOP']
@@ -4564,6 +4649,30 @@ class GUI (QMainWindow):
                 header['CRVAL3'] = self.specCube.header['CRVAL3']
                 header['CDELT3'] = self.specCube.header['CDELT3']
                 header['CUNIT3'] = ('m/s','Velocity unit')
+                hdu = fits.PrimaryHDU(flux)
+                hdu.header.extend(header)
+                hdul = fits.HDUList([hdu])
+                hdul.writeto(outfile,overwrite=True) 
+                hdul.close()
+            elif self.specCube.instrument == 'ALMA':
+                header['NAXIS'] = (3,'Number of axis')
+                c = 299792458.0  # speed of light in m/s 
+                header['TELESCOP'] = self.specCube.header['TELESCOP']
+                header['BMAJ'] = self.specCube.header['BMAJ']
+                header['BMIN'] = self.specCube.header['BMIN']
+                header['BPA'] = self.specCube.header['BPA']
+                header['BSCALE'] = self.specCube.header['BSCALE']
+                header['BZERO'] = self.specCube.header['BZERO']
+                header['RESTFRQ'] = self.specCube.header['RESTFRQ']
+                header['ALTRVAL'] = self.specCube.header['ALTRVAL']
+                header['ALTRPIX'] = self.specCube.header['ALTRPIX']
+                header['CTYPE3'] = self.specCube.header['CTYPE3']
+                header['CRPIX3'] = self.specCube.header['CRPIX3']
+                header['CRVAL3'] = self.specCube.header['CRVAL3']
+                header['CDELT3'] = self.specCube.header['CDELT3']
+                header['CUNIT3'] = self.specCube.header['CUNIT3']
+                # Flip the cube before saving to order in frequency
+                flux = np.flip(flux, axis=0)
                 hdu = fits.PrimaryHDU(flux)
                 hdu.header.extend(header)
                 hdul = fits.HDUList([hdu])
