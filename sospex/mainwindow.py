@@ -115,7 +115,7 @@ class CheckVersion(QThread):
             urllib.request.urlopen(req)
         except urllib.error.URLError as e:
             print("Network is off: ", e.reason)
-            self.terminate()
+            self.stop()
         
         # Only for Unix versions
         if self.platform in ["linux", "darwin"]:
@@ -133,6 +133,10 @@ class CheckVersion(QThread):
             command = 'conda search "darioflute::*[name=sospex]" | tail -1'
             with os.popen(command) as stream:
                 output = stream.read()
+            print('output: ', output.split[-1])
+            if output.split()[-1] == 'failed':
+                print('Conda retrieval failed')
+                self.stop()
             self.newversion = output.split()[1]
             print('latest version is: ', self.newversion)
             if self.newversion > self.version:
@@ -145,7 +149,7 @@ class CheckVersion(QThread):
                 self.stop()
             self.sendMessage.emit(message)
         except:
-            print('Not possible to check the version. Are you online ?')
+            print('Not possible to check the version. Probably offline.')
             self.stop()        
         
     def stop(self):
@@ -3853,7 +3857,6 @@ class GUI (QMainWindow):
        
     def newImageMessage(self, message):
         """Message sent from download thread.""" 
-        print('new message called')
         self.sb.showMessage(message, 5000)
         try:
             self.msgbox.done(1)

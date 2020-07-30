@@ -9,9 +9,8 @@ from astropy.wcs import WCS
 from reproject import reproject_interp
 import numpy as np
 from html.parser import HTMLParser
-from PyQt5.QtWidgets import QFileDialog
+from PyQt5.QtWidgets import QFileDialog, QMessageBox
 from sospex.specobj import specCube, specCubeAstro
-
 
 class MyHTMLParser(HTMLParser):
 
@@ -51,6 +50,7 @@ class cloudImage(object):
         self.source = source
         self.data = None
         self.wcs = None
+        self.crota2 = 0
         if pixscale is not None:
             self.pixscale = pixscale
 
@@ -104,7 +104,7 @@ class cloudImage(object):
         # possible contours
         self.contours = None
 
-    def download2MASS(self,band):
+    def download2MASS(self, band):
 
         c = SkyCoord(ra=self.lon*u.degree, dec=self.lat*u.degree, frame='icrs')
         coords = c.to_string('hmsdms',sep=' ')+' Equ J2000'
@@ -242,6 +242,28 @@ class cloudImage(object):
                             self.source += str(int(w // 1))
                     except:
                         pass
+                    try:
+                        if instrument == 'IRAC':
+                            fc = header['FLUXCONV']
+                            print('fc ', fc)
+                            if fc == 0.1069:
+                                self.source += '1'
+                            elif fc == 0.1382:
+                                self.source += '2'
+                            elif fc == 0.5858:
+                                self.source += '3'
+                            elif fc == 0.2026:
+                                self.source += '4'
+                    except:
+                        pass   
+                    if instrument == 'MIPS':
+                        channel = header['CHNLNUM']
+                        if channel == 1:
+                            self.source +='24'
+                        elif channel == 2:
+                            self.source +='70'
+                        elif channel == 3:
+                            self.source +='160'
                 except:
                     self.source = 'unknown'
                 print('Instrument ',self.source)
@@ -260,64 +282,25 @@ class cloudImage(object):
                         self.data = hdu.data
                     except:
                         print('This is not an image')
+                hdulist.close()
                 # NaN for infinite values
                 idx = np.isfinite(self.data)
                 self.data[~idx] = np.nan
                 self.wcs = WCS(header).celestial
-                print(self.wcs)
                 # Check if coordinates are inside the image
-                x,y = self.wcs.wcs_world2pix(self.lon,self.lat,0)
-                print('x y ',x,y)
+                x, y = self.wcs.wcs_world2pix(self.lon,self.lat,0)
                 ny,nx = np.shape(self.data)
+                print('WCS - prerot ', self.wcs)
+                print('Data - prerot ', np.shape(self.data))
                 if x >= 0 and x <= nx and y >= 0 and y  <= ny:
                     print('Source inside the FITS image')
-                    # Check if N aligned with y, if not reproject image
-                    h1 = self.wcs.to_header()
-                    try:
-                        self.crota2 = np.arctan2(-h1["PC2_1"], h1["PC2_2"]) * 180./np.pi
-                    except:
-                        self.crota2 = 0.
-                    print('rotation angle ', self.crota2)
-                    try:
-                        pc11=h1["PC1_1"]
-                        pc12=h1["PC1_2"]
-                        pc21=h1["PC2_1"]
-                        pc22=h1["PC2_2"]
-                        pc1 = -np.hypot(pc11,pc12)
-                        pc2 = np.hypot(pc21,pc22)
-                        rota = np.arctan(pc21/pc22)
-                        print('rotation angle ', rota*180./np.pi)
-                        if (np.abs(rota)*180./np.pi > 5.):
-                            if h1["CRVAL2"] < 0:
-                                pc2=-pc2
-                            h1.update(pc1_1=pc1,pc1_2=0.0,pc2_1=0.0,pc2_2=pc2,orientat=0.)
-                            h1['NAXIS']=2
-                            # Compute the size of the rectangle containing the rotated rectangle
-                            rota = np.abs(rota)
-                            n1 = int(np.rint(nx*np.sin(rota)+ny*np.cos(rota)))
-                            n2 = int(np.rint(nx*np.cos(rota)+ny*np.sin(rota)))
-                            h1['NAXIS1']= n1
-                            h1['NAXIS2']= n2
-                            crpix1=header['CRPIX1']
-                            crpix2=header['CRPIX2']
-                            h1['crpix1'] = crpix1+(n1-nx)/2.
-                            h1['crpix2'] = crpix2+(n2-ny)/2.
-                            self.wcs = WCS(h1)
-                            print("Rotating the image ....")
-                            array, footprint = reproject_interp(hdu, h1)
-                            print('shape of rotated image is ',np.shape(array))
-                            self.data= array
-                            # Save the rotated image
-                            self.saveRotatedFits(image_file)
-                        else:
-                            print('No rotation needed. The rotation angle is ',rota*180./np.pi)                        
-                    except:
-                        print('Rotation failed')
+                    self.rotateImage(image_file, header)
+                    print('WCS ', self.wcs)
+                    print('Data ', np.shape(self.data))
                 else:
                     self.data = None
                     self.wcs = None
                     print('Coordinates out of the selected FITS image')
-                hdulist.close()
             except:
                 self.data = None
                 self.wcs = None
@@ -389,100 +372,124 @@ class cloudImage(object):
                     else:
                         print('This is not an image')
                         return
+                hdulist.close()
                 # NaN for infinite values
                 idx = np.isfinite(self.data)
                 self.data[~idx] = np.nan
-
-                print('header: ',header)
+                #print('header: ',header)
                 self.wcs = WCS(header).celestial
-                print(self.wcs)
                 # Check if coordinates are inside the image
                 x,y = self.wcs.wcs_world2pix(self.lon,self.lat,0)
                 print('x y ',x,y)
                 ny,nx = np.shape(self.data)
                 if x >= 0 and x <= nx and y >= 0 and y  <= ny:
                     print('Source inside the FITS image')
-                    # Check if N aligned with y, if not reproject image
-                    h1 = self.wcs.to_header()
-                    try:
-                        self.crota2 = np.arctan2(-h1["PC2_1"], h1["PC2_2"]) * 180./np.pi
-                    except:
-                        self.crota2 = 0.
-                    print('rotation angle ', self.crota2)
-                    try:
-                        #h1 = self.to_header()
-                        pc11=h1["PC1_1"]
-                        pc12=h1["PC1_2"]
-                        pc21=h1["PC2_1"]
-                        pc22=h1["PC2_2"]
-                        pc1 = -np.hypot(pc11,pc12)
-                        pc2 = np.hypot(pc21,pc22)
-                        rota = np.arctan(pc21/pc22)
-                        print('rotation angle ', rota*180./np.pi)
-                        if (np.abs(rota)*180./np.pi > 5.):
-                            if h1["CRVAL2"] < 0:
-                                pc2=-pc2
-                            h1.update(pc1_1=pc1,pc1_2=0.0,pc2_1=0.0,pc2_2=pc2,orientat=0.)
-                            h1['NAXIS']=2
-                            # Compute the size of the rectangle containing the rotated rectangle
-                            rota = np.abs(rota)
-                            n1 = int(np.rint(nx*np.sin(rota)+ny*np.cos(rota)))
-                            n2 = int(np.rint(nx*np.cos(rota)+ny*np.sin(rota)))
-                            h1['NAXIS1']= n1
-                            h1['NAXIS2']= n2
-                            crpix1=header['CRPIX1']
-                            crpix2=header['CRPIX2']
-                            h1['crpix1'] = crpix1+(n1-nx)/2.
-                            h1['crpix2'] = crpix2+(n2-ny)/2.
-                            self.wcs = WCS(h1)
-                            print("Rotating the image ....")
-                            # The reproject does not work with fitsio format
-                            array, footprint = reproject_interp(hdu, h1)
-                            print('shape of rotated image is ',np.shape(array))
-                            self.data= array
-                            # Save the rotated image
-                            self.saveRotatedFits(image_file)
-                        else:
-                            print('No rotation needed. The rotation angle is ',rota*180./np.pi)                        
-                    except:
-                        print('Rotation failed')
+                    out = self.rotateImage(image_file, header)
+                    print('WCS ', self.wcs)
+                    print('Data ', np.shape(self.data))
                 else:
                     self.data = None
                     self.wcs = None
                     print('Coordinates out of the selected FITS image')
-                hdulist.close()
             except:
                 self.data = None
                 self.wcs = None
                 print('The selected  FITS is not a valid file')
 
+    def rotateImage(self, image_file, header):
+        """ Rotate the FITS image """
+        
+        h1 = self.wcs.to_header()
+        try:
+            self.crota2 = np.arctan2(-h1["PC2_1"], h1["PC2_2"]) * 180./np.pi
+        except:
+            self.crota2 = 0.
+        print('Rotation ', self.crota2)
+        try:
+            print('h1 ',h1)
+            pc11=h1["PC1_1"]
+            pc12=h1["PC1_2"]
+            pc21=h1["PC2_1"]
+            pc22=h1["PC2_2"]
+            pc1 = -np.hypot(pc11,pc12)
+            pc2 = np.hypot(pc21,pc22)
+            rota = np.arctan(pc21/pc22)    
+            crota = rota * 180. / np.pi 
+        except:
+            crota = 0
+        print('crota ', crota)
+        if (np.abs(crota) > 5.):
+            flags = QMessageBox.Yes | QMessageBox.No
+            question = "The image is rotated by {:.2f} degs. \n".format(crota)
+            question += "Do you want to rotate the image to N top, E left ?"
+            msgBox = QMessageBox()
+            msgBox.setText(question)
+            msgBox.setStandardButtons(flags)
+            response = msgBox.exec()
+            if response == QMessageBox.Yes:
+                if h1["CRVAL2"] < 0:
+                    pc2 = -pc2
+                h1.update(pc1_1=pc1, pc1_2=0.0, pc2_1=0.0, pc2_2=pc2, orientat=0.)
+                h1['NAXIS'] = 2
+                # Compute the size of the rectangle containing the rotated rectangle
+                rota = np.abs(rota)
+                ny, nx = np.shape(self.data)
+                n1 = int(np.rint(nx*np.sin(rota)+ny*np.cos(rota)))
+                n2 = int(np.rint(nx*np.cos(rota)+ny*np.sin(rota)))
+                h1['NAXIS1'] = n1
+                h1['NAXIS2'] = n2
+                crpix1 = header['CRPIX1']
+                crpix2 = header['CRPIX2']
+                h1['crpix1'] = crpix1+(n1-nx)/2.
+                h1['crpix2'] = crpix2+(n2-ny)/2.
+                print("Rotating the image ....")
+                # Generate hdu
+                hdu = fits.PrimaryHDU(self.data)
+                hdu.header.extend(header)
+                # Reproject
+                array, footprint = reproject_interp(hdu, h1)
+                print('Shape of rotated image: ', np.shape(array))  
+                # Rotated data and wcs
+                self.data = array
+                self.wcs = WCS(h1)
+                self.crota2 = 0. # there is no rotation left
+                # Save the rotated image
+                self.saveRotatedFits(image_file)
+            else:
+                message = "The image will appear rotated by: {:.2f} ".format(self.crota2)
+                print(message)
+                print('wcs ', self.wcs)
+                print('data ', np.shape(self.data))
+                #self.sb.showMessage(message)
+        else:
+            message = 'No rotation needed. Rotation angle: {:.2f}'.format(crota)
+            #self.sb.showMessage(message)
+            print(message)
+        #except
+        #    message = "Rotation failed"
+        #    self.sb.showMessage(message)
+        #    print(message)
+        print('End of rotation module')
 
     def saveRotatedFits(self, name_orig):
         """ Save the downloaded FITS image """
-
         
         filename, file_extension = os.path.splitext(name_orig)
         #fileroot = os.path.basename(filename)
         #print('file root is ', fileroot)
-
         print('Saving ',filename+'_NE.fits')
-        
         # Dialog to save file
         fd = QFileDialog()
         fd.setLabelText(QFileDialog.Accept, "Save as")
         fd.setNameFilters(["Fits Files (*.fits)","All Files (*)"])
         fd.setOptions(QFileDialog.DontUseNativeDialog)
         fd.setViewMode(QFileDialog.List)
-        fd.selectFile(filename+'_NE.fits')
-        
+        fd.selectFile(filename+'_NE.fits')        
         if (fd.exec()):
             fileName = fd.selectedFiles()
             outfile = fileName[0]
-
-            # Check the 
             filename, file_extension = os.path.splitext(outfile)
-            # basename = os.path.basename(filename)
-            
+            # basename = os.path.basename(filename)            
             # Primary header
             image = self.data
             wcs   = self.wcs
