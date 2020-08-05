@@ -306,10 +306,15 @@ class specCubeAstro(object):
         pix0=0
         self.wave = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3
         self.l0 = np.nanmedian(self.wave)
-        self.watran = hdl['WAVEPOS'].data
+        # self.watran = hdl['WAVEPOS'].data
+        # computing watran
+        ha = hdl['TRANSMISSION'].header
+        self.watran = ha['CDELT1'] * (np.arange(ha['NAXIS1'])-ha['CRPIX1']) + ha['CRVAL1']
         self.uatran = hdl['TRANSMISSION'].data
         #self.baryshift = self.header['WAVSHIFT']*self.header['CDELT3']#/self.l0
         self.baryshift = computeBaryshift(self.header)
+        c = 299792.458
+        print('Barycentric shift [km/s]: ', self.baryshift * c)
 
     def readPACS(self, hdl):
         """ Case of PACS spectral cubes """
@@ -875,16 +880,17 @@ class specCube(object):
         exptime = self.header['EXPTIME']
         exp = hdl[extnames.index('EXPOSURE')].read().astype(float) * exptime
         self.exposure = np.broadcast_to(exp, np.shape(self.flux))
-        pix0 =0 
+        pix0 = 0 
         self.wave = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3
         self.l0 = np.nanmedian(self.wave)
-        self.watran = hdl['WAVEPOS'].read()
+        #self.watran = hdl['WAVEPOS'].read()
+        ha = hdl['TRANSMISSION'].read_header()
+        self.watran = ha['CDELT1'] * (np.arange(ha['NAXIS1']) - ha['CRPIX1']) + ha['CRVAL1']
         self.uatran = hdl['TRANSMISSION'].read()
         #self.baryshift = self.header['WAVSHIFT']*self.header['CDELT3']#/self.l0
-        #print('shift in wavelength ', self.baryshift)
         self.baryshift = computeBaryshift(self.header)
-        #c = 299792.458
-        #print('baryshift comparison ', baryshift * c, self.baryshift * c)
+        c = 299792.458
+        print('Barycentric shift [km/s]: ', self.baryshift * c)
     
     def readPACS(self, hdl):
         """ Case of PACS spectral cubes """
