@@ -6008,6 +6008,7 @@ class GUI (QMainWindow):
                             exposure=expAll, atran = s.atran, instrument=s.instrument,
                             redshift=s.redshift, baryshift=s.baryshift, l0=s.l0,
                             watran=s.watran, uatran=s.uatran, yunit='Jy/pix')
+        print('Computing initial spectrum ...')
         sc.compute_initial_spectrum(name='Pix', spectrum=spec)
         print('initial spectrum computed')
         self.specZoomlimits = [sc.xlimits, sc.ylimits]

@@ -791,7 +791,6 @@ class SpectrumCanvas(MplCanvas):
                     self.xar = self.xa * (1+s.baryshift)
             elif s.instrument == 'FORCAST':
                 self.xar = self.xa * (1+s.baryshift)
-                print('computed baryshift ', s.baryshift * ckms)
         elif self.xunit == 'THz':
             x0 = s.l0 * (1 + s.redshift)
             self.axes.format_coord = lambda x, y: u"{:6.4f} THz ({:5.0f} km/s)  {:10.4f} ".format(x, (ckms/x*1.e-3/x0 - 1)*ckms, y)+sy
@@ -805,13 +804,16 @@ class SpectrumCanvas(MplCanvas):
                     self.xar = self.xa / (1 + s.baryshift)
                      
         if s.instrument in ['FIFI-LS', 'PACS', 'FORCAST']:
-            hiflux = s.flux + 3*s.eflux
-            loflux = s.flux - 3*s.eflux
-            # Repair NaNs
-            idx = np.isnan(hiflux)
-            hiflux[idx] = np.interp(self.x[idx], self.x[~idx], hiflux[~idx])
-            idx = np.isnan(loflux)
-            loflux[idx] = np.interp(self.x[idx], self.x[~idx], loflux[~idx])
+            hiflux = s.flux + 3 * s.eflux
+            loflux = s.flux - 3 * s.eflux
+            # Try to repair NaNs
+            try:
+                idx = np.isnan(hiflux)
+                hiflux[idx] = np.interp(self.x[idx], self.x[~idx], hiflux[~idx])
+                idx = np.isnan(loflux)
+                loflux[idx] = np.interp(self.x[idx], self.x[~idx], loflux[~idx])
+            except:
+                print('Everything is NaN')
             self.efluxLine = self.axes.fill_between(self.x, loflux, hiflux,
                                                     color='blue', alpha=0.2)
         self.fluxLine = self.axes.step(self.x, s.flux, color='blue', label='F', 
@@ -845,9 +847,7 @@ class SpectrumCanvas(MplCanvas):
                                               xy=(-0.15,-0.17), picker=5, xycoords='axes fraction')
         if self.auxiliary1:
             self.x1lannotation = self.axes.annotate(" $\\lambda_x$ = {:.4f} $\\mu$m".format(self.aux1l0),
-                                              xy=(-0.15,-0.22), picker=5, xycoords='axes fraction', color='cyan')
-            
-            
+                                              xy=(-0.15,-0.22), picker=5, xycoords='axes fraction', color='cyan')            
         # Check if vel is defined and draw velocity axis  
         try:
             vlims = self.computeVelLimits()         
@@ -862,9 +862,8 @@ class SpectrumCanvas(MplCanvas):
             # Elevate zorder of first axes (to guarantee axes gets the events)
             self.axes.set_zorder(self.vaxes.get_zorder()+1) # put axes in front of vaxes
             self.axes.patch.set_visible(False) # hide the 'canvas' 
-            # print('l0: ', s.l0)
         except:
-            print('l0 is not defined')
+            print('Reference wavelength not defined')
 
         if s.instrument == 'FIFI-LS':
             try:
@@ -1010,7 +1009,7 @@ class SpectrumCanvas(MplCanvas):
                 lines.append(self.afluxLayer1)
                 visibility.append(self.displayAuxFlux1)
         except:
-            print('l0 is not defined') 
+            print('Auxiliary ref. wavelength not defined') 
 
         # Prepare legend
         print('Prepare legend ')              

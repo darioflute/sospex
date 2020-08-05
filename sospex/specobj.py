@@ -31,6 +31,26 @@ def computeBaryshift(header):
     speed_of_light = const.c.to(vlsr.unit)
     return vlsr / speed_of_light
 
+def computeBaryshiftAstropy(header):
+    # Baryshift from astropy - it's different
+    from astropy import units as u
+    from astropy.time import Time
+    from astropy.coordinates import SkyCoord, EarthLocation
+    lat = header['LAT_STA']
+    lon = header['LON_STA']
+    height = header['ALTI_STA'] * 0.3048 # in meter
+    ra = header['TELRA']
+    dec = header['TELDEC']
+    sofia = EarthLocation.from_geodetic(lat=lat*u.deg, lon=lon*u.deg, height=height*u.m)
+    sc = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
+    dateobs = header['DATE-OBS']
+    barycorr = sc.radial_velocity_correction(kind='barycentric', obstime=Time(dateobs), location=sofia)  
+    heliocorr = sc.radial_velocity_correction('heliocentric', obstime=Time(dateobs), location=sofia) 
+    print('Barycentric correction ', barycorr.to(u.km/u.s), heliocorr.to(u.km/u.s))
+    c = 299792.458
+    #self.baryshift = barycorr.to(u.km/u.s).value/c
+    return(barycorr.to(u.km/u.s).value/c)
+
 
 class specCubeAstro(object):
     """ spectral cube - read with AstroPy routines """
@@ -768,29 +788,8 @@ class specCube(object):
         self.exposure = hdl[extnames.index('EXPOSURE_MAP')].read().astype(float) * exptime/nexp
         # Baryshift
         #self.baryshift = self.computeBaryshift()
-        print('Baryshift ', self.baryshift, computeBaryshift(self.header))
-
-        # Baryshift from astropy - it's different
-        #from astropy import units as u
-        #from astropy.time import Time
-        #from astropy.coordinates import SkyCoord, EarthLocation
-        #lat = self.header['LAT_STA']
-        #lon = self.header['LON_STA']
-        #height = self.header['ALTI_STA'] * 0.3048 # in meter
-        #ra = self.header['TELRA']
-        #dec = self.header['TELDEC']
-        #print('ra, dec ', ra, dec)
-        #sofia = EarthLocation.from_geodetic(lat=lat*u.deg, lon=lon*u.deg, height=height*u.m)
-        #sc = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
-        #dateobs = self.header['DATE-OBS']
-        #barycorr = sc.radial_velocity_correction(kind='barycentric', obstime=Time(dateobs), location=sofia)  
-        #heliocorr = sc.radial_velocity_correction('heliocentric', obstime=Time(dateobs), location=sofia) 
-        #print('total ', (barycorr.to(u.km/u.s) + heliocorr.to(u.km/u.s)) * (1+self.redshift))
-        #print('Barycentric correction ', barycorr.to(u.km/u.s), heliocorr.to(u.km/u.s))
-        #c = 299792.458
-        ##self.baryshift = barycorr.to(u.km/u.s).value/c
-        #print('Baryshift is ', self.baryshift * c, barycorr.to(u.km/u.s).value * (1+self.redshift))
-
+        c = 299792.458 
+        print('Baryshift ', self.baryshift*c, computeBaryshift(self.header)*c,computeBaryshiftAstropy(self.header)*c)
 
           
     def readGREAT(self, hdl):
