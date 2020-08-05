@@ -3,6 +3,35 @@ from astropy.io import fits
 from astropy.wcs import WCS
 from astropy.wcs.utils import proj_plane_pixel_scales
 
+
+def computeBaryshift(header):
+    from astropy.coordinates import FK5, solar_system, UnitSphericalRepresentation, CartesianRepresentation
+    from astropy.time import Time
+    import astropy.units as u
+    import astropy.constants as const
+
+    equinox = header['TELEQUI']
+    time = Time(header['DATE-OBS'])
+    sc = FK5(header['TELRA'] * u.hourangle, header['TELDEC'] * u.deg, equinox=equinox)
+    sc_cartesian = sc.represent_as(UnitSphericalRepresentation).\
+    represent_as(CartesianRepresentation)
+    _, ev = solar_system.get_body_barycentric_posvel('earth', time)
+    helio_vel = sc_cartesian.dot(ev).to(u.km / u.s)
+    # Compute solar velocity wrt LSR
+    # http://conga.oan.es/~alonso/jparsec/doc/jparsec/ephem/stars/StarEphem.html
+    # Location of the LSR in J2000, 18h 03m 50.2s, 30° 00' 16.8", and 19.5 km/s of speed set as radius.
+    sunpos = FK5((18+3/60.+50.2/3600.) * u.hourangle, (30+16.8/3600.) * u.deg, equinox='J2000') # Solar apex
+    # Precess to current equinox
+    #sunpos = sunpos.transform_to(FK5(equinox=equinox))
+    sun_v0 = 19.5 * u.km / u.s   # wikipedia - relative to average velocity of other stars
+    sun_cartesian = sunpos.represent_as(UnitSphericalRepresentation).\
+    represent_as(CartesianRepresentation)
+    sun_vel = sc_cartesian.dot(sun_cartesian) * sun_v0
+    vlsr = helio_vel + sun_vel
+    speed_of_light = const.c.to(vlsr.unit)
+    return vlsr / speed_of_light
+
+
 class specCubeAstro(object):
     """ spectral cube - read with AstroPy routines """
     def __init__(self, infile):
@@ -179,7 +208,6 @@ class specCubeAstro(object):
             print('The unsmoothed transmission is not available')
             self.watran = None
             self.uatran = None
-        self.atran = hdl['TRANSMISSION'].data 
         self.response = hdl['RESPONSE'].data
         nexp = self.header['NEXP']
         exptime = self.header['EXPTIME']
@@ -188,7 +216,7 @@ class specCubeAstro(object):
         self.exposure = hdl['EXPOSURE_MAP'].data.astype(float) * exptime/nexp
           
     def readGREAT(self, hdl):
-        from scipy.special import erf
+        #from scipy.special import erf
         print('This is a GREAT spectral cube')
         #self.cmin = header['DATAMIN']
         #self.cmax = header['DATAMAX']
@@ -211,15 +239,15 @@ class specCubeAstro(object):
         eta_fss=0.97
         eta_mb =0.67
         calib = 971. # approx calibration
-        # Compute calibration at reference frequency
-        calibnu = 2 * 1.38e-16 * (nu0/(c*100))**2
-        print('calibration at nu ', calibnu)
         if self.bunit == 'K (Tmb)':
             self.Tb2Jy = calib*eta_fss*eta_mb
         else: # Case of K (Ta*)
             self.Tb2Jy = calib
         nu0 = self.header['RESTFREQ']  # MHz
         l0 = c/nu0  # in micron
+        # Compute calibration at reference frequency
+        calibnu = 2 * 1.38e-16 * (nu0/(c*100))**2
+        print('calibration at nu ', calibnu)
         # Transform in Jy/pixel
         # Compute the beam size at the wavelength
         bmaj = self.header['BMAJ'] * 3600. # Beam major axis in arcsec
@@ -240,7 +268,7 @@ class specCubeAstro(object):
         self.wave = l0 + l0 * vel / c
         
     def readFORCAST(self, hdl): 
-        print('This is a FORCAST spectral cube')
+        print('This is a FORCAST spectral cube - astropy')
         wcs = WCS(self.header)
         self.wcs = wcs.celestial
         self.crpix3 = self.header['CRPIX3']
@@ -251,16 +279,17 @@ class specCubeAstro(object):
         self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
         self.n = self.header['NAXIS3']
         self.flux = hdl['FLUX'].data
-        self.eflux = np.sqrt(hdl['VARIANCE'].data)
-        # nz, ny, nx = np.shape(self.flux)
-        # print('nz is ',nz)
+        self.eflux = hdl['ERROR'].data
         exptime = self.header['EXPTIME']
         exp = hdl['EXPOSURE'].data.astype(float) * exptime
         self.exposure = np.broadcast_to(exp, np.shape(self.flux))
-        print('shape of exposure is ', np.shape(self.exposure))
         pix0=0
         self.wave = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3
         self.l0 = np.nanmedian(self.wave)
+        self.watran = hdl['WAVEPOS'].data
+        self.uatran = hdl['TRANSMISSION'].data
+        #self.baryshift = self.header['WAVSHIFT']*self.header['CDELT3']#/self.l0
+        self.baryshift = computeBaryshift(self.header)
 
     def readPACS(self, hdl):
         """ Case of PACS spectral cubes """
@@ -384,7 +413,7 @@ class specCubeAstro(object):
             self.wave = self.l0 * (1 + velocity / c) #um
         self.wcs = WCS(self.header).celestial
         #print('WCS ', self.wcs)
-        self.pixscale, ypixscale = proj_plane_pixel_scales(wcs) * 3600. # Pixel scale in arcsec
+        self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
         print('scale is ', self.pixscale)
         # Back to wavelength
         w = self.wave
@@ -396,7 +425,7 @@ class specCubeAstro(object):
         print('bzero, bscale ', bzero, bscale)
         self.flux = bzero + self.flux * bscale   # Flux in units of erg/cm2/s/A
         # Transform into Jy
-        btype = self.header['BTYPE']
+        #btype = self.header['BTYPE']
         #if btype == 'erg/cm2/s/A':
         print('Transform into F_lambda [erg/cm2/s/A] into F_nu [Jy] ...')
         c = 299792458.0 # m/s
@@ -737,6 +766,32 @@ class specCube(object):
         # Exposure contains number of exposures - if all the exposure last the same time, the 
         # following is correct, otherwise it is an approximation
         self.exposure = hdl[extnames.index('EXPOSURE_MAP')].read().astype(float) * exptime/nexp
+        # Baryshift
+        #self.baryshift = self.computeBaryshift()
+        print('Baryshift ', self.baryshift, computeBaryshift(self.header))
+
+        # Baryshift from astropy - it's different
+        #from astropy import units as u
+        #from astropy.time import Time
+        #from astropy.coordinates import SkyCoord, EarthLocation
+        #lat = self.header['LAT_STA']
+        #lon = self.header['LON_STA']
+        #height = self.header['ALTI_STA'] * 0.3048 # in meter
+        #ra = self.header['TELRA']
+        #dec = self.header['TELDEC']
+        #print('ra, dec ', ra, dec)
+        #sofia = EarthLocation.from_geodetic(lat=lat*u.deg, lon=lon*u.deg, height=height*u.m)
+        #sc = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
+        #dateobs = self.header['DATE-OBS']
+        #barycorr = sc.radial_velocity_correction(kind='barycentric', obstime=Time(dateobs), location=sofia)  
+        #heliocorr = sc.radial_velocity_correction('heliocentric', obstime=Time(dateobs), location=sofia) 
+        #print('total ', (barycorr.to(u.km/u.s) + heliocorr.to(u.km/u.s)) * (1+self.redshift))
+        #print('Barycentric correction ', barycorr.to(u.km/u.s), heliocorr.to(u.km/u.s))
+        #c = 299792.458
+        ##self.baryshift = barycorr.to(u.km/u.s).value/c
+        #print('Baryshift is ', self.baryshift * c, barycorr.to(u.km/u.s).value * (1+self.redshift))
+
+
           
     def readGREAT(self, hdl):
         from scipy.special import erf
@@ -804,7 +859,7 @@ class specCube(object):
         #print('GREAT transf completed in ', t2-t1,' s')
         
     def readFORCAST(self, hdl): 
-        print('This is a FORCAST spectral cube')
+        print('This is a FORCAST spectral cube - fitsio')
         wcs = WCS(self.header)
         self.wcs = wcs.celestial
         self.crpix3 = self.header['CRPIX3']
@@ -816,17 +871,22 @@ class specCube(object):
         self.n = self.header['NAXIS3']
         extnames = [f.get_extname() for f in hdl]
         self.flux = hdl[extnames.index('FLUX')].read()
-        self.eflux = np.sqrt(hdl[extnames.index('VARIANCE')].read())
-        # nz, ny, nx = np.shape(self.flux)
-        # print('nz is ',nz)
+        #self.eflux = np.sqrt(hdl[extnames.index('VARIANCE')].read())
+        self.eflux = hdl[extnames.index('ERROR')].read()
         exptime = self.header['EXPTIME']
         exp = hdl[extnames.index('EXPOSURE')].read().astype(float) * exptime
         self.exposure = np.broadcast_to(exp, np.shape(self.flux))
-        print('shape of exposure is ', np.shape(self.exposure))
         pix0 =0 
         self.wave = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3
         self.l0 = np.nanmedian(self.wave)
-
+        self.watran = hdl['WAVEPOS'].read()
+        self.uatran = hdl['TRANSMISSION'].read()
+        #self.baryshift = self.header['WAVSHIFT']*self.header['CDELT3']#/self.l0
+        #print('shift in wavelength ', self.baryshift)
+        self.baryshift = computeBaryshift(self.header)
+        #c = 299792.458
+        #print('baryshift comparison ', baryshift * c, self.baryshift * c)
+    
     def readPACS(self, hdl):
         """ Case of PACS spectral cubes """
         print('This is a PACS spectral cube')
@@ -958,7 +1018,7 @@ class specCube(object):
         print('bzero, bscale ',bzero, bscale)
         self.flux = bzero + self.flux * bscale   # Flux in units of erg/cm2/s/A
         # Transform into Jy
-        btype = self.header['BTYPE']
+        #btype = self.header['BTYPE']
         #if btype == 'erg/cm2/s/A':
         print('Transform into Jy ...')
         c = 299792458.0 # m/s
@@ -1210,7 +1270,7 @@ class Spectrum(object):
         if instrument is not None:
             self.instrument = instrument
         if baryshift is not None:
-            self.baryshift=baryshift
+            self.baryshift = baryshift
         if redshift is not None:
             self.redshift = redshift
         if l0 is not None:

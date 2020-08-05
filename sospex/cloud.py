@@ -384,7 +384,7 @@ class cloudImage(object):
                 ny,nx = np.shape(self.data)
                 if x >= 0 and x <= nx and y >= 0 and y  <= ny:
                     print('Source inside the FITS image')
-                    out = self.rotateImage(image_file, header)
+                    self.rotateImage(image_file, header)
                     print('WCS ', self.wcs)
                     print('Data ', np.shape(self.data))
                 else:

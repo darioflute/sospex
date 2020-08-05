@@ -1956,7 +1956,7 @@ class GUI (QMainWindow):
                 c0, ec0, slope, x, ex, A, eA, sigma, esigma = line
             # Compute FWHM
             FWHM = 2 * np.sqrt(2*np.log(2)) * sigma
-            eFWHM = 2 * np.sqrt(2*np.log(2)) * esigma
+            #eFWHM = 2 * np.sqrt(2*np.log(2)) * esigma
             c = 299792458. # m/s
             FWHMv = c * FWHM / x / 1000.
             eFWHMv = FWHMv / sigma * esigma
@@ -3219,7 +3219,8 @@ class GUI (QMainWindow):
         w = self.specCube.wave
         c = self.continuum
         multiFitLines(m, w, f, c, lineguesses, sc.model, self.lines, points)
-        print('Number of lines ',len(self.lines))
+        #multiFitLinesSingle(m, w, f, c, lineguesses, sc.model, self.lines, points) # Test only
+        print('Number of lines ', len(self.lines))
         # Update L0 and L1 (first two lines)
         self.L0 = self.lines[0][2] # Amplitude == intensity
         # Center of line transformed into velocity wrt ref wav
@@ -3269,7 +3270,7 @@ class GUI (QMainWindow):
         xc,yc = ic.photApertures[0].xy[0]
         i = int(np.rint(xc)); j = int(np.rint(yc))
         lines = []
-        for line in self.lines:
+        for iline, line in enumerate(self.lines):
             lines.append([line[0][j, i], 
                           line[1][j, i], 
                           line[2][j, i], 
@@ -3277,7 +3278,7 @@ class GUI (QMainWindow):
                           line[4][j, i], 
                           line[5][j, i], 
                           line[6][j, i]])
-        sc.updateSpectrum(cont=self.continuum[:, j, i], cslope=self.Cs[j,i], lines=lines)
+        sc.updateSpectrum(cont=self.continuum[:, j, i], cslope=self.Cs[j, i], lines=lines)
         sc.fig.canvas.draw_idle()
         
     def fitLinesOnly(self, points, ncell):
@@ -3496,13 +3497,19 @@ class GUI (QMainWindow):
                             exposure=expAll, atran = s.atran, instrument=s.instrument,
                             redshift=s.redshift, baryshift=s.baryshift, l0=s.l0, 
                             watran=s.watran, uatran=s.uatran, yunit='Jy')
-        elif s.instrument in ['PACS','FORCAST']:
+        elif s.instrument in ['PACS']:
             expAll = np.nanmean(s.exposure[:,yy,xx], axis=1)
             efluxAll = np.sqrt(np.nansum(s.eflux[:,yy,xx]**2, axis=1))
             print('eflux pacs ', np.shape(efluxAll))
             spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, exposure=expAll, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0, yunit='Jy' )
-        # Inherit the x-units of pix 
+        elif s.instrument in ['FORCAST']:
+            expAll = np.nanmean(s.exposure[:,yy,xx], axis=1)
+            efluxAll = np.sqrt(np.nansum(s.eflux[:,yy,xx]**2, axis=1))
+            print('eflux pacs ', np.shape(efluxAll))
+            spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, exposure=expAll, 
+                            instrument=s.instrument,watran=s.watran, uatran=s.uatran,
+                            redshift=s.redshift, l0=s.l0, yunit='Jy', baryshift=s.baryshift)
         istab = self.spectra.index('Pix')
         sc.xunit = self.sci[istab].xunit
         sc.compute_initial_spectrum(name=apname, spectrum=spec)
@@ -3966,7 +3973,7 @@ class GUI (QMainWindow):
             basename = os.path.basename(filename)            
             # Primary header
             image = downloadedImage.data
-            wcs   = downloadedImage.wcs
+            #wcs   = downloadedImage.wcs
             header = downloadedImage.header
             #header = wcs.to_header()
             #header.remove('WCSAXES')
@@ -4776,7 +4783,7 @@ class GUI (QMainWindow):
                                 continuum[iy,ix] = self.continuum[wmin, iy, ix] * t2j
                     # Compute FWHM
                     FWHM = 2 * np.sqrt(2*np.log(2)) * sigma
-                    eFWHM = 2 * np.sqrt(2*np.log(2)) * esigma
+                    #eFWHM = 2 * np.sqrt(2*np.log(2)) * esigma
                     c = 299792458. # m/s
                     FWHMv = c * FWHM / x / 1000.
                     eFWHMv = FWHMv / sigma * esigma
@@ -5418,9 +5425,15 @@ class GUI (QMainWindow):
             if self.bands[itab] == 'Cov':
                 ih0.levels = list(np.arange(ih0.min,ih0.max,(ih0.max-ih0.min)/8))
             else:
-                levels = ih0.median + np.array([0.1,1,2,3,5,10]) * ih0.sdev
-                mask = levels < ih0.max
-                ih0.levels = list(levels[mask])
+                # What about percentiles ?
+                data = ic0.oimage.ravel()
+                data = data[np.isfinite(data)]
+                levels = np.percentile(data,[98, 99, 99.5])
+                print('levels ', levels)
+                ih0.levels = list(levels)
+                #levels = ih0.median + np.array([0.1,1,2,3,5,10]) * ih0.sdev
+                #mask = levels < ih0.max
+                #ih0.levels = list(levels[mask])
         else:
             ih0.levels = levels
         #print('Contour levels are: ',ih0.levels)
@@ -5969,20 +5982,23 @@ class GUI (QMainWindow):
         fluxAll = s.flux[:,y0,x0]
         if s.instrument == 'GREAT':
             spec = Spectrum(s.wave, fluxAll*s.Tb2Jy, instrument=s.instrument,
-                            redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy, bunit=s.bunit, yunit='Jy/pix')
+                            redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy, 
+                            bunit=s.bunit, yunit='Jy/pix')
         elif s.instrument in ['HI','HALPHA','VLA','ALMA','MUSE','IRAM','CARMA','MMA','PCWI']:
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0, yunit='Jy/pix')
         elif s.instrument == 'PACS':
             expAll = s.exposure[:, y0, x0]
             efluxAll = s.eflux[:, y0, x0]
-            spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, exposure=expAll, instrument=s.instrument,
+            spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, exposure=expAll, 
+                            instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0, yunit='Jy/pix')
         elif s.instrument == 'FORCAST':
             expAll = s.exposure[:, y0, x0]
             efluxAll = s.eflux[:, y0, x0]
             spec = Spectrum(s.wave, fluxAll, eflux=efluxAll,
-                            exposure=expAll, instrument=s.instrument,
+                            exposure=expAll, instrument=s.instrument, 
+                            baryshift=s.baryshift, watran=s.watran, uatran=s.uatran,
                             redshift=s.redshift, l0=s.l0, yunit='Jy/pix')
         elif s.instrument == 'FIFI-LS':
             ufluxAll = s.uflux[:, y0, x0]
@@ -5992,7 +6008,6 @@ class GUI (QMainWindow):
                             exposure=expAll, atran = s.atran, instrument=s.instrument,
                             redshift=s.redshift, baryshift=s.baryshift, l0=s.l0,
                             watran=s.watran, uatran=s.uatran, yunit='Jy/pix')
-        print('compute initial spectrum')
         sc.compute_initial_spectrum(name='Pix', spectrum=spec)
         print('initial spectrum computed')
         self.specZoomlimits = [sc.xlimits, sc.ylimits]
@@ -6006,8 +6021,8 @@ class GUI (QMainWindow):
             s.n0 = len(s.wave)//2
         #print('s.n0 updated ', s.n0)
         wave0 = s.wave[s.n0]
-        dwave = (s.wave[s.n0+1]-wave0)*0.5
-        sc.regionlimits = wave0-dwave,wave0+dwave
+        dwave = (s.wave[s.n0+1] - wave0) * 0.5
+        sc.regionlimits = wave0 - dwave, wave0 + dwave
         self.slider = None
         self.slicer = None
 

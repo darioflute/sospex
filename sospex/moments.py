@@ -314,13 +314,14 @@ def multiFitContinuum(m, w, f, c, c0, w0, points, slope, intcp, posCont, kernel,
 
 # Fit of lines
 
-def fitLines(p, m, w, f, lines, model):
+def fitLines(p, m, w, f, lines, fitmodel):
     """Fit the lines defined in the guess."""
-    from lmfit.models import PseudoVoigtModel
+    from lmfit.models import PseudoVoigtModel, GaussianModel
     # f is flux without continuum
     # lines is the list of parameters for each line
     mf = np.isnan(f)
     m[mf] = 0
+    
     if np.sum(m) > 5:
         y = f[m]
         x = w[m]
@@ -331,49 +332,76 @@ def fitLines(p, m, w, f, lines, model):
         
         # Find normalization
         amplitudes = []
-        for line in lines:
-            sigma = line[1] / 2.355
+        for i, line in enumerate(lines):
+            if fitmodel == 'Gauss':
+                sigma = line[1] / 2.355
+            else:
+                sigma = line[1] / 2.
             x0 = line[0]
-            A = line[2] * c / x0**2 * 1.e-20  # same units as flux
-        amplitudes.append(A)
+            # A = line[2] * c / x0**2 * 1.e-20  # same units as flux
+            # Adapt to local amplitude
+            idx = np.abs(x-x0) < sigma
+            if line[2] > 0:
+                try:
+                    A = np.nanmax(y[idx])
+                except:
+                    A = 0
+            else:
+                try:
+                    A = np.nanmin(y[idx])
+                except:
+                    A = 0
+            if fitmodel == 'Gauss':
+                amplitudes.append(A * (np.sqrt(2*np.pi)*sigma))
+            else:
+                alpha = 0.5
+                amplitudes.append(A * sigma * np.sqrt(np.pi/np.log(2)) * (1-alpha))
         amplitudes = np.array(amplitudes)
         norm = np.nanmax(np.abs(amplitudes))
-        y /= norm  
+        y /= norm
+        amplitudes /= norm
         # Define lines
         for i, line in enumerate(lines):
             li = 'l' + str(i) + '_'
-            vmodel = PseudoVoigtModel(prefix=li)
-            if i == 0:
-                params = vmodel.make_params()
-                model = vmodel
+            if fitmodel == 'Gauss':
+                lmodel = GaussianModel(prefix=li)
+                sigma = line[1] / 2.355
             else:
-                params += vmodel.make_params()
-                model += vmodel
+                lmodel = PseudoVoigtModel(prefix=li)
+                sigma = line[1] / 2.
+            if i == 0:
+                params = lmodel.make_params()
+                model = lmodel
+            else:
+                params += lmodel.make_params()
+                model += lmodel
             x0 = line[0]
-            sigma = line[1] / 2.355
-            A = line[2] * c / (x0*x0) * 1.e-20  # same units as flux
-            A /= norm
-            params[li+'center'].set(x0, min=(x0 - sigma/2.), max=(x0 + sigma/2.))
+            #A = line[2] * c / (x0*x0) * 1.e-20  # same units as flux
+            #A /= norm
+            A = amplitudes[i]
+            #print('pre-fit i, A ', i, A * norm / (c  / (x0 * x0 ) *1.e-20))
+            params[li+'center'].set(x0, min=x0-sigma, max=x0+sigma)
             #params[li+'amplitude'].set(A)
             if A > 0:
-                params[li+'amplitude'].set(A, min=0, max=1.1)
+                params[li+'amplitude'].set(A, min=0.1*A, max=2*A)
             elif A == 0:
                 params[li+'amplitude'].set(A, vary=False)
             else:
-                params[li+'amplitude'].set(A, max=-1.1, min=0)# min=2 * A)
-                
-            params[li+'sigma'].set(sigma, min=sigma / 2., max=sigma * 2)
-            if model == 'Gauss':
-                    params[li + 'fraction'].set(0.0, vary=False)
+                params[li+'amplitude'].set(A, max=0.1*A, min=2*A)
+            # Check if Voigt needs fwhm or sigma ...    
+            params[li+'sigma'].set(sigma, min=sigma*0.1, max=sigma*1.5)
+            if fitmodel == 'Gauss':
+                pass
+#                    params[li + 'fraction'].set(0.0, vary=False)
             else:
-                params[li + 'fraction'].set(0.4, vary=True, min=0, max = 0.45)  # No Cauchy part (i.e. Gauss)
+                params[li + 'fraction'].set(0.4, min=0, max = 0.45)  # No Cauchy part (i.e. Gauss)
         # Minimize
         out = model.fit(y, params, x=x, method='leastsq')
         # Return lines fitted parameters
         pars = out.params#.valuesdict()
         nlines = len(lines)
         linepars = []
-        for i in range(nlines):
+        for i, line in enumerate(lines):
             li = 'l' + str(i) + '_'
             center = pars[li + 'center'].value  # Observed
             centerErr = pars[li + 'center'].stderr  # Observed
@@ -383,13 +411,18 @@ def fitLines(p, m, w, f, lines, model):
             sigmaErr = pars[li + 'sigma'].stderr   # Observed
             if sigmaErr is None:
                 sigmaErr = np.nan
-            A =  pars[li+'amplitude'].value * norm
+            A =  pars[li+'amplitude'].value
+            A *= norm
+            #print('post-fit i, A ', i, A/ (c  / (center * center ) *1.e-20))
             Aerr = pars[li+'amplitude'].stderr
             if Aerr is None:
                 Aerr = np.nan
             else:
                 Aerr *= norm
-            alpha = pars[li+'fraction'].value
+            if fitmodel == 'Gauss':
+                alpha = 0
+            else:
+                alpha = pars[li+'fraction'].value
             linepars.append([center, sigma, A, alpha, centerErr, sigmaErr, Aerr])
         return p, linepars
     else:
@@ -404,6 +437,8 @@ def multiFitLines(m, w, f, c, lineguesses, model, linefits, points):
         print('started spawing')
     except RuntimeError:
         pass
+    
+    print('Fit model is ',model)
 
     with mp.Pool(processes=mp.cpu_count()) as pool:
         res = [pool.apply_async(fitLines, 
@@ -425,6 +460,8 @@ def multiFitLines(m, w, f, c, lineguesses, model, linefits, points):
     return 1
 
 def multiFitLinesSingle(m, w, f, c, lineguesses, model, linefits, points):
+
+    print('Fit model is ',model)
 
     for p in points:
         res = fitLines(p, 

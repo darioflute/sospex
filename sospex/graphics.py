@@ -28,9 +28,8 @@ from astropy.coordinates import SkyCoord
 from astropy import units as u
 
 from PyQt5.QtWidgets import (QVBoxLayout, QHBoxLayout, QLineEdit, QSizePolicy, QInputDialog, 
-                             QDialog, QListWidget,
-                             QListWidgetItem,QPushButton,QLabel,QMessageBox,QScrollArea,QWidget)
-from PyQt5.QtGui import QIcon,QFont
+                             QPushButton,QLabel,QMessageBox,QScrollArea,QWidget)
+from PyQt5.QtGui import QFont
 from PyQt5.QtCore import Qt, QSize, pyqtSignal
 from PyQt5.QtTest import QTest
 
@@ -790,6 +789,9 @@ class SpectrumCanvas(MplCanvas):
                 self.xr = self.x * (1+s.baryshift)
                 if s.watran is not None:
                     self.xar = self.xa * (1+s.baryshift)
+            elif s.instrument == 'FORCAST':
+                self.xar = self.xa * (1+s.baryshift)
+                print('computed baryshift ', s.baryshift * ckms)
         elif self.xunit == 'THz':
             x0 = s.l0 * (1 + s.redshift)
             self.axes.format_coord = lambda x, y: u"{:6.4f} THz ({:5.0f} km/s)  {:10.4f} ".format(x, (ckms/x*1.e-3/x0 - 1)*ckms, y)+sy
@@ -797,14 +799,14 @@ class SpectrumCanvas(MplCanvas):
             self.x = ckms/s.wave * 1.e-3
             if s.watran is not None:
                 self.xa = ckms/s.watran * 1.e-3
-            if s.instrument == 'FIFI-LS':
+            if s.instrument in ['FIFI-LS','FORCAST']:
                 self.xr = self.x / (1 + s.baryshift)             
                 if s.watran is not None:
-                    self.xar = self.xa / (1 + s.baryshift)  
-                    
-        if s.instrument in ['FIFI-LS', 'PACS']:
-            hiflux = s.flux + s.eflux
-            loflux = s.flux - s.eflux
+                    self.xar = self.xa / (1 + s.baryshift)
+                     
+        if s.instrument in ['FIFI-LS', 'PACS', 'FORCAST']:
+            hiflux = s.flux + 3*s.eflux
+            loflux = s.flux - 3*s.eflux
             # Repair NaNs
             idx = np.isnan(hiflux)
             hiflux[idx] = np.interp(self.x[idx], self.x[~idx], hiflux[~idx])
@@ -951,17 +953,40 @@ class SpectrumCanvas(MplCanvas):
             self.ax3.set_ylim([np.nanmin(s.exposure)*0.1,np.nanmax(s.exposure)*1.54])
             self.exposureLayer, = self.exposureLine
             self.displayUFlux = False
-            self.displayAtran = False
             self.displayExposure = True
-            lns = self.fluxLine + self.exposureLine + self.linesLine
-            lines = [self.fluxLayer, self.exposureLayer, self.linesLayer]
-            visibility = [self.displayFlux, self.displayExposure, self.displayLines]
             # Add axes
             if self.displayExposure:
                 self.ax3.get_yaxis().set_tick_params(labelright='on', right='on',
                                       direction='out', pad=5, colors='orange')
             else:
                 self.ax3.get_yaxis().set_tick_params(labelright='off', right='off')
+            if s.instrument == 'FORCAST':
+                try:
+                    self.fig.delaxes(self.ax2)
+                except:
+                    pass
+                self.ax2 = self.axes.twinx()
+                self.atranLine = self.ax2.step(self.xar, s.uatran, color='red', 
+                                               label='Atm', where='mid', zorder=8)
+                self.ax2.set_ylim([0.01,1.1])
+                self.atranLayer, = self.atranLine
+                print('Atran layer ', self.atranLayer)
+                self.displayAtran = True
+                print('Displayed atran ')
+                lns = self.fluxLine \
+                   +self.atranLine \
+                   +self.exposureLine \
+                   +self.linesLine
+                lines = [self.fluxLayer, self.atranLayer,
+                     self.exposureLayer, self.linesLayer]
+                visibility = [self.displayFlux, self.displayAtran, 
+                          self.displayExposure, self.displayLines]            
+                print('Defined visibility')
+            else:
+                self.displayAtran = False
+                lns = self.fluxLine + self.exposureLine + self.linesLine
+                lines = [self.fluxLayer, self.exposureLayer, self.linesLayer]
+                visibility = [self.displayFlux, self.displayExposure, self.displayLines]
         # It is possible to draw an external cube only if the vaxis is defined
         try:
             try:
@@ -987,8 +1012,10 @@ class SpectrumCanvas(MplCanvas):
         except:
             print('l0 is not defined') 
 
-        # Prepare legend                
+        # Prepare legend
+        print('Prepare legend ')              
         self.labs = [l.get_label() for l in lns]
+        print('labels ', self.labs)
         leg = self.axes.legend(lns, self.labs, 
                                bbox_to_anchor=(0.95, -0.20),
                                frameon=False,
@@ -1224,11 +1251,11 @@ class SpectrumCanvas(MplCanvas):
                 n1 = (np.where(xf == np.min(v[:,0])))[0][0]
                 n2 = (np.where(xf == np.max(v[:,0])))[0][0] 
                 if self.xunit == 'THz':
-                    y1 = (f - ef)[n2:n1+1]
-                    y2 = (f + ef)[n2:n1+1]
+                    y1 = (f - 3*ef)[n2:n1+1]
+                    y2 = (f + 3*ef)[n2:n1+1]
                 else:
-                    y1 = (f - ef)[n1:n2+1]
-                    y2 = (f + ef)[n1:n2+1]
+                    y1 = (f - 3*ef)[n1:n2+1]
+                    y2 = (f + 3*ef)[n1:n2+1]
                 v1 = np.concatenate(([y2[0]],y1,[y2[-1]],y2[::-1],[y2[0]]))
                 v1[np.isnan(v1)] = np.nanmedian(v1) # Put medians on NaNs
                 v[:,1] = v1
@@ -1275,23 +1302,30 @@ class SpectrumCanvas(MplCanvas):
             if lines is not None:
                 self.fittedlines = True
                 self.voigt = []
-                for line in lines:
+                for iline, line in enumerate(lines):
                     #print('line is ', line)
                     x, sigma, A, alpha, xerr, sigmaerr, Aerr = line
                     c = 299792458. # m/s
                     A = A * 1.e20  * x * x / c  # Retransform in Jy
+                    #print('Plot iline, A ', iline, A)
                     # Add redshift
                     #z = self.spectrum.redshift
                     #x /= (1 + z)
                     #sigma /= (1 + z)
                     # Voigt patch 
-                    xx = np.arange(x-4*sigma,x+4*sigma,sigma/10.) 
-                    sigmag = sigma/np.sqrt(2*np.log(2.))
-                    xx2 = (xx-x)**2
-                    gauss = np.exp(-xx2/(2*sigmag*sigmag))/(np.sqrt(2*np.pi) * sigmag)
-                    cauchy = sigma/np.pi/(xx2+sigma*sigma)
-                    y = np.interp(xx, self.contLine[0].get_xdata(), cont)
-                    model = y + A * ((1-alpha)* gauss + alpha*cauchy)
+                    xx = np.arange(x-7*sigma,x+7*sigma,sigma/10.) 
+                    if alpha == 0:
+                        dx = xx - x
+                        A /= np.sqrt(2*np.pi) * sigma
+                        y = np.interp(xx, self.contLine[0].get_xdata(), cont)
+                        model = y + A * np.exp(-0.5 * (dx / sigma)**2)
+                    else:                    
+                        sigmag = sigma/np.sqrt(2*np.log(2.))
+                        xx2 = (xx-x)**2
+                        gauss = np.exp(-xx2/(2*sigmag*sigmag))/(np.sqrt(2*np.pi) * sigmag)
+                        cauchy = sigma/np.pi/(xx2+sigma*sigma)
+                        y = np.interp(xx, self.contLine[0].get_xdata(), cont)
+                        model = y + A * ((1-alpha)* gauss + alpha*cauchy)
                     # Case of Frequency
                     if self.xunit == 'THz':
                         xx = c/xx * 1.e-6
@@ -1364,33 +1398,41 @@ class SpectrumCanvas(MplCanvas):
             # Update line guesses
             try:
                 if len(self.lines) > 0:
-                    for line in self.lines:
+                    for i, line in enumerate(self.lines):
                         if line is None:
                             pass
                         else:
                             gg = self.lguess[line.n][ncell]
                             line.x0 = gg[0]
                             line.fwhm = gg[1]
+                            sigma = line.fwhm / 2.355
+                            idx = np.abs(self.x - line.x0) < sigma
                             indmin = np.nanargmin(np.abs(self.x-line.x0))
                             yc = self.spectrum.continuum[indmin]
                             if np.isfinite(yc):
                                 line.c0 = yc
                                 line.cs = self.spectrum.cslope
+                                fc = f[idx] - self.spectrum.continuum[idx]
                             else:
                                 # compute continuum from median of regions
                                 line.c0 = med
                                 line.cs = 0.
-                            A = f[indmin]-line.c0
+                                fc = f[idx] - med
+                            #A = f[indmin]-line.c0
                             if line.A > 0:
+                                A = np.nanmax(fc)
                                 if A > 0:
                                     line.A = A
                                 else:
-                                    line.A = 0.01
+                                    pass
+                                    #line.A = 0.01
                             else:
+                                A = np.nanmin(fc)
                                 if A < 0:
                                     line.A = A
                                 else:
-                                    line.A = -0.01
+                                    pass
+                                    #line.A = -0.01
                             line.updateCurves()
             except BaseException:
                 pass
@@ -1497,13 +1539,13 @@ class SpectrumCanvas(MplCanvas):
                 if text == 'F':
                     self.displayFlux =  not self.displayFlux
                     state = self.displayFlux
-                    label = 'Flux'
+                    #label = 'Flux'
                     if self.instrument in ['FIFI-LS', 'PACS']:
                         self.efluxLine.set_visible(self.displayFlux)
                 elif text == 'F$_{u}$':
                     self.displayUFlux = not self.displayUFlux
                     state = self.displayUFlux
-                    label = 'Uflux'
+                    #label = 'Uflux'
                 elif text == 'Atm':
                     self.displayAtran = not self.displayAtran
                     try:
@@ -1511,19 +1553,19 @@ class SpectrumCanvas(MplCanvas):
                     except:
                         pass
                     state = self.displayAtran
-                    label = 'Atm'
+                    #label = 'Atm'
                     self.ax2.get_yaxis().set_visible(self.displayAtran)
                 elif text == 'E':
                     self.displayExposure = not self.displayExposure
                     state = self.displayExposure
-                    label = 'Exp'
+                    #label = 'Exp'
                     self.ax3.get_yaxis().set_visible(self.displayExposure)
                 elif text == 'F$_{x}$':
                     self.displayAuxFlux1 = not self.displayAuxFlux1
-                    label = 'F$_{x}$'
+                    #label = 'F$_{x}$'
                     state = self.displayAuxFlux1
                 elif text == 'Lines':
-                    label = 'Lines'
+                    #label = 'Lines'
                     self.displayLines = not self.displayLines
                     state = self.displayLines
                     self.setLinesVisibility(self.displayLines)
