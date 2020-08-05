@@ -695,15 +695,21 @@ def fitApertureLines(sc, intercept, slope):
     amplitudes = []
     c = 299792458. # m/s
     for line in sc.lines:
-        sigma = line.fwhm / 2.355
         x0 = line.x0
-        A = line.A * (np.sqrt(2*np.pi) * sigma) * c / x0**2 * 1.e-20  # same units as flux
+        if sc.function == 'Voigt':
+            sigma = line.fwhm / 2.
+            alpha = 0.5
+            A = line.A * sigma * np.sqrt(np.pi/np.log(2)) * (1-alpha)
+        else:
+            sigma = line.fwhm / 2.355
+            A = line.A * np.sqrt(2*np.pi) * sigma
+        A *= c / x0**2 * 1.e-20  # same units as flux
         amplitudes.append(A)
-        print('x0, sigma, A, flux', x0, sigma, line.A, A)
     amplitudes = np.array(amplitudes)
     norm = np.nanmax(np.abs(amplitudes))
     print('Fit normalization ', norm)
     y *= c / x**2 * 1.e-20 / norm
+    amplitudes /= norm
     if ec is not None:
         e *= c / x**2 * 1.e-20 / norm
     continuum *= c / x**2 * 1.e-20 / norm
@@ -713,17 +719,20 @@ def fitApertureLines(sc, intercept, slope):
     for i, line in enumerate(sc.lines):
         li = 'l' + str(i) + '_'
         x0 = line.x0 #* (1. + z)
-        sigma = line.fwhm / 2.355 #* (1. + z)
         fit_params.add(li + 'center', value=x0, min=(x0 -  sigma * 0.5), max=(x0 +  sigma * 0.5))
-        A = line.A * (np.sqrt(2*np.pi) * sigma) * c / x0**2 * 1.e-20 / norm
+        A = amplitudes[i]
         #print('A ', A)
         if A > 0:
-            fit_params.add(li + 'amplitude', value=A, min=0., max=A * 2)
+            fit_params.add(li + 'amplitude', value=A, min=0.1 * A, max=A * 2)
         else:
-            fit_params.add(li + 'amplitude', value=A, max=0., min=A * 2)
-        fit_params.add(li + 'sigma', value=sigma, min=sigma * 0.5, max=sigma * 2)
+            fit_params.add(li + 'amplitude', value=A, max=0.1 * A, min=A * 2)
         if sc.function == 'Voigt':
-            fit_params.add(li + 'alpha', value=0.2, max=0.6)
+            sigma = line.fwhm / 2
+            fit_params.add(li + 'sigma', value=sigma, min=sigma * 0.5, max=sigma * 2)
+            fit_params.add(li + 'alpha', value=0.5, max=0.6)
+        else:
+            sigma = line.fwhm / 2.355
+            fit_params.add(li + 'sigma', value=sigma, min=sigma * 0.5, max=sigma * 2)
             
     # Minimize
     if ec is None:

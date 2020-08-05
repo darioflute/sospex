@@ -793,8 +793,8 @@ class specCube(object):
         self.exposure = hdl[extnames.index('EXPOSURE_MAP')].read().astype(float) * exptime/nexp
         # Baryshift
         #self.baryshift = self.computeBaryshift()
-        c = 299792.458 
-        print('Baryshift ', self.baryshift*c, computeBaryshift(self.header)*c,computeBaryshiftAstropy(self.header)*c)
+        #c = 299792.458 
+        #print('Baryshift ', self.baryshift*c, computeBaryshift(self.header)*c,computeBaryshiftAstropy(self.header)*c)
 
           
     def readGREAT(self, hdl):
