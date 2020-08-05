@@ -133,12 +133,12 @@ class CheckVersion(QThread):
             command = 'conda search "darioflute::*[name=sospex]" | tail -1'
             with os.popen(command) as stream:
                 output = stream.read()
-            print('output: ', output.split[-1])
-            if output.split()[-1] == 'failed':
+            if output.split()[-1] == 'darioflute':
+                self.newversion = output.split()[1]
+                print('latest version is: ', self.newversion)
+            else:
                 print('Conda retrieval failed')
                 self.stop()
-            self.newversion = output.split()[1]
-            print('latest version is: ', self.newversion)
             if self.newversion > self.version:
                 print('There is a new version ! ')
                 self.newVersionEmit(self.newversion)
