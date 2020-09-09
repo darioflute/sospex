@@ -20,7 +20,7 @@ requirements:
 
   run:
     - python >=3.7,<=3.8
-    - matplotlib >=3.0.3
+    - matplotlib >=3.3
     - numpy >=1.11
     - scipy
     - astropy >=3.1
