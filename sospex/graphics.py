@@ -167,6 +167,20 @@ def ds9cmap():
     gaiareal_r = {'red': lambda v : np.interp(v, [0,  0.5, 1],[0, 1, 1])[::-1],
             'green': lambda v : np.interp(v, [0, 0.5, 1],[0, 0.5, 1])[::-1],
             'blue': lambda v : np.interp(v, [0, 0.5,  1],[0, 0, 1])[::-1]}
+    redpt = [0,20,40,155,156,165,183,184,190, 191, 213,216,255]
+    red   = [0,0.59,0,0,0.01,.305,0.976,1, 1,.995,.635,.608,1]
+    greenpt = [0,41,  43,69.7,131,156,160,172,192, 193,216,221,255]
+    green   = [0, 0,.048, 0.4, 1,.77,.812,  1,  1,.975,0.1,  0,  0]
+    bluept  = [   0, 42, 69.7,92, 234, 235,240,245,255]
+    blue    = [0.17,  1,  0.4, 0,   0,.008,.15,.355,  1]
+    gaiarainbow = {'red': lambda v : np.interp(v, redpt, red),
+                   'green': lambda v : np.interp(v, greenpt, green),
+                   'blue': lambda v : np.interp(v, bluept, blue)}
+    gaiarainbow_r = {'red': lambda v : np.interp(v, redpt, red)[::-1],
+                   'green': lambda v : np.interp(v, greenpt, green)[::-1],
+                   'blue': lambda v : np.interp(v, bluept, blue)[::-1]}
+    
+    
     # Set aliases, where colormap exists in matplotlib
     cmap_d['ds9bb'] = cmap_d['afmhot']
     cmap_d['ds9grey'] = cmap_d['gray']
@@ -193,6 +207,8 @@ def ds9cmap():
     # Additional gaia map
     register_cmap('real', data=gaiareal)
     register_cmap('real_r', data=gaiareal_r)
+    register_cmap('rainbow', data=gaiarainbow)
+    register_cmap('rainbow_r', data=gaiarainbow_r)
     # The Normalize class is largely based on code provided by Sarah Graves.
     # http://www.ster.kuleuven.be/~pieterd/python/html/plotting/interactive_colorbar.html
 

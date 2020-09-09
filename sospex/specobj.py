@@ -23,10 +23,12 @@ def computeBaryshift(header):
     sunpos = FK5((18+3/60.+50.2/3600.) * u.hourangle, (30+16.8/3600.) * u.deg, equinox='J2000') # Solar apex
     # Precess to current equinox
     #sunpos = sunpos.transform_to(FK5(equinox=equinox))
-    sun_v0 = 19.5 * u.km / u.s   # wikipedia - relative to average velocity of other stars
+    #  Component of peculiar motion of the sun relative to the LSR (local star ref system)
+    sun_v0 = 13.4 * u.km / u.s   # wikipedia - relative to average velocity of other stars
     sun_cartesian = sunpos.represent_as(UnitSphericalRepresentation).\
     represent_as(CartesianRepresentation)
     sun_vel = sc_cartesian.dot(sun_cartesian) * sun_v0
+    print('Heliocentric correction, sun velocity component ', helio_vel, sun_vel)
     vlsr = helio_vel + sun_vel
     speed_of_light = const.c.to(vlsr.unit)
     return vlsr / speed_of_light
@@ -42,7 +44,7 @@ def computeBaryshiftAstropy(header):
     ra = header['TELRA']
     dec = header['TELDEC']
     sofia = EarthLocation.from_geodetic(lat=lat*u.deg, lon=lon*u.deg, height=height*u.m)
-    sc = SkyCoord(ra=ra*u.deg, dec=dec*u.deg)
+    sc = SkyCoord(ra=ra*u.hourangle, dec=dec*u.deg)
     dateobs = header['DATE-OBS']
     barycorr = sc.radial_velocity_correction(kind='barycentric', obstime=Time(dateobs), location=sofia)  
     heliocorr = sc.radial_velocity_correction('heliocentric', obstime=Time(dateobs), location=sofia) 
@@ -312,7 +314,7 @@ class specCubeAstro(object):
         self.watran = ha['CDELT1'] * (np.arange(ha['NAXIS1'])-ha['CRPIX1']) + ha['CRVAL1']
         self.uatran = hdl['TRANSMISSION'].data
         #self.baryshift = self.header['WAVSHIFT']*self.header['CDELT3']#/self.l0
-        self.baryshift = computeBaryshift(self.header)
+        self.baryshift = computeBaryshiftAstropy(self.header)
         c = 299792.458
         print('Barycentric shift [km/s]: ', self.baryshift * c)
 
@@ -795,7 +797,11 @@ class specCube(object):
         #self.baryshift = self.computeBaryshift()
         #c = 299792.458 
         #print('Baryshift ', self.baryshift*c, computeBaryshift(self.header)*c,computeBaryshiftAstropy(self.header)*c)
-
+        try:
+            self.baryshift = computeBaryshiftAstropy(self.header)
+        except:
+            print('Baryshift from header - includes LSR velocity correction')
+            pass
           
     def readGREAT(self, hdl):
         from scipy.special import erf
@@ -875,8 +881,10 @@ class specCube(object):
         self.n = self.header['NAXIS3']
         extnames = [f.get_extname() for f in hdl]
         self.flux = hdl[extnames.index('FLUX')].read()
-        #self.eflux = np.sqrt(hdl[extnames.index('VARIANCE')].read())
-        self.eflux = hdl[extnames.index('ERROR')].read()
+        try:
+            self.eflux = hdl[extnames.index('ERROR')].read()
+        except:
+            self.eflux = np.sqrt(hdl[extnames.index('VARIANCE')].read())
         exptime = self.header['EXPTIME']
         exp = hdl[extnames.index('EXPOSURE')].read().astype(float) * exptime
         self.exposure = np.broadcast_to(exp, np.shape(self.flux))
@@ -888,7 +896,7 @@ class specCube(object):
         self.watran = ha['CDELT1'] * (np.arange(ha['NAXIS1']) - ha['CRPIX1']) + ha['CRVAL1']
         self.uatran = hdl['TRANSMISSION'].read()
         #self.baryshift = self.header['WAVSHIFT']*self.header['CDELT3']#/self.l0
-        self.baryshift = computeBaryshift(self.header)
+        self.baryshift = computeBaryshiftAstropy(self.header)
         c = 299792.458
         print('Barycentric shift [km/s]: ', self.baryshift * c)
     
