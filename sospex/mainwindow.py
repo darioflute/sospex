@@ -1312,7 +1312,7 @@ class GUI (QMainWindow):
         itab = self.itabs.currentIndex()
         ic = self.ici[itab]
         # Deselect pan option on release of mouse
-        if ic.toolbar._active == "PAN":
+        if ic.toolbar.mode == "pan/zoom":
             ic.toolbar.pan()
         # Update patch in all the images
         istab = self.stabs.currentIndex()
@@ -1493,10 +1493,11 @@ class GUI (QMainWindow):
                 sc.fig.canvas.draw_idle()
             else:
                 pass                       
-        # Deselect pan & zoom options on mouse release
-        if sc.toolbar._active == "PAN":
+        # Deselect pan & zoom options on mouse release (version for matplotlib 3.3)
+        state = sc.toolbar.mode
+        if state == "pan/zoom":
             sc.toolbar.pan()
-        if sc.toolbar._active == "ZOOM":
+        elif state == "zoom rect":
             sc.toolbar.zoom()
 
     def onKeyPress2(self, event):
@@ -1608,7 +1609,7 @@ class GUI (QMainWindow):
         self.levelsAction = self.createAction(os.path.join(self.path0,'icons','levels.png'),
                                               'Adjust image levels',
                                               'Ctrl+L',self.changeVisibility)
-        self.cmapAction = self.createAction(os.path.join(self.path0,'icons','rainbow.png'),
+        self.cmapAction = self.createAction(os.path.join(self.path0,'icons','colormap.png'),
                                             'Choose color map', 'Ctrl+m',self.changeColorMap)
         self.blink = 'off'
         self.blinkAction = self.createAction(os.path.join(self.path0,'icons','blink.png'),
@@ -5215,7 +5216,7 @@ class GUI (QMainWindow):
             itab = 0
             self.itabs.setCurrentIndex(itab)            
         ic = self.ici[itab]
-        if ic.toolbar._active == 'ZOOM':
+        if ic.toolbar.mode == 'zoom rect':
             ic.toolbar.zoom()  # turn off zoom
             #self.doZoomAll()
             x = ic.axes.get_xlim()
@@ -5233,7 +5234,7 @@ class GUI (QMainWindow):
             itab = 0
             self.itabs.setCurrentIndex(itab)            
         ic = self.ici[itab]
-        if ic.toolbar._active == 'ZOOM':
+        if ic.toolbar.mode == 'zoom rect':
             ic.toolbar.zoom()  # turn off zoom
             x = ic.axes.get_xlim()
             y = ic.axes.get_ylim()
@@ -6402,7 +6403,7 @@ class GUI (QMainWindow):
         spectrum = self.spectra.index('All')
         sc = self.sci[spectrum]
         ic = self.ici[itab]
-        if ic.toolbar._active == 'ZOOM':
+        if ic.toolbar.mode == 'zoom rect':
             #print('called from toolbar', self.bands[itab])
             ic.toolbar.zoom()  # turn off zoom
         ymin, ymax = ic.axes.get_ylim()
@@ -6460,7 +6461,7 @@ class GUI (QMainWindow):
         """ In the future impose the same limits to all the spectral tabs """
         stab = self.stabs.currentIndex()
         sc = self.sci[stab]
-        if sc.toolbar._active == 'ZOOM':
+        if sc.toolbar.mode == 'zoom rect':
             sc.toolbar.zoom()  # turn off zoom
         xmin,xmax = sc.axes.get_xlim()
         if sc.xunit == 'THz':
@@ -6528,7 +6529,8 @@ class GUI (QMainWindow):
         # Great adaption: https://github.com/glue-viz/ds9norm
         # In the colormap dialog I should add a list of possible stretches (sqrt, log , ...)
         if len(self.ihi) > 0:
-            self.CMlist = ['real','gist_heat','afmhot','ds9heat','gist_earth','gist_gray','inferno','ocean','plasma','seismic','jet',
+            self.CMlist = ['real','gist_heat','afmhot','ds9heat','gist_earth','gist_gray',
+                           'inferno','ocean','rainbow','plasma','seismic','jet',
                            'ds9a','ds9b','ds9cool','ds9i8','ds9aips0','ds9rainbow','ds9he']
             self.STlist = ['linear','sqrt','square','log','power','sinh','asinh']
             self.CClist = ['cyan','lime','magenta','red','blue','purple','black','white','yellow']
