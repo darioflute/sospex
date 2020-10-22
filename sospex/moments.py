@@ -358,6 +358,8 @@ def fitLines(p, m, w, f, lines, fitmodel):
                 amplitudes.append(A * sigma * np.sqrt(np.pi/np.log(2)) * (1-alpha))
         amplitudes = np.array(amplitudes)
         norm = np.nanmax(np.abs(amplitudes))
+        if norm <= 0:
+            norm = 1
         y /= norm
         amplitudes /= norm
         # Define lines

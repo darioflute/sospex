@@ -1433,15 +1433,18 @@ class GUI (QMainWindow):
                 # Propagate to other tabs
                 for sc_ in self.sci:
                     # Check if tab is psf
-                    if sc_.name != 'PSF':
-                        sc_.spectrum.redshift = self.specCube.redshift
-                        for annotation in sc_.annotations:
-                            annotation.remove()
-                        sc_.lannotation.remove()
-                        sc_.zannotation.remove()
-                        sc_.drawSpectrum()
-                        sc_.fig.canvas.draw_idle()
-                    else:
+                    try:
+                        if sc_.name != 'PSF':
+                            sc_.spectrum.redshift = self.specCube.redshift
+                            for annotation in sc_.annotations:
+                                annotation.remove()
+                            sc_.lannotation.remove()
+                            sc_.zannotation.remove()
+                            sc_.drawSpectrum()
+                            sc_.fig.canvas.draw_idle()
+                        else:
+                            pass
+                    except:
                         pass
             elif response == QMessageBox.No:
                 self.sb.showMessage("Redshift value unchanged ", 2000)
@@ -1472,15 +1475,18 @@ class GUI (QMainWindow):
                         pass
                 # Propagate to other tabs
                 for sc_ in self.sci:
-                    if sc_.name != 'PSF':
-                        sc_.spectrum.l0 = self.specCube.l0
-                        for annotation in sc_.annotations:
-                            annotation.remove()
-                        sc_.lannotation.remove()
-                        sc_.zannotation.remove()
-                        sc_.drawSpectrum()
-                        sc_.fig.canvas.draw_idle()
-                    else:
+                    try:
+                        if sc_.name != 'PSF':
+                            sc_.spectrum.l0 = self.specCube.l0
+                            for annotation in sc_.annotations:
+                                annotation.remove()
+                            sc_.lannotation.remove()
+                            sc_.zannotation.remove()
+                            sc_.drawSpectrum()
+                            sc_.fig.canvas.draw_idle()
+                        else:
+                            pass
+                    except:
                         pass
             elif response == QMessageBox.No:
                 self.sb.showMessage("Redshift value unchanged ", 2000)
@@ -3295,6 +3301,7 @@ class GUI (QMainWindow):
         w = self.specCube.wave
         c = self.continuum
         multiFitLines(m, w, f, c, lineguesses, sc.model, self.lines, points)
+        #multiFitLinesSingle(m, w, f, c, lineguesses, sc.model, self.lines, points) # Test only
         # Update L0 and L1 (first two lines)
         self.L0 = self.lines[0][2] # the plane no 2 corresponds to the amplitude
         w0 = self.specCube.l0
@@ -3487,9 +3494,12 @@ class GUI (QMainWindow):
         fluxAll = np.nansum(s.flux[:,yy,xx], axis=1)
         if s.instrument == 'GREAT':
             spec = Spectrum(s.wave, fluxAll*s.Tb2Jy, instrument=s.instrument, 
-                            redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy, bunit=s.bunit, yunit='Jy')
+                            redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy, 
+                            bunit=s.bunit, yunit='Jy',pixscale=s.pixscale)
         elif s.instrument in ['HI','HALPHA','VLA','ALMA','MUSE','IRAM','CARMA','MMA','PCWI']:
-            spec = Spectrum(s.wave, fluxAll, instrument=s.instrument, redshift=s.redshift, l0=s.l0, yunit='Jy')
+            spec = Spectrum(s.wave, fluxAll, instrument=s.instrument, 
+                            redshift=s.redshift, l0=s.l0, yunit='Jy',
+                            pixscale=s.pixscale)
         elif s.instrument == 'FIFI-LS':
             ufluxAll = np.nansum(s.uflux[:,yy,xx], axis=1)
             expAll = np.nanmean(s.exposure[:,yy,xx], axis=1)
@@ -3497,12 +3507,14 @@ class GUI (QMainWindow):
             spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, uflux=ufluxAll,
                             exposure=expAll, atran = s.atran, instrument=s.instrument,
                             redshift=s.redshift, baryshift=s.baryshift, l0=s.l0, 
-                            watran=s.watran, uatran=s.uatran, yunit='Jy')
+                            watran=s.watran, uatran=s.uatran, yunit='Jy',
+                            pixscale=s.pixscale)
         elif s.instrument in ['PACS']:
             expAll = np.nanmean(s.exposure[:,yy,xx], axis=1)
             efluxAll = np.sqrt(np.nansum(s.eflux[:,yy,xx]**2, axis=1))
             print('eflux pacs ', np.shape(efluxAll))
-            spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, exposure=expAll, instrument=s.instrument,
+            spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, exposure=expAll, 
+                            instrument=s.instrument,pixscale=s.pixscale,
                             redshift=s.redshift, l0=s.l0, yunit='Jy' )
         elif s.instrument in ['FORCAST']:
             expAll = np.nanmean(s.exposure[:,yy,xx], axis=1)
@@ -3510,7 +3522,8 @@ class GUI (QMainWindow):
             print('eflux pacs ', np.shape(efluxAll))
             spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, exposure=expAll, 
                             instrument=s.instrument,watran=s.watran, uatran=s.uatran,
-                            redshift=s.redshift, l0=s.l0, yunit='Jy', baryshift=s.baryshift)
+                            redshift=s.redshift, l0=s.l0, yunit='Jy', 
+                            baryshift=s.baryshift,pixscale=s.pixscale)
         istab = self.spectra.index('Pix')
         sc.xunit = self.sci[istab].xunit
         sc.compute_initial_spectrum(name=apname, spectrum=spec)
@@ -3833,6 +3846,9 @@ class GUI (QMainWindow):
                 sc.displayAuxFlux1 = True
                 sc.auxiliary1 = True
                 sc.aux1l0 = self.auxSpecCube1.l0
+                print('Pixel scale of auxiliary cube ', self.auxSpecCube1.pixscale)
+                sc.aux1pixscale = self.auxSpecCube1.pixscale
+                sc.pixscale = self.specCube.pixscale
                 sc.aux1w = self.auxSpecCube1.wave
                 #sc.drawSpectrum()
                 self.onModifiedAperture('Auxiliary spectrum')  # Update the spectrum plot
@@ -4549,6 +4565,9 @@ class GUI (QMainWindow):
                 header['PIXSCAL'] = (self.specCube.pixscale,'Pixel scale [arcsec]' )
                 header['RESOLUN'] = (self.specCube.resolution,'Spectral resolution')
                 header['DETCHAN'] = (self.specCube.header['DETCHAN'],'Data comes from ..')
+                header['FILEGP_B'] = (self.specCube.header['FILEGP_B'],'Blue file group for pipeline')
+                header['FILEGP_R'] = (self.specCube.header['FILEGP_R'],'Red file group for pipeline')
+                header['G_ORD_B'] = (self.specCube.header['G_ORD_B'],'Blue grating order to be used')
                 header['NAXIS'] = (3,'Number of axis')  
                 exptime = self.specCube.header['EXPTIME']
                 nexp = self.specCube.header['NEXP']
@@ -4591,7 +4610,7 @@ class GUI (QMainWindow):
                 #eta_mb =0.67
                 #calib = 971.
                 #factor = calib*eta_fss*eta_mb
-                temperature = flux #/ factor  # Flux is already a Tb
+                temperature = flux * self.npix_per_beam #/ factor  # Flux is already a Tb
                 # Primary header
                 hdu = fits.PrimaryHDU(temperature)
                 header['NAXIS'] = (3,'Number of axis')
@@ -4629,6 +4648,7 @@ class GUI (QMainWindow):
                 # Extensions
                 hdu1 = self.addExtension(flux,'image','Jy',header)
                 hdu2 = self.addExtension(self.specCube.exposure,'coverage',None,header)
+                hdu3 = self.addExtension(self.specCube.eflux,'error',None,header)
                 # Writing the wavelength table
                 wave = [np.array([[x] for x in self.specCube.wave])]
                 layer=np.array([np.arange(len(self.specCube.wave))])
@@ -4639,7 +4659,7 @@ class GUI (QMainWindow):
                 hdw = fits.BinTableHDU.from_columns(coldefs)
                 hdw.header['EXTNAME'] = 'wcs-tab'
                 hdw.header.extend(header)
-                hdul = fits.HDUList([hdu, hdu1, hdu2, hdw])            
+                hdul = fits.HDUList([hdu, hdu1, hdu2, hdu3, hdw])            
                 hdul.writeto(outfile,overwrite=True) 
                 hdul.close()
             elif self.specCube.instrument == 'CARMA':
@@ -4660,7 +4680,7 @@ class GUI (QMainWindow):
                 header['CRVAL3'] = self.specCube.header['CRVAL3']
                 header['CDELT3'] = self.specCube.header['CDELT3']
                 header['CUNIT3'] = ('m/s','Velocity unit')
-                hdu = fits.PrimaryHDU(flux)
+                hdu = fits.PrimaryHDU(flux * self.specCube.npix_per_beam)
                 hdu.header.extend(header)
                 hdul = fits.HDUList([hdu])
                 hdul.writeto(outfile,overwrite=True) 
@@ -4683,7 +4703,7 @@ class GUI (QMainWindow):
                 header['CDELT3'] = self.specCube.header['CDELT3']
                 header['CUNIT3'] = self.specCube.header['CUNIT3']
                 # Flip the cube before saving to order in frequency
-                flux = np.flip(flux, axis=0)
+                flux = np.flip(flux, axis=0) * self.specCube.npix_per_beam
                 hdu = fits.PrimaryHDU(flux)
                 hdu.header.extend(header)
                 hdul = fits.HDUList([hdu])
@@ -4706,7 +4726,7 @@ class GUI (QMainWindow):
                 header['CRVAL3'] = self.specCube.header['CRVAL3']
                 header['CDELT3'] = self.specCube.header['CDELT3']
                 header['CUNIT3'] = ('km/s','Velocity unit')
-                hdu = fits.PrimaryHDU(flux)
+                hdu = fits.PrimaryHDU(flux * self.specCube.npix_per_beam)
                 hdu.header.extend(header)
                 hdul = fits.HDUList([hdu])
                 hdul.writeto(outfile,overwrite=True) 
@@ -5984,15 +6004,16 @@ class GUI (QMainWindow):
         if s.instrument == 'GREAT':
             spec = Spectrum(s.wave, fluxAll*s.Tb2Jy, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy, 
-                            bunit=s.bunit, yunit='Jy/pix')
+                            bunit=s.bunit, yunit='Jy/pix', pixscale=s.pixscale)
         elif s.instrument in ['HI','HALPHA','VLA','ALMA','MUSE','IRAM','CARMA','MMA','PCWI']:
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
-                            redshift=s.redshift, l0=s.l0, yunit='Jy/pix')
+                            redshift=s.redshift, l0=s.l0, yunit='Jy/pix', 
+                            pixscale=s.pixscale)
         elif s.instrument == 'PACS':
             expAll = s.exposure[:, y0, x0]
             efluxAll = s.eflux[:, y0, x0]
             spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, exposure=expAll, 
-                            instrument=s.instrument,
+                            instrument=s.instrument, pixscale=s.pixscale,
                             redshift=s.redshift, l0=s.l0, yunit='Jy/pix')
         elif s.instrument == 'FORCAST':
             expAll = s.exposure[:, y0, x0]
@@ -6000,7 +6021,8 @@ class GUI (QMainWindow):
             spec = Spectrum(s.wave, fluxAll, eflux=efluxAll,
                             exposure=expAll, instrument=s.instrument, 
                             baryshift=s.baryshift, watran=s.watran, uatran=s.uatran,
-                            redshift=s.redshift, l0=s.l0, yunit='Jy/pix')
+                            redshift=s.redshift, l0=s.l0, yunit='Jy/pix',
+                            pixscale=s.pixscale)
         elif s.instrument == 'FIFI-LS':
             ufluxAll = s.uflux[:, y0, x0]
             expAll = s.exposure[:, y0, x0]
@@ -6008,7 +6030,8 @@ class GUI (QMainWindow):
             spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, uflux= ufluxAll,
                             exposure=expAll, atran = s.atran, instrument=s.instrument,
                             redshift=s.redshift, baryshift=s.baryshift, l0=s.l0,
-                            watran=s.watran, uatran=s.uatran, yunit='Jy/pix')
+                            watran=s.watran, uatran=s.uatran, yunit='Jy/pix',
+                            pixscale=s.pixscale)
         print('Computing initial spectrum ...')
         sc.compute_initial_spectrum(name='Pix', spectrum=spec)
         print('initial spectrum computed')
@@ -6244,16 +6267,19 @@ class GUI (QMainWindow):
         fluxAll = np.nansum(s.flux, axis=(1,2))
         if s.instrument == 'GREAT':
             spec = Spectrum(s.wave, fluxAll*s.Tb2Jy, instrument=s.instrument,
-                            redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy, bunit=s.bunit, yunit='Jy')
+                            redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy, 
+                            bunit=s.bunit, yunit='Jy',pixscale=s.pixscale)
         elif s.instrument in ['HI','HALPHA','VLA','ALMA','MUSE','IRAM','CARMA','MMA','PCWI']:
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
-                            redshift=s.redshift, l0=s.l0, yunit='Jy')
+                            redshift=s.redshift, l0=s.l0, yunit='Jy',
+                            pixscale=s.pixscale)
         elif s.instrument in ['PACS', 'FORCAST']:
             expAll = np.nanmean(s.exposure, axis=(1,2))
             efluxAll = np.sqrt(np.nansum(s.eflux*s.eflux, axis=(1,2)))
             spec = Spectrum(s.wave, fluxAll,  eflux=efluxAll, 
                             exposure=expAll,instrument=s.instrument,
-                            redshift=s.redshift, l0=s.l0, yunit='Jy')
+                            redshift=s.redshift, l0=s.l0, yunit='Jy',
+                            pixscale=s.pixscale)
         elif s.instrument == 'FIFI-LS':
             ufluxAll = np.nansum(s.uflux, axis=(1,2))
             expAll = np.nanmean(s.exposure, axis=(1,2))
@@ -6261,7 +6287,7 @@ class GUI (QMainWindow):
             spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, uflux= ufluxAll,
                             exposure=expAll, atran = s.atran, instrument=s.instrument,
                             redshift=s.redshift, baryshift = s.baryshift, l0=s.l0, yunit='Jy')
-        sc.compute_initial_spectrum(name='All', spectrum=spec)
+        sc.compute_initial_spectrum(name='All', spectrum=spec,pixscale=s.pixscale)
         self.specZoomlimits = [sc.xlimits,sc.ylimits]
         sc.cid = sc.axes.callbacks.connect('xlim_changed' or 'ylim_changed', self.doZoomSpec)
         # Start the span selector to show only part of the cube

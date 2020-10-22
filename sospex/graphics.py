@@ -421,8 +421,8 @@ class ImageCanvas(MplCanvas):
             yy = world[0][1]
             " Transform coordinates in string "
             radec = SkyCoord(xx*u.deg, yy*u.deg, frame='icrs')
-            xx = radec.ra.to_string(u.hour,sep=':',precision=1)
-            yy = radec.dec.to_string(sep=':',precision=0)
+            xx = radec.ra.to_string(u.hour,sep=':',precision=2)
+            yy = radec.dec.to_string(sep=':',precision=1)
             return '{:s} {:s} ({:4.0f},{:4.0f})'.format(xx,yy,x,y)
          
         self.axes.format_coord = format_coord
@@ -820,8 +820,8 @@ class SpectrumCanvas(MplCanvas):
                     self.xar = self.xa / (1 + s.baryshift)
                      
         if s.instrument in ['FIFI-LS', 'PACS', 'FORCAST']:
-            hiflux = s.flux + 3 * s.eflux
-            loflux = s.flux - 3 * s.eflux
+            hiflux = s.flux + 1. * s.eflux  # 1 sigma
+            loflux = s.flux - 1. * s.eflux
             # Try to repair NaNs
             try:
                 idx = np.isnan(hiflux)
@@ -862,6 +862,8 @@ class SpectrumCanvas(MplCanvas):
         self.lannotation = self.axes.annotate(" $\\lambda_0$ = {:.4f} $\\mu$m".format(s.l0),
                                               xy=(-0.15,-0.17), picker=5, xycoords='axes fraction')
         if self.auxiliary1:
+            print('auxiliary l0 ', self.aux1l0)
+            print('auxiliary scale ', self.aux1pixscale)
             self.x1lannotation = self.axes.annotate(" $\\lambda_x$ = {:.4f} $\\mu$m".format(self.aux1l0),
                                               xy=(-0.15,-0.22), picker=5, xycoords='axes fraction', color='cyan')            
         # Check if vel is defined and draw velocity axis  
@@ -1279,8 +1281,20 @@ class SpectrumCanvas(MplCanvas):
                 self.afluxLine1[0].set_ydata(af)
                 self.vaxes.draw_artist(self.afluxLine1[0])
                 # If similar wavelength, it should have same limits as main cube
-                if np.abs(self.spectrum.l0 - self.aux1l0) < 1:  # less than 1 micrometer
-                    self.axu1.set_ylim(self.ylimits)
+                dlam = np.abs(self.spectrum.l0 - self.aux1l0)
+                print('Update spectrum: dlam ', dlam)
+                print('aux1 pixel scale ', self.aux1pixscale)
+                dscale = 1 - self.aux1pixscale/self.pixscale
+                print('Update spectrum: dscale ', dscale)
+                if (dlam < 1):
+                    if dscale < 0.1:
+                        self.axu1.set_ylim(self.ylimits)
+                    else:
+                        rescale = (self.aux1pixscale/self.pixscale) ** 2
+                        print('rescaling ', rescale)
+                        y0 = self.ylimits[0] * rescale
+                        y1 = self.ylimits[1] * rescale
+                        self.axu1.set_ylim(y0,y1)
                 else:
                     minf = np.nanmin(af)
                     maxf = np.nanmax(af)
@@ -1390,6 +1404,7 @@ class SpectrumCanvas(MplCanvas):
                 self.aplines = None
                 self.apfit = None
         except:
+            print('Failed to update spectrum')
             pass
         
     def updateGuess(self, f, ncell):

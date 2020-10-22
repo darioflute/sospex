@@ -59,6 +59,8 @@ class specCubeAstro(object):
     def __init__(self, infile):
         import time
         t = time.process_time()
+        
+        print('Using Astropy ...')
         # Option None seems faster than False
         # ignore blank to speed up reading of GREAT cubes
         hdl = fits.open(infile, memmap=None, ignore_blank=True)
@@ -159,6 +161,7 @@ class specCubeAstro(object):
         self.crval3 = self.header['CRVAL3']
         self.cdelt3 = self.header['CDELT3']
         self.objname = self.header['OBJ_NAME']
+        print('Object is ', self.objname)
         try:
             self.filegpid = self.header['FILEGPID']
         except:
@@ -189,15 +192,20 @@ class specCubeAstro(object):
             print('No uncorrected flux defined !')
         self.wave = hdl['WAVELENGTH'].data
         self.n = len(self.wave)
+        print('Size of wave ', self.n)
         #self.vel = np.zeros(self.n)  # prepare array of velocities
         self.x = hdl['X'].data
+        print('X  read')
         self.y = hdl['Y'].data
+        print('Y  read')
         #self.atran = hdl['TRANSMISSION'].data
         self.channel = self.header['DETCHAN']
+        print('channel ', self.channel)
         if self.channel == 'BLUE':
             self.order = self.header["G_ORD_B"]
         else:
             self.order = '1'
+        print('Channel order ', self.channel, self.order)
         # Read reference wavelength from file group name
         try:
             self.l0 = self.header['RESTWAV']
@@ -277,9 +285,9 @@ class specCubeAstro(object):
         # Multiply by the flux fraction in the pixel assuming a 2D Gaussian curve                    
         #pixfraction = 0.5 * erf(self.pixscale*0.5/bmaj) * erf(ypixscale*0.5/bmin)
         #print('Beam fraction on pixel ', pixfraction)
-        npix_per_beam = 1.331 * bmaj * bmin / (self.pixscale * ypixscale)
+        self.npix_per_beam = 1.331 * bmaj * bmin / (self.pixscale * ypixscale)
         # Flux in K /beam. So divide by the number of pixels per beam to have K/pix
-        self.flux /= npix_per_beam
+        self.flux /= self.npix_per_beam
         print('Tb2Jy ', self.Tb2Jy)
         #self.Tb2Jy *= pixfraction
         # Multiplication is delayed in the code to speed up reading
@@ -340,7 +348,6 @@ class specCubeAstro(object):
             print('New exposure computed')
             
         wave = hdl['wcs-tab'].data
-        print('Wvl read')
         nwave = len(np.shape(wave['wavelen']))
         if nwave == 3:
             self.wave = np.concatenate(wave['wavelen'][0])
@@ -846,8 +853,8 @@ class specCube(object):
         pixfraction = erf(self.pixscale*0.5/xsigma) * erf(ypixscale*0.5/ysigma)
         print('Beam fraction on pixel ', pixfraction)
         # Transform Jy/beam to Jy/pixel
-        npix_per_beam = 1.331 * bmaj * bmin / (self.pixscale * ypixscale)
-        print('Pixels per beam', npix_per_beam)
+        self.npix_per_beam = 1.331 * bmaj * bmin / (self.pixscale * ypixscale)
+        print('Pixels per beam', self.npix_per_beam)
         print('Tb2Jy ', self.Tb2Jy)
         #self.Tb2Jy *= pixfraction
         naxes = self.header['NAXIS']
@@ -857,7 +864,7 @@ class specCube(object):
         else:
             self.flux = hdl[0].read()
         # Flux in K, non in K/beam - so  divided by beam and multiply by pix area
-        self.flux /= npix_per_beam
+        self.flux /= self.npix_per_beam
         t1 = time.process_time()
         print('Flux reading completed in ', t1-t,' s')
         #self.flux *= self.Tb2Jy   # Transformed from temperature to S_nu [Jy]  Move this to code
@@ -912,9 +919,11 @@ class specCube(object):
             self.redshift /= c
         except:
             self.redshift = 0.
-        print('Object is ',self.objname)
+        print('Object for PACS is ',self.objname)
         self.flux = hdl[extnames.index('image')].read()
+        print('Flux read')
         self.eflux = hdl[extnames.index('error')].read()
+        print('eflux read')
         try:
             self.exposure = hdl[extnames.index('coverage')].read()
             print('Coverage read')
@@ -925,7 +934,7 @@ class specCube(object):
             print('shape of exp ', np.shape(self.exposure))
             
         wave = hdl[extnames.index('wcs-tab')].read()
-        #print('Wvl read')
+        print('Wvl read')
         nwave = len(np.shape(wave['wavelen']))
         if nwave == 3:
             self.wave = np.concatenate(wave['wavelen'][0])
@@ -933,7 +942,7 @@ class specCube(object):
             self.wave = np.concatenate(wave['wavelen'])
         self.l0 = np.nanmedian(self.wave)
         self.n = len(self.wave)
-        #print('Length of wavelength ',self.n)
+        print('Length of wavelength ',self.n)
         #print('Min and max wavelengths: ', np.nanmin(self.wave), np.nanmax(self.wave))
         #print(np.shape(self.wave))
         #print('image ext ', extnames.index('image'))
@@ -942,7 +951,7 @@ class specCube(object):
         #self.purifyHeader()
         #self.wcs = WCS(self.header)
         self.getWCS()
-        #print('astrometry ', self.wcs)
+        print('astrometry ', self.wcs)
         self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
         self.crpix3 = 1
         w = self.wave
@@ -1185,9 +1194,10 @@ class specCube(object):
             bmaj = self.header['BMAJ']
             bmin = self.header['BMIN']
             area_pixel = pixscale * ypixscale
-            npix_per_beam = 1.331 * bmaj * bmin / area_pixel
-            self.flux /= npix_per_beam
+            self.npix_per_beam = 1.331 * bmaj * bmin / area_pixel
+            self.flux /= self.npix_per_beam
         except:
+            self.npix_per_beam = 1
             print('No beam size given in the header')
         self.pixscale = pixscale * 3600.0 # pixel scale in arcsec
         print('scale is ', self.pixscale)
@@ -1261,7 +1271,7 @@ class Spectrum(object):
     def __init__(self, wave, flux, eflux=None, uflux=None, exposure=None,
                  atran=None, uatran=None, watran=None,
                  instrument=None, baryshift=None, redshift=None, l0=None, area=None, Tb2Jy=None,
-                 bunit=None, yunit=None):
+                 bunit=None, yunit=None, pixscale=None):
         self.wave = wave
         self.flux = flux
         if eflux is not None:
@@ -1298,4 +1308,8 @@ class Spectrum(object):
             self.yunit = 'Jy/pix'
         else:
             self.yunit = yunit
+        if pixscale is None:
+            self.pixscale = 1
+        else:
+            self.pixscale = pixscale
         self.continuum =  np.full(len(wave), np.nan)
