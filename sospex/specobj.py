@@ -192,19 +192,19 @@ class specCubeAstro(object):
             print('No uncorrected flux defined !')
         self.wave = hdl['WAVELENGTH'].data
         self.n = len(self.wave)
-        print('Size of wave ', self.n)
+        #print('Size of wave ', self.n)
         #self.vel = np.zeros(self.n)  # prepare array of velocities
         self.x = hdl['X'].data
-        print('X  read')
+        #print('X  read')
         self.y = hdl['Y'].data
-        print('Y  read')
+        #print('Y  read')
         self.channel = self.header['DETCHAN']
-        print('channel ', self.channel)
+        #print('channel ', self.channel)
         if self.channel == 'BLUE':
             self.order = self.header["G_ORD_B"]
         else:
             self.order = '1'
-        print('Channel order ', self.channel, self.order)
+        #print('Channel order ', self.channel, self.order)
         # Read reference wavelength from file group name
         try:
             self.l0 = self.header['RESTWAV']
@@ -223,7 +223,7 @@ class specCubeAstro(object):
             except:
                 self.l0 = np.nanmedian(self.wave)
                 print('No file group present, assumed central wavelength ', self.l0)
-        print('min wave ', np.nanmin(self.wave))
+        #print('min wave ', np.nanmin(self.wave))
         try:
             utran = hdl['UNSMOOTHED_TRANSMISSION'].data
             w = utran[0,:]
@@ -372,7 +372,7 @@ class specCubeAstro(object):
         hdu.header['CTYPE1']=header['CTYPE1']
         hdu.header['CTYPE2']=header['CTYPE2']
         self.wcs = WCS(hdu.header).celestial
-        print('astrometry ', self.wcs)
+        #print('astrometry ', self.wcs)
         self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
         self.crpix3 = 0
         w = self.wave
