@@ -198,7 +198,6 @@ class specCubeAstro(object):
         print('X  read')
         self.y = hdl['Y'].data
         print('Y  read')
-        #self.atran = hdl['TRANSMISSION'].data
         self.channel = self.header['DETCHAN']
         print('channel ', self.channel)
         if self.channel == 'BLUE':
@@ -238,6 +237,7 @@ class specCubeAstro(object):
             print('The unsmoothed transmission is not available')
             self.watran = None
             self.uatran = None
+        self.atran = hdl['TRANSMISSION'].data
         self.response = hdl['RESPONSE'].data
         nexp = self.header['NEXP']
         exptime = self.header['EXPTIME']
