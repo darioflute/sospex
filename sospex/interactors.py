@@ -623,7 +623,8 @@ class VoronoiInteractor(QObject):
         for s in self.segments + self.rays:
             s.remove()
         self.drawVoronoi()
-        #print('Number of sites ', len(self.sites))
+        # Redraw the polygons
+        self.canvas.draw_idle()
         # Notify callback
         self.modSignal.emit('voronoi modified')
 

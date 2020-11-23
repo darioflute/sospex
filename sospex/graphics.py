@@ -1122,7 +1122,7 @@ class SpectrumCanvas(MplCanvas):
         x1, x2 = self.xlimits
         c = 299792.458  # speed of light in km/s
         s = self.spectrum
-        vx1 = (x1 / (1 + s.redshift) / s.l0 - 1.) * c
+        vx1 = (x1 / (1 + s.redshift) / s.l0 - 1.) * c  # Velocity at rest
         vx2 = (x2 / (1 + s.redshift) / s.l0 - 1.) * c
         if self.xunit == 'THz':
             return (vx2, vx1)
@@ -1268,11 +1268,11 @@ class SpectrumCanvas(MplCanvas):
                 n1 = (np.where(xf == np.min(v[:,0])))[0][0]
                 n2 = (np.where(xf == np.max(v[:,0])))[0][0] 
                 if self.xunit == 'THz':
-                    y1 = (f - 3*ef)[n2:n1+1]
-                    y2 = (f + 3*ef)[n2:n1+1]
+                    y1 = (f - ef)[n2:n1+1]
+                    y2 = (f + ef)[n2:n1+1]
                 else:
-                    y1 = (f - 3*ef)[n1:n2+1]
-                    y2 = (f + 3*ef)[n1:n2+1]
+                    y1 = (f - ef)[n1:n2+1]
+                    y2 = (f + ef)[n1:n2+1]
                 v1 = np.concatenate(([y2[0]],y1,[y2[-1]],y2[::-1],[y2[0]]))
                 v1[np.isnan(v1)] = np.nanmedian(v1) # Put medians on NaNs
                 v[:,1] = v1

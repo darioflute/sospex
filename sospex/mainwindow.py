@@ -3119,10 +3119,10 @@ class GUI (QMainWindow):
                 for cell in range(self.ncells):
                     i0, i1, i2, i3 = self.getContinuumGuess(cell)
                     idx = np.where(self.regions == cell)
-                    #i1map[idx] = i1
-                    #i2map[idx] = i2
-                    i1map[idx] = i0
-                    i2map[idx] = i3
+                    i1map[idx] = i1
+                    i2map[idx] = i2
+                    #i1map[idx] = i0
+                    #i2map[idx] = i3
                 # B) Convolve each limit map with a kernel
                 kernel = np.array([[1/16., 1/8., 1/16.], 
                                    [1/8., 1/4., 1/8.],
