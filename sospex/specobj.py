@@ -108,6 +108,8 @@ class specCubeAstro(object):
             self.readMUSE(hdl)
         elif self.instrument == 'IRAM':
             self.readIRAM(hdl)
+        elif self.instrument == 'SITELLE':
+            self.readSITELLE(hdl)
         elif self.instrument == 'PCWI':
             self.readPCWI(hdl)
         elif self.instrument == 'HALPHA':
@@ -531,6 +533,25 @@ class specCubeAstro(object):
         self.redshift = 0
         self.l0 = np.nanmedian(self.wave)
         #self.l0 = (self.header['WAVELMIN']+self.header['WAVELMAX']) * 0.5 * 1.e-3 # wav in nm
+    
+    def readSITELLE(self, hdl):
+        """SITELLE integral field spectrometer at CFH"""
+        self.objname = self.header['OBJECT']
+        print('Object of SITELLE is ', self.objname)
+        self.flux = hdl['PRIMARY'].data  # 10**(-17)*erg/s/cm**2/Angstrom
+        nz, ny, nx = np.shape(self.flux)
+        self.n = nz
+        self.header = hdl['PRIMARY'].header
+        wcs = WCS(self.header, naxis=2)
+        self.wcs = wcs.celestial
+        self.crpix3 = self.header['CRPIX3']
+        self.crval3 = self.header['CRVAL3']
+        self.cdelt3 = self.header['CDELT3']
+        self.wave = 1. / (self.crval3 + self.cdelt3 * np.arange(self.n)) * 1.e4 #um
+        self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
+        print('scale is ', self.pixscale)
+        self.redshift = 0
+        self.l0 = np.nanmedian(self.wave)
     
     def readPCWI(self, hdl):
         """
