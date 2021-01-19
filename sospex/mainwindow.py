@@ -453,20 +453,29 @@ class GUI (QMainWindow):
         exportAperture(self)
         
     def importApertureAction(self):
-        importAperture(self)
+        try:
+            importAperture(self)
+        except:
+            print('Problems with your file')
         
     def exportGuessesAction(self):
         exportGuesses(self)
         
     def importGuessesAction(self):
-        importGuesses(self)
-        print('Imported ', self.ncells, ' cells.')
+        try:
+            importGuesses(self)
+            print('Imported ', self.ncells, ' cells.')
+        except:
+            print('Problems with your file')
         
     def exportContoursAction(self):
         exportContours(self)
         
     def importContoursAction(self):
-        importContours(self)
+        try:
+            importContours(self)
+        except:
+            print('Problems with your file.')
 
     def showHeader(self):
         """ Show header of the spectral cube """
@@ -1924,6 +1933,9 @@ class GUI (QMainWindow):
         """Fit lines after defining guesses."""
         istab = self.stabs.currentIndex()
         sc = self.sci[istab]
+        if sc.emslines+sc.abslines == 0:
+            ic, eic, s, es = fitApertureContinuum(sc)
+            return
         print('Fitting lines ')
         try:
             # 1. Fit the continuum
@@ -3210,6 +3222,8 @@ class GUI (QMainWindow):
         
     def fitLines(self, points):
         """Fit lines inside a defined region."""
+        if len(self.lines) == 0:
+            return
         m = self.Mmask
         # Find cell and guesses
         sc = self.sci[self.spectra.index('Pix')]
@@ -3290,6 +3304,8 @@ class GUI (QMainWindow):
         
     def fitLinesOnly(self, points, ncell):
         """Fit lines inside a defined region."""
+        if len(self.lines) == 0:
+            return
         m = self.Mmask
         # Find cell and guesses
         sc = self.sci[self.spectra.index('Pix')]
