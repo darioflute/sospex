@@ -1335,7 +1335,8 @@ class LineInteractor(QObject):
         except BaseException:
             print('no markers')
         try:
-            self.gauss.remove()
+            #self.gauss.remove()
+            self.poly.remove()
         except BaseException:
             print('no line')
         self.canvas.draw_idle()
@@ -1350,13 +1351,14 @@ class LineInteractor(QObject):
         x = c/x * 1.e-6  # um to THz or viceversa
         self.xy = [(i, j) for (i, j) in zip(x, y)]
         self.line.set_data(zip(*self.xy))
-        xy = self.gauss.get_xy()
+        #xy = self.gauss.get_xy()
+        xy = self.poly.get_xy()
         x, y = zip(*xy)
         x = np.asarray(x)
         y = np.asarray(y)
         x = c/x * 1.e-6
         xy = [(i, j) for (i, j) in zip(x, y)]
-        self.gauss.set_xy(xy)
+        self.poly.set_xy(xy)
         # change line parameters
         self.x0 = c / self.x0 * 1.e-6
         self.fwhm *= c / self.x0**2 * 1.e-6

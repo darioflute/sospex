@@ -809,6 +809,7 @@ class SpectrumCanvas(MplCanvas):
                 self.xar = self.xa * (1+s.baryshift)
         elif self.xunit == 'THz':
             x0 = s.l0 * (1 + s.redshift)
+            sy = self.yunit
             self.axes.format_coord = lambda x, y: u"{:6.4f} THz ({:5.0f} km/s)  {:10.4f} ".format(x, (ckms/x*1.e-3/x0 - 1)*ckms, y)+sy
             self.axes.set_xlabel('$\\nu$ [THz]', picker=True)
             self.x = ckms/s.wave * 1.e-3
