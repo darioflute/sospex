@@ -5903,7 +5903,7 @@ class GUI (QMainWindow):
             #ts = time.process_time()
             ic = self.ici[self.bands.index(ima)]
             if ima == 'Flux':
-                image = s.flux[s.n0,:,:]
+                image = s.flux[s.n0,:,:].copy()
                 if s.instrument == 'GREAT':
                     image *= s.Tb2Jy
             elif ima == 'uFlux':

@@ -823,18 +823,21 @@ class cloudImage(object):
             #idx = data.index(band+'-band FITS')
             #print("Value is:", values[idx-1])
             #file = 'https://dr12.sdss.org/'+values[idx-1]
-            response = urllib.request.urlopen(file)
-            content= response.read()        
-            fitsfile = BytesIO(bz2.decompress(content))
-            hdulist=fits.open(fitsfile,memmap=False)
-            self.header = hdulist['PRIMARY'].header
-            self.data = hdulist['PRIMARY'].data
-            print('shape ', np.shape(self.data))
-            hdulist.close()
-            self.wcs = WCS(self.header)
-            h1 = self.wcs.to_header()
-            self.crota2 = np.arctan2(-h1["PC2_1"], h1["PC2_2"]) * 180./np.pi
-            print('rotation angle ', self.crota2)
+            try:
+                response = urllib.request.urlopen(file)
+                content= response.read()        
+                fitsfile = BytesIO(bz2.decompress(content))
+                hdulist=fits.open(fitsfile,memmap=False)
+                self.header = hdulist['PRIMARY'].header
+                self.data = hdulist['PRIMARY'].data
+                print('shape ', np.shape(self.data))
+                hdulist.close()
+                self.wcs = WCS(self.header)
+                h1 = self.wcs.to_header()
+                self.crota2 = np.arctan2(-h1["PC2_1"], h1["PC2_2"]) * 180./np.pi
+                print('rotation angle ', self.crota2)
+            except:
+                print('Problems with retrieving file.')
         else:
             self.data = None
             self.wcs = None

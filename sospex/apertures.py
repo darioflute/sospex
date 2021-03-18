@@ -3,6 +3,7 @@ from PyQt5.QtCore import pyqtSignal,QObject
 from matplotlib.artist import Artist
 from sospex.interactors import dist_point_to_segment
 
+
 class photoAperture(QObject):
     """ 
     Photometric aperture 

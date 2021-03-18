@@ -267,6 +267,11 @@ class specCubeAstro(object):
             self.flux = (hdl['PRIMARY'].data)[0,:,:,:]
         else:
             self.flux = hdl['PRIMARY'].data
+        # Generate the exposure mask    
+        idx = (self.flux > self.header['DATAMAX']) | (self.flux < self.header['DATAMIN'])
+        self.flux[idx] = np.nan
+        self.exposure = np.asarray(~idx, np.dfloat32)           
+        #
         self.bunit = self.header['BUNIT']
         eta_fss=0.97
         eta_mb =0.67
@@ -716,7 +721,7 @@ class specCube(object):
                 idx = self.flux > self.header['DATAMAX']
                 #blank = self.header['BZERO']+self.header['BSCALE']*self.header['BLANK']
                 #idx = self.flux == blank
-                self.flux[idx] = np.nan
+                #self.flux[idx] = np.nan
                 self.exposure = ~idx            
             except:
                 print('No data max in the header')
@@ -885,6 +890,13 @@ class specCube(object):
         else:
             self.flux = hdl[0].read()
         # Flux in K, non in K/beam - so  divided by beam and multiply by pix area
+        # Generate the exposure mask [remove data exceeding max and min values]  
+        #print('Datamax', self.header['DATAMAX'])
+        #print('Datamin', self.header['DATAMIN'])
+        #idx = (self.flux > self.header['DATAMAX']) | (self.flux < self.header['DATAMIN'])
+        #self.flux[idx] = np.nan
+        #self.exposure = np.asarray(~idx, np.dfloat32)           
+        #
         self.flux /= self.npix_per_beam
         t1 = time.process_time()
         print('Flux reading completed in ', t1-t,' s')
@@ -892,7 +904,8 @@ class specCube(object):
         pix0 = 0
         vel = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3
         self.l0 = l0
-        self.wave = l0 + l0 * vel / c
+        print('Reference wavelength ', self.l0)
+        self.wave = l0 * (1 + vel / c)
         #t2 = time.process_time()
         #print('GREAT transf completed in ', t2-t1,' s')
         
