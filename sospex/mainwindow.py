@@ -142,7 +142,7 @@ class CheckVersion(QThread):
                 self.stop()
             if self.newversion > self.version:
                 print('There is a new version ! ')
-                self.newVersionEmit(self.newversion)
+                self.newVersion.emit(self.newversion)
                 message = 'New version reached'
                 self.stop()
             else:
