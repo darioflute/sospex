@@ -229,6 +229,14 @@ class GUI (QMainWindow):
         # Add panels to splitter
         self.hsplitter.addWidget(self.imagePanel)
         self.hsplitter.addWidget(self.spectralPanel)
+        leftWidgetIndex = self.hsplitter.indexOf(self.imagePanel)
+        rightWidgetIndex = self.hsplitter.indexOf(self.spectralPanel)
+        self.hsplitter.setStretchFactor(leftWidgetIndex, 1)
+        self.hsplitter.setStretchFactor(rightWidgetIndex, 1)
+        self.hsplitter.setCollapsible(leftWidgetIndex, False)
+        self.hsplitter.setCollapsible(rightWidgetIndex, False)
+        #self.hsplitter.setSizes([1,1])
+        #self.hsplitter.setSizes([400])
         # Add panels to main layout
         mainLayout.addWidget(self.hsplitter)
         wid.setLayout(mainLayout)
@@ -6795,6 +6803,8 @@ def main():
     screen_resolution = app.desktop().screenGeometry()
     width = screen_resolution.width()
     gui.setGeometry(width*0.005, width*0.005, width*0.99, width*0.5)
+    gui.imagePanel.setMinimumWidth(width*0.35)
+    gui.spectralPanel.setMinimumWidth(width*0.35)
     gui.hsplitter.setSizes ([width*0.48,width*0.48])
     # Add an icon for the application
     app.setWindowIcon(QIcon(os.path.join(gui.path0,'icons','sospex.png')))
