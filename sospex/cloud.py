@@ -285,7 +285,8 @@ class cloudImage(object):
                 hdulist.close()
                 # NaN for infinite values
                 idx = np.isfinite(self.data)
-                self.data[~idx] = np.nan
+                if np.sum(~idx) > 0:
+                    self.data[~idx] = np.nan
                 self.wcs = WCS(header).celestial
                 # Check if coordinates are inside the image
                 x, y = self.wcs.wcs_world2pix(self.lon,self.lat,0)
