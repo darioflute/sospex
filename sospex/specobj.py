@@ -100,6 +100,8 @@ class specCubeAstro(object):
             self.readGREAT(hdl)
         elif self.instrument == 'PACS':
             self.readPACS(hdl)
+        elif self.instrument == 'SPIRE':
+            self.readSPIRE(hdl)
         elif self.instrument == 'FORCAST':
             self.readFORCAST(hdl)
         elif self.instrument == 'HI':
@@ -385,6 +387,56 @@ class specCubeAstro(object):
         w = self.wave
         self.crval3 = w[0]
         self.cdelt3 = np.median(w[1:] - w[:-1])
+
+    def readSPIRE(self, hdl):
+        """ Case of SPIRE spectral cubes """
+        print('This is a SPIRE spectral cube')
+        self.objname = self.header['OBJECT']
+        #try:
+        #    self.redshift = self.header['REDSHFTV']*1000. # in km/s
+        #    c = 299792458.0  # speed of light in m/s 
+        #    self.redshift /= c
+        #except:
+        # Does not exist in original cube, but can be added later
+        try:
+            self.redshift = self.header['REDSHIFT']
+        except:
+            self.redshift = 0.
+        print('Object is ',self.objname)
+        self.flux = hdl['image'].data 
+        self.eflux = hdl['error'].data
+        self.exposure = hdl['coverage'].data
+            
+        nz,ny,nx = np.shape(self.flux)
+        imah = hdl['image'].header
+        crpix3 = imah['CRPIX3']
+        crval3 = imah['CRVAL3']
+        cdelt3 = imah['CDELT3']
+        pix0 = 0
+        self.n = nz
+        frequency = cdelt3 * (np.arange(self.n) - crpix3 + pix0) + crval3 # Hz
+        self.wave = 299792.458 / frequency
+        self.l0 = np.nanmedian(self.wave)
+        #self.n = len(self.wave)
+        #print('Length of wavelength ',self.n)
+        print('Min and max wavelengths: ', np.nanmin(self.wave), np.nanmax(self.wave))
+        print('wavelenght shape ', np.shape(self.wave))
+        #self.header = hdl['image'].header
+        self.wcs = WCS(imah).celestial
+        self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
+        pixelstd = (self.pixscale/206264.8)**2 # pixel size in sterad
+        self.flux *= 1.e26 * pixelstd  # transformed  in Jy/pixel
+        self.eflux *= 1.e26 * pixelstd 
+        self.crpix3 = 0
+        w = self.wave
+        # Flip order to increasing wavelength
+        self.wave = self.wave[::-1]
+        self.flux = self.flux[::-1,:,:]
+        self.eflux = self.eflux[::-1,:,:]
+        self.exposure = self.exposure[::-1,:,:]
+        self.crval3 = w[0]
+        self.cdelt3 = np.median(w[1:] - w[:-1])
+
         
     def readHI(self, hdl):
         """Case of generic radio cube (in this case HI cubes from Westerbrock)."""
