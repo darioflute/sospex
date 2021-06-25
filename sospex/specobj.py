@@ -490,6 +490,19 @@ class specCubeAstro(object):
         elif naxis == 4: # polarization
             self.flux = data[0,:,:,:]
         nz, ny, nx = np.shape(self.flux)
+        # Flux in HERACLES data is expressed in T_MB (Main Beam)
+        # From Leroy et al. 2009, we know that  T_MB = F_eff/B_eff T_A = 0.91/0.52 T_A = 1.75 T_A,
+        # In reality, the calibration paper of Kramer
+        # (https://safe.nrao.edu/wiki/pub/KPAF/KfpaPipelineReview/kramer_1997_cali_rep.pdf)
+        # show in the Table at page 17 that this is a mean value.
+        # Once converted the T_MB in T_A, we can convert to Flux in Jy using the Kramer's formula:
+        # S_nu/T_A = 3.906 F_err/eta_A [Jy/K]
+        # In the case of HERACLES data at 230 GHz, this means:
+        # S_nu [Jy] = 3.906 0.86/0.32 T_A[K] = 3.906 0.86/0.32 *T_MB[K]/1.75 = 5.9985 * T_MB[K]
+        # The result is in Jy/beam
+        self.Tmb2Jy = 5.9985
+        self.flux *= self.Tmb2Jy
+        
         self.n = nz
         print('nz: ',nz, self.header['NAXIS3'])
         wcs = WCS(self.header)
@@ -510,6 +523,18 @@ class specCubeAstro(object):
             self.wave = self.l0 * (1 + velocity/c) #um
         self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
         print('scale is ', self.pixscale)
+
+        # Now transform into Jy/pix
+        # Compute the beam size at the wavelength
+        bmaj = self.header['BMAJ'] * 3600. # Beam major axis in arcsec
+        bmin = self.header['BMIN'] * 3600. # Beam minor axis in arcsec
+        # Multiply by the flux fraction in the pixel assuming a 2D Gaussian curve                    
+        #pixfraction = 0.5 * erf(self.pixscale*0.5/bmaj) * erf(ypixscale*0.5/bmin)
+        #print('Beam fraction on pixel ', pixfraction)
+        self.npix_per_beam = 1.331 * bmaj * bmin / (self.pixscale * ypixscale)
+        # Flux in Jy /beam. So divide by the number of pixels per beam to have Jy/pix
+        self.flux /= self.npix_per_beam
+
         # Back to wavelength
         w = self.wave
         self.crval3 = w[0]
@@ -1101,6 +1126,20 @@ class specCube(object):
         elif naxis == 4: # polarization
             self.flux = data[0,:,:,:]
         nz, ny, nx = np.shape(self.flux)
+
+        # Flux in HERACLES data is expressed in T_MB (Main Beam)
+        # From Leroy et al. 2009, we know that  T_MB = F_eff/B_eff T_A = 0.91/0.52 T_A = 1.75 T_A,
+        # In reality, the calibration paper of Kramer
+        # (https://safe.nrao.edu/wiki/pub/KPAF/KfpaPipelineReview/kramer_1997_cali_rep.pdf)
+        # show in the Table at page 17 that this is a mean value.
+        # Once converted the T_MB in T_A, we can convert to Flux in Jy using the Kramer's formula:
+        # S_nu/T_A = 3.906 F_err/eta_A [Jy/K]
+        # In the case of HERACLES data at 230 GHz, this means:
+        # S_nu [Jy] = 3.906 0.86/0.32 T_A[K] = 3.906 0.86/0.32 *T_MB[K]/1.75 = 5.9985 * T_MB[K]
+        # The result is in Jy/beam
+        self.Tmb2Jy = 5.9985
+        self.flux *= self.Tmb2Jy
+
         self.n = nz
         print('nz: ',nz, self.header['NAXIS3'])
         wcs = WCS(self.header)
@@ -1121,6 +1160,18 @@ class specCube(object):
             self.wave = self.l0 * (1 + velocity/c) #um
         self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
         print('scale is ', self.pixscale)
+
+        # Now transform into Jy/pix
+        # Compute the beam size at the wavelength
+        bmaj = self.header['BMAJ'] * 3600. # Beam major axis in arcsec
+        bmin = self.header['BMIN'] * 3600. # Beam minor axis in arcsec
+        # Multiply by the flux fraction in the pixel assuming a 2D Gaussian curve                    
+        #pixfraction = 0.5 * erf(self.pixscale*0.5/bmaj) * erf(ypixscale*0.5/bmin)
+        #print('Beam fraction on pixel ', pixfraction)
+        self.npix_per_beam = 1.331 * bmaj * bmin / (self.pixscale * ypixscale)
+        # Flux in Jy /beam. So divide by the number of pixels per beam to have Jy/pix
+        self.flux /= self.npix_per_beam
+
         # Back to wavelength
         w = self.wave
         self.crval3 = w[0]
