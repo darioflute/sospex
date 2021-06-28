@@ -542,22 +542,8 @@ class specCubeAstro(object):
         elif naxis == 4: # polarization
             self.flux = data[0,:,:,:]
         nz, ny, nx = np.shape(self.flux)
-        # Flux in HERACLES data is expressed in T_MB (Main Beam)
-        # From Leroy et al. 2009, and the header values we know that  T_MB = F_eff/B_eff T_A = 0.92/0.58 T_A = 1.59 T_A,
-        # In reality, the calibration paper of Kramer
-        # (https://safe.nrao.edu/wiki/pub/KPAF/KfpaPipelineReview/kramer_1997_cali_rep.pdf)
-        # show in the Table at page 17 that this is a mean value.
-        # Once converted the T_MB in T_A, we can convert to Flux in Jy using the Kramer's formula:
-        # S_nu/T_A = 3.906 F_eff/eta_A [Jy/K]
-        # S_nu = 3.906 B_eff/eta_A * T_MB = 3.906 * .58 / 0.32 * T_MB = 7.08 T_MB, using the header value
-        # eta_A from the table at page 17.
-        # Using eta_A from https://web-archives.iram.fr/IRAMFR/ARN/aug05/node6.html for 2005, and interpolating at 230Hz
-        # we have eta_A = 0.41 --> S_nu = 3.906 * 0.58/ 0.41 * T_MB = 5.52
-        # If I use the data at page 17 at 230 GHz, this means:
-        # S_nu [Jy] = 3.906 0.86/0.32 T_A[K] = 3.906 0.86/0.32 *T_MB[K]/1.59 = 6.6021 * T_MB[K]
-        # The result is in Jy/beam
-        self.Tmb2Jy = 5.52
-        self.flux *= self.Tmb2Jy
+        
+        print('Flux read')
         
         self.n = nz
         print('nz: ',nz, self.header['NAXIS3'])
@@ -581,6 +567,23 @@ class specCubeAstro(object):
             self.wave = self.l0 / (1 - velocity/c) #um  
         self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
         print('scale is ', self.pixscale)
+        
+        # Flux in HERACLES data is expressed in T_MB (Main Beam)
+        # From Leroy et al. 2009: T_MB = F_eff/B_eff T_A
+        # From Kramer (page 17)
+        # (https://safe.nrao.edu/wiki/pub/KPAF/KfpaPipelineReview/kramer_1997_cali_rep.pdf)
+        # S_nu/T_A = 3.906 F_eff/eta_A [Jy/K]
+        # S_nu = 3.906 B_eff/eta_A * T_MB 
+        # Using eta_A from https://web-archives.iram.fr/IRAMFR/ARN/aug05/node6.html for 2005, Ruze Formula
+        # we have eta_A = 0.41 at nu =230 GHz
+        # S_nu = 3.906 * 0.58/ 0.41 * T_MB = 5.52 * T_MB
+        # If I use the data at page 17 at 230 GHz, this means:
+        eta_A = 0.63 * np.exp(-(4*np.pi*67.4/self.l0)**2)
+        B_eff = 0.58
+        self.Tmb2Jy = 3.906 * B_eff / eta_A
+        print('Conversion factor is: ', self.Tmb2Jy)
+        self.flux *= self.Tmb2Jy
+
 
         # Now transform into Jy/pix
         # Compute the beam size at the wavelength
@@ -1185,23 +1188,6 @@ class specCube(object):
             self.flux = data[0,:,:,:]
         nz, ny, nx = np.shape(self.flux)
 
-        # Flux in HERACLES data is expressed in T_MB (Main Beam)
-        # From Leroy et al. 2009, and the header values we know that  T_MB = F_eff/B_eff T_A = 0.92/0.58 T_A = 1.59 T_A,
-        # In reality, the calibration paper of Kramer
-        # (https://safe.nrao.edu/wiki/pub/KPAF/KfpaPipelineReview/kramer_1997_cali_rep.pdf)
-        # show in the Table at page 17 that this is a mean value.
-        # Once converted the T_MB in T_A, we can convert to Flux in Jy using the Kramer's formula:
-        # S_nu/T_A = 3.906 F_eff/eta_A [Jy/K]
-        # S_nu = 3.906 B_eff/eta_A * T_MB = 3.906 * .58 / 0.32 * T_MB = 7.08 T_MB, using the header value
-        # eta_A from the table at page 17.
-        # Using eta_A from https://web-archives.iram.fr/IRAMFR/ARN/aug05/node6.html for 2005, and interpolating at 230Hz
-        # we have eta_A = 0.41 --> S_nu = 3.906 * 0.58/ 0.41 * T_MB = 5.52
-        # If I use the data at page 17 at 230 GHz, this means:
-        # S_nu [Jy] = 3.906 0.86/0.32 T_A[K] = 3.906 0.86/0.32 *T_MB[K]/1.59 = 6.6021 * T_MB[K]
-        # The result is in Jy/beam
-        self.Tmb2Jy = 5.52
-        self.flux *= self.Tmb2Jy
-
         self.n = nz
         print('nz: ',nz, self.header['NAXIS3'])
         wcs = WCS(self.header)
@@ -1225,6 +1211,23 @@ class specCube(object):
 
         self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
         print('scale is ', self.pixscale)
+        
+        # Flux in HERACLES data is expressed in T_MB (Main Beam)
+        # From Leroy et al. 2009: T_MB = F_eff/B_eff T_A
+        # From Kramer (page 17)
+        # (https://safe.nrao.edu/wiki/pub/KPAF/KfpaPipelineReview/kramer_1997_cali_rep.pdf)
+        # S_nu/T_A = 3.906 F_eff/eta_A [Jy/K]
+        # S_nu = 3.906 B_eff/eta_A * T_MB 
+        # Using eta_A from https://web-archives.iram.fr/IRAMFR/ARN/aug05/node6.html for 2005, Ruze Formula
+        # we have eta_A = 0.41 at nu =230 GHz
+        # S_nu = 3.906 * 0.58/ 0.41 * T_MB = 5.52 * T_MB
+        # If I use the data at page 17 at 230 GHz, this means:
+        etaA = 0.63 * np.exp(-(4*np.pi*67.4/self.l0)**2)
+        Beff = 0.58
+        self.Tmb2Jy = 3.906 * Beff / etaA
+        print('Conversion factor is: ', self.Tmb2Jy)
+        self.flux *= self.Tmb2Jy
+
 
         # Now transform into Jy/pix
         # Compute the beam size at the wavelength
