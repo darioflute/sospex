@@ -491,16 +491,20 @@ class specCubeAstro(object):
             self.flux = data[0,:,:,:]
         nz, ny, nx = np.shape(self.flux)
         # Flux in HERACLES data is expressed in T_MB (Main Beam)
-        # From Leroy et al. 2009, we know that  T_MB = F_eff/B_eff T_A = 0.91/0.52 T_A = 1.75 T_A,
+        # From Leroy et al. 2009, and the header values we know that  T_MB = F_eff/B_eff T_A = 0.92/0.58 T_A = 1.59 T_A,
         # In reality, the calibration paper of Kramer
         # (https://safe.nrao.edu/wiki/pub/KPAF/KfpaPipelineReview/kramer_1997_cali_rep.pdf)
         # show in the Table at page 17 that this is a mean value.
         # Once converted the T_MB in T_A, we can convert to Flux in Jy using the Kramer's formula:
-        # S_nu/T_A = 3.906 F_err/eta_A [Jy/K]
-        # In the case of HERACLES data at 230 GHz, this means:
-        # S_nu [Jy] = 3.906 0.86/0.32 T_A[K] = 3.906 0.86/0.32 *T_MB[K]/1.75 = 5.9985 * T_MB[K]
+        # S_nu/T_A = 3.906 F_eff/eta_A [Jy/K]
+        # S_nu = 3.906 B_eff/eta_A * T_MB = 3.906 * .58 / 0.32 * T_MB = 7.08 T_MB, using the header value
+        # eta_A from the table at page 17.
+        # Using eta_A from https://web-archives.iram.fr/IRAMFR/ARN/aug05/node6.html for 2005, and interpolating at 230Hz
+        # we have eta_A = 0.41 --> S_nu = 3.906 * 0.58/ 0.41 * T_MB = 5.52
+        # If I use the data at page 17 at 230 GHz, this means:
+        # S_nu [Jy] = 3.906 0.86/0.32 T_A[K] = 3.906 0.86/0.32 *T_MB[K]/1.59 = 6.6021 * T_MB[K]
         # The result is in Jy/beam
-        self.Tmb2Jy = 5.9985
+        self.Tmb2Jy = 5.52
         self.flux *= self.Tmb2Jy
         
         self.n = nz
@@ -520,7 +524,9 @@ class specCubeAstro(object):
             c = 299792458.0 # m/s
             # self.l0 = 21.1061140542 * 1.e4 #um
             self.l0 = c/nu0 * 1.e6 #um
-            self.wave = self.l0 * (1 + velocity/c) #um
+            #self.wave = self.l0 * (1 + velocity/c) #um
+            # Radio convention: https://science.nrao.edu/facilities/vla/docs/manuals/obsguide/modes/line
+            self.wave = self.l0 / (1 - velocity/c) #um  
         self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
         print('scale is ', self.pixscale)
 
@@ -1128,16 +1134,20 @@ class specCube(object):
         nz, ny, nx = np.shape(self.flux)
 
         # Flux in HERACLES data is expressed in T_MB (Main Beam)
-        # From Leroy et al. 2009, we know that  T_MB = F_eff/B_eff T_A = 0.91/0.52 T_A = 1.75 T_A,
+        # From Leroy et al. 2009, and the header values we know that  T_MB = F_eff/B_eff T_A = 0.92/0.58 T_A = 1.59 T_A,
         # In reality, the calibration paper of Kramer
         # (https://safe.nrao.edu/wiki/pub/KPAF/KfpaPipelineReview/kramer_1997_cali_rep.pdf)
         # show in the Table at page 17 that this is a mean value.
         # Once converted the T_MB in T_A, we can convert to Flux in Jy using the Kramer's formula:
-        # S_nu/T_A = 3.906 F_err/eta_A [Jy/K]
-        # In the case of HERACLES data at 230 GHz, this means:
-        # S_nu [Jy] = 3.906 0.86/0.32 T_A[K] = 3.906 0.86/0.32 *T_MB[K]/1.75 = 5.9985 * T_MB[K]
+        # S_nu/T_A = 3.906 F_eff/eta_A [Jy/K]
+        # S_nu = 3.906 B_eff/eta_A * T_MB = 3.906 * .58 / 0.32 * T_MB = 7.08 T_MB, using the header value
+        # eta_A from the table at page 17.
+        # Using eta_A from https://web-archives.iram.fr/IRAMFR/ARN/aug05/node6.html for 2005, and interpolating at 230Hz
+        # we have eta_A = 0.41 --> S_nu = 3.906 * 0.58/ 0.41 * T_MB = 5.52
+        # If I use the data at page 17 at 230 GHz, this means:
+        # S_nu [Jy] = 3.906 0.86/0.32 T_A[K] = 3.906 0.86/0.32 *T_MB[K]/1.59 = 6.6021 * T_MB[K]
         # The result is in Jy/beam
-        self.Tmb2Jy = 5.9985
+        self.Tmb2Jy = 5.52
         self.flux *= self.Tmb2Jy
 
         self.n = nz
@@ -1157,7 +1167,10 @@ class specCube(object):
             c = 299792458.0 # m/s
             # self.l0 = 21.1061140542 * 1.e4 #um
             self.l0 = c/nu0 * 1.e6 #um
-            self.wave = self.l0 * (1 + velocity/c) #um
+            #self.wave = self.l0 * (1 + velocity/c) #um # Optical convention
+            # Radio convention: https://science.nrao.edu/facilities/vla/docs/manuals/obsguide/modes/line
+            self.wave = self.l0 / (1 - velocity/c) #um  
+
         self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
         print('scale is ', self.pixscale)
 
