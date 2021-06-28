@@ -94,6 +94,17 @@ def weightedMedian(data, weights, axis=None):
 
 # Functions for multiprocessing continuum fit and moment computation
 
+def SG(x, amplitude, center, width):
+    """Model of convolution of Gaussian and sinc function
+    The model uses Dawson integrals as in https://arxiv.org/pdf/1608.05854.pdf
+    ODP in: https://academic.oup.com/mnras/article/458/2/1977/2589032
+    Guidelines for fitting in:
+    https://irsa.ipac.caltech.edu/data/Herschel/docs/nhsc/workshops/AgendaSummer2013/SPIRE-DP_Aug2013_FTS_LineFitting.pptx.pdf
+    """
+    from scipy.special import dawsn 
+    #return amplitude * np.sinc((x - center) / width)
+    
+
 def residuals(p,x,data=None,eps=None):
     #unpack parameters
     v = p.valuesdict()

@@ -1285,7 +1285,7 @@ class GUI (QMainWindow):
                 else:
                     sc.updateSpectrum(f=fluxAll*t2j, cont=cont, cslope=cslope, moments=moments, 
                                       lines=lines, noise=noise, ncell=ncell)
-            elif s.instrument in ['PACS','FORCAST']:
+            elif s.instrument in ['PACS','FORCAST','SPIRE']:
                 if istab == 1:
                     expAll = np.nanmean(s.exposure[:, yy, xx], axis=1)
                     efluxAll = np.sqrt(np.nanmean(s.eflux[:,yy,xx]**2, axis=1))
@@ -3534,7 +3534,7 @@ class GUI (QMainWindow):
                             redshift=s.redshift, baryshift=s.baryshift, l0=s.l0, 
                             watran=s.watran, uatran=s.uatran, yunit='Jy',
                             pixscale=s.pixscale)
-        elif s.instrument in ['PACS']:
+        elif s.instrument in ['PACS','SPIRE']:
             expAll = np.nanmean(s.exposure[:,yy,xx], axis=1)
             efluxAll = np.sqrt(np.nansum(s.eflux[:,yy,xx]**2, axis=1))
             print('eflux pacs ', np.shape(efluxAll))
@@ -4271,7 +4271,7 @@ class GUI (QMainWindow):
             self.specCube.response = self.specCube.response[xmin:xmax]
         if self.specCube.instrument == 'PACS':
             self.specCube.exposure = self.specCube.exposure[xmin:xmax,:,:]
-        if self.specCube.instrument == 'FORCAST':
+        if self.specCube.instrument in ['FORCAST','SPIRE']:
             self.specCube.eflux = self.specCube.eflux[xmin:xmax,:,:]
             self.specCube.exposure = self.specCube.exposure[xmin:xmax,:,:]
 
@@ -4687,6 +4687,30 @@ class GUI (QMainWindow):
                 hdul = fits.HDUList([hdu, hdu1, hdu2, hdu3, hdw])            
                 hdul.writeto(outfile,overwrite=True) 
                 hdul.close()
+            elif self.specCube.instrument == 'SPIRE':
+                """Experimental"""
+                # Primary header
+                hdu = fits.PrimaryHDU()
+                hdu.header.extend(self.specCube.header)
+                header['NAXIS'] = (3,'Number of axis')
+                header['OBJECT'] = (self.specCube.objname, 'Object Name')
+                header['REDSHIFT'] = self.specCube.redshift
+                # Transform into frequency
+                frequency = 299792.458 / self.specCube.wave[::-1]
+                cdelt3 = np.nanmean(frequency[1:]-frequency[:-1])
+                crpix3 = 1
+                crval3 = frequency[0]
+                header['CRPIX3'] = (crpix3,'Reference pixel')
+                header['CRVAL3'] = (crval3,'Reference pixel value')
+                header['CDELT3'] = (cdelt3,'Increment')
+                # Extensions
+                pixelstd = (self.specCube.pixscale/206264.8)**2 # pixel size in sterad
+                ratio = 1.e26 * pixelstd
+                hdu1 = self.addExtension(flux[::-1,:,:]/ratio,'image','Jy',header)
+                hdu2 = self.addExtension(self.specCube.exposure[::-1,:,:],'coverage',None,header)
+                hdu3 = self.addExtension(self.specCube.eflux[::-1,:,:]/ratio,'error',None,header)
+                hdul = fits.HDUList([hdu, hdu1, hdu2, hdu3])            
+                hdul.writeto(outfile,overwrite=True) 
             elif self.specCube.instrument == 'CARMA':
                 # This works only for cropped (not trimmed) cubes
                 header['NAXIS'] = (3,'Number of axis')
@@ -5853,12 +5877,9 @@ class GUI (QMainWindow):
         elif self.specCube.instrument in ['GREAT','HI','HALPHA','VLA','ALMA','MUSE','SITELLE','IRAM','CARMA','MMA','PCWI']: 
             self.bands = ['Flux']
             self.spectra = ['All','Pix']
-        elif self.specCube.instrument == 'FORCAST':
+        elif self.specCube.instrument in ['FORCAST','PACS','SPIRE']:
             self.bands = ['Flux','Exp']
             self.spectra = ['All','Pix']            
-        elif self.specCube.instrument == 'PACS':
-            self.bands = ['Flux','Exp']
-            self.spectra = ['All','Pix']
         else:
             self.spectra = []
             self.bands = []
@@ -6034,7 +6055,7 @@ class GUI (QMainWindow):
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0, yunit='Jy/pix', 
                             pixscale=s.pixscale)
-        elif s.instrument == 'PACS':
+        elif s.instrument in ['PACS','SPIRE']:
             expAll = s.exposure[:, y0, x0]
             efluxAll = s.eflux[:, y0, x0]
             spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, exposure=expAll, 
@@ -6182,7 +6203,7 @@ class GUI (QMainWindow):
         if self.specCube.instrument in ['GREAT','HI','HALPHA',
                                         'VLA','ALMA','MUSE','SITELLE','IRAM','CARMA','MMA','PCWI']:
             imas = ['Flux']
-        elif self.specCube.instrument in ['PACS', 'FORCAST']:
+        elif self.specCube.instrument in ['PACS', 'FORCAST','SPIRE']:
             imas = ['Flux','Exp']
         elif self.specCube.instrument == 'FIFI-LS':
             imas = ['Flux','uFlux','Exp']
@@ -6298,7 +6319,7 @@ class GUI (QMainWindow):
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0, yunit='Jy',
                             pixscale=s.pixscale)
-        elif s.instrument in ['PACS', 'FORCAST']:
+        elif s.instrument in ['PACS', 'FORCAST','SPIRE']:
             expAll = np.nanmean(s.exposure, axis=(1,2))
             efluxAll = np.sqrt(np.nansum(s.eflux*s.eflux, axis=(1,2)))
             spec = Spectrum(s.wave, fluxAll,  eflux=efluxAll, 
@@ -6397,7 +6418,7 @@ class GUI (QMainWindow):
         if self.specCube.instrument in ['GREAT','HI','HALPHA','VLA','ALMA',
                                         'MUSE','SITELLE','IRAM','CARMA','MMA','PCWI']:
             imas = ['Flux']
-        elif self.specCube.instrument in ['PACS','FORCAST']:
+        elif self.specCube.instrument in ['PACS','FORCAST','SPIRE']:
             imas = ['Flux','Exp']
         elif self.specCube.instrument == 'FIFI-LS':
             imas = ['Flux','uFlux','Exp']
@@ -6498,7 +6519,7 @@ class GUI (QMainWindow):
             sc.updateSpectrum(f=fluxAll*t2j)
         elif s.instrument in ['HI','HALPHA','VLA','ALMA','MUSE','SITELLE','IRAM','CARMA','MMA','PCWI']:
             sc.updateSpectrum(f=fluxAll)
-        elif s.instrument in ['PACS','FORCAST']:
+        elif s.instrument in ['PACS','FORCAST','SPIRE']:
             expAll = np.nanmean(s.exposure[:, y0:y1, x0:x1], axis=(1, 2))
             efluxAll = np.sqrt(np.nansum(s.eflux[:, y0:y1, x0:x1]**2, axis=(1, 2)))
             sc.updateSpectrum(f=fluxAll,ef=efluxAll, exp=expAll)            
@@ -6779,7 +6800,7 @@ class GUI (QMainWindow):
                 idx = np.isnan(s)
                 if (np.sum(idx) > 0) & (np.sum(idx) < (np.sum(~idx) // 10)):
                     s[idx] = np.interp(w[idx],w[~idx],s[~idx])
-                if self.specCube.instrument in ['PACS','FIFI']:
+                if self.specCube.instrument in ['PACS','FIFI','SPIRE']:
                     e = self.specCube.eflux[:,j,i]
                     idx = np.isnan(s)
                     if (np.sum(idx) > 0) & (np.sum(idx) < (np.sum(~idx) // 10)):

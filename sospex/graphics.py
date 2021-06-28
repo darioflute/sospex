@@ -820,7 +820,7 @@ class SpectrumCanvas(MplCanvas):
                 if s.watran is not None:
                     self.xar = self.xa / (1 + s.baryshift)
                      
-        if s.instrument in ['FIFI-LS', 'PACS', 'FORCAST']:
+        if s.instrument in ['FIFI-LS', 'PACS', 'FORCAST','SPIRE']:
             hiflux = s.flux + 1. * s.eflux  # 1 sigma
             loflux = s.flux - 1. * s.eflux
             # Try to repair NaNs
@@ -966,7 +966,7 @@ class SpectrumCanvas(MplCanvas):
                 print('Tb 2 Jy ', self.spectrum.Tb2Jy)
                 print('limits in Tb ', ylims[0]/ self.spectrum.Tb2Jy)
                 self.Taxes.set_ylim(ylims[0]/self.spectrum.Tb2Jy, ylims[1]/self.spectrum.Tb2Jy)
-        elif s.instrument in ['PACS', 'FORCAST']:
+        elif s.instrument in ['PACS', 'FORCAST','SPIRE']:
             try:
                 self.fig.delaxes(self.ax3)
             except:
@@ -1577,7 +1577,7 @@ class SpectrumCanvas(MplCanvas):
                     self.displayFlux =  not self.displayFlux
                     state = self.displayFlux
                     #label = 'Flux'
-                    if self.instrument in ['FIFI-LS', 'PACS']:
+                    if self.instrument in ['FIFI-LS', 'PACS','SPIRE']:
                         self.efluxLine.set_visible(self.displayFlux)
                 elif text == 'F$_{u}$':
                     self.displayUFlux = not self.displayUFlux
@@ -1917,7 +1917,7 @@ class PsfCanvas(MplCanvas):
         if self.instrument in ['FIFI-LS', 'GREAT']:
             m1diam = 2.500 # Effective diameter of SOFIA
             #m2diam = 0.350
-        elif self.instrument == 'PACS':
+        elif self.instrument in ['PACS','SPIRE']:
             m1diam = 3.500 # Diameter of Herschel mirror
             #m2diam = 0.308
         else:
