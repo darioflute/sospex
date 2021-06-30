@@ -469,8 +469,32 @@ class specCubeAstro(object):
             # self.l0 = 21.1061140542 * 1.e4 #um
             self.l0 = c/nu0 * 1.e6 #um
             self.wave = self.l0 * (1 + velocity/c) #um
+            # Flip order to increasing wavelength
+            self.wave = self.wave[::-1]
+            self.flux = self.flux[::-1,:,:]
+        else:
+            print('CTYPE3 is ', ctype3)
+                
+        # Now transform into Jy/pix
+        # Compute the beam size at the wavelength
         self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
         print('scale is ', self.pixscale)
+        try:
+            if self.header['BUNIT'] == 'JY/BEAM':
+                print('Convert Jy/beam to Jy/pix')
+                bmaj = self.header['BMAJ'] * 3600. # Beam major axis in arcsec
+                bmin = self.header['BMIN'] * 3600. # Beam minor axis in arcsec
+                # Multiply by the flux fraction in the pixel assuming a 2D Gaussian curve                    
+                #pixfraction = 0.5 * erf(self.pixscale*0.5/bmaj) * erf(ypixscale*0.5/bmin)
+                #print('Beam fraction on pixel ', pixfraction)
+                self.npix_per_beam = 1.331 * bmaj * bmin / (self.pixscale * ypixscale)
+                # Flux in Jy /beam. So divide by the number of pixels per beam to have Jy/pix
+                self.flux /= self.npix_per_beam
+            else:
+                print(self.header['BUNIT'],' is not known')
+        except:
+            print('No BUNIT found')
+            
         # Back to wavelength
         w = self.wave
         self.crval3 = w[0]
@@ -1109,8 +1133,31 @@ class specCube(object):
             # self.l0 = 21.1061140542 * 1.e4 #um
             self.l0 = c/nu0 * 1.e6 #um
             self.wave = self.l0 * (1 + velocity/c) #um
+            # Flip order to increasing wavelength
+            self.wave = self.wave[::-1]
+            self.flux = self.flux[::-1,:,:]
+        else:
+            print('ctype 3 is ', ctype3)
+
+        # Now transform into Jy/pix
+        # Compute the beam size at the wavelength
         self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
         print('scale is ', self.pixscale)
+        try:
+            if self.header['BUNIT'] == 'JY/BEAM':
+                print('Convert Jy/beam to Jy/pix')
+                bmaj = self.header['BMAJ'] * 3600. # Beam major axis in arcsec
+                bmin = self.header['BMIN'] * 3600. # Beam minor axis in arcsec
+                # Multiply by the flux fraction in the pixel assuming a 2D Gaussian curve                    
+                #pixfraction = 0.5 * erf(self.pixscale*0.5/bmaj) * erf(ypixscale*0.5/bmin)
+                #print('Beam fraction on pixel ', pixfraction)
+                self.npix_per_beam = 1.331 * bmaj * bmin / (self.pixscale * ypixscale)
+                # Flux in Jy /beam. So divide by the number of pixels per beam to have Jy/pix
+                self.flux /= self.npix_per_beam
+            else:
+                print(self.header['BUNIT'],' is not known')
+        except:
+            print('No BUNIT found')
         # Back to wavelength
         w = self.wave
         self.crval3 = w[0]

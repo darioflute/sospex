@@ -2381,16 +2381,16 @@ class GUI (QMainWindow):
                 options.extend(['Set to medians', 'Set to lowest 25% medians', 
                                 'Set to lowest 50% medians', 
                                 'Offset of lowest 25% uncorrected medians',
-                                'Fit region', 'Fit all cube', 'Set to zero'])
+                                'Fit region', 'Fit all cube', 'Set to zero','Set to file'])
             else:
                 options.extend(['Set to medians', 'Set to lowest 25% medians', 
                                 'Set to lowest 50% medians',
                                 'Offset of lowest 25% uncorrected medians',
-                                'Fit all cube', 'Set to zero'])
+                                'Fit all cube', 'Set to zero','Set to file'])
         else:
             options = ['Set to medians', 'Set to lowest 25% medians', 
                        'Set to lowest 50% medians',
-                       'Offset of lowest 25% uncorrected medians','Set to zero']
+                       'Offset of lowest 25% uncorrected medians','Set to zero','Set to file']
             moments = False
             lines = False
         FCD = FitCubeDialog(options, moments, lines)
@@ -2413,12 +2413,14 @@ class GUI (QMainWindow):
                     self.setContinuumMedianPercent(33, True)
                 elif coption == 'Set to zero':
                     self.setContinuumZero()
+                elif coption == 'Set to file':
+                    self.setContinuumFile()
             if moption is None:
                 pass
             else:
                 if moption == 'Region':
                     print('Set continuum to median and compute region moments')
-                    self.setContinuumMedian()
+                    #self.setContinuumMedian()
                     self.computeMomentsRegion()
                 elif moption == 'All':
                     print('Compute all cube moments')
@@ -2455,7 +2457,6 @@ class GUI (QMainWindow):
                 self.setContinuumMedian()
             elif option == 'Set to zero':
                 self.setContinuumZero()
-
             else:
                 pass
         else:
@@ -2464,6 +2465,50 @@ class GUI (QMainWindow):
                 self.sb.showMessage(message, 4000)
             else:
                 pass
+            
+    def setContinuumFile(self):
+        """Read continuum from external file."""
+        from astropy.io import fits
+        
+        self.openContinuumTab()
+        nz,ny,nx = np.shape(self.specCube.flux)
+        # Read external file
+        # Simple option: file with same number of pixels and astrometry
+        # Open file
+        fd = QFileDialog()
+        fd.setLabelText(QFileDialog.Accept, "Import")
+        fd.setNameFilters(["Fits Files (*.fit*)", "All Files (*)"])
+        fd.setOptions(QFileDialog.DontUseNativeDialog)
+        fd.setViewMode(QFileDialog.List)
+        fd.setFileMode(QFileDialog.ExistingFile)
+        if (fd.exec()):
+            filenames= fd.selectedFiles()
+            contfile = filenames[0]
+            with fits.open(contfile) as hdul:
+                hdul.info()
+                image = hdul[0].data        
+            # General option: generic file to be interpolated on the original file
+            # We can develop this later                
+            ny_,nx_ = np.shape(image)
+            if (nx == nx_) & (ny == ny_):
+                print('The file has the same size as the original cube !')
+                # Save continuum
+                self.C0 = image.copy()
+                self.Cs = np.zeros((ny,nx))
+                self.continuum = np.broadcast_to(self.C0, np.shape(self.specCube.flux))
+                self.refreshContinuum()
+                self.fitcont = True
+            else:
+                message = 'Image size not as original cube, continuum set to zero'
+                self.sb.showMessage(message, 4000)
+                print(message)
+                self.setContinuumZero()
+        else:
+            message = 'File not found, continuum set to zero'
+            self.sb.showMessage(message, 4000)
+            print(message)
+            self.setContinuumZero()
+            
 
     def setContinuumZero(self):
         """Set continuum to zero."""
