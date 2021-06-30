@@ -1576,23 +1576,20 @@ class SpectrumCanvas(MplCanvas):
             elif event.artist == self.cannotation:
                 contChoice = self.getContChoice()
                 if contChoice is not None:
-                    if contChoice != self.guess.fixedContinuum:
-                        self.guess.fixedContinuum = contChoice
-                        if contChoice:
-                            self.cannotation.set_text('C Fixed')
-                        else:
-                            self.cannotation.set_text('C Variable')
+                    self.guess.fixedContinuum = contChoice
+                    if contChoice:
+                        self.cannotation.set_text('C Fixed')
+                    else:
+                        self.cannotation.set_text('C Variable')
                     # If fixed is chosen, ask for value
                     if self.guess.fixedContinuum:
                         self.contLev, okPressed = QInputDialog.getDouble(self, "Continuum level ", "Continuum [Jy]", 0, -10000., 50000., 2)
-                        self.guess.contLev = self.contLev
+                        self.guess.contLevel = self.contLev
                         xy = self.guess.xy
                         xg,yg = zip(*xy)
                         xg = np.array(xg); yg = np.array(yg)
-                        print('y continuum ', yg)
                         self.guess.xy = [(x,self.contLev) for x in xg]
                         self.guess.updateLinesMarkers()
-
                     # Redo fit
                     self.fig.canvas.draw_idle()
                     self.modifyContinuum.emit(str(self.guess.fixedContinuum))

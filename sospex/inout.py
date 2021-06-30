@@ -330,10 +330,15 @@ def importAperture(self):
                 if y[3] == y[0]:
                     sc.guess.fixedContinuum = True
                     sc.contLev = y[0]
-                    cont = 'Fixed'
                 else:
                     sc.guess.fixedContinuum = False
-                    cont = 'Variable'
+                cont = 'Variable'
+                line1 = data['line 1']
+                econt = line1['errContinuum [Jy]']
+                print('err cont ', econt)
+                if (y[3] == y[0]) & (econt == 0.0):
+                    cont = 'Fixed'
+                    sc.guess.contLevel = y[0]
                 interactors = [sc.guess]
                 print('Plotted segment interactor')
                 # Plot lines
@@ -348,6 +353,7 @@ def importAperture(self):
                     eAs = []
                     for line in lines:
                         if line[2] >= 0:
+                            print('line[2] ',line[2])
                             sc.emslines += 1
                             ex0s.append(line[0]/( 1 + sc.spectrum.redshift))
                             efwhms.append(line[1])
