@@ -723,6 +723,7 @@ class SpectrumCanvas(MplCanvas):
     
     switchSignal = pyqtSignal(str)
     modifyAperture = pyqtSignal(str)
+    modifyContinuum = pyqtSignal(str)
 
     def __init__(self, *args, **kwargs):
         MplCanvas.__init__(self, *args, **kwargs)
@@ -1572,6 +1573,29 @@ class SpectrumCanvas(MplCanvas):
                     if rnew != self.r:
                         self.r = rnew
                         self.modifyAperture.emit(str(self.r))
+            elif event.artist == self.cannotation:
+                contChoice = self.getContChoice()
+                if contChoice is not None:
+                    if contChoice != self.guess.fixedContinuum:
+                        self.guess.fixedContinuum = contChoice
+                        if contChoice:
+                            self.cannotation.set_text('C Fixed')
+                        else:
+                            self.cannotation.set_text('C Variable')
+                    # If fixed is chosen, ask for value
+                    if self.guess.fixedContinuum:
+                        self.contLev, okPressed = QInputDialog.getDouble(self, "Continuum level ", "Continuum [Jy]", 0, -10000., 50000., 2)
+                        self.guess.contLev = self.contLev
+                        xy = self.guess.xy
+                        xg,yg = zip(*xy)
+                        xg = np.array(xg); yg = np.array(yg)
+                        print('y continuum ', yg)
+                        self.guess.xy = [(x,self.contLev) for x in xg]
+                        self.guess.updateLinesMarkers()
+
+                    # Redo fit
+                    self.fig.canvas.draw_idle()
+                    self.modifyContinuum.emit(str(self.guess.fixedContinuum))
             elif text in ['F', 'F$_{u}$', 'Atm', 'E', 'Lines','F$_{x}$']:
                 if text == 'F':
                     self.displayFlux =  not self.displayFlux
@@ -1760,7 +1784,21 @@ class SpectrumCanvas(MplCanvas):
             return rnew
         else:
             return None
+        
+    def getContChoice(self):
 
+        msgBox = QMessageBox()
+        msgBox.setText('Perform the fit with:')
+        msgBox.addButton('Variable continuum', QMessageBox.ActionRole)
+        msgBox.addButton('Fixed continuum', QMessageBox.ActionRole)
+        msgBox.addButton('Cancel choice', QMessageBox.ActionRole)
+        self.result = msgBox.exec()
+        if self.result == 0:
+            return False
+        elif self.result == 1:
+            return True
+        else:
+            return None
 
     def onrelease(self, event):
         if self.dragged is not None and self.pick_pos is not None:

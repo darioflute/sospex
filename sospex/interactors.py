@@ -757,7 +757,8 @@ class InteractorManager(QObject):
 
 class SegmentsSelector(QObject):
 
-    def __init__(self, ax, fig, callback, color='#7ec0ee', zD = True):
+    def __init__(self, ax, fig, callback, color='#7ec0ee', 
+                 zD = True, fC = False, cL = None):
         super().__init__()
 
         self.x = []
@@ -769,6 +770,8 @@ class SegmentsSelector(QObject):
         self.ax = ax
         self.callback = callback
         self.zeroDeg = zD
+        self.fixContinuum = fC
+        self.contLevel = cL
 
         self.__ID1 = self.fig.canvas.mpl_connect('motion_notify_event', self.__motion_notify_callback)
         self.__ID2 = self.fig.canvas.mpl_connect('button_press_event', self.__button_press_callback)
@@ -778,6 +781,8 @@ class SegmentsSelector(QObject):
         if event.inaxes:
             #ax = event.inaxes
             x, y = event.xdata, event.ydata
+            if self.fixContinuum:
+                y = self.contLevel
             if (event.button == None or event.button == 1):
                 if self.line1 != None: # Move line around
                     if self.line2 == None:
@@ -797,6 +802,8 @@ class SegmentsSelector(QObject):
     def __button_release_callback(self, event):
         if event.inaxes:
             x, y = event.xdata, event.ydata
+            if self.fixContinuum:
+                y = self.contLevel
             #ax = event.inaxes
             if event.button == 1:
                 if self.line2 == None:  # Segment 1 completed
@@ -838,6 +845,8 @@ class SegmentsSelector(QObject):
     def __button_press_callback(self, event):
         if event.inaxes:
             x, y = event.xdata, event.ydata
+            if self.fixContinuum:
+                y = self.contLevel
             ax = event.inaxes
             if event.button == 1:
                 if self.line2 == None:
@@ -890,13 +899,17 @@ class SegmentsInteractor(QObject):
     mySignal = pyqtSignal(str)
     modSignal = pyqtSignal(str)
 
-    def __init__(self, ax, verts, zeroDeg=True, color='#7ec0ee', epsilon=10):
+    def __init__(self, ax, verts, zeroDeg=True, fixedContinuum=False, 
+                 color='#7ec0ee', epsilon=10):
         super().__init__()
         self.epsilon = epsilon # max pixel distance to count as a vertex hit
         self.ax = ax
         self.type = 'Continuum'
         self.zeroDeg = zeroDeg
+        self.fixedContinuum = fixedContinuum
         x, y = zip(*verts)
+        if self.fixedContinuum:
+            self.contLevel = y[0]
         self.xy = [(i,j) for (i,j) in zip(x,y)]
         self.computeSlope()        
         self.line1 = Line2D(x[:2],y[:2],color=color,linewidth=2, animated = True)
@@ -1087,8 +1100,11 @@ class SegmentsInteractor(QObject):
             else:
                 m = (y[self._ind]-y[0])/(x[self._ind]-x[0])    
         for i in range(4):
-            y[i] = y[self._ind]+m*(x[i]-x[self._ind])
-            self.xy[i] = (x[i],y[i])
+            if self.fixedContinuum:
+                self.xy[i] = (x[i],self.contLevel)
+            else:
+                y[i] = y[self._ind]+m*(x[i]-x[self._ind])
+                self.xy[i] = (x[i],y[i])
         # Update segments and markers
         self.updateLinesMarkers()
         #self.redraw()

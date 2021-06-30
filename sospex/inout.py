@@ -321,9 +321,19 @@ def importAperture(self):
                 else:
                     self.zeroDeg = True
                 xy = [(i,j) for (i,j) in zip(x,y)]
+                
                 sc.guess = SegmentsInteractor(sc.axes, xy, self.zeroDeg)
                 sc.guess.modSignal.connect(self.onModifiedGuess)
                 sc.guess.mySignal.connect(self.onRemoveContinuum)
+                
+                # Fixed continuum
+                if y[3] == y[0]:
+                    sc.guess.fixedContinuum = True
+                    sc.contLev = y[0]
+                    cont = 'Fixed'
+                else:
+                    sc.guess.fixedContinuum = False
+                    cont = 'Variable'
                 interactors = [sc.guess]
                 print('Plotted segment interactor')
                 # Plot lines
@@ -371,6 +381,16 @@ def importAperture(self):
                 sc.interactorManager = InteractorManager(sc.axes, interactors)
                 # 
                 sc.drawSpectrum()
+                # Add aperture info
+                if type == 'Circle':
+                    r = data['width'] * 0.5
+                    sc.r = r
+                    sc.rannotation = sc.axes.annotate(u"r = {:.1f}\u2033".format(r),
+                                                          xy=(-0.14,-0.07), picker=5,
+                                                          xycoords='axes fraction') 
+                sc.cannotation = sc.axes.annotate(u"C {:s}".format(cont),
+                                                  xy=(-0.14,-0.02), picker=5,
+                                                  xycoords='axes fraction')
                 # Do the fit
                 self.fitApLines()
         except:

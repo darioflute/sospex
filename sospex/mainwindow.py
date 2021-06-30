@@ -562,6 +562,7 @@ class GUI (QMainWindow):
         sc = SpectrumCanvas(t, width=5.5, height=5.25, dpi=100)
         sc.switchSignal.connect(self.switchUnits)
         sc.modifyAperture.connect(self.modifyAperture)
+        sc.modifyContinuum.connect(self.modifyContinuum)
         # Toolbar
         toolbar = QToolBar()
         toolbar.setOrientation(Qt.Vertical)
@@ -1185,6 +1186,10 @@ class GUI (QMainWindow):
                 sc.r = r
                 sc.rannotation = sc.axes.annotate(u"r = {:.1f}\u2033".format(r),
                                               xy=(-0.14,-0.07), picker=5,
+                                              xycoords='axes fraction')
+            # Add a note to constrain the continuum
+            sc.cannotation = sc.axes.annotate(u"$C_0 fix$ {:d}".format(0),
+                                              xy=(-0.10,-0.07), picker=5,
                                               xycoords='axes fraction')
             path = aperture.get_path()
             transform = aperture.get_patch_transform()
@@ -1824,7 +1829,7 @@ class GUI (QMainWindow):
         self.CP = ContParams(self.kernel)
         if self.CP.exec_() == QDialog.Accepted:
             function, boundary, kernel, regions, emlines, ablines, model = self.CP.save()
-            if function == 'Constant':
+            if function in ['Constant','Fixed']:
                 self.zeroDeg = True
             else:
                 self.zeroDeg = False
@@ -1832,6 +1837,11 @@ class GUI (QMainWindow):
                 self.positiveContinuum = False
             else:
                 self.positiveContinuum = True
+            if function == 'Fixed':
+                self.positiveContinuum = False
+                self.fixedContinuum = True
+            else:
+                self.fixedContinuum = False
             k1=k5=k9=False
             self.kernel = int(kernel)
             if kernel == 1:
@@ -1921,10 +1931,14 @@ class GUI (QMainWindow):
         self.GP = guessParams()
         if self.GP.exec_() == QDialog.Accepted:
             cont, em, ab, func = self.GP.save()
-            if cont == 'Constant':
+            if cont in ['Constant','Fixed']:
                 self.zeroDeg = True
             else:
                 self.zeroDeg = False
+            if cont == 'Fixed':
+                self.fixedContinuum = True
+            else:
+                self.fixedContinuum = False
             try:
                 self.onRemoveContinuum('segments deleted')
             except BaseException:
@@ -1934,7 +1948,23 @@ class GUI (QMainWindow):
             sc.emslines = int(em)
             sc.abslines = int(ab)
             sc.function = func
-            self.CS = SegmentsSelector(sc.axes, sc.fig, self.onContinuumSelect, zD=self.zeroDeg)
+            # Ask for continuum level
+            if self.fixedContinuum:
+                sc.contLev, okPressed = QInputDialog.getDouble(self, "Continuum level ", "Continuum [Jy]", 0, -10000., 50000., 2)
+            else:
+                sc.contLev = None
+            # Call interactor for continuum
+            self.CS = SegmentsSelector(sc.axes, sc.fig, self.onContinuumSelect, 
+                                       zD=self.zeroDeg,
+                                       fC=self.fixedContinuum, cL=sc.contLev)
+            # Add a note to constrain the continuum
+            if self.fixedContinuum:
+                cont = 'Fixed'
+            else:
+                cont = 'Variable'
+            sc.cannotation = sc.axes.annotate(u"C {:s}".format(cont),
+                                                 xy=(-0.14,-0.02), picker=5,
+                                                 xycoords='axes fraction')
         else:
             return     
         
@@ -1943,13 +1973,25 @@ class GUI (QMainWindow):
         istab = self.stabs.currentIndex()
         sc = self.sci[istab]
         if sc.emslines+sc.abslines == 0:
-            ic, eic, s, es = fitApertureContinuum(sc)
+            if sc.guess.fixedContinuum:
+                ic = sc.contLev
+                eic = 0
+                s = 0
+                es = 0
+            else:
+                ic, eic, s, es = fitApertureContinuum(sc)
             return
         print('Fitting lines ')
         try:
             # 1. Fit the continuum
             print('Fit continuum ')
-            ic, eic, s, es = fitApertureContinuum(sc)
+            if sc.guess.fixedContinuum:
+                ic = sc.contLev
+                eic = 0
+                s = 0
+                es = 0
+            else:
+                ic, eic, s, es = fitApertureContinuum(sc)
             # 2. Fit the lines
             print('Fit lines ')
             linepars = fitApertureLines(sc, (ic, eic), (s, es))
@@ -2207,7 +2249,7 @@ class GUI (QMainWindow):
         x = x[idx]
         y = y[idx]
         verts = [(i,j) for (i,j) in zip(x,y)]
-        sc.guess = SegmentsInteractor(sc.axes, verts, self.zeroDeg)
+        sc.guess = SegmentsInteractor(sc.axes, verts, self.zeroDeg, self.fixedContinuum)
         sc.guess.modSignal.connect(self.onModifiedGuess)
         sc.guess.mySignal.connect(self.onRemoveContinuum)
         interactors = [sc.guess]
@@ -6286,8 +6328,18 @@ class GUI (QMainWindow):
         ic.draw_idle()
         # Send to modified aperture
         self.onModifiedAperture('modified aperture')
-                
-
+        
+    def modifyContinuum(self, event):
+        """React to change of continuum."""
+        cnew = float()
+        n = self.nAper()
+        # Refresh image
+        #itab = self.itabs.currentIndex()
+        #ic = self.ici[itab]
+        #ic.draw_idle()
+        # Do fit
+        self.fitApLines()
+        
     def sliderSwitchUnits(self):
         c = 299792458.0  # speed of light in m/s
         r = self.slider.x/self.slider.dx
