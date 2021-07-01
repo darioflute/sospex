@@ -2504,8 +2504,7 @@ class GUI (QMainWindow):
                 h1['NAXIS1'] = nx
                 h1['NAXIS2'] = ny
                 # Reproject on original cube
-                array, footprint = reproject_interp(hdu, h1)
-                image = array
+                image = reproject_interp(hdu, h1, return_footprint=False)
                 # Apply pixel conversion factor to new pixel size
                 old_xpixscale, old_ypixscale = proj_plane_pixel_scales(downloadedImage.wcs)
                 new_xpixscale, new_ypixscale = proj_plane_pixel_scales(self.specCube.wcs)
@@ -4250,7 +4249,7 @@ class GUI (QMainWindow):
         """ Trim the cube """
         self.sb.showMessage("Drag the mouse over the slice of the cube to trim ", 2000)
         self.trimcube = 'on'
-        istab = self.spectra.index('All')
+        istab = self.spectra.index('Pix')
         self.stabs.setCurrentIndex(istab)
         sc = self.sci[istab]
         #sc.span.set_visible(True)
@@ -5592,7 +5591,7 @@ class GUI (QMainWindow):
             print('updating histogram')
             ih0.update_figure(image=ic0.oimage)
         if levels is None:
-            if self.bands[itab] == 'Cov':
+            if self.bands[itab] == 'Exp':
                 ih0.levels = list(np.arange(ih0.min,ih0.max,(ih0.max-ih0.min)/8))
             else:
                 # What about percentiles ?
@@ -6416,7 +6415,6 @@ class GUI (QMainWindow):
 
     def computeAll(self):
         """Compute initial total spectrum."""
-        print('Computing total spectrum')
         s = self.specCube
         spectrum = self.spectra[0]
         sc = self.sci[self.spectra.index(spectrum)]
@@ -6443,7 +6441,10 @@ class GUI (QMainWindow):
             spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, uflux= ufluxAll,
                             exposure=expAll, atran = s.atran, instrument=s.instrument,
                             redshift=s.redshift, baryshift = s.baryshift, l0=s.l0, yunit='Jy')
-        sc.compute_initial_spectrum(name='All', spectrum=spec,pixscale=s.pixscale)
+        else:
+            print('Unknown instrument ', s.instrument)
+        #sc.compute_initial_spectrum(name='All', spectrum=spec, pixscale=s.pixscale)
+        sc.compute_initial_spectrum(name='All', spectrum=spec)
         self.specZoomlimits = [sc.xlimits,sc.ylimits]
         sc.cid = sc.axes.callbacks.connect('xlim_changed' or 'ylim_changed', self.doZoomSpec)
         # Start the span selector to show only part of the cube
@@ -6480,7 +6481,7 @@ class GUI (QMainWindow):
             self.slice = 'off'
         elif self.trimcube == 'on':
             # Find indices of the shaded region
-            sc = self.sci[self.spectra.index('All')]
+            sc = self.sci[self.spectra.index('Pix')]
             if sc.xunit == 'THz':
                 c = 299792458.0  # speed of light in m/s
                 xmin, xmax = c/xmax*1.e-6, c/xmin*1.e-6
@@ -6582,7 +6583,7 @@ class GUI (QMainWindow):
         """Update total spectrum."""
         #print('zoomall called')
         s = self.specCube
-        spectrum = self.spectra.index('All')
+        spectrum = self.spectra.index('Pix')
         sc = self.sci[spectrum]
         ic = self.ici[itab]
         if ic.toolbar.mode == 'zoom rect':
@@ -6867,6 +6868,7 @@ class GUI (QMainWindow):
                 try:
                     self.computeAll()
                 except BaseException:
+                    print('Impossible to compute total spectrum')
                     pass
 
     def hresizeSpectrum(self):
