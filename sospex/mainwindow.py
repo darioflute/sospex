@@ -2466,6 +2466,7 @@ class GUI (QMainWindow):
         """Read continuum from external file."""
         from astropy.io import fits
         from reproject import reproject_interp
+        from astropy.wcs.utils import proj_plane_pixel_scales
         
         nz,ny,nx = np.shape(self.specCube.flux)
         lon, lat = self.specCube.wcs.all_pix2world(ny//2, nx//2, 0)
@@ -2488,7 +2489,7 @@ class GUI (QMainWindow):
                 self.fitcont = True
             # General option: generic file to be interpolated on the original file
             else:
-                message = 'Image size not as original cube, continuum reprojected'
+                message = 'Continuum reprojected, assumed flux in Jy/pixel'
                 self.sb.showMessage(message, 4000)
                 print(message)
                 # Generate hdu of downloaded image
@@ -2505,6 +2506,11 @@ class GUI (QMainWindow):
                 # Reproject on original cube
                 array, footprint = reproject_interp(hdu, h1)
                 image = array
+                # Apply pixel conversion factor to new pixel size
+                old_xpixscale, old_ypixscale = proj_plane_pixel_scales(downloadedImage.wcs)
+                new_xpixscale, new_ypixscale = proj_plane_pixel_scales(self.specCube.wcs)
+                image *= (old_xpixscale/new_xpixscale)**2
+                print('scale factor is: ',(old_xpixscale/new_xpixscale)**2)
                 self.C0 = image.copy()
                 self.Cs = np.zeros((ny,nx))
                 self.continuum = np.broadcast_to(self.C0, np.shape(self.specCube.flux))
