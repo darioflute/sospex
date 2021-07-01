@@ -233,6 +233,7 @@ class cloudImage(object):
                 hdu = hdulist['PRIMARY']
                 hdulist.info()
                 header = hdulist['PRIMARY'].header
+                self.header = header
                 try:
                     instrument = header['INSTRUME']
                     self.source = instrument
@@ -453,6 +454,7 @@ class cloudImage(object):
                 # Rotated data and wcs
                 self.data = array
                 self.wcs = WCS(h1)
+                self.header = h1
                 self.crota2 = 0. # there is no rotation left
                 # Save the rotated image
                 self.saveRotatedFits(image_file)

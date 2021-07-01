@@ -1187,10 +1187,6 @@ class GUI (QMainWindow):
                 sc.rannotation = sc.axes.annotate(u"r = {:.1f}\u2033".format(r),
                                               xy=(-0.14,-0.07), picker=5,
                                               xycoords='axes fraction')
-            # Add a note to constrain the continuum
-            sc.cannotation = sc.axes.annotate(u"$C_0 fix$ {:d}".format(0),
-                                              xy=(-0.10,-0.07), picker=5,
-                                              xycoords='axes fraction')
             path = aperture.get_path()
             transform = aperture.get_patch_transform()
             npath = transform.transform_path(path)
@@ -2469,40 +2465,51 @@ class GUI (QMainWindow):
     def setContinuumFile(self):
         """Read continuum from external file."""
         from astropy.io import fits
+        from reproject import reproject_interp
         
-        self.openContinuumTab()
         nz,ny,nx = np.shape(self.specCube.flux)
-        # Read external file
-        # Simple option: file with same number of pixels and astrometry
-        # Open file
-        fd = QFileDialog()
-        fd.setLabelText(QFileDialog.Accept, "Import")
-        fd.setNameFilters(["Fits Files (*.fit*)", "All Files (*)"])
-        fd.setOptions(QFileDialog.DontUseNativeDialog)
-        fd.setViewMode(QFileDialog.List)
-        fd.setFileMode(QFileDialog.ExistingFile)
-        if (fd.exec()):
-            filenames= fd.selectedFiles()
-            contfile = filenames[0]
-            with fits.open(contfile) as hdul:
-                hdul.info()
-                image = hdul[0].data        
-            # General option: generic file to be interpolated on the original file
-            # We can develop this later                
-            ny_,nx_ = np.shape(image)
+        lon, lat = self.specCube.wcs.all_pix2world(ny//2, nx//2, 0)
+        xsize = nx * self.specCube.pixscale / 60. #size in arcmin
+        ysize = ny * self.specCube.pixscale / 60. #size in arcmin
+        downloadedImage = cloudImage(lon, lat, xsize, ysize, 'local image')
+        if downloadedImage.data is not None:
+            self.openContinuumTab()
+            ny_,nx_ = np.shape(downloadedImage.data)
+            # Read external file
+            # Simple option: file with same number of pixels and astrometry
             if (nx == nx_) & (ny == ny_):
-                print('The file has the same size as the original cube !')
+                print('The file has the same size as the original cube, assuming same astrometry')
                 # Save continuum
+                image = downloadedImage.data
                 self.C0 = image.copy()
                 self.Cs = np.zeros((ny,nx))
                 self.continuum = np.broadcast_to(self.C0, np.shape(self.specCube.flux))
                 self.refreshContinuum()
                 self.fitcont = True
+            # General option: generic file to be interpolated on the original file
             else:
-                message = 'Image size not as original cube, continuum set to zero'
+                message = 'Image size not as original cube, continuum reprojected'
                 self.sb.showMessage(message, 4000)
                 print(message)
-                self.setContinuumZero()
+                # Generate hdu of downloaded image
+                hdu = fits.PrimaryHDU(downloadedImage.data)
+                h = downloadedImage.wcs.to_header()
+                h.remove('WCSAXES')
+                hdu.header.extend(h)
+                # Header of celestial cube
+                h1 = self.specCube.wcs.to_header()
+                h1.remove('WCSAXES')
+                h1['NAXIS'] = 2
+                h1['NAXIS1'] = nx
+                h1['NAXIS2'] = ny
+                # Reproject on original cube
+                array, footprint = reproject_interp(hdu, h1)
+                image = array
+                self.C0 = image.copy()
+                self.Cs = np.zeros((ny,nx))
+                self.continuum = np.broadcast_to(self.C0, np.shape(self.specCube.flux))
+                self.refreshContinuum()
+                self.fitcont = True
         else:
             message = 'File not found, continuum set to zero'
             self.sb.showMessage(message, 4000)
