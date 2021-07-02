@@ -761,6 +761,7 @@ class SpectrumCanvas(MplCanvas):
         self.fittedlines = False
         self.fittedaplines = False
         self.rannotation = None
+        self.cannotation = None
         self.r = None # radius of aperture
         
     def compute_initial_spectrum(self, name=None, spectrum=None, xmin=None, xmax=None):
