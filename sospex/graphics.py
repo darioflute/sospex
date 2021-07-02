@@ -1296,16 +1296,11 @@ class SpectrumCanvas(MplCanvas):
                 dscale = 1 - self.aux1pixscale/self.pixscale
                 print('Update spectrum: dscale ', dscale)
                 if (dlam < 1):
-                    if dscale < 0.1:
-                        self.axu1.set_ylim(self.ylimits)
-                    else:
+                    if dscale > 0.1:
                         rescale = (self.aux1pixscale/self.pixscale) ** 2
                         print('rescaling ', rescale)
                         self.afluxLine1[0].set_ydata(af * rescale)
-                        self.axu1.set_ylim(self.ylimits)
-                        #y0 = self.ylimits[0] * rescale
-                        #y1 = self.ylimits[1] * rescale
-                        #self.axu1.set_ylim(y0,y1)
+                    self.axu1.set_ylim(self.ylimits)
                 else:
                     minf = np.nanmin(af)
                     maxf = np.nanmax(af)
