@@ -1287,12 +1287,8 @@ class GUI (QMainWindow):
                     sc.updateSpectrum(f=fluxAll*t2j, cont=cont, cslope=cslope, moments=moments, 
                                       lines=lines, noise=noise, ncell=ncell)
             elif s.instrument in ['PACS','FORCAST','SPIRE']:
-                if istab == 1:
-                    expAll = np.nanmean(s.exposure[:, yy, xx], axis=1)
-                    efluxAll = np.sqrt(np.nanmean(s.eflux[:,yy,xx]**2, axis=1))
-                else:
-                    expAll = np.nanmean(s.exposure[:, yy, xx], axis=1)
-                    efluxAll = np.sqrt(np.nansum(s.eflux[:, yy, xx]**2, axis=1))
+                expAll = np.nanmean(s.exposure[:, yy, xx], axis=1)
+                efluxAll = np.sqrt(np.nanmean(s.eflux[:,yy,xx]**2, axis=1))
                 if sc.auxiliary1:
                     sc.updateSpectrum(f=fluxAll, ef=efluxAll, af=afluxAll, 
                                       exp=expAll, cont=cont, cslope=cslope,
@@ -1304,17 +1300,18 @@ class GUI (QMainWindow):
                                       moments=moments, lines=lines,
                                       noise=noise, ncell=ncell)
             elif s.instrument == 'FIFI-LS':
-                if istab == 1:
-                    ufluxAll = np.nansum(s.uflux[:, yy, xx], axis=1)
-                    efluxAll = np.sqrt(np.nansum(s.eflux[:,yy,xx]**2, axis=1))
-                    expAll = np.nanmean(s.exposure[:, yy, xx], axis=1)
-                else:
-                    ufluxAll = np.nansum(s.uflux[:, yy, xx], axis=1)
-                    efluxAll = np.sqrt(np.nansum(s.eflux[:, yy, xx]**2, axis=1))
-                    expAll = np.nanmean(s.exposure[:, yy, xx], axis=1)                    
+                #if istab == 1:
+                #    ufluxAll = np.nansum(s.uflux[:, yy, xx], axis=1)
+                #    efluxAll = np.sqrt(np.nansum(s.eflux[:,yy,xx]**2, axis=1))
+                #    expAll = np.nanmean(s.exposure[:, yy, xx], axis=1)
+                #else:
+                ufluxAll = np.nansum(s.uflux[:, yy, xx], axis=1)
+                efluxAll = np.sqrt(np.nansum(s.eflux[:, yy, xx]**2, axis=1))
+                expAll = np.nanmean(s.exposure[:, yy, xx], axis=1)                    
                 sc.spectrum.uflux = ufluxAll
                 sc.spectrum.eflux = efluxAll
                 sc.spectrum.exposure = expAll
+                #print('EF shape is ',np.shape(ef))
                 if sc.auxiliary1:
                     sc.updateSpectrum(f=fluxAll, ef=efluxAll, af=afluxAll,
                                       uf=ufluxAll, exp=expAll,
@@ -2337,6 +2334,7 @@ class GUI (QMainWindow):
                     ncell = 0
                 # Update the guess limits for cell
                 sc.xguess[ncell] = x
+                print('continuum modified')
             elif event[:-2] == 'line guess modified':
                 # Grab new values 
                 sc = self.sci[istab]

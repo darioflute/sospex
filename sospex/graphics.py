@@ -1039,9 +1039,9 @@ class SpectrumCanvas(MplCanvas):
             print('Auxiliary ref. wavelength not defined') 
 
         # Prepare legend
-        print('Prepare legend ')              
+        #print('Prepare legend ')              
         self.labs = [l.get_label() for l in lns]
-        print('labels ', self.labs)
+        #print('labels ', self.labs)
         leg = self.axes.legend(lns, self.labs, 
                                bbox_to_anchor=(0.95, -0.20),
                                frameon=False,
@@ -1269,7 +1269,11 @@ class SpectrumCanvas(MplCanvas):
                 self.ylimits = (minf, maxf*1.2)
                 self.axes.set_ylim(self.ylimits)
                 self.updateYlim(f=f)
-                self.updateGuess(f, ncell)
+                # update guesses if Voronoi tesselation defined
+                try:
+                    self.updateGuess(f, ncell)
+                except:
+                    pass
             if ef is not None:
                 path = self.efluxLine.get_paths()[0]
                 v = path.vertices
@@ -1369,6 +1373,7 @@ class SpectrumCanvas(MplCanvas):
                     self.axes.add_patch(voigt)
                     self.voigt.append(voigt)
             if aplines is not None:
+                print('aperture line')
                 self.aplines = aplines # Conserve the parameters of fitted lines
                 self.fittedaplines = True
                 self.apfit = []
@@ -1686,9 +1691,12 @@ class SpectrumCanvas(MplCanvas):
             #else:
             #    self.axes.format_coord = lambda x, y: "{:8.4f} um {:10.4f} K".format(x, y)
         if self.guess is not None:
-            # Switch xguess units
-            for x in self.xguess:
-                x = c / np.array(x) * 1.e-6  # um to THz or viceversa
+            try:
+                # Switch xguess units
+                for x in self.xguess:
+                    x = c / np.array(x) * 1.e-6  # um to THz or viceversa
+            except:
+                pass
             # Switch guess
             self.guess.switchUnits()
         # Lines

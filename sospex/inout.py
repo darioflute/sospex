@@ -307,38 +307,33 @@ def importAperture(self):
                 # Update redshift
                 sc.spectrum.redshift = data['redshift']
                 self.specCube.redshift = data['redshift']
+                med = np.nanmedian(sc.spectrum.flux)
                 # Draw segments
                 x = data['xg']
                 y = data['yg']
                 lines = data['lines']
                 sc.xguess = [x]
                 # Add lines
-                if len(lines) > 0:
-                    sc.lguess = lines
+                sc.lguess = lines
                 # Plot continuum guess
                 if y[3] != y[0]:
                     self.zeroDeg = False
                 else:
                     self.zeroDeg = True
-                xy = [(i,j) for (i,j) in zip(x,y)]
-                
-                sc.guess = SegmentsInteractor(sc.axes, xy, self.zeroDeg)
-                sc.guess.modSignal.connect(self.onModifiedGuess)
-                sc.guess.mySignal.connect(self.onRemoveContinuum)
-                
-                # Fixed continuum
-                if y[3] == y[0]:
-                    sc.guess.fixedContinuum = True
-                    sc.contLev = y[0]
-                else:
-                    sc.guess.fixedContinuum = False
                 cont = 'Variable'
                 line1 = data['line 1']
                 econt = line1['errContinuum [Jy]']
-                print('err cont ', econt)
                 if (y[3] == y[0]) & (econt == 0.0):
                     cont = 'Fixed'
-                    sc.guess.contLevel = y[0]
+                    self.fixedContinuum = True
+                else:
+                    y = np.array(y) - np.nanmedian(y) + med
+                    self.fixedContinuum = False   
+                xy = [(i,j) for (i,j) in zip(x,y)]
+                print('xy ', xy)
+                sc.guess = SegmentsInteractor(sc.axes, xy, self.zeroDeg, self.fixedContinuum)
+                sc.guess.modSignal.connect(self.onModifiedGuess)
+                sc.guess.mySignal.connect(self.onRemoveContinuum)                
                 interactors = [sc.guess]
                 print('Plotted segment interactor')
                 # Plot lines
@@ -367,7 +362,18 @@ def importAperture(self):
                         print('There are ', sc.emslines, ' emission lines')
                         ex0s = np.array(ex0s)
                         efwhms = np.array(efwhms)
+                        #eAs = np.array(eAs)
+                        # Adjust height with data
+                        eAs = []
+                        for ex0 in ex0s:
+                            imin = np.argmin(np.abs(sc.spectrum.wave-ex0 * ( 1 + sc.spectrum.redshift)))
+                            eA = sc.spectrum.flux[imin] - med
+                            print('median w ',sc.spectrum.wave[imin],sc.spectrum.flux[imin], med)
+                            if eA < 0:
+                                eA = med * 0.1
+                            eAs.append(eA)
                         eAs = np.array(eAs)
+
                         sc.lines = self.addLines(sc.emslines, x, 'emission', 
                                                   x0s=ex0s, fwhms=efwhms, As=eAs)
                     else:
