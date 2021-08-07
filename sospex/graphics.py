@@ -76,6 +76,7 @@ def ds9cmap():
     """Adding DS9 colormap.
     Adapted from http://nbviewer.jupyter.org/gist/adonath/c9a97d2f2d964ae7b9eb"""
     from matplotlib.cm import register_cmap, cmap_d
+    from matplotlib.colors import LinearSegmentedColormap
     ds9b = {'red': lambda v : 4 * v - 1, 
             'green': lambda v : 4 * v - 2,
             'blue': lambda v : np.select([v < 0.25, v < 0.5, v < 0.75, v <= 1],
@@ -187,28 +188,51 @@ def ds9cmap():
     cmap_d['ds9bb_r'] = cmap_d['afmhot_r']
     cmap_d['ds9grey_r'] = cmap_d['gray_r']    
     # Register all other colormaps
-    register_cmap('ds9b', data=ds9b)
-    register_cmap('ds9cool', data=ds9cool)
-    register_cmap('ds9a', data=ds9a)
-    register_cmap('ds9i8', data=ds9i8)
-    register_cmap('ds9aips0', data=ds9aips0)
-    register_cmap('ds9rainbow', data=ds9rainbow)
-    register_cmap('ds9he', data=ds9he)
-    register_cmap('ds9heat', data=ds9heat)
+    register_cmap(cmap=LinearSegmentedColormap('ds9b', ds9b))
+    register_cmap(cmap=LinearSegmentedColormap('ds9cool', ds9cool))
+    register_cmap(cmap=LinearSegmentedColormap('ds9a', ds9a))
+    register_cmap(cmap=LinearSegmentedColormap('ds9i8', ds9i8))
+    register_cmap(cmap=LinearSegmentedColormap('ds9aips0', ds9aips0))
+    register_cmap(cmap=LinearSegmentedColormap('ds9rainbow', ds9rainbow))
+    register_cmap(cmap=LinearSegmentedColormap('ds9he', ds9he))
+    register_cmap(cmap=LinearSegmentedColormap('ds9heat', ds9heat))
     # Register reverse colormaps
-    register_cmap('ds9b_r', data=ds9b_r)
-    register_cmap('ds9cool_r', data=ds9cool_r)
-    register_cmap('ds9a_r', data=ds9a_r)
-    register_cmap('ds9i8_r', data=ds9i8_r)
-    register_cmap('ds9aips0_r', data=ds9aips0_r)
-    register_cmap('ds9rainbow_r', data=ds9rainbow_r)
-    register_cmap('ds9he_r', data=ds9he_r)
-    register_cmap('ds9heat_r', data=ds9heat_r)
+    register_cmap(cmap=LinearSegmentedColormap('ds9b_r', ds9b_r))
+    register_cmap(cmap=LinearSegmentedColormap('ds9cool_r', ds9cool_r))
+    register_cmap(cmap=LinearSegmentedColormap('ds9a_r', ds9a_r))
+    register_cmap(cmap=LinearSegmentedColormap('ds9i8_r', ds9i8_r))
+    register_cmap(cmap=LinearSegmentedColormap('ds9aips0_r', ds9aips0_r))
+    register_cmap(cmap=LinearSegmentedColormap('ds9rainbow_r', ds9rainbow_r))
+    register_cmap(cmap=LinearSegmentedColormap('ds9he_r', ds9he_r))
+    register_cmap(cmap=LinearSegmentedColormap('ds9heat_r', ds9heat_r))
     # Additional gaia map
-    register_cmap('real', data=gaiareal)
-    register_cmap('real_r', data=gaiareal_r)
-    register_cmap('rainbow', data=gaiarainbow)
-    register_cmap('rainbow_r', data=gaiarainbow_r)
+    register_cmap(cmap=LinearSegmentedColormap('real', gaiareal))
+    register_cmap(cmap=LinearSegmentedColormap('real_r', gaiareal_r))
+    register_cmap(cmap=LinearSegmentedColormap('rainbow', gaiarainbow))
+    register_cmap(cmap=LinearSegmentedColormap('rainbow_r', gaiarainbow_r))
+    # Old
+#    register_cmap('ds9b', data=ds9b)
+#    register_cmap('ds9cool', data=ds9cool)
+#    register_cmap('ds9a', data=ds9a)
+#    register_cmap('ds9i8', data=ds9i8)
+#    register_cmap('ds9aips0', data=ds9aips0)
+#    register_cmap('ds9rainbow', data=ds9rainbow)
+#    register_cmap('ds9he', data=ds9he)
+#    register_cmap('ds9heat', data=ds9heat)
+#    # Register reverse colormaps
+#    register_cmap('ds9b_r', data=ds9b_r)
+#    register_cmap('ds9cool_r', data=ds9cool_r)
+#    register_cmap('ds9a_r', data=ds9a_r)
+#    register_cmap('ds9i8_r', data=ds9i8_r)
+#    register_cmap('ds9aips0_r', data=ds9aips0_r)
+#    register_cmap('ds9rainbow_r', data=ds9rainbow_r)
+#    register_cmap('ds9he_r', data=ds9he_r)
+#    register_cmap('ds9heat_r', data=ds9heat_r)
+#    # Additional gaia map
+#    register_cmap('real', data=gaiareal)
+#    register_cmap('real_r', data=gaiareal_r)
+#    register_cmap('rainbow', data=gaiarainbow)
+#    register_cmap('rainbow_r', data=gaiarainbow_r)
     # The Normalize class is largely based on code provided by Sarah Graves.
     # http://www.ster.kuleuven.be/~pieterd/python/html/plotting/interactive_colorbar.html
 
