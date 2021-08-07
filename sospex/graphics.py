@@ -208,8 +208,8 @@ def ds9cmap():
     # Additional gaia map
     register_cmap(cmap=LinearSegmentedColormap('real', gaiareal))
     register_cmap(cmap=LinearSegmentedColormap('real_r', gaiareal_r))
-    register_cmap(cmap=LinearSegmentedColormap('rainbow', gaiarainbow))
-    register_cmap(cmap=LinearSegmentedColormap('rainbow_r', gaiarainbow_r))
+    register_cmap(cmap=LinearSegmentedColormap('gaiarainbow', gaiarainbow))
+    register_cmap(cmap=LinearSegmentedColormap('gaiarainbow_r', gaiarainbow_r))
     # Old
 #    register_cmap('ds9b', data=ds9b)
 #    register_cmap('ds9cool', data=ds9cool)
