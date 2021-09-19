@@ -2038,7 +2038,10 @@ class GUI (QMainWindow):
         self.fbox.show()
         
     def fitMessageButton(self, event):
-        if event.text() == 'Save':
+        #if event.text() == 'Save':
+        # Changed because in linux event is &Save, in mac is Save
+        if 'Save' in event.text():
+            print('export aperture')
             self.exportApertureAction()
             self.saveSpectrum()
     
@@ -6380,8 +6383,8 @@ class GUI (QMainWindow):
         
     def modifyContinuum(self, event):
         """React to change of continuum."""
-        cnew = float()
-        n = self.nAper()
+        #cnew = float()
+        #n = self.nAper()
         # Refresh image
         #itab = self.itabs.currentIndex()
         #ic = self.ici[itab]
