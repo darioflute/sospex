@@ -294,7 +294,7 @@ class specCubeAstro(object):
         # Multiply by the flux fraction in the pixel assuming a 2D Gaussian curve                    
         #pixfraction = 0.5 * erf(self.pixscale*0.5/bmaj) * erf(ypixscale*0.5/bmin)
         #print('Beam fraction on pixel ', pixfraction)
-        self.npix_per_beam = 1.331 * bmaj * bmin / (self.pixscale * ypixscale)
+        self.npix_per_beam = 1.13309 * bmaj * bmin / (self.pixscale * ypixscale)
         # Flux in K /beam. So divide by the number of pixels per beam to have K/pix
         self.flux /= self.npix_per_beam
         print('Tb2Jy ', self.Tb2Jy)
@@ -487,7 +487,7 @@ class specCubeAstro(object):
                 # Multiply by the flux fraction in the pixel assuming a 2D Gaussian curve                    
                 #pixfraction = 0.5 * erf(self.pixscale*0.5/bmaj) * erf(ypixscale*0.5/bmin)
                 #print('Beam fraction on pixel ', pixfraction)
-                self.npix_per_beam = 1.331 * bmaj * bmin / (self.pixscale * ypixscale)
+                self.npix_per_beam = 1.13309 * bmaj * bmin / (self.pixscale * ypixscale)
                 # Flux in Jy /beam. So divide by the number of pixels per beam to have Jy/pix
                 self.flux /= self.npix_per_beam
             else:
@@ -616,7 +616,7 @@ class specCubeAstro(object):
         # Multiply by the flux fraction in the pixel assuming a 2D Gaussian curve                    
         #pixfraction = 0.5 * erf(self.pixscale*0.5/bmaj) * erf(ypixscale*0.5/bmin)
         #print('Beam fraction on pixel ', pixfraction)
-        self.npix_per_beam = 1.331 * bmaj * bmin / (self.pixscale * ypixscale)
+        self.npix_per_beam = 1.13309 * bmaj * bmin / (self.pixscale * ypixscale)
         # Flux in Jy /beam. So divide by the number of pixels per beam to have Jy/pix
         self.flux /= self.npix_per_beam
 
@@ -989,7 +989,7 @@ class specCube(object):
         pixfraction = erf(self.pixscale*0.5/xsigma) * erf(ypixscale*0.5/ysigma)
         print('Beam fraction on pixel ', pixfraction)
         # Transform Jy/beam to Jy/pixel
-        self.npix_per_beam = 1.331 * bmaj * bmin / (self.pixscale * ypixscale)
+        self.npix_per_beam = 1.13309 * bmaj * bmin / (self.pixscale * ypixscale)
         print('Pixels per beam', self.npix_per_beam)
         print('Tb2Jy ', self.Tb2Jy)
         #self.Tb2Jy *= pixfraction
@@ -1151,7 +1151,7 @@ class specCube(object):
                 # Multiply by the flux fraction in the pixel assuming a 2D Gaussian curve                    
                 #pixfraction = 0.5 * erf(self.pixscale*0.5/bmaj) * erf(ypixscale*0.5/bmin)
                 #print('Beam fraction on pixel ', pixfraction)
-                self.npix_per_beam = 1.331 * bmaj * bmin / (self.pixscale * ypixscale)
+                self.npix_per_beam = 1.13309 * bmaj * bmin / (self.pixscale * ypixscale)
                 # Flux in Jy /beam. So divide by the number of pixels per beam to have Jy/pix
                 self.flux /= self.npix_per_beam
             else:
@@ -1283,7 +1283,8 @@ class specCube(object):
         # Multiply by the flux fraction in the pixel assuming a 2D Gaussian curve                    
         #pixfraction = 0.5 * erf(self.pixscale*0.5/bmaj) * erf(ypixscale*0.5/bmin)
         #print('Beam fraction on pixel ', pixfraction)
-        self.npix_per_beam = 1.331 * bmaj * bmin / (self.pixscale * ypixscale)
+        self.npix_per_beam = 1.13309 * bmaj * bmin / (self.pixscale * ypixscale)
+        print(' beam/pixel ', self.npix_per_beam)
         # Flux in Jy /beam. So divide by the number of pixels per beam to have Jy/pix
         self.flux /= self.npix_per_beam
 
@@ -1394,7 +1395,7 @@ class specCube(object):
             bmaj = self.header['BMAJ']
             bmin = self.header['BMIN']
             area_pixel = pixscale * ypixscale
-            self.npix_per_beam = 1.331 * bmaj * bmin / area_pixel
+            self.npix_per_beam = 1.13309 * bmaj * bmin / area_pixel
             self.flux /= self.npix_per_beam
         except:
             self.npix_per_beam = 1
