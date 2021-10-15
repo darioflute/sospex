@@ -176,7 +176,7 @@ class GUI (QMainWindow):
     
     def __init__(self):
         super().__init__()
-        self.title = 'SOSPEX: SOFIA Spectral Explorer'
+        self.title = 'SOfia SPectral EXplorer'
         self.left = 10
         self.top = 10
         self.width = 640
@@ -5943,9 +5943,10 @@ class GUI (QMainWindow):
         except BaseException:
             pass
         # Update window title (to include object name)
+        basename = os.path.basename(self.specCube.filename)
         self.setWindowTitle(self.title + " [ "+self.specCube.objname+" - "+
                                             self.specCube.instrument+
-                                            " - Obs: "+self.specCube.observer+" ]")
+                                            " - Obs: "+self.specCube.observer+" - File: "+basename+" ]")
         # Initialize
         self.tabi = []
         self.ici  = []
