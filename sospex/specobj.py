@@ -10,9 +10,16 @@ def computeBaryshift(header):
     import astropy.units as u
     import astropy.constants as const
 
-    equinox = header['TELEQUI']
-    time = Time(header['DATE-OBS'])
-    sc = FK5(header['TELRA'] * u.hourangle, header['TELDEC'] * u.deg, equinox=equinox)
+    if header['TELESCOP'] == 'HATCREEK':
+        print('Telescope of BIMA SONG')
+        equinox = 'J2000'
+        time = Time(header['DATE-OBS'])
+        sc = FK5(header['OBSRA'] * u.deg, header['OBSDEC'] * u.deg, equinox=equinox)
+    else:
+        equinox = header['TELEQUI']
+        time = Time(header['DATE-OBS'])
+        sc = FK5(header['TELRA'] * u.hourangle, header['TELDEC'] * u.deg, equinox=equinox)
+    print('SC computed')
     sc_cartesian = sc.represent_as(UnitSphericalRepresentation).\
     represent_as(CartesianRepresentation)
     _, ev = solar_system.get_body_barycentric_posvel('earth', time)
@@ -460,6 +467,13 @@ class specCubeAstro(object):
         self.cdelt3 = self.header['CDELT3']
         ctype3 = self.header['CTYPE3']
         if (ctype3 == 'VELO-HEL') or (ctype3 == 'VELO-LSR'):
+            #if ctype3 == 'VELO-LSR':
+            #    # Compute LSR velocity and subtract it
+            #    print('Compute LSR velocity')
+            #    zlsr = computeBaryshift(self.header)
+            #    speed_of_light = 299792.458 #km/s
+            #    print('LSR velocity is ', zlsr * speed_of_light)
+            #    self.crpix3 -= zlsr * speed_of_light
             pix0 = 0 # it's 1 normally ...
             velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3 # m/s
             # Neutral Hydrogen (HI)
@@ -468,7 +482,11 @@ class specCubeAstro(object):
             c = 299792458.0 # m/s
             # self.l0 = 21.1061140542 * 1.e4 #um
             self.l0 = c/nu0 * 1.e6 #um
-            self.wave = self.l0 * (1 + velocity/c) #um
+            if self.header['TELESCOP'] == 'HATCREEK':
+                # Radio convention: https://science.nrao.edu/facilities/vla/docs/manuals/obsguide/modes/line
+                self.wave = self.l0 / (1 - velocity/c) #um  
+            else:
+                self.wave = self.l0 * (1 + velocity/c) #um    
             # Flip order to increasing wavelength
             self.wave = self.wave[::-1]
             self.flux = self.flux[::-1,:,:]
@@ -1125,6 +1143,13 @@ class specCube(object):
         ctype3 = self.header['CTYPE3'].strip()
         pix0 = 0
         if (ctype3 == 'VELO-HEL') or (ctype3 == 'VELO-LSR'):
+            #if ctype3 == 'VELO-LSR':
+            #    # Compute LSR velocity and subtract it
+            #    zlsr = computeBaryshift(self.header)
+            #    import astropy.constants as const
+            #    speed_of_light = const.c.to(zlsr.unit)
+            #    print('LSR velocity is ', zlsr * speed_of_light)
+            #    self.crpix3 -= zlsr * speed_of_light
             velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3 # m/s
             # Neutral Hydrogen (HI)
             nu0 = self.header['RESTFREQ']
@@ -1132,7 +1157,12 @@ class specCube(object):
             c = 299792458.0 # m/s
             # self.l0 = 21.1061140542 * 1.e4 #um
             self.l0 = c/nu0 * 1.e6 #um
-            self.wave = self.l0 * (1 + velocity/c) #um
+            if self.header['TELESCOP'] == 'HATCREEK':
+                # Radio convention: https://science.nrao.edu/facilities/vla/docs/manuals/obsguide/modes/line
+                self.wave = self.l0 / (1 - velocity/c) #um  
+            else:
+                self.wave = self.l0 * (1 + velocity/c) #um    
+
             # Flip order to increasing wavelength
             self.wave = self.wave[::-1]
             self.flux = self.flux[::-1,:,:]
@@ -1358,6 +1388,13 @@ class specCube(object):
             self.wave = self.wave[idx]
             self.flux = self.flux[idx, :, :]
         elif ctype3 in ['VELO-HEL', 'VELO-LSR', 'VRAD','FELO-HEL']:
+            #if ctype3 == 'VELO-LSR':
+            #    # Compute LSR velocity and subtract it
+            #    zlsr = computeBaryshift(self.header)
+            #    import astropy.constants as const
+            #    speed_of_light = const.c.to(zlsr.unit)
+            #    print('LSR velocity is ', zlsr * speed_of_light)
+            #    self.crpix3 -= zlsr * speed_of_light
             velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3 # m/s
             if self.instrument == 'VLA':
                 nu0 = self.header['RESTFREQ']
@@ -1382,7 +1419,9 @@ class specCube(object):
                 velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3 # m/s
             except:
                 pass
-            self.wave = self.l0 * (1 + velocity/c) #um
+            # Radio convention: https://science.nrao.edu/facilities/vla/docs/manuals/obsguide/modes/line
+            self.wave = self.l0 / (1 - velocity/c) #um  
+            #self.wave = self.l0 * (1 + velocity/c) #um
         else:
             print('Ctype3 ', ctype3,' is not supported')
         pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) # Pixel scale in arcsec

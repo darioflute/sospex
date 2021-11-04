@@ -5452,21 +5452,38 @@ class GUI (QMainWindow):
                 cmin = ic0.cmin; cmax=ic0.cmax
                 ic0.updateImage(image)
                 ic0.updateScale(cmin,cmax)
-            # mask C0, Mi, v, sv
-            sbands = [self.C0, self.M0, self.M1, self.M2, self.M3, self.M4, 
-                      self.v, self.sv,self.L0,self.L1,self.v0,self.v1,self.d0,self.d1]
-            bands = ['C0','M0','M1','M2','M3','M4','v','sv','L0','L1','v0','v1','d0','d1']
+            # mask C0, Mi, v, sv and lines
+            sbands = [self.C0, self.M0,self.v, self.sv,
+                      self.L0,self.v0,self.d0,self.L1,self.v1,self.d1]
+            bands = ['C0','M0','v','sv','L0','v0','d0','L1','v1','d1']
             for b,sb in zip(bands,sbands):
-                if sb is not None:
-                    itab = self.bands.index(b)
-                    sb[yy,xx] = np.nan
-                    ic0 = self.ici[itab]
-                    ih = self.ihi[itab]
-                    clim = ic0.image.get_clim()
-                    ic0.updateImage(sb)
-                    ic0.updateScale(clim[0],clim[1])
-                    ih.axes.cla()
-                    ih.compute_initial_figure(image=sb, xmin=clim[0],xmax=clim[1])
+                try:
+                    if sb is not None:
+                        print('Updating ', b)
+                        itab = self.bands.index(b)
+                        sb[yy,xx] = np.nan
+                        ic0 = self.ici[itab]
+                        ih = self.ihi[itab]
+                        clim = ic0.image.get_clim()
+                        ic0.updateImage(sb)
+                        ic0.updateScale(clim[0],clim[1])
+                        ih.axes.cla()
+                        ih.compute_initial_figure(image=sb, xmin=clim[0],xmax=clim[1])
+                except:
+                    print(b, ' is not in the list')
+            # Also the line fitting parameters should be masked
+            try:
+                for line in self.lines:
+                    center, sigma, A, alpha, centerErr, sigmaErr, Aerr = line
+                    center[yy,xx] = np.nan
+                    sigma[yy,xx] = np.nan
+                    A[yy,xx] = np.nan
+                    alpha[yy,xx] = np.nan
+                    centerErr[yy,xx] = np.nan
+                    sigmaErr[yy,xx] = np.nan
+                    Aerr[yy,xx] = np.nan
+            except:
+                print('No lines are defined')                    
             x,y = ic.zoomlimits
             ic.axes.set_xlim(x)
             ic.axes.set_ylim(y)

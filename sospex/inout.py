@@ -131,7 +131,9 @@ def exportAperture(self):
             info.extend([
                 ('area', area),
                 ('width', width),
+                ('widthUnit', 'arcsec'),
                 ('height', height),
+                ('heigthUnit', 'arcsec'),
                 ('angle', aperture.rect.angle - ic.crota2),
                 ('ra0', r0.tolist()),
                 ('dec0', d0.tolist())
@@ -145,7 +147,9 @@ def exportAperture(self):
             info.extend([
                     ('area', area),
                     ('width',  ax1 * 2),
+                    ('widthUnit', 'arcsec'),
                     ('height', ax2 * 2),
+                    ('heigthUnit', 'arcsec'),
                     ('angle',  aperture.ellipse.angle - ic.crota2),
                     ('ra0', r0.tolist()),
                     ('dec0', d0.tolist())
