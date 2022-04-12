@@ -3,10 +3,10 @@
 To install the code in your computer, you need first to install the anaconda
 python (https://www.anaconda.com/download).
 
-**You will have to use the Python 3.7 distribution.**
+**You will have to use the Python 3.8 distribution.**
 
 If you have a previous Python distribution installed, it is advisable to start from scratch
-with a new Anaconda download of Python 3.7.
+with a new Anaconda download of Python 3.8.
 
 It is a good practice to update all your installed packages to have the latest versions:
 
@@ -29,7 +29,7 @@ conda install -c darioflute sospex -y
 It is possible to install it inside an environment.
 To create it use the command:
 
-conda create -n sospex python=3.7 anaconda
+conda create -n sospex python=3.8 anaconda
 
 Then activate it:
 
