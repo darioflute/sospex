@@ -3075,8 +3075,6 @@ class GUI (QMainWindow):
         if self.L0 is None:
             s = self.specCube
             self.Mmask = np.zeros((s.nz,s.ny,s.nx), dtype=bool) # Spectral cube mask (for computing the moments)
-            self.L0 = np.full((s.ny,s.nx), np.nan) #  1st line integral
-            self.L1 = np.full((s.ny,s.nx), np.nan) #  2nd line integral
             sc = self.sci[self.spectra.index('Pix')]
             nlines = len(sc.lguess)
             self.lines = np.full((nlines, 7, s.ny, s.nx), np.nan) # Fitted parameters of lines
@@ -3085,9 +3083,12 @@ class GUI (QMainWindow):
             ic0 = self.ici[itab]
             # Create/update moment tabs
             if nlines == 1:
+                self.L0 = np.full((s.ny,s.nx), np.nan) #  1st line integral
                 newbands = ['L0','v0','d0']
                 sbands = [self.L0, self.v0, self.d0]                
             elif nlines == 2:
+                self.L0 = np.full((s.ny,s.nx), np.nan) #  1st line integral
+                self.L1 = np.full((s.ny,s.nx), np.nan) #  2nd line integral
                 newbands = ['L0','L1','v0','v1','d0','d1']
                 sbands = [self.L0, self.L1, self.v0, self.v1, self.d0, self.d1]
             for new,sb in zip(newbands,sbands):
