@@ -1959,40 +1959,46 @@ class GUI (QMainWindow):
         """Fit lines after defining guesses."""
         istab = self.stabs.currentIndex()
         sc = self.sci[istab]
-        if sc.emslines+sc.abslines == 0:
-            if sc.guess.fixedContinuum:
-                ic = sc.contLev
-                eic = 0
-                s = 0
-                es = 0
-            else:
-                ic, eic, s, es = fitApertureContinuum(sc)
-            return
-        print('Fitting lines ')
+        print('Fit continuum')
         try:
-            # 1. Fit the continuum
-            print('Fit continuum ')
-            if sc.guess.fixedContinuum:
-                ic = sc.contLev
-                eic = 0
-                s = 0
-                es = 0
-            else:
-                ic, eic, s, es = fitApertureContinuum(sc)
-            # 2. Fit the lines
-            print('Fit lines ')
-            linepars = fitApertureLines(sc, (ic, eic), (s, es))
-            # 3. Plot the fit
-            sc.updateSpectrum(aplines=linepars)
-            sc.fig.canvas.draw_idle()
-            # 4. Dialog window with results
-            self.fitMessage(linepars, sc.function)
-        except BaseException:
+            if sc.emslines+sc.abslines == 0:
+                if sc.guess.fixedContinuum:
+                    ic = sc.contLev
+                    eic = 0
+                    s = 0
+                    es = 0
+                else:
+                    ic, eic, s, es = fitApertureContinuum(sc)
+                return
+            print('Fitting lines ')
             try:
-                if sc.emslines+sc.abslines > 0:
-                    message = 'Fit not feasible: change guesses / use Gaussian model'                
-            except:
-                message = 'First define a guess for the fit'
+                # 1. Fit the continuum
+                print('Fit continuum ')
+                if sc.guess.fixedContinuum:
+                    ic = sc.contLev
+                    eic = 0
+                    s = 0
+                    es = 0
+                else:
+                    ic, eic, s, es = fitApertureContinuum(sc)
+                # 2. Fit the lines
+                print('Fit lines ')
+                linepars = fitApertureLines(sc, (ic, eic), (s, es))
+                # 3. Plot the fit
+                sc.updateSpectrum(aplines=linepars)
+                sc.fig.canvas.draw_idle()
+                # 4. Dialog window with results
+                self.fitMessage(linepars, sc.function)
+            except BaseException:
+                try:
+                    if sc.emslines+sc.abslines > 0:
+                        message = 'Fit not feasible: change guesses / use Gaussian model'                
+                except:
+                    message = 'First define a guess for the fit'
+                self.sb.showMessage(message, 4000)
+                print(message)
+        except BaseException:
+            message = 'First define a guess for the fit'
             self.sb.showMessage(message, 4000)
             print(message)
             
