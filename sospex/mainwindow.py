@@ -1278,7 +1278,7 @@ class GUI (QMainWindow):
             else:
                 fluxAll = np.nansum(s.flux[:, yy, xx], axis=1)
             sc.spectrum.flux = fluxAll
-            if s.instrument in ['GREAT','HI','HALPHA','VLA','ALMA','MUSE','SITELLE','IRAM','CARMA','MMA','PCWI']:
+            if s.instrument in ['GREAT','HI','HALPHA','VLA','ALMA','SITELLE','IRAM','CARMA','MMA','PCWI']:
                 if sc.auxiliary1:
                     sc.updateSpectrum(f=fluxAll*t2j, af=afluxAll, cont=cont,
                                       cslope=cslope, moments=moments, 
@@ -1286,6 +1286,18 @@ class GUI (QMainWindow):
                 else:
                     sc.updateSpectrum(f=fluxAll*t2j, cont=cont, cslope=cslope, moments=moments, 
                                       lines=lines, noise=noise, ncell=ncell)
+            elif s.instrument in ['MUSE']:
+                efluxAll = np.sqrt(np.nanmean(s.eflux[:,yy,xx]**2, axis=1))
+                if sc.auxiliary1:
+                    sc.updateSpectrum(f=fluxAll, ef=efluxAll, af=afluxAll, 
+                                      cont=cont, cslope=cslope,
+                                      moments=moments, lines=lines,
+                                      noise=noise, ncell=ncell)
+                else:
+                    sc.updateSpectrum(f=fluxAll, ef=efluxAll, 
+                                      cont=cont, cslope=cslope,
+                                      moments=moments, lines=lines,
+                                      noise=noise, ncell=ncell)               
             elif s.instrument in ['PACS','FORCAST','SPIRE']:
                 expAll = np.nanmean(s.exposure[:, yy, xx], axis=1)
                 efluxAll = np.sqrt(np.nanmean(s.eflux[:,yy,xx]**2, axis=1))
@@ -3622,7 +3634,7 @@ class GUI (QMainWindow):
             spec = Spectrum(s.wave, fluxAll*s.Tb2Jy, instrument=s.instrument, 
                             redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy, 
                             bunit=s.bunit, yunit='Jy',pixscale=s.pixscale)
-        elif s.instrument in ['HI','HALPHA','VLA','ALMA','MUSE','SITELLE','IRAM','CARMA','MMA','PCWI']:
+        elif s.instrument in ['HI','HALPHA','VLA','ALMA','SITELLE','IRAM','CARMA','MMA','PCWI']:
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument, 
                             redshift=s.redshift, l0=s.l0, yunit='Jy',
                             pixscale=s.pixscale)
@@ -3635,6 +3647,12 @@ class GUI (QMainWindow):
                             redshift=s.redshift, baryshift=s.baryshift, l0=s.l0, 
                             watran=s.watran, uatran=s.uatran, yunit='Jy',
                             pixscale=s.pixscale)
+        elif s.instrument in ['MUSE']:
+            efluxAll = np.sqrt(np.nansum(s.eflux[:,yy,xx]**2, axis=1))
+            print('eflux muse ', np.shape(efluxAll))
+            spec = Spectrum(s.wave, fluxAll, eflux=efluxAll,
+                            instrument=s.instrument,pixscale=s.pixscale,
+                            redshift=s.redshift, l0=s.l0, yunit='Jy' )
         elif s.instrument in ['PACS','SPIRE']:
             expAll = np.nanmean(s.exposure[:,yy,xx], axis=1)
             efluxAll = np.sqrt(np.nansum(s.eflux[:,yy,xx]**2, axis=1))
@@ -4532,6 +4550,9 @@ class GUI (QMainWindow):
                     hdu4 = self.addExtension(sc.spectrum.exposure,'EXPOSURE','s',None)
                     hdlist.append(hdu3)
                     hdlist.append(hdu4)
+                if self.specCube.instrument == 'MUSE':
+                    hdu3 = self.addExtension(sc.spectrum.eflux,'FLUX_ERROR','Jy',None)
+                    hdlist.append(hdu3)
                 # Save file
                 hdul = fits.HDUList(hdlist)
                 hdul.writeto(outfile,overwrite=True) # clobber true  allows rewriting
@@ -5993,7 +6014,7 @@ class GUI (QMainWindow):
         if self.specCube.instrument == 'FIFI-LS':
             self.bands = ['Flux','uFlux','Exp']
             self.spectra = ['All','Pix']
-        elif self.specCube.instrument in ['GREAT','HI','HALPHA','VLA','ALMA','MUSE','SITELLE','IRAM','CARMA','MMA','PCWI']: 
+        elif self.specCube.instrument in ['MUSE','GREAT','HI','HALPHA','VLA','ALMA','SITELLE','IRAM','CARMA','MMA','PCWI']: 
             self.bands = ['Flux']
             self.spectra = ['All','Pix']
         elif self.specCube.instrument in ['FORCAST','PACS','SPIRE']:
@@ -6170,10 +6191,15 @@ class GUI (QMainWindow):
             spec = Spectrum(s.wave, fluxAll*s.Tb2Jy, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy, 
                             bunit=s.bunit, yunit='Jy/pix', pixscale=s.pixscale)
-        elif s.instrument in ['HI','HALPHA','VLA','ALMA','MUSE','SITELLE','IRAM','CARMA','MMA','PCWI']:
+        elif s.instrument in ['HI','HALPHA','VLA','ALMA','SITELLE','IRAM','CARMA','MMA','PCWI']:
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0, yunit='Jy/pix', 
                             pixscale=s.pixscale)
+        elif s.instrument in ['MUSE']:
+            efluxAll = s.eflux[:, y0, x0]
+            spec = Spectrum(s.wave, fluxAll, eflux=efluxAll, 
+                            instrument=s.instrument, pixscale=s.pixscale,
+                            redshift=s.redshift, l0=s.l0, yunit='Jy/pix')
         elif s.instrument in ['PACS','SPIRE']:
             expAll = s.exposure[:, y0, x0]
             efluxAll = s.eflux[:, y0, x0]
@@ -6319,8 +6345,8 @@ class GUI (QMainWindow):
             w = c / w * 1.e-6
         n = np.argmin(np.abs(self.specCube.wave - w))
        # Display channel n of the spectral cube
-        if self.specCube.instrument in ['GREAT','HI','HALPHA',
-                                        'VLA','ALMA','MUSE','SITELLE','IRAM','CARMA','MMA','PCWI']:
+        if self.specCube.instrument in ['GREAT','HI','HALPHA','MUSE',
+                                        'VLA','ALMA','SITELLE','IRAM','CARMA','MMA','PCWI']:
             imas = ['Flux']
         elif self.specCube.instrument in ['PACS', 'FORCAST','SPIRE']:
             imas = ['Flux','Exp']
@@ -6443,10 +6469,16 @@ class GUI (QMainWindow):
             spec = Spectrum(s.wave, fluxAll*s.Tb2Jy, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy, 
                             bunit=s.bunit, yunit='Jy',pixscale=s.pixscale)
-        elif s.instrument in ['HI','HALPHA','VLA','ALMA','MUSE','SITELLE','IRAM','CARMA','MMA','PCWI']:
+        elif s.instrument in ['HI','HALPHA','VLA','ALMA','SITELLE','IRAM','CARMA','MMA','PCWI']:
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0, yunit='Jy',
                             pixscale=s.pixscale)
+        elif s.instrument in ['MUSE']:
+            efluxAll = np.sqrt(np.nansum(s.eflux*s.eflux, axis=(1,2)))
+            spec = Spectrum(s.wave, fluxAll,  eflux=efluxAll, 
+                            instrument=s.instrument,
+                            redshift=s.redshift, l0=s.l0, yunit='Jy',
+                            pixscale=s.pixscale)            
         elif s.instrument in ['PACS', 'FORCAST','SPIRE']:
             expAll = np.nanmean(s.exposure, axis=(1,2))
             efluxAll = np.sqrt(np.nansum(s.eflux*s.eflux, axis=(1,2)))
@@ -6648,8 +6680,11 @@ class GUI (QMainWindow):
         if s.instrument in ['GREAT']:
             t2j = self.specCube.Tb2Jy
             sc.updateSpectrum(f=fluxAll*t2j)
-        elif s.instrument in ['HI','HALPHA','VLA','ALMA','MUSE','SITELLE','IRAM','CARMA','MMA','PCWI']:
+        elif s.instrument in ['HI','HALPHA','VLA','ALMA','SITELLE','IRAM','CARMA','MMA','PCWI']:
             sc.updateSpectrum(f=fluxAll)
+        elif s.instrument in ['MUSE']:
+            efluxAll = np.sqrt(np.nansum(s.eflux[:, y0:y1, x0:x1]**2, axis=(1, 2)))
+            sc.updateSpectrum(f=fluxAll,ef=efluxAll)                        
         elif s.instrument in ['PACS','FORCAST','SPIRE']:
             expAll = np.nanmean(s.exposure[:, y0:y1, x0:x1], axis=(1, 2))
             efluxAll = np.sqrt(np.nansum(s.eflux[:, y0:y1, x0:x1]**2, axis=(1, 2)))

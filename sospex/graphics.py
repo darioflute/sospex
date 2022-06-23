@@ -846,7 +846,7 @@ class SpectrumCanvas(MplCanvas):
                 if s.watran is not None:
                     self.xar = self.xa / (1 + s.baryshift)
                      
-        if s.instrument in ['FIFI-LS', 'PACS', 'FORCAST','SPIRE']:
+        if s.instrument in ['FIFI-LS', 'PACS', 'FORCAST','SPIRE','MUSE']:
             hiflux = s.flux + 1. * s.eflux  # 1 sigma
             loflux = s.flux - 1. * s.eflux
             # Try to repair NaNs
@@ -1625,7 +1625,7 @@ class SpectrumCanvas(MplCanvas):
                     self.displayFlux =  not self.displayFlux
                     state = self.displayFlux
                     #label = 'Flux'
-                    if self.instrument in ['FIFI-LS', 'PACS','SPIRE']:
+                    if self.instrument in ['FIFI-LS', 'PACS','SPIRE','MUSE']:
                         self.efluxLine.set_visible(self.displayFlux)
                 elif text == 'F$_{u}$':
                     self.displayUFlux = not self.displayUFlux

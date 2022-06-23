@@ -647,7 +647,8 @@ class specCubeAstro(object):
         """MUSE integral field spectrometer at VLT"""
         self.objname = self.header['OBJECT']
         print('Object of MUSE is ', self.objname)
-        self.flux = hdl['DATA'].data  # 10**(-20)*erg/s/cm**2/Angstrom
+        self.flux = hdl['DATA'].data  # 10**(-20)*erg/s/cm**2/Angstrom [F_lambda]
+        self.eflux = np.sqrt(hdl['STAT'].data) # 10**(-20)*erg/s/cm**2/Angstrom [F_lambda]
         nz, ny, nx = np.shape(self.flux)
         self.n = nz
         self.header = hdl['DATA'].header
@@ -659,6 +660,14 @@ class specCubeAstro(object):
         #ctype3 = self.header['CTYPE3'].strip()
         pix0=0
         self.wave = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3 # Angstrom
+        # Transform flux into F_nu [Jy]
+        c = 299792458 # Speed of light [m/s]
+        w2 = self.wave**2 * 1.e-7 / c
+        print('w,cube ',np.shape(w2), np.shape(self.flux))
+        for i in range(nx):
+            for j in range(ny):
+                self.flux[:,j,i] *= w2
+                self.eflux[:,j,i] *= w2
         self.wave *= 1.e-4  # um
         #print('min wave ', np.nanmin(self.wave))
         self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
@@ -1446,7 +1455,8 @@ class specCube(object):
         "MUSE integral field spectrometer at VLT"
         self.objname = self.header['OBJECT'].strip()
         print('Object of MUSE is ',self.objname)
-        self.flux = hdl[1].read()  # 10**(-20)*erg/s/cm**2/Angstrom
+        self.flux = hdl[0].read()  # 10**(-20)*erg/s/cm**2/Angstrom
+        self.eflux = np.sqrt(hdl[1].read())  # 10**(-20)*erg/s/cm**2/Angstrom
         nz, ny, nx = np.shape(self.flux)
         self.n = nz
         wcs = WCS(self.header)
@@ -1457,6 +1467,14 @@ class specCube(object):
         #ctype3 = self.header['CTYPE3'].strip()
         pix0=0
         self.wave = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3 # Angstrom
+        # Transform flux into F_nu [Jy]
+        c = 299792458 # Speed of light [m/s]
+        w2 = self.wave**2 * 1.e-7 / c
+        print('w,cube ',np.shape(w2), np.shape(self.flux))
+        for i in range(nx):
+            for j in range(ny):
+                self.flux[:,j,i] *= w2
+                self.eflux[:,j,i] *= w2
         self.wave *= 1.e4  # um
         self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
         print('scale is ', self.pixscale)
