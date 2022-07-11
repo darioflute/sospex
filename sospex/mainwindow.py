@@ -1287,7 +1287,7 @@ class GUI (QMainWindow):
                     sc.updateSpectrum(f=fluxAll*t2j, cont=cont, cslope=cslope, moments=moments, 
                                       lines=lines, noise=noise, ncell=ncell)
             elif s.instrument in ['MUSE']:
-                efluxAll = np.sqrt(np.nanmean(s.eflux[:,yy,xx]**2, axis=1))
+                efluxAll = np.sqrt(np.nansum(s.eflux[:,yy,xx]**2, axis=1))
                 if sc.auxiliary1:
                     sc.updateSpectrum(f=fluxAll, ef=efluxAll, af=afluxAll, 
                                       cont=cont, cslope=cslope,

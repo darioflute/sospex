@@ -117,6 +117,8 @@ class specCubeAstro(object):
             self.readMUSE(hdl)
         elif self.instrument == 'IRAM':
             self.readIRAM(hdl)
+        elif self.instrument in ['VLA','ALMA','CARMA','MMA']:
+            self.readVLA(hdl)
         elif self.instrument == 'SITELLE':
             self.readSITELLE(hdl)
         elif self.instrument == 'PCWI':
@@ -642,6 +644,127 @@ class specCubeAstro(object):
         w = self.wave
         self.crval3 = w[0]
         self.cdelt3 = np.median(w[1:] - w[:-1])
+        
+    def readVLA(self, hdl):
+        """Case of VLA cube (from VIVA)."""
+        print('Inside read VLA ')
+        print('reading with astropy routine .... ')
+        c = 299792458.0 # m/s
+        try:
+            self.objname = self.header['OBJECT']
+            print('Object of ', self.instrument, ' is ', self.objname)
+        except:
+            self.objname = ""
+            print('No object name in the header')
+        data = hdl[0].data
+        naxis = self.header['NAXIS']
+        if naxis == 3:
+            self.flux = data
+        elif naxis == 4: # polarization
+            self.flux = data[0,:,:,:]
+        try:
+            self.redshift = self.header['REDSHIFT']
+            print('Redshift ', self.redshift)
+        except:
+            self.redshift = 0.
+        if self.instrument == 'MMA':
+            idx = np.isfinite(self.flux)
+            self.flux[~idx] = np.nan            
+        nz, ny, nx = np.shape(self.flux)
+        self.n = nz
+        print('nz: ',nz, self.header['NAXIS3'])
+        wcs = WCS(self.header)
+        self.wcs = wcs.celestial
+        self.crpix3 = self.header['CRPIX3']
+        self.crval3 = self.header['CRVAL3']
+        self.cdelt3 = self.header['CDELT3']
+        ctype3 = self.header['CTYPE3'].strip()
+        print('ctype 3 is ', ctype3)
+        pix0 =0 
+        if ctype3 == 'FREQ':
+            if self.instrument in ['VLA','CARMA']:
+                nu0 = self.header['RESTFREQ']
+            elif self.instrument == 'ALMA':
+                nu0 = self.header['RESTFRQ']
+            print('reference frequency', nu0, 'Hz')
+            # Check if altrval exists and its different from crval3
+            try:
+                altrval = self.header['ALTRVAL']  # ref velocity in m/s
+                vcrval3 = c * (1 - self.crval3/nu0)
+                faltrval = nu0 * (1 - altrval/c)  # alt crval3
+                if np.abs(vcrval3 - altrval) > 20:
+                    self.crval3 = faltrval
+                #self.redshift = altrval/c
+            except:
+                pass
+            try:
+                altrpix = self.header['ALTRPIX'] # Ref pixel for 3rd dimension
+                self.crpix3 = altrpix
+            except:
+                pass
+            freq = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3 
+            self.l0 = c/nu0 * 1.e6 #um
+            print('Reference wavelength at ', self.l0)
+            self.wave = c/freq * 1.e6 #um
+            # Reorder wave (and flux)
+            idx = np.argsort(self.wave)
+            self.wave = self.wave[idx]
+            self.flux = self.flux[idx, :, :]
+        elif ctype3 in ['VELO-HEL', 'VELO-LSR', 'VRAD','FELO-HEL']:
+            #if ctype3 == 'VELO-LSR':
+            #    # Compute LSR velocity and subtract it
+            #    zlsr = computeBaryshift(self.header)
+            #    import astropy.constants as const
+            #    speed_of_light = const.c.to(zlsr.unit)
+            #    print('LSR velocity is ', zlsr * speed_of_light)
+            #    self.crpix3 -= zlsr * speed_of_light
+            velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3 # m/s
+            if self.instrument == 'VLA':
+                nu0 = self.header['RESTFREQ']
+            elif self.instrument in ['ALMA', 'CARMA']:
+                nu0 = self.header['RESTFRQ']
+            elif self.instrument == 'MMA':
+                nu0 = self.header['FREQ0']
+            print('reference frequency', nu0)
+            c = 299792458.0 # m/s
+            # self.l0 = 21.1061140542 * 1.e4 #um
+            self.l0 = c/nu0 * 1.e6 #um
+            if self.instrument == 'MMA':
+                c = 299792.458 # km/s
+            try:
+                altrval = self.header['ALTRVAL']  # ref frequency
+                altrpix = self.header['ALTRPIX']  # ref pixel
+                vcrval3 = c * (1. - altrval/nu0)
+                #faltrval = nu0 * (1 - altrval/c)  # alt crval3
+                #if np.abs(self.crval3 - vcrval3) > 20:
+                self.crval3 = vcrval3
+                self.crpix3 = altrpix
+                velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3 # m/s
+            except:
+                pass
+            # Radio convention: https://science.nrao.edu/facilities/vla/docs/manuals/obsguide/modes/line
+            self.wave = self.l0 / (1 - velocity/c) #um  
+            #self.wave = self.l0 * (1 + velocity/c) #um
+        else:
+            print('Ctype3 ', ctype3,' is not supported')
+        pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) # Pixel scale in arcsec
+        # Back to wavelength
+        w = self.wave
+        self.crval3 = w[0]
+        self.cdelt3 = np.median(w[1:] - w[:-1])
+        try:
+            # Flux conversion from Jy/beam to Jy/pixel
+            bmaj = self.header['BMAJ']
+            bmin = self.header['BMIN']
+            area_pixel = pixscale * ypixscale
+            self.npix_per_beam = 1.13309 * bmaj * bmin / area_pixel
+            self.flux /= self.npix_per_beam
+        except:
+            self.npix_per_beam = 1
+            print('No beam size given in the header')
+        self.pixscale = pixscale * 3600.0 # pixel scale in arcsec
+        print('scale is ', self.pixscale)
+
         
     def readMUSE(self, hdl):
         """MUSE integral field spectrometer at VLT"""
