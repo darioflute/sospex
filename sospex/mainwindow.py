@@ -2133,7 +2133,7 @@ class GUI (QMainWindow):
         self.tree = KDTree(self.sites)
         tq = self.tree.query(self.specCube.points)
         self.regions = tq[1].reshape(ny, nx)
-        self.ncells = len(self.sites)
+        self.ncells = len(self.sites) - 1  # last point repeated ?
         if event == 'voronoi modified':
             print('number of cells is now ', self.ncells)
             pass
@@ -2156,8 +2156,11 @@ class GUI (QMainWindow):
                 print(message)
         else:
             print('Site '+event+' removed')
+            print('Now left with ', self.ncells,' cells')
             try:
+                print('Initial number of guesses ', len(sc.xguess))
                 ind = int(event)
+                print('Event number ', ind)
                 del sc.xguess[ind]
                 if len(sc.lines) > 0:
                     for line in sc.lines:
@@ -2165,6 +2168,7 @@ class GUI (QMainWindow):
                             pass
                         else:
                             del sc.lguess[line.n][ind]
+                print('Number of guesses ', len(sc.xguess))
             except BaseException:
                 message = 'Please, define the continuum guess !'
                 self.sb.showMessage(message, 4000)
@@ -2578,7 +2582,7 @@ class GUI (QMainWindow):
         self.openContinuumTab()
 
         sc = self.sci[self.spectra.index('Pix')]
-        #print('ncells ', self.ncells)
+        print('number of cells ', self.ncells)
         if sc.guess is None:
             self.C0 = np.nanmedian(self.specCube.flux, axis=0)
         else:
@@ -2591,6 +2595,7 @@ class GUI (QMainWindow):
             else:
                 # Otherwise, find the regions
                 for ncell in range(self.ncells):
+                    print('ncell ',ncell)
                     i0, i1, i2, i3 = self.getContinuumGuess(ncell)
                     mask = np.zeros(len(self.specCube.flux), dtype=bool)
                     mask[i0:i1] = True

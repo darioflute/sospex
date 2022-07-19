@@ -652,6 +652,7 @@ class VoronoiInteractor(QObject):
                     #self.poly.xy = np.array([tup
                     #                for i, tup in enumerate(self.poly.xy)
                     #                if i != ind])
+                    print('Initial number of sites is ', len(self.sites))
                     a = self.poly.get_xy().tolist()
                     del a[ind]
                     # If first point, remove it also at the end and close the loop
@@ -661,6 +662,8 @@ class VoronoiInteractor(QObject):
                     self.poly.set_xy(a)
                     #print('new lengths ', len(a), len(self.poly.xy))
                     self.line.set_data(zip(*self.poly.xy))
+                    self.sites = self.poly.xy
+                    print('New number of sites is ', len(self.sites))
                     self.modSignal.emit(str(ind))  # Pass the index canceled
                 for s in self.segments + self.rays:
                     s.remove()
@@ -681,6 +684,7 @@ class VoronoiInteractor(QObject):
                     #    [(event.xdata, event.ydata)] +
                     #    list(self.poly.xy[i+1:]))
                     self.line.set_data(zip(*self.poly.xy))
+                    self.sites = self.poly.xy
                     break
             self.modSignal.emit('one voronoi site added')
             for s in self.segments + self.rays:
