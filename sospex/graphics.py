@@ -751,11 +751,11 @@ class SpectrumCanvas(MplCanvas):
 
     def __init__(self, *args, **kwargs):
         MplCanvas.__init__(self, *args, **kwargs)
-        from sospex.lines import define_lines
-        self.Lines = define_lines()
         self.fig.set_edgecolor('none')
         self.axes = self.fig.add_axes([0.12,0.17,.8,.70])
-        self.axes.format_coord = lambda x, y: "{:8.4f} um  {:10.4f} Jy".format(x,y)        
+        self.axes.format_coord = lambda x, y: "{:8.4f} um  {:10.4f} Jy".format(x,y)    
+        #from sospex.lines import define_lines
+        #self.Lines = define_lines()
         # Checks
         self.displayFlux = True
         self.displayUFlux = True
@@ -788,7 +788,7 @@ class SpectrumCanvas(MplCanvas):
         self.cannotation = None
         self.r = None # radius of aperture
         
-    def compute_initial_spectrum(self, name=None, spectrum=None, xmin=None, xmax=None):
+    def compute_initial_spectrum(self, name=None, spectrum=None, xmin=None, xmax=None, lines=None):
         if spectrum is None:
             ''' initial definition when spectrum not yet available '''
         else:
@@ -797,6 +797,17 @@ class SpectrumCanvas(MplCanvas):
             self.spectrum = spectrum
             self.yunit = self.spectrum.yunit
             self.instrument = spectrum.instrument
+            # Upload lines
+            print('Define lines for ',self.instrument)
+            from sospex.lines import define_lines
+            if lines is None:
+                if self.instrument == 'MUSE':
+                    self.Lines = define_lines('air')
+                else:
+                    self.Lines = define_lines()
+            else:
+                self.Lines = lines
+            print(print('H-alpha', self.Lines['H-alpha 6564']))
             self.drawSpectrum()
             # Activate focus
             self.setFocusPolicy(Qt.ClickFocus)
@@ -808,7 +819,7 @@ class SpectrumCanvas(MplCanvas):
         self.axes.grid(True, which='both')
         self.axes.xaxis.set_major_formatter(ScalarFormatter(useOffset=False))
         self.axes.yaxis.set_major_formatter(ScalarFormatter(useOffset=False))
-        s = self.spectrum        
+        s = self.spectrum 
         # Write labels
         #if s.instrument == 'GREAT':
         #    if self.yunit == 'Jy':
@@ -1104,12 +1115,13 @@ class SpectrumCanvas(MplCanvas):
         if self.shade == True:
             self.shadeRegion()
         # Add spectral lines
+        print("Adding spectral lines ....")
         self.spectralLines()
                 
     def spectralLines(self):
         """Draw spectral lines."""
         ckms = 299792.458  # speed of light in km/s
-        s = self.spectrum   
+        s = self.spectrum
         # Add spectral lines
         self.annotations = []
         font = FontProperties(family='DejaVu Sans', size=12)
@@ -1122,7 +1134,9 @@ class SpectrumCanvas(MplCanvas):
         for line in self.Lines.keys():
             nline = self.Lines[line][0]
             wline = self.Lines[line][1]*(1.+s.redshift)
+            print("line is ", line, xlim0, xlim1, nline, wline)
             if (wline > xlim0 and wline < xlim1):
+                print('Line ', line)
                 wdiff = abs(s.wave - wline)
                 imin = np.argmin(wdiff)
                 y = s.flux[imin]

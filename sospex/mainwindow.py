@@ -245,8 +245,8 @@ class GUI (QMainWindow):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.blinkTab)
         # Load lines
-        from sospex.lines import define_lines
-        self.Lines = define_lines()
+        #from sospex.lines import define_lines
+        #self.Lines = define_lines()
         # Check new versions (possibly with a thread ?)
         # Here call the thread
         self.checkVersion = CheckVersion(parent=self)
@@ -3675,7 +3675,7 @@ class GUI (QMainWindow):
                             baryshift=s.baryshift,pixscale=s.pixscale)
         istab = self.spectra.index('Pix')
         sc.xunit = self.sci[istab].xunit
-        sc.compute_initial_spectrum(name=apname, spectrum=spec)
+        sc.compute_initial_spectrum(name=apname, spectrum=spec, lines=self.Lines)
         self.specZoomlimits = [sc.xlimits,sc.ylimits]
         sc.cid = sc.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomSpec)
         # Start the span selector to show only part of the cube
@@ -5902,6 +5902,13 @@ class GUI (QMainWindow):
             self.emslines = 0
             # Default to one region
             self.ncells = 1
+            # Load spectral lines
+            from sospex.lines import define_lines
+            if self.specCube.instrument in ['MUSE']:
+                print('Use air lines')
+                self.Lines = define_lines(reference='air')
+            else:
+                self.Lines = define_lines()
             # Open extra images
             if len(self.extraimages) > 0:
                 for extraimage in self.extraimages:
@@ -5946,6 +5953,13 @@ class GUI (QMainWindow):
                 self.initializeSlider()
                 if self.specCube.instrument == 'GREAT':
                     self.slideCube('Exp computed')
+                # Load lines
+                from sospex.lines import define_lines
+                if self.specCube.instrument in ['MUSE']:
+                    self.Lines = define_lines(reference='air')
+                    #print('H-alpha', self.Lines['H-alpha 6564'])
+                else:
+                    self.Lines = define_lines()
                 # Open extra images
                 try:
                     if len(self.extraimages) > 0:
@@ -6229,6 +6243,7 @@ class GUI (QMainWindow):
                             watran=s.watran, uatran=s.uatran, yunit='Jy/pix',
                             pixscale=s.pixscale)
         print('Computing initial spectrum ...')
+        #sc.Lines = self.Lines
         sc.compute_initial_spectrum(name='Pix', spectrum=spec)
         print('initial spectrum computed')
         self.specZoomlimits = [sc.xlimits, sc.ylimits]
