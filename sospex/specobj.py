@@ -331,7 +331,7 @@ class specCubeAstro(object):
         exptime = self.header['EXPTIME']
         exp = hdl['EXPOSURE'].data.astype(float) * exptime
         self.exposure = np.broadcast_to(exp, np.shape(self.flux))
-        pix0=0
+        pix0=1
         self.wave = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3
         self.l0 = np.nanmedian(self.wave)
         # self.watran = hdl['WAVEPOS'].data
@@ -421,7 +421,7 @@ class specCubeAstro(object):
         crpix3 = imah['CRPIX3']
         crval3 = imah['CRVAL3']
         cdelt3 = imah['CDELT3']
-        pix0 = 0
+        pix0 = 1
         self.n = nz
         frequency = cdelt3 * (np.arange(self.n) - crpix3 + pix0) + crval3 # Hz
         self.wave = 299792.458 / frequency
@@ -535,7 +535,7 @@ class specCubeAstro(object):
         nz, ny, nx = np.shape(self.flux)
         self.n = nz
         print('nz: ',nz, self.header['NAXIS3'])
-        pix0 = 0
+        pix0 = 1
         self.crpix3 = self.header['CRPIX3']
         self.crval3 = self.header['CRVAL3']
         self.cdelt3 = self.header['CDELT3']
@@ -597,7 +597,7 @@ class specCubeAstro(object):
         self.crval3 = self.header['CRVAL3']
         self.cdelt3 = self.header['CDELT3']
         ctype3 = self.header['CTYPE3']
-        pix0 = 0
+        pix0 = 1
         if ctype3 == 'VELOCITY':
             velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3 # m/s
             # Neutral Hydrogen (HI)
@@ -680,7 +680,7 @@ class specCubeAstro(object):
         self.cdelt3 = self.header['CDELT3']
         ctype3 = self.header['CTYPE3'].strip()
         print('ctype 3 is ', ctype3)
-        pix0 =0 
+        pix0 = 1 
         if ctype3 == 'FREQ':
             if self.instrument in ['VLA','CARMA']:
                 nu0 = self.header['RESTFREQ']
@@ -833,7 +833,7 @@ class specCubeAstro(object):
         self.crpix3 = self.header['CRPIX3']
         self.crval3 = self.header['CRVAL3']
         self.cdelt3 = self.header['CD3_3']
-        pix0=0
+        pix0=1
         self.wave = self.cdelt3 * (np.arange(self.n) + pix0 - self.crpix3) + self.crval3 # Angstrom
         self.wave *= 1.e-4  # um
         self.pixscale, self.ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
@@ -1189,7 +1189,7 @@ class specCube(object):
         exptime = self.header['EXPTIME']
         exp = hdl[extnames.index('EXPOSURE')].read().astype(float) * exptime
         self.exposure = np.broadcast_to(exp, np.shape(self.flux))
-        pix0 = 0 
+        pix0 = 1 
         self.wave = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3
         self.l0 = np.nanmedian(self.wave)
         #self.watran = hdl['WAVEPOS'].read()
@@ -1273,7 +1273,7 @@ class specCube(object):
         self.crval3 = self.header['CRVAL3']
         self.cdelt3 = self.header['CDELT3']
         ctype3 = self.header['CTYPE3'].strip()
-        pix0 = 0
+        pix0 = 1
         if (ctype3 == 'VELO-HEL') or (ctype3 == 'VELO-LSR'):
             #if ctype3 == 'VELO-LSR':
             #    # Compute LSR velocity and subtract it
@@ -1345,7 +1345,7 @@ class specCube(object):
         self.crval3 = self.header['CRVAL3']
         self.cdelt3 = self.header['CDELT3']
         ctype3 = self.header['CTYPE3'].strip()
-        pix0=0
+        pix0=1
         if ctype3 in ['VELO-HEL', 'VELO-LSR', 'VOPT']:
             velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3 # m/s
             # Neutral Hydrogen (HI)
@@ -1405,7 +1405,7 @@ class specCube(object):
         self.crval3 = self.header['CRVAL3']
         self.cdelt3 = self.header['CDELT3']
         ctype3 = self.header['CTYPE3'].strip()
-        pix0=0
+        pix0=1
         if ctype3 == 'VELOCITY':
             velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3 # m/s
             # Neutral Hydrogen (HI)
@@ -1489,7 +1489,7 @@ class specCube(object):
         self.cdelt3 = self.header['CDELT3']
         ctype3 = self.header['CTYPE3'].strip()
         print('ctype 3 is ', ctype3)
-        pix0 =0 
+        pix0 = 1 
         if ctype3 == 'FREQ':
             if self.instrument in ['VLA','CARMA']:
                 nu0 = self.header['RESTFREQ']
