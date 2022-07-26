@@ -781,7 +781,7 @@ class specCubeAstro(object):
         self.crval3 = self.header['CRVAL3']
         self.cdelt3 = self.header['CD3_3']
         #ctype3 = self.header['CTYPE3'].strip()
-        pix0=0
+        pix0=1
         self.wave = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3 # Angstrom
         # Transform flux into F_nu [Jy]
         c = 299792458 # Speed of light [m/s]
@@ -1588,7 +1588,7 @@ class specCube(object):
         self.crval3 = self.header['CRVAL3']
         self.cdelt3 = self.header['CDELT3']
         #ctype3 = self.header['CTYPE3'].strip()
-        pix0=0
+        pix0=1
         self.wave = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3 # Angstrom
         # Transform flux into F_nu [Jy]
         c = 299792458 # Speed of light [m/s]
