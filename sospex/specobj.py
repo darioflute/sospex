@@ -205,14 +205,17 @@ class specCubeAstro(object):
             print('No uncorrected flux defined !')
         self.wave = hdl['WAVELENGTH'].data
         self.n = len(self.wave)
-        #print('Size of wave ', self.n)
+        print('Size of wave ', self.n)
         #self.vel = np.zeros(self.n)  # prepare array of velocities
-        self.x = hdl['X'].data
-        #print('X  read')
-        self.y = hdl['Y'].data
-        #print('Y  read')
+        try:
+            self.x = hdl['X'].data
+            #print('X  read')
+            self.y = hdl['Y'].data
+            #print('Y  read')
+        except:
+            print('No x,y extensions')
         self.channel = self.header['DETCHAN']
-        #print('channel ', self.channel)
+        print('channel ', self.channel)
         if self.channel == 'BLUE':
             self.order = self.header["G_ORD_B"]
         else:
