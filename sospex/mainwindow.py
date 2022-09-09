@@ -1241,6 +1241,7 @@ class GUI (QMainWindow):
                                           line[2][j, i], line[3][j, i],
                                           line[4][j, i], line[5][j, i],
                                           line[6][j, i]])
+                        print('Lines are ', lines)
                     except:
                         lines = None
                 else:
@@ -2566,7 +2567,7 @@ class GUI (QMainWindow):
             xg = sc.xguess[ncell]
             xg = np.array(xg)
             if sc.xunit == 'THz':
-                c = 299792458.0  # speed of light in m/s
+                c = 299792458.0  # speed of ligt in m/s
                 xg = c/xg * 1.e-6  # THz to um
         # Compute i0,i1,i2,i3 from xy
         i0 = np.argmin(np.abs(self.specCube.wave-xg[0]))

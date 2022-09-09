@@ -1313,21 +1313,24 @@ class SpectrumCanvas(MplCanvas):
                 except:
                     pass
             if ef is not None:
-                path = self.efluxLine.get_paths()[0]
-                v = path.vertices
-                xf = self.fluxLine[0].get_xdata()
-                n1 = (np.where(xf == np.min(v[:,0])))[0][0]
-                n2 = (np.where(xf == np.max(v[:,0])))[0][0] 
-                if self.xunit == 'THz':
-                    y1 = (f - ef)[n2:n1+1]
-                    y2 = (f + ef)[n2:n1+1]
-                else:
-                    y1 = (f - ef)[n1:n2+1]
-                    y2 = (f + ef)[n1:n2+1]
-                v1 = np.concatenate(([y2[0]],y1,[y2[-1]],y2[::-1],[y2[0]]))
-                v1[np.isnan(v1)] = np.nanmedian(v1) # Put medians on NaNs
-                v[:,1] = v1
-                self.axes.draw_artist(self.efluxLine)
+                try:
+                    path = self.efluxLine.get_paths()[0]
+                    v = path.vertices
+                    xf = self.fluxLine[0].get_xdata()
+                    n1 = (np.where(xf == np.min(v[:,0])))[0][0]
+                    n2 = (np.where(xf == np.max(v[:,0])))[0][0] 
+                    if self.xunit == 'THz':
+                        y1 = (f - ef)[n2:n1+1]
+                        y2 = (f + ef)[n2:n1+1]
+                    else:
+                        y1 = (f - ef)[n1:n2+1]
+                        y2 = (f + ef)[n1:n2+1]
+                    v1 = np.concatenate(([y2[0]],y1,[y2[-1]],y2[::-1],[y2[0]]))
+                    v1[np.isnan(v1)] = np.nanmedian(v1) # Put medians on NaNs
+                    v[:,1] = v1
+                    self.axes.draw_artist(self.efluxLine)
+                except:
+                    print('No error ?')
             if af is not None:
                 self.afluxLine1[0].set_ydata(af)
                 self.vaxes.draw_artist(self.afluxLine1[0])
@@ -1380,7 +1383,7 @@ class SpectrumCanvas(MplCanvas):
                 self.fittedlines = True
                 self.voigt = []
                 for iline, line in enumerate(lines):
-                    #print('line is ', line)
+                    print('line is ', line)
                     x, sigma, A, alpha, xerr, sigmaerr, Aerr = line
                     c = 299792458. # m/s
                     A = A * 1.e20  * x * x / c  # Retransform in Jy
