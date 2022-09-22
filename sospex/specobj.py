@@ -117,7 +117,7 @@ class specCubeAstro(object):
             self.readMUSE(hdl)
         elif self.instrument == 'IRAM':
             self.readIRAM(hdl)
-        elif self.instrument in ['VLA','ALMA','CARMA','MMA']:
+        elif self.instrument in ['VLA','ALMA','CARMA','MMA','FOREST']:
             self.readVLA(hdl)
         elif self.instrument == 'SITELLE':
             self.readSITELLE(hdl)
@@ -169,6 +169,15 @@ class specCubeAstro(object):
        
     def readFIFI(self, hdl):
         print('This is a FIFI-LS spectral cube')
+        
+        if self.header['CTYPE1'] == 'X':
+            print('The WCS is not in RA-Dec')
+            print('Adding center from telescope information')
+            self.header['CTYPE1'] = 'RA---TAN'
+            self.header['CTYPE2'] = 'DEC--TAN'
+            self.header['CRVAL1'] = self.header['TELRA']*15
+            self.header['CRVAL2'] = self.header['TELDEC']
+        
         self.wcs = WCS(self.header).celestial
         self.crpix3 = self.header['CRPIX3']
         self.crval3 = self.header['CRVAL3']
@@ -525,7 +534,10 @@ class specCubeAstro(object):
         
     def readHalpha(self, hdl):
         """Case of Halpha images."""
-        self.objname = self.header['OBJECT']
+        try:
+            self.objname = self.header['OBJECT']
+        except:
+            self.objname = 'Unknown'
         print('Object of HALPHA is ',self.objname)
         self.header = hdl['PRIMARY'].header
         self.redshift = 0.
@@ -543,14 +555,21 @@ class specCubeAstro(object):
         self.crval3 = self.header['CRVAL3']
         self.cdelt3 = self.header['CDELT3']
         ctype3 = self.header['CTYPE3']
-        if ctype3 in ['VELO-HEL','VELO-LSR','VOPT']:
+        if ctype3 in ['VELO-HEL', 'VELO-LSR', 'VOPT', 'VELOCITY']:
             velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3 # m/s
-            nu0 = self.header['RESTFREQ']
-            print('reference frequency', nu0)
-            c = 299792458.0 # m/s
-            self.l0 = c / nu0 * 1.e6 #um
+            print('velocity ', velocity)
+            # Neutral Hydrogen (HI)
+            try:
+                nu0 = self.header['RESTFREQ'] # H-alpha
+                print('reference frequency', nu0)
+                c = 299792458.0 # m/s
+                # self.l0 = 21.1061140542 * 1.e4 #um
+                self.l0 = c/nu0 * 1.e6 #um
+            except:
+                c = 299792.458 # km/s
+                self.l0 = self.header['FP_L_RE'] * 1.e-4
             print('Rest wavelength ', self.l0)
-            self.wave = self.l0 * (1 + velocity / c) #um
+            self.wave = self.l0 * (1 + velocity/c) #um
         self.wcs = WCS(self.header).celestial
         #print('WCS ', self.wcs)
         self.pixscale, ypixscale = proj_plane_pixel_scales(self.wcs) * 3600. # Pixel scale in arcsec
@@ -724,7 +743,7 @@ class specCubeAstro(object):
             velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3 # m/s
             if self.instrument == 'VLA':
                 nu0 = self.header['RESTFREQ']
-            elif self.instrument in ['ALMA', 'CARMA']:
+            elif self.instrument in ['ALMA', 'CARMA','FOREST']:
                 nu0 = self.header['RESTFRQ']
             elif self.instrument == 'MMA':
                 nu0 = self.header['FREQ0']
@@ -760,7 +779,8 @@ class specCubeAstro(object):
             bmaj = self.header['BMAJ']
             bmin = self.header['BMIN']
             area_pixel = pixscale * ypixscale
-            self.npix_per_beam = 1.13309 * bmaj * bmin / area_pixel
+            area_beam = np.pi/ (4 * np.log(2)) * bmaj * bmin
+            self.npix_per_beam = area_beam / area_pixel
             self.flux /= self.npix_per_beam
         except:
             self.npix_per_beam = 1
@@ -934,7 +954,7 @@ class specCube(object):
             self.readHI(hdl)
         elif self.instrument == 'IRAM':
             self.readIRAM(hdl)
-        elif self.instrument in ['VLA','ALMA','CARMA','MMA']:
+        elif self.instrument in ['VLA','ALMA','CARMA','MMA','FOREST']:
             self.readVLA(hdl)
         elif self.instrument == 'MUSE':
             self.readMUSE(hdl)
@@ -996,6 +1016,15 @@ class specCube(object):
     def readFIFI(self, hdl):
         print('This is a FIFI-LS spectral cube (read with FITSIO')
         #self.header.delete('ASSC_AOR')  # this cannot be interpreted by WCS
+        
+        if self.header['CTYPE1'] == 'X':
+            print('The WCS is not in RA-Dec')
+            print('Adding center from telescope information')
+            self.header['CTYPE1'] = 'RA---TAN'
+            self.header['CTYPE2'] = 'DEC--TAN'
+            self.header['CRVAL1'] = self.header['TELRA']*15
+            self.header['CRVAL2'] = self.header['TELDEC']
+        
         self.wcs = WCS(self.header).celestial
         self.crpix3 = self.header['CRPIX3']
         self.crval3 = self.header['CRVAL3']
@@ -1330,7 +1359,10 @@ class specCube(object):
 
     def readHalpha(self, hdl):
         """Case of generic H-alpha cube."""
-        self.objname = self.header['OBJECT'].strip()
+        try:
+            self.objname = self.header['OBJECT'].strip()
+        except:
+            self.objname = 'Unknown'
         print('Object of Halpha is ',self.objname)
         #self.header = hdl[0].read_header()
         self.redshift = 0.
@@ -1349,14 +1381,18 @@ class specCube(object):
         self.cdelt3 = self.header['CDELT3']
         ctype3 = self.header['CTYPE3'].strip()
         pix0=1
-        if ctype3 in ['VELO-HEL', 'VELO-LSR', 'VOPT']:
+        if ctype3 in ['VELO-HEL', 'VELO-LSR', 'VOPT', 'VELOCITY']:
             velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3 # m/s
             # Neutral Hydrogen (HI)
-            nu0 = self.header['RESTFREQ'] # H-alpha
-            print('reference frequency', nu0)
-            c = 299792458.0 # m/s
-            # self.l0 = 21.1061140542 * 1.e4 #um
-            self.l0 = c/nu0 * 1.e6 #um
+            try:
+                nu0 = self.header['RESTFREQ'] # H-alpha
+                print('reference frequency', nu0)
+                c = 299792458.0 # m/s
+                # self.l0 = 21.1061140542 * 1.e4 #um
+                self.l0 = c/nu0 * 1.e6 #um
+            except:
+                c = 299792.458 # km/s
+                self.l0 = self.header['FP_L_RE'] * 1.e-4
             print('Rest wavelength ', self.l0)
             self.wave = self.l0 * (1 + velocity/c) #um
         self.wcs = WCS(self.header).celestial
@@ -1533,7 +1569,7 @@ class specCube(object):
             velocity = self.cdelt3 * (np.arange(self.n) - self.crpix3 + pix0) + self.crval3 # m/s
             if self.instrument == 'VLA':
                 nu0 = self.header['RESTFREQ']
-            elif self.instrument in ['ALMA', 'CARMA']:
+            elif self.instrument in ['ALMA', 'CARMA','FOREST']:
                 nu0 = self.header['RESTFRQ']
             elif self.instrument == 'MMA':
                 nu0 = self.header['FREQ0']
@@ -1569,7 +1605,8 @@ class specCube(object):
             bmaj = self.header['BMAJ']
             bmin = self.header['BMIN']
             area_pixel = pixscale * ypixscale
-            self.npix_per_beam = 1.13309 * bmaj * bmin / area_pixel
+            area_beam = np.pi/ (4 * np.log(2)) * bmaj * bmin
+            self.npix_per_beam = area_beam / area_pixel
             self.flux /= self.npix_per_beam
         except:
             self.npix_per_beam = 1
