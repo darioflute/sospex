@@ -5,8 +5,7 @@ python (https://www.anaconda.com/download).
 
 **You will have to use the Python 3.8 distribution.**
 
-If you have a previous Python distribution installed, it is advisable to start from scratch
-with a new Anaconda download of Python 3.8.
+If you another version of Python distribution installed, you will have to use an environment (see later).
 
 It is a good practice to update all your installed packages to have the latest versions:
 
@@ -59,10 +58,31 @@ and simply do:
 
 conda update sospex
 
-### Install with pipy  (Currently the version on pipy is pretty old)
+### Install with pip -e:
 
-pip install sospex
+The best alternative is to install the package with pip after cloning it.
 
-to update:
+#### A) clone the package
 
-pip install --upgrade sospex
+git clone https://github.com/darioflute/sospex.git
+
+#### B) add the required libraries
+
+conda install -c conda-forge lmfit,reproject,fitsio
+
+#### C) pip install
+
+From the directory containing the sospex package:
+
+pip install -e sospex
+
+
+#### D) to update with the latest release
+
+cd sospex
+
+git pull
+
+
+
+
