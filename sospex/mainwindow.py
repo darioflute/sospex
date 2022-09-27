@@ -5826,7 +5826,7 @@ class GUI (QMainWindow):
     def fluxNewAT(self):
         try:
             # Check if FIFI-LS cube
-            print('instrument is ', self.specCube.instrument)
+            #print('instrument is ', self.specCube.instrument)
             if self.specCube.instrument == 'FIFI-LS':
                 # Call a dialog showing the altitude and elevation angle in the header and asking for zenithal water vapor
                 za = 0.5 * (self.specCube.za[0] + self.specCube.za[1])
@@ -6114,14 +6114,14 @@ class GUI (QMainWindow):
             # print('spect in mainwindow is ',aspect)
             # t0 = time.process_time()
             # print('Image prepared in ', t0-ts, 's')
-            print('Display image ...', s.n0)
-            print('wcs ', s.wcs)
-            print('image ',np.shape(image))
-            print('instrument ', s.instrument)
+            #print('Display image ...', s.n0)
+            #print('wcs ', s.wcs)
+            #print('image ',np.shape(image))
+            #print('instrument ', s.instrument)
             ic.compute_initial_figure(image=image,wcs=s.wcs,title=ima,cMap=self.colorMap,
                                       cMapDir=self.colorMapDirection,stretch=self.stretchMap,
                                       instrument = s.instrument, aspect=aspect)
-            print('Image displayed')
+            print('Image displayed: ', ima)
             #t1 = time.process_time() 
             #print('Image displayed in ', t1-ts,' s')
             # print('select output format')

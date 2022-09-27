@@ -807,7 +807,6 @@ class SpectrumCanvas(MplCanvas):
                     self.Lines = define_lines()
             else:
                 self.Lines = lines
-            print(print('H-alpha', self.Lines['H-alpha 6564']))
             self.drawSpectrum()
             # Activate focus
             self.setFocusPolicy(Qt.ClickFocus)
@@ -1134,7 +1133,7 @@ class SpectrumCanvas(MplCanvas):
         for line in self.Lines.keys():
             nline = self.Lines[line][0]
             wline = self.Lines[line][1]*(1.+s.redshift)
-            print("line is ", line, xlim0, xlim1, nline, wline)
+            #print("line is ", line, xlim0, xlim1, nline, wline)
             if (wline > xlim0 and wline < xlim1):
                 print('Line ', line)
                 wdiff = abs(s.wave - wline)
