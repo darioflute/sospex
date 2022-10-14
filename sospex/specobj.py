@@ -179,6 +179,7 @@ class specCubeAstro(object):
             self.header['CRVAL2'] = self.header['TELDEC']
         
         self.wcs = WCS(self.header).celestial
+        print('WCS ', self.wcs)
         self.crpix3 = self.header['CRPIX3']
         self.crval3 = self.header['CRVAL3']
         self.cdelt3 = self.header['CDELT3']

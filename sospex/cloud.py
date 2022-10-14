@@ -54,7 +54,7 @@ class cloudImage(object):
         if pixscale is not None:
             self.pixscale = pixscale
 
-        if source == 'local image':
+        if source in ['local image', 'velocity image']:
             self.openLocal()
         elif source == 'local spectral cube':
             self.openLocalCube()

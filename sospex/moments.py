@@ -298,12 +298,12 @@ def multiFitContinuum(m, w, f, c, c0, w0, points, slope, intcp, posCont, kernel,
         ik = np.array([0])
         jk = np.array([0])
     if exp is None:
-        with mp.Pool(processes=mp.cpu_count()) as pool:
+        with mp.Pool(processes=mp.cpu_count()//2) as pool:
             res = [pool.apply_async(fitContinuum, (p,slope,intcp,posCont,m[:,p[1],p[0]],w,
                                                    f[:,p[1]+ik,p[0]+jk])) for p in points]
             results = [r.get() for r in res]
     else:
-        with mp.Pool(processes=mp.cpu_count()) as pool:
+        with mp.Pool(processes=mp.cpu_count()//2) as pool:
             res = [pool.apply_async(fiteContinuum, 
                                     (p, slope, intcp, posCont, m[:,p[1],p[0]], w,
                                      f[:,p[1]+ik,p[0]+jk],exp[:,p[1]+ik,p[0]+jk])) for p in points]
@@ -453,7 +453,7 @@ def multiFitLines(m, w, f, c, lineguesses, model, linefits, points):
     
     print('Fit model is ',model)
 
-    with mp.Pool(processes=mp.cpu_count()) as pool:
+    with mp.Pool(processes=mp.cpu_count()-2) as pool:
         res = [pool.apply_async(fitLines, 
                                 (p, 
                                  m[:, p[1],p[0]], 

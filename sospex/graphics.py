@@ -336,14 +336,20 @@ class ImageCanvas(MplCanvas):
                    title = 'I$_0$'
                 elif title == 'L1':
                    title = 'I$_1$'
+                elif title == 'L2':
+                   title = 'I$_2$'
                 elif title == 'v0':
                    title = 'v$_0$'
                 elif title == 'v1':
                    title = 'v$_1$'
+                elif title == 'v2':
+                   title = 'v$_2$'
                 elif title == 'd0':
                    title = 'FWHM$_0$'
                 elif title == 'd1':
                    title = 'FWHM$_1$'
+                elif title == 'd2':
+                   title = 'FWHM$_2$'
                 elif title == 'unknown':
                    title = ''
                 self.fig.suptitle(title)
@@ -763,6 +769,7 @@ class SpectrumCanvas(MplCanvas):
         self.displayExposure = True
         self.displayLines = True
         self.displayAuxFlux1 = False # Auxiliary spectral cube
+        self.displayRefVel = False   # Reference velocity
         self.shade = False
         self.regionlimits = None
         self.xunit = 'um'  # Alternatives are THz or km/s
@@ -781,6 +788,7 @@ class SpectrumCanvas(MplCanvas):
         self.lines = None
         self.dragged = None
         self.auxiliary1 = None
+        self.referenceVelocity = None
         self.moments = False
         self.fittedlines = False
         self.fittedaplines = False
@@ -902,7 +910,7 @@ class SpectrumCanvas(MplCanvas):
             print('auxiliary l0 ', self.aux1l0)
             print('auxiliary scale ', self.aux1pixscale)
             self.x1lannotation = self.axes.annotate(" $\\lambda_x$ = {:.4f} $\\mu$m".format(self.aux1l0),
-                                              xy=(-0.15,-0.22), picker=5, xycoords='axes fraction', color='cyan')            
+                                              xy=(-0.15,-0.22), picker=5, xycoords='axes fraction', color='cyan')
         # Check if vel is defined and draw velocity axis  
         try:
             vlims = self.computeVelLimits()         
@@ -1071,6 +1079,16 @@ class SpectrumCanvas(MplCanvas):
                 visibility.append(self.displayAuxFlux1)
         except:
             print('Auxiliary ref. wavelength not defined') 
+        # Reference velocity
+        try:
+            if self.referenceVelocity:
+                self.velocityLine = self.vaxes.axvline(self.refvel, color='purple')
+                self.velocityLayer, = self.velocityLine
+                lns += self.velocityLine
+                lines.append(self.velocityLayer)
+                visibility.append(self.displayRefVel)
+        except:
+            print('No reference velocity')
 
         # Prepare legend
         #print('Prepare legend ')              
@@ -1239,7 +1257,7 @@ class SpectrumCanvas(MplCanvas):
         return f
 
     def updateSpectrum(self, f=None, ef=None, uf=None, exp=None, cont=None, cslope=None, af=None,
-                       moments=None, noise=None, atran=None, lines=None, aplines=None, ncell=0):
+                       moments=None, noise=None, atran=None, lines=None, aplines=None, ncell=0, refvel=None):
         try:
             # Remove moments
             try:
@@ -1454,6 +1472,9 @@ class SpectrumCanvas(MplCanvas):
             else:
                 self.aplines = None
                 self.apfit = None
+            if refvel is not None:
+                self.velocityLine[0].set_xdata(refvel)
+                self.vaxes.draw_artist(self.velocityLine[0])
         except:
             print('Failed to update spectrum')
             pass
