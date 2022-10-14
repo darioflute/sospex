@@ -559,9 +559,8 @@ class GUI (QMainWindow):
         t.layout = QHBoxLayout(t)
         t.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored) # Avoid expansion
         self.stabs.addTab(t, b)
-        sc = SpectrumCanvas(t, width=5.5, height=5.25, dpi=100)
+        sc = SpectrumCanvas(t, width=self.width, height=self.width//2, dpi=self.dpi)
         sc.switchSignal.connect(self.switchUnits)
-        sc.modifyAperture.connect(self.modifyAperture)
         sc.modifyContinuum.connect(self.modifyContinuum)
         # Toolbar
         toolbar = QToolBar()
@@ -704,13 +703,15 @@ class GUI (QMainWindow):
             self.itabs.addTab(t, u'\u0394\u2081')  # unicode Delta 1      
         else:
             self.itabs.addTab(t, b)
-        ic = ImageCanvas(t, width=11, height=10.5, dpi=100)
+        ic = ImageCanvas(t, width=self.width, height=self.width*2/5, dpi=self.dpi)
         if b in ['Flux','uFlux','Exp','C0','M0','M1','M2','M3','M4','L0','L1','v0','v1','d0','d1']:
             ic.crota2 = self.specCube.crota2
         # No contours available
         ic.contours = None
         ic.contour0 = None
-        ih = ImageHistoCanvas(t, width=11, height=0.5, dpi=100)
+        ih = ImageHistoCanvas(ic, width=self.width, height=self.width/12, dpi=self.dpi)
+        size_px = int(ih.width()), int(ih.height())
+        ih.setMaximumSize(*size_px)
         ih.setVisible(False)
         ic.toolbar = NavigationToolbar(ic, self)
         # Toolbar
@@ -7018,6 +7019,8 @@ def main():
     gui.imagePanel.setMinimumWidth(width*0.35)
     gui.spectralPanel.setMinimumWidth(width*0.35)
     gui.hsplitter.setSizes ([width*0.48,width*0.48])
+    gui.dpi = 100
+    gui.width = width * .48 // gui.dpi
     # Add an icon for the application
     app.setWindowIcon(QIcon(os.path.join(gui.path0,'icons','sospex.png')))
     app.setApplicationName('SOSPEX')

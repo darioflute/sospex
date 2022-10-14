@@ -480,7 +480,7 @@ class ImageHistoCanvas(MplCanvas):
     
     def __init__(self, *args, **kwargs):
         MplCanvas.__init__(self, *args, **kwargs)
-        self.axes = self.fig.add_axes([0.0,0.4,1.,1.])
+        self.axes = self.fig.add_axes([0.0,0.3,1,.7])
         self.axes.yaxis.set_major_formatter(plt.NullFormatter())
         self.axes.spines['top'].set_visible(False)
         self.axes.spines['right'].set_visible(False)
