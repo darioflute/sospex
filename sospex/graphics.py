@@ -486,7 +486,7 @@ class ImageHistoCanvas(MplCanvas):
     
     def __init__(self, *args, **kwargs):
         MplCanvas.__init__(self, *args, **kwargs)
-        self.axes = self.fig.add_axes([0.0,0.4,1.,1.])
+        self.axes = self.fig.add_axes([0.0,0.3,1,.7])
         self.axes.yaxis.set_major_formatter(plt.NullFormatter())
         self.axes.spines['top'].set_visible(False)
         self.axes.spines['right'].set_visible(False)
@@ -1082,10 +1082,12 @@ class SpectrumCanvas(MplCanvas):
         # Reference velocity
         try:
             if self.referenceVelocity:
-                self.velocityLine = self.vaxes.axvline(self.refvel, color='purple')
-                self.velocityLayer, = self.velocityLine
-                lns += self.velocityLine
-                lines.append(self.velocityLayer)
+                print('Adding reference velocity ....', self.refvel- s.redshift*ckms)
+                self.velocityLine = self.vaxes.axvline(self.refvel - s.redshift*ckms,ls=':',color='purple',zorder=11)
+                #self.velocityLayer, = self.velocityLine
+                #lns += self.velocityLine
+                #print('lns ', lns)
+                #lines.append(self.velocityLayer)
                 visibility.append(self.displayRefVel)
         except:
             print('No reference velocity')
@@ -1473,8 +1475,10 @@ class SpectrumCanvas(MplCanvas):
                 self.aplines = None
                 self.apfit = None
             if refvel is not None:
-                self.velocityLine[0].set_xdata(refvel)
-                self.vaxes.draw_artist(self.velocityLine[0])
+                ckms = 299792.458  # speed of light in km/s
+                v = refvel-self.spectrum.redshift*ckms
+                self.velocityLine.set_xdata([v,v])
+                self.vaxes.draw_artist(self.velocityLine)
         except:
             print('Failed to update spectrum')
             pass

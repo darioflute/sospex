@@ -559,8 +559,7 @@ class GUI (QMainWindow):
         t.layout = QHBoxLayout(t)
         t.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored) # Avoid expansion
         self.stabs.addTab(t, b)
-        #sc = SpectrumCanvas(t, width=5.5, height=5.25, dpi=100)
-        sc = SpectrumCanvas(t, width=self.width1, height=self.height*0.8)#, dpi=100)
+        sc = SpectrumCanvas(t, width=self.width, height=self.width//2, dpi=self.dpi)
         sc.switchSignal.connect(self.switchUnits)
         sc.modifyAperture.connect(self.modifyAperture)
         sc.modifyContinuum.connect(self.modifyContinuum)
@@ -711,15 +710,15 @@ class GUI (QMainWindow):
             self.itabs.addTab(t, u'\u0394\u2082')  # unicode Delta 2      
         else:
             self.itabs.addTab(t, b)
-        #ic = ImageCanvas(t, width=11, height=10.5, dpi=100)
-        ic = ImageCanvas(t, width=self.width2, height=self.height)#, dpi=100)
+        ic = ImageCanvas(t, width=self.width, height=self.width*2/5, dpi=self.dpi)
         if b in ['Flux','uFlux','Exp','C0','M0','M1','M2','M3','M4','L0','L1','L2','v0','v1','v2','d0','d1','d2']:
             ic.crota2 = self.specCube.crota2
         # No contours available
         ic.contours = None
         ic.contour0 = None
-        #ih = ImageHistoCanvas(t, width=11, height=0.5, dpi=100)
-        ih = ImageHistoCanvas(t, width=self.width1, height=self.height*0.2)#, dpi=100)
+        ih = ImageHistoCanvas(ic, width=self.width, height=self.width/12, dpi=self.dpi)
+        size_px = int(ih.width()), int(ih.height())
+        ih.setMaximumSize(*size_px)
         ih.setVisible(False)
         ic.toolbar = NavigationToolbar(ic, self)
         # Toolbar
@@ -1289,21 +1288,21 @@ class GUI (QMainWindow):
                         print('Pixel out of map')
                     # Normalization
                     sc.aflux1 = afluxAll
-                if sc.displayRefVel:
-                    x0, y0 = aperture.get_xy()
-                    ic0 = self.ici[0]
-                    ra0, dec0 = ic0.wcs.all_pix2world(x0, y0, 0) 
-                    xxa, yya = self.refvel.wcs.all_world2pix(ra0, dec0, 0)
-                    xxa = int (xxa // 1)
-                    yya = int (yya // 1)
-                    try:
-                        vel = self.refvel.data[yya, xxa]
-                    except:
-                        vel = np.nan
-                    sc.refvel = vel
             else:
                 fluxAll = np.nansum(s.flux[:, yy, xx], axis=1)
-            if sc.displayRefVel == False:
+            if sc.displayRefVel:
+                x0, y0 = aperture.get_xy()
+                ic0 = self.ici[0]
+                ra0, dec0 = ic0.wcs.all_pix2world(x0, y0, 0) 
+                xxa, yya = self.refvel.wcs.all_world2pix(ra0, dec0, 0)
+                xxa = int (xxa // 1)
+                yya = int (yya // 1)
+                try:
+                    vel = self.refvel.data[yya, xxa]
+                except:
+                    vel = np.nan
+                sc.refvel = vel
+            else:
                 sc.refvel = np.nan
                 vel = None
             if sc.auxiliary1 == False:
@@ -7081,9 +7080,8 @@ def main():
     gui.imagePanel.setMinimumWidth(width*0.35)
     gui.spectralPanel.setMinimumWidth(width*0.35)
     gui.hsplitter.setSizes ([width*0.48,width*0.48])
-    gui.width1 = width * 0.48
-    gui.width2 = width * 0.48
-    gui.height = width * 0.5
+    gui.dpi = 100
+    gui.width = width * 0.48 // gui.dpi
     # Add an icon for the application
     app.setWindowIcon(QIcon(os.path.join(gui.path0,'icons','sospex.png')))
     app.setApplicationName('SOSPEX')
