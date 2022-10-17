@@ -21,7 +21,7 @@ import scipy.ndimage as ndimage
 import warnings
 
 from sospex.moments import ( multiFitContinuum, multiComputeMoments,
-                            multiFitLines, # multiFitLinesSingle, 
+                            multiFitLines,  #multiFitLinesSingle, 
                             residualsPsf, 
                             fitApertureContinuum, fitApertureLines)
 from sospex.dialogs import (ContParams, ContFitParams, SlicerDialog, guessParams,
@@ -1290,6 +1290,7 @@ class GUI (QMainWindow):
                     sc.aflux1 = afluxAll
             else:
                 fluxAll = np.nansum(s.flux[:, yy, xx], axis=1)
+                afluxAll = None
             if sc.displayRefVel:
                 x0, y0 = aperture.get_xy()
                 ic0 = self.ici[0]

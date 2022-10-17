@@ -101,7 +101,7 @@ def SG(x, amplitude, center, width):
     Guidelines for fitting in:
     https://irsa.ipac.caltech.edu/data/Herschel/docs/nhsc/workshops/AgendaSummer2013/SPIRE-DP_Aug2013_FTS_LineFitting.pptx.pdf
     """
-    from scipy.special import dawsn 
+    #from scipy.special import dawsn 
     #return amplitude * np.sinc((x - center) / width)
     
 
@@ -333,7 +333,11 @@ def fitLines(p, m, w, f, lines, fitmodel):
     mf = np.isnan(f)
     m[mf] = 0
     
-    if np.sum(m) > 5:
+    if fitmodel == 'Gauss':
+        nmin = 3 * len(lines)
+    else:
+        nmin = 4 * len(lines)
+    if np.sum(m) > nmin:
         y = f[m]
         x = w[m]
         # Transform into S(lambda)
@@ -442,7 +446,7 @@ def fitLines(p, m, w, f, lines, fitmodel):
         nlines = len(lines)
         return p, np.full((nlines, 7), np.nan)
 
-def multiFitLines(m, w, f, c, lineguesses, model, linefits, points):
+def multiFitLinesOld(m, w, f, c, lineguesses, model, linefits, points):
 
     # To avoid forking error in MAC OS-X
     try:
@@ -453,7 +457,7 @@ def multiFitLines(m, w, f, c, lineguesses, model, linefits, points):
     
     print('Fit model is ',model)
 
-    with mp.Pool(processes=mp.cpu_count()-2) as pool:
+    with mp.Pool(processes=mp.cpu_count()//2) as pool:
         res = [pool.apply_async(fitLines, 
                                 (p, 
                                  m[:, p[1],p[0]], 
@@ -471,6 +475,30 @@ def multiFitLines(m, w, f, c, lineguesses, model, linefits, points):
                 linefits[k][l][j,i] = linepars[k][l]
             
     return 1
+
+
+def multiFitLines(m, w, f, c, lineguesses, model, linefits, points):
+    
+    from dask import delayed, compute
+            
+    print('Fit model is ',model)
+    res = [delayed(fitLines)(p, m[:, p[1],p[0]], w, 
+                   f[:,p[1],p[0]]-c[:,p[1],p[0]], 
+                   lineguesses, model) for p in points]
+    results = compute(*res, scheduler='processes')
+    
+    print('shape of results is ', np.shape(results))
+
+    n = len(lineguesses)
+    for p, linepars in results:
+        i,j = p
+        for k in range(n):
+            for l in range(7):
+                linefits[k][l][j,i] = linepars[k][l]
+            
+    return 1
+
+
 
 def multiFitLinesSingle(m, w, f, c, lineguesses, model, linefits, points):
 
