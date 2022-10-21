@@ -5440,7 +5440,7 @@ class GUI (QMainWindow):
                     ic0.updateScale(cmin,cmax)
                 # mask C0, Mi, v, sv
                 sbands = [self.C0, self.M0, self.v, self.sv,
-                          self.L0, self.L1,self.v0,self.v1,self.d0,self.d1]
+                          self.L0, self.L1,self.L2,self.v0,self.v1,self.v2,self.d0,self.d1,self.d2]
                 bands = ['C0','M0','v','sv','L0','L1','L2','v0','v1','v2','d0','d1','d2']
                 for b,sb in zip(bands,sbands):
                     if sb is not None:
