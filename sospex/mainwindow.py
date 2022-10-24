@@ -2037,10 +2037,10 @@ class GUI (QMainWindow):
             print(line)
             if function == 'Voigt':
                 c0, ec0, slope, x, ex, A, eA, sigma, esigma, alpha = line
+                FWHM = 2 *  sigma
             else:
                 c0, ec0, slope, x, ex, A, eA, sigma, esigma = line
-            # Compute FWHM
-            FWHM = 2 * np.sqrt(2*np.log(2)) * sigma
+                FWHM = 2 * np.sqrt(2*np.log(2)) * sigma
             #eFWHM = 2 * np.sqrt(2*np.log(2)) * esigma
             c = 299792458. # m/s
             FWHMv = c * FWHM / x / 1000.
@@ -3401,15 +3401,24 @@ class GUI (QMainWindow):
         c = 299792.458 # km/s 
         self.v0 = (self.lines[0][0] / w0 - 1 -z) * c 
         # FWHM from sigma (in km/s)
-        self.d0 = self.lines[0][1] * 2.355 * c / w0
+        if sc.model == 'Voigt':
+            self.d0 = self.lines[0][1] * 2 * c / w0
+        else:    
+            self.d0 = self.lines[0][1] * 2.355 * c / w0
         if len(self.lines) > 1:
             self.L1 = self.lines[1][2]
-            self.v1 = (self.lines[1][0] / w0 - 1 -z) * c 
-            self.d1 = self.lines[1][1] * 2.355 * c / w0
+            self.v1 = (self.lines[1][0] / w0 - 1 -z) * c
+            if sc.model == 'Voigt':
+                self.d1 = self.lines[1][1] * 2 * c / w0
+            else:
+                self.d1 = self.lines[1][1] * 2.355 * c / w0
         if len(self.lines) > 2:
             self.L2 = self.lines[2][2]
             self.v2 = (self.lines[2][0] / w0 - 1 -z) * c 
-            self.d2 = self.lines[2][1] * 2.355 * c / w0
+            if sc.model == 'Voigt':
+                self.d2 = self.lines[2][1] * 2 * c / w0
+            else:
+                self.d2 = self.lines[2][1] * 2.355 * c / w0
         # Then display them
         bands = ['L0','v0','d0']
         sbands = [self.L0,self.v0,self.d0]
@@ -5018,6 +5027,9 @@ class GUI (QMainWindow):
                 else:
                     t2j = 1
                 w = self.specCube.wave
+                # check model used
+                sc = self.sci[self.spectra.index('Pix')]
+                model = sc.model
                 # Extensions                
                 for i, line in enumerate(self.lines):
                     if len(self.lines) > 1:
@@ -5036,7 +5048,10 @@ class GUI (QMainWindow):
                                 wmin = np.argmin(np.abs(x[iy, ix] - w))
                                 continuum[iy,ix] = self.continuum[wmin, iy, ix] * t2j
                     # Compute FWHM
-                    FWHM = 2 * np.sqrt(2*np.log(2)) * sigma
+                    if model == 'Voigt':
+                        FWHM = 2 * sigma
+                    else:
+                        FWHM = 2 * np.sqrt(2*np.log(2)) * sigma
                     #eFWHM = 2 * np.sqrt(2*np.log(2)) * esigma
                     c = 299792458. # m/s
                     FWHMv = c * FWHM / x / 1000.
