@@ -486,8 +486,6 @@ def multiFitLines(m, w, f, c, lineguesses, model, linefits, points):
                    f[:,p[1],p[0]]-c[:,p[1],p[0]], 
                    lineguesses, model) for p in points]
     results = compute(*res, scheduler='processes')
-    
-    print('shape of results is ', np.shape(results))
 
     n = len(lineguesses)
     for p, linepars in results:

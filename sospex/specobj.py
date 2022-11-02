@@ -175,8 +175,14 @@ class specCubeAstro(object):
             print('Adding center from telescope information')
             self.header['CTYPE1'] = 'RA---TAN'
             self.header['CTYPE2'] = 'DEC--TAN'
-            self.header['CRVAL1'] = self.header['TELRA']*15
-            self.header['CRVAL2'] = self.header['TELDEC']
+            self.header['CRVAL1'] = self.header['TELRA']*15*3600
+            self.header['CRVAL2'] = self.header['TELDEC']*3600
+            primary = self.header['PRIMARAY']
+            channel = self.header['DETCHAN']
+            if (channel == 'RED') & (primary == 'BLUE'):
+                self.header['CRVAL1'] += 45
+            if (primary == 'BLUE') & (channel == 'RED'):
+                self.header['CRVAL1'] -= 45
         
         self.wcs = WCS(self.header).celestial
         print('WCS ', self.wcs)
@@ -1025,8 +1031,10 @@ class specCube(object):
             self.header['CTYPE2'] = 'DEC--TAN'
             self.header['CRVAL1'] = self.header['TELRA']*15
             self.header['CRVAL2'] = self.header['TELDEC']
+            print(self.header['CRVAL1'], self.header['CRVAL2'])
         
         self.wcs = WCS(self.header).celestial
+        print(self.wcs)
         self.crpix3 = self.header['CRPIX3']
         self.crval3 = self.header['CRVAL3']
         self.cdelt3 = self.header['CDELT3']

@@ -2143,11 +2143,12 @@ class GUI (QMainWindow):
         self.tree = KDTree(self.sites)
         tq = self.tree.query(self.specCube.points)
         self.regions = tq[1].reshape(ny, nx)
-        self.ncells = len(self.sites) - 1  # last point repeated ?
+        #self.ncells = len(self.sites) - 1  # last point repeated ?
         if event == 'voronoi modified':
             print('number of cells is now ', self.ncells)
             pass
         elif event == 'one voronoi site added':
+            self.ncells += 1
             try:
                 # Add to the list the last value
                 newguess = sc.xguess[-1]
@@ -2165,6 +2166,7 @@ class GUI (QMainWindow):
                 self.sb.showMessage(message, 4000)
                 print(message)
         else:
+            self.ncells -= 1
             print('Site '+event+' removed')
             print('Now left with ', self.ncells,' cells')
             try:
@@ -2364,7 +2366,8 @@ class GUI (QMainWindow):
                 xc, yc = aperture.xy
                 if self.ncells > 1:
                     #ncell = self.regions[int(yc), int(xc)]
-                    ncell = self.tree.query([xc,yc])[1]
+                    dcell, ncell = self.tree.query([xc,yc])
+                    print('ncell ', ncell, self.tree.query([yc,xc])[1], len(sc.xguess), len(self.sites))
                 else:
                     ncell = 0
                 # Update the guess limits for cell
