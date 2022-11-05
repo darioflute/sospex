@@ -246,7 +246,7 @@ class cloudImage(object):
                     try:
                         if instrument == 'IRAC':
                             fc = header['FLUXCONV']
-                            print('fc ', fc)
+                            #print('fc ', fc)
                             if fc == 0.1069:
                                 self.source += '1'
                             elif fc == 0.1382:
@@ -273,6 +273,10 @@ class cloudImage(object):
                     self.data = hdulist['PRIMARY'].data
                 elif naxis == 3:
                     self.data = hdulist['PRIMARY'].data[0,:,:]
+                    try:
+                        del header['CTYPE4']
+                    except:
+                        pass
                 elif naxis > 3:
                     self.data = hdulist['PRIMARY'].data[0,0,:,:]
                 elif naxis == 0:
@@ -288,6 +292,19 @@ class cloudImage(object):
                 idx = np.isfinite(self.data)
                 if np.sum(~idx) > 0:
                     self.data[~idx] = np.nan
+                try:
+                    # Transform FK4 into ICRS
+                    if header['EPOCH'] == 1950:
+                        print('This image is in epoch 1950')
+                        from astropy import units as u
+                        from astropy.coordinates import SkyCoord
+                        cold = SkyCoord(ra=header['crval1']*u.degree, dec=header['crval2']*u.degree, frame='fk4')
+                        cnew = cold.transform_to('icrs')
+                        header['CRVAL1'] = cnew.ra.value
+                        header['CRVAL2'] = cnew.dec.value
+                        header['EPOCH'] = 2000
+                except:
+                    pass
                 self.wcs = WCS(header).celestial
                 # Check if coordinates are inside the image
                 x, y = self.wcs.wcs_world2pix(self.lon,self.lat,0)

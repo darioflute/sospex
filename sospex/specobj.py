@@ -117,7 +117,7 @@ class specCubeAstro(object):
             self.readMUSE(hdl)
         elif self.instrument == 'IRAM':
             self.readIRAM(hdl)
-        elif self.instrument in ['VLA','ALMA','CARMA','MMA','FOREST']:
+        elif self.instrument in ['VLA','ALMA','CARMA','MMA','FOREST','WSRT']:
             self.readVLA(hdl)
         elif self.instrument == 'SITELLE':
             self.readSITELLE(hdl)
@@ -696,25 +696,47 @@ class specCubeAstro(object):
             print('Redshift ', self.redshift)
         except:
             self.redshift = 0.
+        if self.instrument == 'WSRT':
+            self.redshift = self.header['VELR']/c
         if self.instrument == 'MMA':
             idx = np.isfinite(self.flux)
             self.flux[~idx] = np.nan            
         nz, ny, nx = np.shape(self.flux)
         self.n = nz
         print('nz: ',nz, self.header['NAXIS3'])
+        # Case of epoch 1950
+        try:
+            # Transform FK4 into ICRS
+            if self.header['EPOCH'] == 1950:
+                print('This image is in epoch 1950')
+                from astropy import units as u
+                from astropy.coordinates import SkyCoord
+                cold = SkyCoord(ra=self.header['crval1']*u.degree, dec=self.header['crval2']*u.degree, frame='fk4')
+                cnew = cold.transform_to('icrs')
+                self.header['CRVAL1'] = cnew.ra.value
+                self.header['CRVAL2'] = cnew.dec.value
+                self.header['EPOCH'] = 2000
+        except:
+            pass
+        
+        if self.header['CTYPE3'] == 'FREQ-OHEL':
+            self.header['CTYPE3'] = 'FREQ'
+        
         wcs = WCS(self.header)
         self.wcs = wcs.celestial
         self.crpix3 = self.header['CRPIX3']
         self.crval3 = self.header['CRVAL3']
         self.cdelt3 = self.header['CDELT3']
-        ctype3 = self.header['CTYPE3'].strip()
+        ctype3 = self.header['CTYPE3']
         print('ctype 3 is ', ctype3)
         pix0 = 1 
-        if ctype3 == 'FREQ':
+        if ctype3 in ['FREQ','FREQ-OHEL']:
             if self.instrument in ['VLA','CARMA']:
                 nu0 = self.header['RESTFREQ']
             elif self.instrument == 'ALMA':
                 nu0 = self.header['RESTFRQ']
+            elif self.instrument == 'WSRT':
+                nu0 = self.header['FREQR']
             print('reference frequency', nu0, 'Hz')
             # Check if altrval exists and its different from crval3
             try:
@@ -783,8 +805,16 @@ class specCubeAstro(object):
         self.cdelt3 = np.median(w[1:] - w[:-1])
         try:
             # Flux conversion from Jy/beam to Jy/pixel
-            bmaj = self.header['BMAJ']
-            bmin = self.header['BMIN']
+            if self.instrument == 'WSRT':
+                bmaj = 3.19444434717E-03
+                bmin = 3.19444434717E-03
+                self.header['BMAJ'] = bmaj
+                self.header['BMIN'] = bmin
+                if self.header['BUNIT'] == 'W.U.':
+                    self.flux *= 5.e-3  # W.U. = 5e-3 Jy/beam
+            else:
+                bmaj = self.header['BMAJ']
+                bmin = self.header['BMIN']
             area_pixel = pixscale * ypixscale
             area_beam = np.pi/ (4 * np.log(2)) * bmaj * bmin
             self.npix_per_beam = area_beam / area_pixel
