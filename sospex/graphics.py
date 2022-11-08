@@ -27,6 +27,8 @@ from astropy.wcs.utils import proj_plane_pixel_scales as pixscales
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 
+from scipy.signal import savgol_filter
+
 from PyQt5.QtWidgets import (QVBoxLayout, QHBoxLayout, QLineEdit, QSizePolicy, QInputDialog, 
                              QPushButton,QLabel,QMessageBox,QScrollArea,QWidget)
 from PyQt5.QtGui import QFont
@@ -794,6 +796,8 @@ class SpectrumCanvas(MplCanvas):
         self.fittedaplines = False
         self.rannotation = None
         self.cannotation = None
+        self.filter = False
+        self.flux = None
         self.r = None # radius of aperture
         
     def compute_initial_spectrum(self, name=None, spectrum=None, xmin=None, xmax=None, lines=None):
@@ -877,7 +881,12 @@ class SpectrumCanvas(MplCanvas):
                 print('Everything is NaN')
             self.efluxLine = self.axes.fill_between(self.x, loflux, hiflux,
                                                     color='blue', alpha=0.2)
-        self.fluxLine = self.axes.step(self.x, s.flux, color='blue', label='F', 
+        self.flux = s.flux
+        if self.filter:
+            flux = savgol_filter(self.flux, 7, 3)
+        else:
+            flux = self.flux
+        self.fluxLine = self.axes.step(self.x, flux, color='blue', label='F', 
                                        where='mid', zorder=10)
         self.fluxLayer, = self.fluxLine
         self.contLine = self.axes.plot(self.x, s.continuum, color='skyblue', 
@@ -1294,7 +1303,12 @@ class SpectrumCanvas(MplCanvas):
                 self.exposureLine[0].set_ydata(exp)
                 self.ax3.draw_artist(self.exposureLine[0])
             if f is not None:
-                self.fluxLine[0].set_ydata(f)
+                self.flux = f
+                if self.filter:
+                    flux = savgol_filter(f, 7, 3)
+                else:
+                    flux = f
+                self.fluxLine[0].set_ydata(flux)
                 self.axes.draw_artist(self.fluxLine[0])
                 ylim0, ylim1 = self.axes.get_ylim()
                 xlim0, xlim1 = self.axes.get_xlim()
@@ -1482,6 +1496,15 @@ class SpectrumCanvas(MplCanvas):
         except:
             print('Failed to update spectrum')
             pass
+        
+    def updateFilter(self):
+        # Update the plotted spectrum with filtering or not
+        if self.filter:
+            flux = savgol_filter(self.flux, 7, 3)
+        else:
+            flux = self.flux
+        self.fluxLine[0].set_ydata(flux)
+        
         
     def updateGuess(self, f, ncell):
         if self.guess is not None:

@@ -587,6 +587,10 @@ class GUI (QMainWindow):
         toolbar.addSeparator()
         toolbar.addAction(self.hresizeAction)
         toolbar.addAction(self.vresizeAction)
+        toolbar.addSeparator()
+        toolbar.addAction(self.filterAction)
+        self.filterAction.setCheckable(True)
+        
         # Navigation toolbar
         sc.toolbar = NavigationToolbar(sc, self)
         #sc.toolbar.resize(100,10) 
@@ -1729,6 +1733,8 @@ class GUI (QMainWindow):
                                                 'Centroid of the PSF', '', self.centroidPSF)
         self.centerAction = self.createAction(os.path.join(self.path0,'icons','center.png'),
                                                 'Fit center of the PSF', '', self.centerPSF)
+        self.filterAction = self.createAction(os.path.join(self.path0,'icons','filter.png'),
+                                                'Savizcky-Golay filtering', '', self.filterSpectrum)
         self.spacer = QWidget()
         self.spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.tb.addAction(self.startAction)
@@ -7085,7 +7091,15 @@ class GUI (QMainWindow):
             sc.vaxes.set_ylim(np.nanmin(sc.aflux1), np.nanmax(sc.aflux1))
         # Slightly higher maximum
         sc.ylimits = (ylim0,ylim1*1.1)
-        sc.updateYlim()  
+        sc.updateYlim() 
+        
+    def filterSpectrum(self):
+        # Apply filtering
+        istab = self.stabs.currentIndex()
+        sc = self.sci[istab]
+        sc.filter = not sc.filter
+        sc.updateFilter()
+        sc.fig.canvas.draw_idle()
         
     def repairSpectrum(self):
         """Substitute NaN with interpolated values"""
