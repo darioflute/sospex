@@ -571,6 +571,8 @@ class GUI (QMainWindow):
         toolbar.addAction(self.cutAction)
         toolbar.addAction(self.slideAction)
         toolbar.addAction(self.specAction)
+        toolbar.addAction(self.filterAction)
+        self.filterAction.setCheckable(True)        
         print('Aperture is ', b)
         if b in ['All', 'Pix']:        
             toolbar.addAction(self.guessAction)
@@ -587,9 +589,6 @@ class GUI (QMainWindow):
         toolbar.addSeparator()
         toolbar.addAction(self.hresizeAction)
         toolbar.addAction(self.vresizeAction)
-        toolbar.addSeparator()
-        toolbar.addAction(self.filterAction)
-        self.filterAction.setCheckable(True)
         
         # Navigation toolbar
         sc.toolbar = NavigationToolbar(sc, self)
@@ -1733,7 +1732,7 @@ class GUI (QMainWindow):
                                                 'Centroid of the PSF', '', self.centroidPSF)
         self.centerAction = self.createAction(os.path.join(self.path0,'icons','center.png'),
                                                 'Fit center of the PSF', '', self.centerPSF)
-        self.filterAction = self.createAction(os.path.join(self.path0,'icons','filter.png'),
+        self.filterAction = self.createAction(os.path.join(self.path0,'icons','smooth.png'),
                                                 'Savizcky-Golay filtering', '', self.filterSpectrum)
         self.spacer = QWidget()
         self.spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -2418,17 +2417,21 @@ class GUI (QMainWindow):
             if self.ncells > 1:
                 options.extend(['Set to medians', 'Set to lowest 25% medians', 
                                 'Set to lowest 50% medians', 
+                                'Set to lowest 75% medians',
                                 'Offset of lowest 25% uncorrected medians',
                                 'Fit region', 'Fit all cube', 'Set to zero','Set to file'])
             else:
                 options.extend(['Set to medians', 'Set to lowest 25% medians', 
                                 'Set to lowest 50% medians',
+                                'Set to lowest 75% medians',
                                 'Offset of lowest 25% uncorrected medians',
                                 'Fit all cube', 'Set to zero','Set to file'])
         else:
             options = ['Set to medians', 'Set to lowest 25% medians', 
                        'Set to lowest 50% medians',
-                       'Offset of lowest 25% uncorrected medians','Set to zero','Set to file']
+                       'Set to lowest 75% medians',
+                       'Offset of lowest 25% uncorrected medians',
+                       'Set to zero','Set to file']
             moments = False
             lines = False
         FCD = FitCubeDialog(options, moments, lines)
@@ -2447,6 +2450,8 @@ class GUI (QMainWindow):
                     self.setContinuumMedianPercent(25)
                 elif coption == 'Set to lowest 50% medians':
                     self.setContinuumMedianPercent(50)
+                elif coption == 'Set to lowest 75% medians':
+                    self.setContinuumMedianPercent(75)
                 elif coption == 'Offset of lowest 25% uncorrected medians':
                     self.setContinuumMedianPercent(33, True)
                 elif coption == 'Set to zero':
@@ -2640,7 +2645,6 @@ class GUI (QMainWindow):
             uncorrected = False
 
         sc = self.sci[self.spectra.index('Pix')]
-        n = 100 // percent 
         if sc.guess is None:
             if uncorrected:
                 sflux = np.sort(self.specCube.uflux, axis=0)
@@ -2648,27 +2652,35 @@ class GUI (QMainWindow):
                 sflux = np.sort(self.specCube.flux, axis=0)
             print('shape of flux is ',np.shape(sflux))
             nz, ny, nx = np.shape(sflux)
-            npc = nz // n
+            npc = nz * percent // 100
             self.C0 = np.nanmedian(sflux[0: npc, :, :], axis=0)
         else:
             if self.ncells == 1:
                 i0, i1, i2, i3 = self.getContinuumGuess()
-                npc = (i3-i0) // n
+                npc = (i3-i2+i1-i0) * percent // 100
                 if uncorrected:
-                    sflux = np.sort(self.specCube.uflux[i0:i3, :, :], axis=0)
+                    f = np.concatenate((self.specCube.uflux[i0:i1, :, :],
+                                       self.specCube.uflux[i2:i3, :, :]), axis=0)
+                    sflux = np.sort(f, axis=0)
                 else:
-                    sflux = np.sort(self.specCube.flux[i0:i3, :, :], axis=0)
+                    f = np.concatenate((self.specCube.flux[i0:i1, :, :],
+                                       self.specCube.flux[i2:i3, :, :]), axis=0)
+                    sflux = np.sort(f, axis=0)
                 self.C0 = np.nanmedian(sflux[0:npc, :, :], axis=0)
             else:
                 # Otherwise, find the regions
                 for ncell in range(self.ncells):
                     i0, i1, i2, i3 = self.getContinuumGuess(ncell)
                     j, i = np.where(self.regions == ncell)
-                    npc = (i3-i0) // n 
+                    npc = (i3-i0) * percent // 100 
                     if uncorrected:
-                        sflux = np.sort(self.specCube.uflux[i0:i3,j,i], axis=0)
+                        f = np.concatenate((self.specCube.uflux[i0:i1, j, i],
+                                            self.specCube.uflux[i2:i3, j, i]), axis=0)
+                        sflux = np.sort(f, axis=0)
                     else:
-                        sflux = np.sort(self.specCube.flux[i0:i3,j,i], axis=0)
+                       f = np.concatenate((self.specCube.flux[i0:i1, j, i],
+                                           self.specCube.flux[i2:i3, j, i]), axis=0)
+                       sflux = np.sort(f, axis=0)
                     self.C0[j, i] = np.nanmedian(sflux[0:npc,:], axis=0)
         # If uncorrected, put to zero positive offsets
         if uncorrected:
@@ -6013,7 +6025,7 @@ class GUI (QMainWindow):
             self.ncells = 1
             # Load spectral lines
             from sospex.lines import define_lines
-            if self.specCube.instrument in ['MUSE']:
+            if self.specCube.instrument in ['MUSE','HALPHA']:
                 print('Use air lines')
                 self.Lines = define_lines(reference='air')
             else:
@@ -6064,7 +6076,7 @@ class GUI (QMainWindow):
                     self.slideCube('Exp computed')
                 # Load lines
                 from sospex.lines import define_lines
-                if self.specCube.instrument in ['MUSE']:
+                if self.specCube.instrument in ['MUSE','HALPHA']:
                     self.Lines = define_lines(reference='air')
                     #print('H-alpha', self.Lines['H-alpha 6564'])
                 else:

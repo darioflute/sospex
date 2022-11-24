@@ -813,7 +813,7 @@ class SpectrumCanvas(MplCanvas):
             print('Define lines for ',self.instrument)
             from sospex.lines import define_lines
             if lines is None:
-                if self.instrument == 'MUSE':
+                if self.instrument in ['MUSE','HALPHA']:
                     self.Lines = define_lines('air')
                 else:
                     self.Lines = define_lines()
