@@ -77,7 +77,7 @@ class ScrollMessageBox(QMessageBox):
 def ds9cmap():
     """Adding DS9 colormap.
     Adapted from http://nbviewer.jupyter.org/gist/adonath/c9a97d2f2d964ae7b9eb"""
-    from matplotlib.cm import register_cmap, cmap_d
+    from matplotlib.cm import register_cmap#, cmap_d
     from matplotlib.colors import LinearSegmentedColormap
     ds9b = {'red': lambda v : 4 * v - 1, 
             'green': lambda v : 4 * v - 2,
@@ -185,10 +185,10 @@ def ds9cmap():
     
     
     # Set aliases, where colormap exists in matplotlib
-    cmap_d['ds9bb'] = cmap_d['afmhot']
-    cmap_d['ds9grey'] = cmap_d['gray']
-    cmap_d['ds9bb_r'] = cmap_d['afmhot_r']
-    cmap_d['ds9grey_r'] = cmap_d['gray_r']    
+    #cmap_d['ds9bb'] = cmap_d['afmhot']
+    #cmap_d['ds9grey'] = cmap_d['gray']
+    #cmap_d['ds9bb_r'] = cmap_d['afmhot_r']
+    #cmap_d['ds9grey_r'] = cmap_d['gray_r']    
     # Register all other colormaps
     register_cmap(cmap=LinearSegmentedColormap('ds9b', ds9b))
     register_cmap(cmap=LinearSegmentedColormap('ds9cool', ds9cool))
@@ -495,7 +495,7 @@ class ImageHistoCanvas(MplCanvas):
         self.axes.spines['left'].set_visible(False)
         # Start a span selector
         self.span = SpanSelector(self.axes, self.onSelect, 'horizontal', useblit=True,
-                                 rectprops=dict(alpha=0.5, facecolor='LightSalmon'),button=1)
+                                 props=dict(alpha=0.5, facecolor='LightSalmon'),button=1)
         # Initialize contour level vertical lines
         self.lev = []
         self.levels = []
