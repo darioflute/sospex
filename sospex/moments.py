@@ -406,7 +406,7 @@ def fitLines(p, m, w, f, lines, fitmodel):
             else:
                 params[li+'amplitude'].set(A, max=0.1*A, min=2*A)
             # Check if Voigt needs fwhm or sigma ...    
-            params[li+'sigma'].set(sigma, min=sigma*0.1, max=sigma*1.5)
+            params[li+'sigma'].set(sigma, min=sigma*0.3, max=sigma*1.5)
             if fitmodel == 'Gauss':
                 pass
 #                    params[li + 'fraction'].set(0.0, vary=False)

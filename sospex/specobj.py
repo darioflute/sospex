@@ -593,11 +593,13 @@ class specCubeAstro(object):
         # Transform into Jy
         #btype = self.header['BTYPE']
         #if btype == 'erg/cm2/s/A':
-        print('Transform into F_lambda [erg/cm2/s/A] into F_nu [Jy] ...')
-        c = 299792458.0 # m/s
-        wA = w * 1.e4 # Wavelength in A (1 um = 1.e4 A)
-        self.flux *=  3.33564095e4 * wA**2
-        #self.flux = (w * 1.e4) * self.flux  * (w * 1.e-6)/c * 1.e23 # F_nu
+        #print('Transform into F_lambda [erg/cm2/s/A] into F_nu [Jy] ...')
+        #c = 299792458.0 # m/s
+        #wA = w * 1.e4 # Wavelength in A (1 um = 1.e4 A)
+        #self.flux *=  3.33564095e4 * wA**2
+        ##self.flux = (w * 1.e4) * self.flux  * (w * 1.e-6)/c * 1.e23 # F_nu
+        print('Transform into Jy/Hz')
+        self.flux *= 2.88e-5  # Factor from comparison with R Panstarrs
 
         
     def readIRAM(self, hdl):
@@ -915,12 +917,15 @@ class specCubeAstro(object):
         z = self.redshift
         l = l0 * (1.+z)
         if self.channel == 'RED':
-            return 0.062423 * l * l - 6.6595 * l + 647.65
+            #return 0.062423 * l * l - 6.6595 * l + 647.65
+            return 11.14 * l - 550.28
         else:
             if self.order == '1':
-                return 0.16864 * l * l - 22.831 * l + 1316.6 
+                #return 0.16864 * l * l - 22.831 * l + 1316.6 
+                return 0.1934 * l * l - 28.89 * l + 1664
             else:
-                return 1.9163 * l * l - 187.35 * l + 5496.9
+                #return 1.9163 * l * l - 187.35 * l + 5496.9
+                return 1.397 * l * l -113.7 * l + 2932
 
 class specCube(object):
     """ spectral cube - read with fitsio routines"""
@@ -1449,13 +1454,16 @@ class specCube(object):
         # Transform into Jy
         #btype = self.header['BTYPE']
         #if btype == 'erg/cm2/s/A':
-        print('Transform into Jy ...')
+        print('Transform into Jy/Hz')
+        self.flux *= 2.88e-5  # Factor from comparison with R Panstarrs
         c = 299792458.0 # m/s
-        wA = self.wave * 1.e4
-        print(np.nanmean(33356.4095 * wA**2))
-        print(np.nanmean(self.flux))
-        for f, w in zip(self.flux, wA):
-            f *= 33356.4095 * w**2
+        #wA = self.wave * 1.e4
+        # F(Jy) = F(λ) λ^2 33356.4095  where the factor 33356.4095 comes from:
+        #factor = 1.e13/c  # 1e23 (erg -> Jy) 1e-10 (A -> m)
+        #print(np.nanmean(factor * wA**2))
+        #print(np.nanmean(self.flux))
+        #for f, w in zip(self.flux, wA):
+        #    f *= factor * w**2
         #self.flux = (w * 1.e4) * self.flux  * (w * 1.e-6)/c * 1.e-23 # F_nu
 
     def readIRAM(self, hdl):
