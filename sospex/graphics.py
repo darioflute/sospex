@@ -184,7 +184,7 @@ def ds9cmap():
                    'blue': lambda v : np.interp(v, bluept, blue)[::-1]}
     
     
-    # Set aliases, where colormap exists in matplotlib
+    # Set aliases, where colormap exists in matplotlib (does not work in matplotlib >= 3.7)
     #cmap_d['ds9bb'] = cmap_d['afmhot']
     #cmap_d['ds9grey'] = cmap_d['gray']
     #cmap_d['ds9bb_r'] = cmap_d['afmhot_r']
