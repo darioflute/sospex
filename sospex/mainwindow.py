@@ -561,6 +561,7 @@ class GUI (QMainWindow):
         self.stabs.addTab(t, b)
         sc = SpectrumCanvas(t, width=self.width, height=self.width//2, dpi=self.dpi)
         sc.switchSignal.connect(self.switchUnits)
+        sc.modifyAperture.connect(self.modifyAperture)
         sc.modifyContinuum.connect(self.modifyContinuum)
         # Toolbar
         toolbar = QToolBar()
