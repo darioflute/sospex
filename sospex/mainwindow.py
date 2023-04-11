@@ -2845,18 +2845,17 @@ class GUI (QMainWindow):
             pixel.line.set_visible(pixel.showverts)
             # 1) Define region
             self.RS = RectangleSelector(ic.axes, self.fitContRegion,
-                                        drawtype='box', useblit=False,
+                                        useblit=False,
                                         button=[1, 3],  # don't use middle button
                                         minspanx=5, minspany=5,
                                         spancoords='pixels',
-                                        rectprops = dict(facecolor='g', edgecolor = 'g',
+                                        props = dict(facecolor='g', edgecolor = 'g',
                                                          alpha=0.8, fill=False),
                                         lineprops = dict(color='g', linestyle='-',linewidth = 2,
                                                          alpha=0.8),
                                         interactive=False)
             self.RS.to_draw.set_visible(False)
             self.RS.set_visible(True)
-            #self.RS.state.add('center')
 
     def computeRegion(self):
         """Fit the guess over a square region."""
@@ -3948,59 +3947,63 @@ class GUI (QMainWindow):
             ap.line.set_visible(ap.showverts)
         if self.selAp == 'Polygon':
             self.PS = PolygonSelector(ic.axes, self.onPolySelect,
-                                      lineprops=dict(linestyle='-',color='g'),
-                                      useblit=True,markerprops=dict(marker='o',mec='g'),
-                                      vertex_select_radius=15)
+                                      props=dict(linestyle='-', color='g'),
+                                      useblit=True,
+                                      handle_props=dict(marker='o', mec='g'),
+                                      grab_range=15)
         elif self.selAp == 'Rectangle':
             self.RS = RectangleSelector(ic.axes, self.onRectSelect,
-                                        drawtype='box', useblit=True,
+                                        useblit=True,
                                         button=[1, 3],  # don't use middle button
                                         minspanx=5, minspany=5,
                                         spancoords='pixels',
                                         props = dict(facecolor='g', edgecolor = 'g',
                                                          alpha=0.8, fill=False),
-                                        lineprops = dict(color='g', linestyle='-',linewidth = 2,
-                                                         alpha=0.8),
-                                        interactive=False)
-            self.RS.state.add('center')
+                                        handle_props = dict(color='g', linestyle='-',
+                                                            linewidth = 2, alpha=0.8),
+                                        interactive=False,
+                                        state_modifier_keys = dict(move=' ', clear='escape', 
+                                                                 center=' '))
         elif self.selAp == 'Square':
             self.RS = RectangleSelector(ic.axes, self.onRectSelect,
-                                        drawtype='box', useblit=True,
+                                        useblit=True,
                                         button=[1, 3],  # don't use middle button
                                         minspanx=5, minspany=5,
                                         spancoords='pixels',
-                                        props = dict(facecolor='g', edgecolor = 'g',
+                                        props = dict(facecolor='g', edgecolor='g',
                                                          alpha=0.8, fill=False),
-                                        lineprops = dict(color='g', linestyle='-',linewidth = 2,
-                                                         alpha=0.8),
-                                        interactive=False)
-            self.RS.state.add('square')
-            self.RS.state.add('center')
+                                        handle_props = dict(color='g', linestyle='-',
+                                                            linewidth = 2, alpha=0.8),
+                                        interactive=False,
+                                        state_modifier_keys = dict(move=' ', clear='escape', 
+                                                                   square='shift'))
         elif self.selAp == 'Ellipse':
             self.ES = EllipseSelector(ic.axes, self.onRectSelect,
-                                      drawtype='line', useblit=True,
+                                      useblit=True,
                                       button=[1, 3],  # don't use middle button
                                       minspanx=5, minspany=5,
                                       spancoords='pixels',
-                                      rectprops = dict(facecolor='g', edgecolor = 'g',
+                                      props = dict(facecolor='g', edgecolor = 'g',
                                                        alpha=0.8, fill=False),
-                                      lineprops = dict(color='g', linestyle='-',linewidth = 2,
-                                                       alpha=0.8),
-                                      interactive=False)
-            self.ES.state.add('center')
+                                      handle_props = dict(color='g', linestyle='-',
+                                                          linewidth = 2, alpha=0.8),
+                                      interactive=False,
+                                      state_modifier_keys = dict(move=' ', clear='escape', 
+                                                                 center='ctrl'))
         elif self.selAp == 'Circle':
             self.ES = EllipseSelector(ic.axes, self.onRectSelect,
-                                      drawtype='line', useblit=True,
+                                      useblit=True,
                                       button=[1, 3],  # don't use middle button
                                       minspanx=5, minspany=5,
                                       spancoords='pixels',
-                                      rectprops = dict(facecolor='g', edgecolor = 'g',
+                                      props = dict(facecolor='g', edgecolor = 'g',
                                                        alpha=0.8, fill=False),
-                                      lineprops = dict(color='g', linestyle='-',linewidth = 2,
-                                                       alpha=0.8),
-                                      interactive=False)
-            self.ES.state.add('center')        
-            self.ES.state.add('square')        
+                                      handle_props = dict(color='g', linestyle='-',
+                                                          linewidth = 2, alpha=0.8),
+                                      interactive=False,
+                                      state_modifier_keys = dict(move=' ', clear='escape', 
+                                                                 square='shift', center=' ',
+                                                                 rotate='r'))
         if self.selAp != 'apertures':
             ic.fig.canvas.draw_idle()
         #put back to the 0-th item
@@ -5250,20 +5253,20 @@ class GUI (QMainWindow):
             ap.showverts = False
             ap.line.set_visible(ap.showverts)
         # Estimate new PSF
-        self.PsfS = EllipseSelector(ic.axes, self.onDrawPSF, drawtype='line', useblit=True,
-                                  button=[1, 3], minspanx=5, minspany=5, spancoords='pixels',
-                                  rectprops = dict(facecolor='g',
+        self.PsfS = EllipseSelector(ic.axes, self.onDrawPSF, 
+                                    useblit=True,
+                                    button=[1, 3], minspanx=5, minspany=5, spancoords='pixels',
+                                    props = dict(facecolor='g',
                                                    edgecolor='g',
                                                    alpha=0.8, fill=False),
-                                  lineprops = dict(color='g',
+                                    handle_props = dict(color='g',
                                                    linestyle='-',
                                                    linewidth=2,
                                                    alpha=0.8),
-                                  interactive=False)
-                                  #state_modifier_keys = dict(square='square', center='center')
-                                  #)
-        self.PsfS.state.add('center')
-        self.PsfS.state.add('square')
+                                    interactive=False,
+                                    state_modifier_keys = dict(move=' ', clear='escape',
+                                                               square='shift', center='ctrl')
+                                    )
         ic.fig.canvas.draw_idle()                                      
         
     def onDrawPSF(self, eclick, erelease):
