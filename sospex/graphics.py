@@ -482,6 +482,8 @@ from sospex.moments import histoImage
         
 class ImageHistoCanvas(MplCanvas):
     """ Canvas to plot the histogram of image intensity """
+    from matplotlib.lines import Line2D
+    import matplotlib.transforms as transforms
     limSignal = pyqtSignal(str)
     levSignal = pyqtSignal(int)
     showLevels = False
@@ -550,7 +552,9 @@ class ImageHistoCanvas(MplCanvas):
         """ Draw levels as defined in levels"""
         if len(self.levels) > 0:
             for l in self.levels:
-                lev = self.axes.axvline(x=l, animated=True, color='cyan')
+                #lev = self.axes.axvline(x=l, animated=True, color='cyan')
+                trans = transforms.blended_transform_factory(self.axes.transData, self.axes.transAxes)
+                lev = Line2D([l,l],[0,1],color='cyan', animated=True, transform=trans)
                 self.lev.append(lev)
             #self.span.set_visible(False)
             self.span.active = False
@@ -684,8 +688,6 @@ class ImageHistoCanvas(MplCanvas):
             ind = self.get_ind_under_point(event)
             if ind is not None:
                 # Delete contour level
-                self.lev[ind].remove()
-                # Remove level from lists
                 del self.lev[ind]
                 del self.levels[ind]
                 # Emit signal to communicate it to images
@@ -701,7 +703,9 @@ class ImageHistoCanvas(MplCanvas):
                 if x > level:
                     n += 1
             self.levels.insert(n, x)
-            lev = self.axes.axvline(x=x,color='cyan',animated='True')
+            #lev = self.axes.axvline(x=x,color='cyan',animated='True')
+            trans = transforms.blended_transform_factory(self.axes.transData, self.axes.transAxes)
+            lev = Line2D([x,x],[0,1],color='cyan', animated=True, transform=trans)
             self.lev.insert(n, lev)
             # Emit signal to communicate it to images (add 1000 to tell that this is a new level)
             self.levSignal.emit(1000+n)

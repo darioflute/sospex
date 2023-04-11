@@ -3749,7 +3749,7 @@ class GUI (QMainWindow):
         sc.cid = sc.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomSpec)
         # Start the span selector to show only part of the cube
         sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
-                               rectprops=dict(alpha=0.3, facecolor='LightGreen'))
+                               props=dict(alpha=0.3, facecolor='LightGreen'))
         sc.span.active = False
         # Select new tab
         self.stabs.setCurrentIndex(len(self.stabs)-1)
@@ -3957,7 +3957,7 @@ class GUI (QMainWindow):
                                         button=[1, 3],  # don't use middle button
                                         minspanx=5, minspany=5,
                                         spancoords='pixels',
-                                        rectprops = dict(facecolor='g', edgecolor = 'g',
+                                        props = dict(facecolor='g', edgecolor = 'g',
                                                          alpha=0.8, fill=False),
                                         lineprops = dict(color='g', linestyle='-',linewidth = 2,
                                                          alpha=0.8),
@@ -3969,7 +3969,7 @@ class GUI (QMainWindow):
                                         button=[1, 3],  # don't use middle button
                                         minspanx=5, minspany=5,
                                         spancoords='pixels',
-                                        rectprops = dict(facecolor='g', edgecolor = 'g',
+                                        props = dict(facecolor='g', edgecolor = 'g',
                                                          alpha=0.8, fill=False),
                                         lineprops = dict(color='g', linestyle='-',linewidth = 2,
                                                          alpha=0.8),
@@ -5816,7 +5816,10 @@ class GUI (QMainWindow):
                 n = - n - 1000
                 # Remove contour from image
                 if n < ncontours:
-                    ic0.axes.collections.remove(ic0.contour.collections[n])
+                    #ic0.axes.collections.remove(ic0.contour.collections[n])
+                    for coll in ic0.axes.collections:
+                        if coll == ic0.contour.collections[n]:
+                            coll.remove()                    
                     # Delete element from contour collection list
                     ic0.contour.collections.pop(n)
                 else:
@@ -5824,7 +5827,10 @@ class GUI (QMainWindow):
             else:
                 # Move level by removing contour and adding it at new level
                 if n < ncontours:
-                    ic0.axes.collections.remove(ic0.contour.collections[n])
+                    for coll in ic0.axes.collections:
+                        if coll == ic0.contour.collections[n]:
+                            coll.remove()
+                    #ic0.axes.collections.remove(ic0.contour.collections[n])
                     new = ic0.axes.contour(ic0.oimage, [ih0.levels[n]], colors=self.colorContour[0])
                     ic0.contour.collections[n] = new.collections[0]
                 else:
@@ -6009,6 +6015,7 @@ class GUI (QMainWindow):
             self.loadFile(filename)
             self.initializeImages()
             self.initializeSpectra()
+            print('Initialize slider ...')
             self.initializeSlider()
             if self.specCube.instrument in ['GREAT','HI','HALPHA','VLA','ALMA','MUSE','SITELLE','IRAM','CARMA','MMA','PCWI','FOREST','WSRT']:
                 self.specCube.computeExpFromNan()
@@ -6376,14 +6383,14 @@ class GUI (QMainWindow):
         print('initial spectrum computed')
         self.specZoomlimits = [sc.xlimits, sc.ylimits]
         sc.cid = sc.axes.callbacks.connect('xlim_changed' or 'ylim_changed', self.doZoomSpec)
-        #print('define span selector')
+        print('define span selector')
         sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
-                               rectprops=dict(alpha=0.3, facecolor='LightGreen'))
+                               props=dict(alpha=0.3, facecolor='LightGreen'))
         sc.span.active = False
-        #print('s.n0 ', s.n0, ' len(wave) ', len(s.wave))
+        print('s.n0 ', s.n0, ' len(wave) ', len(s.wave))
         if (s.n0 <= 0) or (s.n0 >= (len(s.wave)-2)):
             s.n0 = len(s.wave)//2
-        #print('s.n0 updated ', s.n0)
+        print('s.n0 updated ', s.n0)
         wave0 = s.wave[s.n0]
         dwave = (s.wave[s.n0+1] - wave0) * 0.5
         sc.regionlimits = wave0 - dwave, wave0 + dwave
@@ -6477,7 +6484,7 @@ class GUI (QMainWindow):
             r = w0/dw
             w0 = c / w0 * 1.e-6
             dw = c / dw * 1.e-6 / np.abs(r * r - 0.25)
-        #print('slider at ',w0,' with width ',dw)
+        print('slider at ',w0,' with width ',dw)
         self.slider = SliderInteractor(sc.axes, w0, dw)
         self.slider.modSignal.connect(self.slideCube)
 
@@ -6649,7 +6656,7 @@ class GUI (QMainWindow):
         sc.cid = sc.axes.callbacks.connect('xlim_changed' or 'ylim_changed', self.doZoomSpec)
         # Start the span selector to show only part of the cube
         sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
-                               rectprops=dict(alpha=0.3, facecolor='LightGreen'))
+                               props=dict(alpha=0.3, facecolor='LightGreen'))
         sc.span.active = False
         self.all = True
 

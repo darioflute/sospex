@@ -62,8 +62,6 @@ class SliderInteractor(QObject):
         # x coords are data, y coords are axes (points stays in the same spot when zooming)
         self.line = Line2D([x], [0.01], marker='v', markersize=10, linestyle=None, linewidth=0,
                            markerfacecolor='lime', animated=True, transform=trans)
-        self.ax.add_line(self.line)
-        self.ax.add_patch(self.region)
         self.activated = False
         self.connect()
         
@@ -150,7 +148,8 @@ class SliderInteractor(QObject):
         # Update segments and markers
         self.ax.draw_artist(self.region)
         self.ax.draw_artist(self.line)
-        self.canvas.update()
+        self.canvas.blit(self.ax.bbox)
+        #self.canvas.update()
         self.canvas.flush_events()
         
         
