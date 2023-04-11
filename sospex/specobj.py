@@ -117,7 +117,7 @@ class specCubeAstro(object):
             self.readMUSE(hdl)
         elif self.instrument == 'IRAM':
             self.readIRAM(hdl)
-        elif self.instrument in ['VLA','ALMA','CARMA','MMA','FOREST']:
+        elif self.instrument in ['VLA','ALMA','CARMA','MMA','FOREST','WSRT']:
             self.readVLA(hdl)
         elif self.instrument == 'SITELLE':
             self.readSITELLE(hdl)
@@ -175,10 +175,17 @@ class specCubeAstro(object):
             print('Adding center from telescope information')
             self.header['CTYPE1'] = 'RA---TAN'
             self.header['CTYPE2'] = 'DEC--TAN'
-            self.header['CRVAL1'] = self.header['TELRA']*15
-            self.header['CRVAL2'] = self.header['TELDEC']
+            self.header['CRVAL1'] = self.header['TELRA']*15*3600
+            self.header['CRVAL2'] = self.header['TELDEC']*3600
+            primary = self.header['PRIMARAY']
+            channel = self.header['DETCHAN']
+            if (channel == 'RED') & (primary == 'BLUE'):
+                self.header['CRVAL1'] += 45
+            if (primary == 'BLUE') & (channel == 'RED'):
+                self.header['CRVAL1'] -= 45
         
         self.wcs = WCS(self.header).celestial
+        print('WCS ', self.wcs)
         self.crpix3 = self.header['CRPIX3']
         self.crval3 = self.header['CRVAL3']
         self.cdelt3 = self.header['CDELT3']
@@ -586,11 +593,13 @@ class specCubeAstro(object):
         # Transform into Jy
         #btype = self.header['BTYPE']
         #if btype == 'erg/cm2/s/A':
-        print('Transform into F_lambda [erg/cm2/s/A] into F_nu [Jy] ...')
-        c = 299792458.0 # m/s
-        wA = w * 1.e4 # Wavelength in A (1 um = 1.e4 A)
-        self.flux *=  3.33564095e4 * wA**2
-        #self.flux = (w * 1.e4) * self.flux  * (w * 1.e-6)/c * 1.e23 # F_nu
+        #print('Transform into F_lambda [erg/cm2/s/A] into F_nu [Jy] ...')
+        #c = 299792458.0 # m/s
+        #wA = w * 1.e4 # Wavelength in A (1 um = 1.e4 A)
+        #self.flux *=  3.33564095e4 * wA**2
+        ##self.flux = (w * 1.e4) * self.flux  * (w * 1.e-6)/c * 1.e23 # F_nu
+        print('Transform into Jy/Hz')
+        self.flux *= 2.88e-5  # Factor from comparison with R Panstarrs
 
         
     def readIRAM(self, hdl):
@@ -689,25 +698,47 @@ class specCubeAstro(object):
             print('Redshift ', self.redshift)
         except:
             self.redshift = 0.
+        if self.instrument == 'WSRT':
+            self.redshift = self.header['VELR']/c
         if self.instrument == 'MMA':
             idx = np.isfinite(self.flux)
             self.flux[~idx] = np.nan            
         nz, ny, nx = np.shape(self.flux)
         self.n = nz
         print('nz: ',nz, self.header['NAXIS3'])
+        # Case of epoch 1950
+        try:
+            # Transform FK4 into ICRS
+            if self.header['EPOCH'] == 1950:
+                print('This image is in epoch 1950')
+                from astropy import units as u
+                from astropy.coordinates import SkyCoord
+                cold = SkyCoord(ra=self.header['crval1']*u.degree, dec=self.header['crval2']*u.degree, frame='fk4')
+                cnew = cold.transform_to('icrs')
+                self.header['CRVAL1'] = cnew.ra.value
+                self.header['CRVAL2'] = cnew.dec.value
+                self.header['EPOCH'] = 2000
+        except:
+            pass
+        
+        if self.header['CTYPE3'] == 'FREQ-OHEL':
+            self.header['CTYPE3'] = 'FREQ'
+        
         wcs = WCS(self.header)
         self.wcs = wcs.celestial
         self.crpix3 = self.header['CRPIX3']
         self.crval3 = self.header['CRVAL3']
         self.cdelt3 = self.header['CDELT3']
-        ctype3 = self.header['CTYPE3'].strip()
+        ctype3 = self.header['CTYPE3']
         print('ctype 3 is ', ctype3)
         pix0 = 1 
-        if ctype3 == 'FREQ':
+        if ctype3 in ['FREQ','FREQ-OHEL']:
             if self.instrument in ['VLA','CARMA']:
                 nu0 = self.header['RESTFREQ']
             elif self.instrument == 'ALMA':
                 nu0 = self.header['RESTFRQ']
+            elif self.instrument == 'WSRT':
+                nu0 = self.header['FREQR']
             print('reference frequency', nu0, 'Hz')
             # Check if altrval exists and its different from crval3
             try:
@@ -776,8 +807,16 @@ class specCubeAstro(object):
         self.cdelt3 = np.median(w[1:] - w[:-1])
         try:
             # Flux conversion from Jy/beam to Jy/pixel
-            bmaj = self.header['BMAJ']
-            bmin = self.header['BMIN']
+            if self.instrument == 'WSRT':
+                bmaj = 3.19444434717E-03
+                bmin = 3.19444434717E-03
+                self.header['BMAJ'] = bmaj
+                self.header['BMIN'] = bmin
+                if self.header['BUNIT'] == 'W.U.':
+                    self.flux *= 5.e-3  # W.U. = 5e-3 Jy/beam
+            else:
+                bmaj = self.header['BMAJ']
+                bmin = self.header['BMIN']
             area_pixel = pixscale * ypixscale
             area_beam = np.pi/ (4 * np.log(2)) * bmaj * bmin
             self.npix_per_beam = area_beam / area_pixel
@@ -878,12 +917,15 @@ class specCubeAstro(object):
         z = self.redshift
         l = l0 * (1.+z)
         if self.channel == 'RED':
-            return 0.062423 * l * l - 6.6595 * l + 647.65
+            #return 0.062423 * l * l - 6.6595 * l + 647.65
+            return 11.14 * l - 550.28
         else:
             if self.order == '1':
-                return 0.16864 * l * l - 22.831 * l + 1316.6 
+                #return 0.16864 * l * l - 22.831 * l + 1316.6 
+                return 0.1934 * l * l - 28.89 * l + 1664
             else:
-                return 1.9163 * l * l - 187.35 * l + 5496.9
+                #return 1.9163 * l * l - 187.35 * l + 5496.9
+                return 1.397 * l * l -113.7 * l + 2932
 
 class specCube(object):
     """ spectral cube - read with fitsio routines"""
@@ -1024,8 +1066,10 @@ class specCube(object):
             self.header['CTYPE2'] = 'DEC--TAN'
             self.header['CRVAL1'] = self.header['TELRA']*15
             self.header['CRVAL2'] = self.header['TELDEC']
+            print(self.header['CRVAL1'], self.header['CRVAL2'])
         
         self.wcs = WCS(self.header).celestial
+        print(self.wcs)
         self.crpix3 = self.header['CRPIX3']
         self.crval3 = self.header['CRVAL3']
         self.cdelt3 = self.header['CDELT3']
@@ -1410,13 +1454,16 @@ class specCube(object):
         # Transform into Jy
         #btype = self.header['BTYPE']
         #if btype == 'erg/cm2/s/A':
-        print('Transform into Jy ...')
+        print('Transform into Jy/Hz')
+        self.flux *= 2.88e-5  # Factor from comparison with R Panstarrs
         c = 299792458.0 # m/s
-        wA = self.wave * 1.e4
-        print(np.nanmean(33356.4095 * wA**2))
-        print(np.nanmean(self.flux))
-        for f, w in zip(self.flux, wA):
-            f *= 33356.4095 * w**2
+        #wA = self.wave * 1.e4
+        # F(Jy) = F(λ) λ^2 33356.4095  where the factor 33356.4095 comes from:
+        #factor = 1.e13/c  # 1e23 (erg -> Jy) 1e-10 (A -> m)
+        #print(np.nanmean(factor * wA**2))
+        #print(np.nanmean(self.flux))
+        #for f, w in zip(self.flux, wA):
+        #    f *= factor * w**2
         #self.flux = (w * 1.e4) * self.flux  * (w * 1.e-6)/c * 1.e-23 # F_nu
 
     def readIRAM(self, hdl):

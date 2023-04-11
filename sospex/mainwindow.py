@@ -21,7 +21,7 @@ import scipy.ndimage as ndimage
 import warnings
 
 from sospex.moments import ( multiFitContinuum, multiComputeMoments,
-                            multiFitLines, # multiFitLinesSingle, 
+                            multiFitLines,  #multiFitLinesSingle, 
                             residualsPsf, 
                             fitApertureContinuum, fitApertureLines)
 from sospex.dialogs import (ContParams, ContFitParams, SlicerDialog, guessParams,
@@ -570,6 +570,8 @@ class GUI (QMainWindow):
         toolbar.addAction(self.cutAction)
         toolbar.addAction(self.slideAction)
         toolbar.addAction(self.specAction)
+        toolbar.addAction(self.filterAction)
+        self.filterAction.setCheckable(True)        
         print('Aperture is ', b)
         if b in ['All', 'Pix']:        
             toolbar.addAction(self.guessAction)
@@ -586,6 +588,7 @@ class GUI (QMainWindow):
         toolbar.addSeparator()
         toolbar.addAction(self.hresizeAction)
         toolbar.addAction(self.vresizeAction)
+        
         # Navigation toolbar
         sc.toolbar = NavigationToolbar(sc, self)
         #sc.toolbar.resize(100,10) 
@@ -693,18 +696,28 @@ class GUI (QMainWindow):
             self.itabs.addTab(t, u'I\u2080')  # unicode 0
         elif b == 'L1':
             self.itabs.addTab(t, u'I\u2081')  # unicode 1      
+        elif b == 'L2':
+            self.itabs.addTab(t, u'I\u2082')  # unicode 2      
         elif b == 'v0':
             self.itabs.addTab(t, u'v\u2080')  # unicode 0
         elif b == 'v1':
             self.itabs.addTab(t, u'v\u2081')  # unicode 1      
+        elif b == 'v2':
+            self.itabs.addTab(t, u'v\u2082')  # unicode 2     
         elif b == 'd0':
             self.itabs.addTab(t, u'\u0394\u2080')  # unicode Delta 0
         elif b == 'd1':
             self.itabs.addTab(t, u'\u0394\u2081')  # unicode Delta 1      
+        elif b == 'd2':
+            self.itabs.addTab(t, u'\u0394\u2082')  # unicode Delta 2      
         else:
             self.itabs.addTab(t, b)
         ic = ImageCanvas(t, width=self.width, height=self.width*2/5, dpi=self.dpi)
+<<<<<<< HEAD
         if b in ['Flux','uFlux','Exp','C0','M0','M1','M2','M3','M4','L0','L1','v0','v1','d0','d1']:
+=======
+        if b in ['Flux','uFlux','Exp','C0','M0','M1','M2','M3','M4','L0','L1','L2','v0','v1','v2','d0','d1','d2']:
+>>>>>>> develop
             ic.crota2 = self.specCube.crota2
         # No contours available
         ic.contours = None
@@ -799,10 +812,13 @@ class GUI (QMainWindow):
         elif b == 'sv': self.sv = None
         elif b == 'L0': self.L0 = None
         elif b == 'L1': self.L1 = None
+        elif b == 'L2': self.L2 = None
         elif b == 'v0': self.v0 = None
         elif b == 'v1': self.v1 = None
+        elif b == 'v2': self.v2 = None
         elif b == 'd0': self.d0 = None  # Dispersion (FWHM)
         elif b == 'd1': self.d1 = None
+        elif b == 'd2': self.d2 = None
         
         # Remove band from band list
         del self.bands[itab]
@@ -1259,6 +1275,7 @@ class GUI (QMainWindow):
                 lines = None
             if istab == 1: # case of pixel (with different kernels)
                 fluxAll = np.nanmean(s.flux[:, yy, xx], axis=1)
+                afluxAll = None
                 if sc.auxiliary1:
                     # Get the pixel of the auxiliary cube from aperture pixel in an image
                     x0, y0 = aperture.get_xy()
@@ -1279,40 +1296,42 @@ class GUI (QMainWindow):
                     sc.aflux1 = afluxAll
             else:
                 fluxAll = np.nansum(s.flux[:, yy, xx], axis=1)
+                afluxAll = None
+            if sc.displayRefVel:
+                x0, y0 = aperture.get_xy()
+                ic0 = self.ici[0]
+                ra0, dec0 = ic0.wcs.all_pix2world(x0, y0, 0) 
+                xxa, yya = self.refvel.wcs.all_world2pix(ra0, dec0, 0)
+                xxa = int (xxa // 1)
+                yya = int (yya // 1)
+                try:
+                    vel = self.refvel.data[yya, xxa]
+                except:
+                    vel = np.nan
+                sc.refvel = vel
+            else:
+                sc.refvel = np.nan
+                vel = None
+            if sc.auxiliary1 == False:
+                afluxAll = None
             sc.spectrum.flux = fluxAll
-            if s.instrument in ['GREAT','HI','HALPHA','VLA','ALMA','SITELLE','IRAM','CARMA','MMA','PCWI','FOREST']:
-                if sc.auxiliary1:
-                    sc.updateSpectrum(f=fluxAll*t2j, af=afluxAll, cont=cont,
-                                      cslope=cslope, moments=moments, 
-                                      lines=lines, noise=noise, ncell=ncell)
-                else:
-                    sc.updateSpectrum(f=fluxAll*t2j, cont=cont, cslope=cslope, moments=moments, 
-                                      lines=lines, noise=noise, ncell=ncell)
+            if s.instrument in ['GREAT','HI','HALPHA','VLA','ALMA','SITELLE','IRAM','CARMA','MMA','PCWI','FOREST','WSRT']:
+                sc.updateSpectrum(f=fluxAll*t2j, af=afluxAll, cont=cont,
+                                  cslope=cslope, moments=moments, 
+                                  lines=lines, noise=noise, ncell=ncell, refvel=vel)
             elif s.instrument in ['MUSE']:
                 efluxAll = np.sqrt(np.nansum(s.eflux[:,yy,xx]**2, axis=1))
-                if sc.auxiliary1:
-                    sc.updateSpectrum(f=fluxAll, ef=efluxAll, af=afluxAll, 
-                                      cont=cont, cslope=cslope,
-                                      moments=moments, lines=lines,
-                                      noise=noise, ncell=ncell)
-                else:
-                    sc.updateSpectrum(f=fluxAll, ef=efluxAll, 
-                                      cont=cont, cslope=cslope,
-                                      moments=moments, lines=lines,
-                                      noise=noise, ncell=ncell)               
+                sc.updateSpectrum(f=fluxAll, ef=efluxAll, af=afluxAll, 
+                                  cont=cont, cslope=cslope,
+                                  moments=moments, lines=lines,
+                                  noise=noise, ncell=ncell, refvel=vel)
             elif s.instrument in ['PACS','FORCAST','SPIRE']:
                 expAll = np.nanmean(s.exposure[:, yy, xx], axis=1)
                 efluxAll = np.sqrt(np.nanmean(s.eflux[:,yy,xx]**2, axis=1))
-                if sc.auxiliary1:
-                    sc.updateSpectrum(f=fluxAll, ef=efluxAll, af=afluxAll, 
-                                      exp=expAll, cont=cont, cslope=cslope,
-                                      moments=moments, lines=lines,
-                                      noise=noise, ncell=ncell)
-                else:
-                    sc.updateSpectrum(f=fluxAll, ef=efluxAll, exp=expAll,
-                                      cont=cont, cslope=cslope,
-                                      moments=moments, lines=lines,
-                                      noise=noise, ncell=ncell)
+                sc.updateSpectrum(f=fluxAll, ef=efluxAll, af=afluxAll, 
+                                  exp=expAll, cont=cont, cslope=cslope,
+                                  moments=moments, lines=lines,
+                                  noise=noise, ncell=ncell, refvel=vel)
             elif s.instrument == 'FIFI-LS':
                 ufluxAll = np.nansum(s.uflux[:, yy, xx], axis=1)
                 efluxAll = np.sqrt(np.nansum(s.eflux[:, yy, xx]**2, axis=1))
@@ -1320,15 +1339,10 @@ class GUI (QMainWindow):
                 sc.spectrum.uflux = ufluxAll
                 sc.spectrum.eflux = efluxAll
                 sc.spectrum.exposure = expAll
-                if sc.auxiliary1:
-                    sc.updateSpectrum(f=fluxAll, ef=efluxAll, af=afluxAll,
-                                      uf=ufluxAll, exp=expAll,
-                                      cont=cont,cslope=cslope, moments=moments,
-                                      lines=lines, noise=noise, ncell=ncell)
-                else:
-                    sc.updateSpectrum(f=fluxAll, ef=efluxAll, uf=ufluxAll, exp=expAll,
-                                      cont=cont,cslope=cslope, moments=moments,
-                                      lines=lines, noise=noise, ncell=ncell)
+                sc.updateSpectrum(f=fluxAll, ef=efluxAll, af=afluxAll,
+                                  uf=ufluxAll, exp=expAll,
+                                  cont=cont,cslope=cslope, moments=moments,
+                                  lines=lines, noise=noise, ncell=ncell, refvel=vel)
            
     def onDraw(self,event):
         if len(self.ici) <= 1:
@@ -1721,6 +1735,8 @@ class GUI (QMainWindow):
                                                 'Centroid of the PSF', '', self.centroidPSF)
         self.centerAction = self.createAction(os.path.join(self.path0,'icons','center.png'),
                                                 'Fit center of the PSF', '', self.centerPSF)
+        self.filterAction = self.createAction(os.path.join(self.path0,'icons','smooth.png'),
+                                                'Savizcky-Golay filtering', '', self.filterSpectrum)
         self.spacer = QWidget()
         self.spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.tb.addAction(self.startAction)
@@ -2029,10 +2045,10 @@ class GUI (QMainWindow):
             print(line)
             if function == 'Voigt':
                 c0, ec0, slope, x, ex, A, eA, sigma, esigma, alpha = line
+                FWHM = 2 *  sigma
             else:
                 c0, ec0, slope, x, ex, A, eA, sigma, esigma = line
-            # Compute FWHM
-            FWHM = 2 * np.sqrt(2*np.log(2)) * sigma
+                FWHM = 2 * np.sqrt(2*np.log(2)) * sigma
             #eFWHM = 2 * np.sqrt(2*np.log(2)) * esigma
             c = 299792458. # m/s
             FWHMv = c * FWHM / x / 1000.
@@ -2135,11 +2151,12 @@ class GUI (QMainWindow):
         self.tree = KDTree(self.sites)
         tq = self.tree.query(self.specCube.points)
         self.regions = tq[1].reshape(ny, nx)
-        self.ncells = len(self.sites) - 1  # last point repeated ?
+        #self.ncells = len(self.sites) - 1  # last point repeated ?
         if event == 'voronoi modified':
             print('number of cells is now ', self.ncells)
             pass
         elif event == 'one voronoi site added':
+            self.ncells += 1
             try:
                 # Add to the list the last value
                 newguess = sc.xguess[-1]
@@ -2157,6 +2174,7 @@ class GUI (QMainWindow):
                 self.sb.showMessage(message, 4000)
                 print(message)
         else:
+            self.ncells -= 1
             print('Site '+event+' removed')
             print('Now left with ', self.ncells,' cells')
             try:
@@ -2213,14 +2231,20 @@ class GUI (QMainWindow):
             image = self.L0
         elif band == 'L1':
             image = self.L1
+        elif band == 'L2':
+            image = self.L2
         elif band == 'v0':
             image = self.v0
         elif band == 'v1':
             image = self.v1
+        elif band == 'v2':
+            image = self.v2
         elif band == 'd0':
             image = self.d0
         elif band == 'd1':
             image = self.d1
+        elif band == 'd2':
+            image = self.d2
         if s.instrument == 'PCWI':
             aspect = s.ypixscale/s.pixscale
         else:
@@ -2229,7 +2253,7 @@ class GUI (QMainWindow):
         ic.compute_initial_figure(image=image, wcs=self.specCube.wcs, title=band,
                                   cMap=self.colorMap, cMapDir=self.colorMapDirection,
                                   stretch=self.stretchMap, aspect=aspect)
-        if band in ['M0','M1','M2','M3','M4','C0','v','sv','L0','L1','v0','v1','d0','d1']:
+        if band in ['M0','M1','M2','M3','M4','C0','v','sv','L0','L1','L2','v0','v1','v2','d0','d1','d2']:
             ic.crota2 = self.specCube.crota2
         ih = self.ihi[self.bands.index(band)]
         ih.compute_initial_figure(image=None)
@@ -2350,7 +2374,8 @@ class GUI (QMainWindow):
                 xc, yc = aperture.xy
                 if self.ncells > 1:
                     #ncell = self.regions[int(yc), int(xc)]
-                    ncell = self.tree.query([xc,yc])[1]
+                    dcell, ncell = self.tree.query([xc,yc])
+                    print('ncell ', ncell, self.tree.query([yc,xc])[1], len(sc.xguess), len(self.sites))
                 else:
                     ncell = 0
                 # Update the guess limits for cell
@@ -2395,17 +2420,21 @@ class GUI (QMainWindow):
             if self.ncells > 1:
                 options.extend(['Set to medians', 'Set to lowest 25% medians', 
                                 'Set to lowest 50% medians', 
+                                'Set to lowest 75% medians',
                                 'Offset of lowest 25% uncorrected medians',
                                 'Fit region', 'Fit all cube', 'Set to zero','Set to file'])
             else:
                 options.extend(['Set to medians', 'Set to lowest 25% medians', 
                                 'Set to lowest 50% medians',
+                                'Set to lowest 75% medians',
                                 'Offset of lowest 25% uncorrected medians',
                                 'Fit all cube', 'Set to zero','Set to file'])
         else:
             options = ['Set to medians', 'Set to lowest 25% medians', 
                        'Set to lowest 50% medians',
-                       'Offset of lowest 25% uncorrected medians','Set to zero','Set to file']
+                       'Set to lowest 75% medians',
+                       'Offset of lowest 25% uncorrected medians',
+                       'Set to zero','Set to file']
             moments = False
             lines = False
         FCD = FitCubeDialog(options, moments, lines)
@@ -2424,6 +2453,8 @@ class GUI (QMainWindow):
                     self.setContinuumMedianPercent(25)
                 elif coption == 'Set to lowest 50% medians':
                     self.setContinuumMedianPercent(50)
+                elif coption == 'Set to lowest 75% medians':
+                    self.setContinuumMedianPercent(75)
                 elif coption == 'Offset of lowest 25% uncorrected medians':
                     self.setContinuumMedianPercent(33, True)
                 elif coption == 'Set to zero':
@@ -2617,7 +2648,6 @@ class GUI (QMainWindow):
             uncorrected = False
 
         sc = self.sci[self.spectra.index('Pix')]
-        n = 100 // percent 
         if sc.guess is None:
             if uncorrected:
                 sflux = np.sort(self.specCube.uflux, axis=0)
@@ -2625,27 +2655,35 @@ class GUI (QMainWindow):
                 sflux = np.sort(self.specCube.flux, axis=0)
             print('shape of flux is ',np.shape(sflux))
             nz, ny, nx = np.shape(sflux)
-            npc = nz // n
+            npc = nz * percent // 100
             self.C0 = np.nanmedian(sflux[0: npc, :, :], axis=0)
         else:
             if self.ncells == 1:
                 i0, i1, i2, i3 = self.getContinuumGuess()
-                npc = (i3-i0) // n
+                npc = (i3-i2+i1-i0) * percent // 100
                 if uncorrected:
-                    sflux = np.sort(self.specCube.uflux[i0:i3, :, :], axis=0)
+                    f = np.concatenate((self.specCube.uflux[i0:i1, :, :],
+                                       self.specCube.uflux[i2:i3, :, :]), axis=0)
+                    sflux = np.sort(f, axis=0)
                 else:
-                    sflux = np.sort(self.specCube.flux[i0:i3, :, :], axis=0)
+                    f = np.concatenate((self.specCube.flux[i0:i1, :, :],
+                                       self.specCube.flux[i2:i3, :, :]), axis=0)
+                    sflux = np.sort(f, axis=0)
                 self.C0 = np.nanmedian(sflux[0:npc, :, :], axis=0)
             else:
                 # Otherwise, find the regions
                 for ncell in range(self.ncells):
                     i0, i1, i2, i3 = self.getContinuumGuess(ncell)
                     j, i = np.where(self.regions == ncell)
-                    npc = (i3-i0) // n 
+                    npc = (i3-i0) * percent // 100 
                     if uncorrected:
-                        sflux = np.sort(self.specCube.uflux[i0:i3,j,i], axis=0)
+                        f = np.concatenate((self.specCube.uflux[i0:i1, j, i],
+                                            self.specCube.uflux[i2:i3, j, i]), axis=0)
+                        sflux = np.sort(f, axis=0)
                     else:
-                        sflux = np.sort(self.specCube.flux[i0:i3,j,i], axis=0)
+                       f = np.concatenate((self.specCube.flux[i0:i1, j, i],
+                                           self.specCube.flux[i2:i3, j, i]), axis=0)
+                       sflux = np.sort(f, axis=0)
                     self.C0[j, i] = np.nanmedian(sflux[0:npc,:], axis=0)
         # If uncorrected, put to zero positive offsets
         if uncorrected:
@@ -3116,6 +3154,14 @@ class GUI (QMainWindow):
                 self.L1 = np.full((s.ny,s.nx), np.nan) #  2nd line integral
                 newbands = ['L0','L1','v0','v1','d0','d1']
                 sbands = [self.L0, self.L1, self.v0, self.v1, self.d0, self.d1]
+            elif nlines == 3:
+                self.L0 = np.full((s.ny,s.nx), np.nan) #  1st line integral
+                self.L1 = np.full((s.ny,s.nx), np.nan) #  2nd line integral
+                self.L2 = np.full((s.ny,s.nx), np.nan) #  2nd line integral
+                newbands = ['L0','L1','L2','v0','v1','v2','d0','d1','d2']
+                sbands = [self.L0, self.L1, self.L2, 
+                          self.v0, self.v1, self.v2, 
+                          self.d0, self.d1, self.d2]
             for new,sb in zip(newbands,sbands):
                 if new not in self.bands:
                     self.addBand(new)
@@ -3371,7 +3417,7 @@ class GUI (QMainWindow):
         multiFitLines(m, w, f, c, lineguesses, sc.model, self.lines, points)
         #multiFitLinesSingle(m, w, f, c, lineguesses, sc.model, self.lines, points) # Test only
         print('Number of lines ', len(self.lines))
-        # Update L0 and L1 (first two lines)
+        # Update line tabs
         self.L0 = self.lines[0][2] # Amplitude == intensity
         # Center of line transformed into velocity wrt ref wav
         w0 = self.specCube.l0
@@ -3379,23 +3425,38 @@ class GUI (QMainWindow):
         c = 299792.458 # km/s 
         self.v0 = (self.lines[0][0] / w0 - 1 -z) * c 
         # FWHM from sigma (in km/s)
-        self.d0 = self.lines[0][1] * 2.355 * c / w0
-        if len(self.lines) == 2:
+        if sc.model == 'Voigt':
+            self.d0 = self.lines[0][1] * 2 * c / w0
+        else:    
+            self.d0 = self.lines[0][1] * 2.355 * c / w0
+        if len(self.lines) > 1:
             self.L1 = self.lines[1][2]
-            self.v1 = (self.lines[1][0] / w0 - 1 -z) * c 
-            self.d1 = self.lines[1][1] * 2.355 * c / w0
+            self.v1 = (self.lines[1][0] / w0 - 1 -z) * c
+            if sc.model == 'Voigt':
+                self.d1 = self.lines[1][1] * 2 * c / w0
+            else:
+                self.d1 = self.lines[1][1] * 2.355 * c / w0
+        if len(self.lines) > 2:
+            self.L2 = self.lines[2][2]
+            self.v2 = (self.lines[2][0] / w0 - 1 -z) * c 
+            if sc.model == 'Voigt':
+                self.d2 = self.lines[2][1] * 2 * c / w0
+            else:
+                self.d2 = self.lines[2][1] * 2.355 * c / w0
         # Then display them
-        if len(self.lines) == 2:
-            bands = ['L0', 'L1','v0','v1','d0','d1']
-            sbands = [self.L0, self.L1,self.v0,self.v1,self.d0,self.d1]
-        else:
-            bands = ['L0','v0','d0']
-            sbands = [self.L0,self.v0,self.d0]
+        bands = ['L0','v0','d0']
+        sbands = [self.L0,self.v0,self.d0]
+        if len(self.lines) > 1:
+            bands.extend(['L1','v1','d1'])
+            sbands.extend([self.L1,self.v1,self.d1])
+        if len(self.lines) > 2:
+            bands.extend(['L2','v2','d2'])
+            sbands.extend([self.L2,self.v2,self.d2])
         for b, sb in zip(bands, sbands):
             itab = self.bands.index(b)
             ic = self.ici[itab]
             ic.showImage(image=sb)
-            if b in ['L0','L1']:
+            if b in ['L0', 'L1', 'L2']:
                 ic.image.format_cursor_data = lambda z: "{:.2e} W/m2".format(float(z))
             else:
                 ic.image.format_cursor_data = lambda z: "{:.2f} km/s".format(float(z))
@@ -3417,8 +3478,10 @@ class GUI (QMainWindow):
         # Update lines on pixel tab
         # sc = self.sci[self.spectra.index('Pix')]
         ic = self.ici[0]
-        xc,yc = ic.photApertures[0].xy[0]
+        n = self.nAper()
+        xc,yc = ic.photApertures[n].xy[0]
         i = int(np.rint(xc)); j = int(np.rint(yc))
+        print('pixel update in spec ', i, j)
         lines = []
         for iline, line in enumerate(self.lines):
             lines.append([line[0][j, i], 
@@ -3455,24 +3518,30 @@ class GUI (QMainWindow):
         self.v0 = (self.lines[0][0] / w0 - 1 -z) * c 
         # FWHM from sigma
         self.d0 = self.lines[0][1] * 2.355 / w0 * c
-        if len(self.lines) == 2:
+        if len(self.lines) > 1:
             self.L1 = self.lines[1][2]
             self.v1 = (self.lines[1][0] / w0 - 1 - z) / w0 * c 
             self.d1 = self.lines[1][1] * 2.355 / w0 * c
+        if len(self.lines) > 2:
+            self.L2 = self.lines[2][2]
+            self.v2 = (self.lines[2][0] / w0 - 1 - z) / w0 * c 
+            self.d2 = self.lines[2][1] * 2.355 / w0 * c
         
     def fitLinesDisplay(self):
         # Display images after fitting
-        if len(self.lines) == 2:
-            bands = ['L0', 'L1','v0','v1','d0','d1']
-            sbands = [self.L0, self.L1, self.v0, self.v1, self.d0, self.d1]
-        else:
-            bands = ['L0','v0','d0']
-            sbands = [self.L0,self.v0,self.d0]
+        bands = ['L0','v0','d0']
+        sbands = [self.L0,self.v0,self.d0]
+        if len(self.lines) > 1:
+            bands.extend(['L1','v1','d1'])
+            sbands.extend([self.L1,self.v1,self.d1])
+        if len(self.lines) > 2:
+            bands.extend(['L2','v2','d2'])
+            sbands.extend([self.L2,self.v2,self.d2])
         for b, sb in zip(bands, sbands):
             itab = self.bands.index(b)
             ic = self.ici[itab]
             ic.showImage(image=sb)
-            if b in ['L0','L1']:
+            if b in ['L0','L1','L2']:
                 ic.image.format_cursor_data = lambda z: "{:.2e} W/m2".format(float(z))
             else:
                 ic.image.format_cursor_data = lambda z: "{:.2f} km/s".format(float(z))
@@ -3495,6 +3564,7 @@ class GUI (QMainWindow):
         ic = self.ici[0]
         xc,yc = ic.photApertures[0].xy[0]
         i = int(np.rint(xc)); j = int(np.rint(yc))
+        print('pixel update in spec ', i, j)
         lines = []
         for line in self.lines:
             lines.append([line[0][j, i], line[1][j, i], line[2][j, i], line[3][j, i]])
@@ -3641,7 +3711,7 @@ class GUI (QMainWindow):
             spec = Spectrum(s.wave, fluxAll*s.Tb2Jy, instrument=s.instrument, 
                             redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy, 
                             bunit=s.bunit, yunit='Jy',pixscale=s.pixscale)
-        elif s.instrument in ['HI','HALPHA','VLA','ALMA','SITELLE','IRAM','CARMA','MMA','PCWI','FOREST']:
+        elif s.instrument in ['HI','HALPHA','VLA','ALMA','SITELLE','IRAM','CARMA','MMA','PCWI','FOREST','WSRT']:
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument, 
                             redshift=s.redshift, l0=s.l0, yunit='Jy',
                             pixscale=s.pixscale)
@@ -3682,7 +3752,7 @@ class GUI (QMainWindow):
         sc.cid = sc.axes.callbacks.connect('xlim_changed' and 'ylim_changed', self.doZoomSpec)
         # Start the span selector to show only part of the cube
         sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
-                               rectprops=dict(alpha=0.3, facecolor='LightGreen'))
+                               props=dict(alpha=0.3, facecolor='LightGreen'))
         sc.span.active = False
         # Select new tab
         self.stabs.setCurrentIndex(len(self.stabs)-1)
@@ -3890,7 +3960,7 @@ class GUI (QMainWindow):
                                         button=[1, 3],  # don't use middle button
                                         minspanx=5, minspany=5,
                                         spancoords='pixels',
-                                        rectprops = dict(facecolor='g', edgecolor = 'g',
+                                        props = dict(facecolor='g', edgecolor = 'g',
                                                          alpha=0.8, fill=False),
                                         lineprops = dict(color='g', linestyle='-',linewidth = 2,
                                                          alpha=0.8),
@@ -3902,7 +3972,7 @@ class GUI (QMainWindow):
                                         button=[1, 3],  # don't use middle button
                                         minspanx=5, minspany=5,
                                         spancoords='pixels',
-                                        rectprops = dict(facecolor='g', edgecolor = 'g',
+                                        props = dict(facecolor='g', edgecolor = 'g',
                                                          alpha=0.8, fill=False),
                                         lineprops = dict(color='g', linestyle='-',linewidth = 2,
                                                          alpha=0.8),
@@ -3946,7 +4016,7 @@ class GUI (QMainWindow):
         selectDI.setOption(QInputDialog.UseListViewForComboBoxItems)
         selectDI.setWindowTitle("Select image to download")
         selectDI.setLabelText("Selection")
-        imagelist = ['local image', 'local spectral cube',
+        imagelist = ['local image', 'local spectral cube', 'velocity image',
                      'sdss-u','sdss-g','sdss-r','sdss-i','sdss-z',
                      'panstarrs-g','panstarrs-r','panstarrs-i','panstarrs-z','panstarrs-y',
                      '2mass-j','2mass-h','2mass-k',
@@ -3981,6 +4051,24 @@ class GUI (QMainWindow):
             if downloadedImage.data is not None:
                 self.newImageTab(downloadedImage)
                 message = 'New image downloaded'
+            else:
+                message = 'The selected survey does not cover the displayed image'
+            self.newImageMessage(message)
+        elif band == 'velocity image':
+            # Download the local velocity reference fits
+            downloadedImage = cloudImage(lon, lat, xsize, ysize, band)
+            if downloadedImage.data is not None:
+                message = 'New image downloaded'
+                self.newImageTab(downloadedImage)
+                istab = self.spectra.index('Pix')
+                sc = self.sci[istab]                
+                sc.displayRefVel = True
+                sc.referenceVelocity = True
+                # Compute reference velocity field for spectral 
+                self.refvel = downloadedImage
+                self.onModifiedAperture('Reference velocity')
+                sc.drawSpectrum()
+                sc.fig.canvas.draw_idle()
             else:
                 message = 'The selected survey does not cover the displayed image'
             self.newImageMessage(message)
@@ -4029,7 +4117,7 @@ class GUI (QMainWindow):
             self.msgbox.setIconPixmap(pixmap)
             self.msgbox.setText("Querying " + band + " ... ")
             self.msgbox.exec_()
-       
+
     def newImageMessage(self, message):
         """Message sent from download thread.""" 
         self.sb.showMessage(message, 5000)
@@ -4740,17 +4828,17 @@ class GUI (QMainWindow):
                 hdu3 = self.addExtension(uflux,'UNCORRECTED_FLUX','Jy',header)
                 hdu4 = self.addExtension(self.specCube.euflux,'UNCORRECTED_ERROR','Jy',header)
                 hdu5 = self.addExtension(self.specCube.wave,'WAVELENGTH','um',None)
-                hdu6 = self.addExtension(self.specCube.x,'X',None,None)
-                hdu7 = self.addExtension(self.specCube.y,'Y',None,None)
-                hdu8 = self.addExtension(self.specCube.atran,'TRANSMISSION',None,None)
-                hdu9 = self.addExtension(self.specCube.response,'RESPONSE',None,None)
-                hdu10 = self.addExtension(self.specCube.exposure * nexp / exptime,'EXPOSURE_MAP',None,header)
+                #hdu6 = self.addExtension(self.specCube.x,'X',None,None)
+                #hdu7 = self.addExtension(self.specCube.y,'Y',None,None)
+                hdu6 = self.addExtension(self.specCube.atran,'TRANSMISSION',None,None)
+                hdu7 = self.addExtension(self.specCube.response,'RESPONSE',None,None)
+                hdu8 = self.addExtension(self.specCube.exposure * nexp / exptime,'EXPOSURE_MAP',None,header)
                 if self.specCube.watran is not None:
                     uatran = np.array([self.specCube.watran, self.specCube.uatran])
-                    hdu11 = self.addExtension(uatran,'UNSMOOTHED_TRANSMISSION',None,None)
-                    hdul = fits.HDUList([hdu, hdu1, hdu2, hdu3, hdu4, hdu5, hdu6, hdu7, hdu8, hdu9, hdu10, hdu11])
+                    hdu9 = self.addExtension(uatran,'UNSMOOTHED_TRANSMISSION',None,None)
+                    hdul = fits.HDUList([hdu, hdu1, hdu2, hdu3, hdu4, hdu5, hdu6, hdu7, hdu8, hdu9])
                 else:
-                    hdul = fits.HDUList([hdu, hdu1, hdu2, hdu3, hdu4, hdu5, hdu6, hdu7, hdu8, hdu9, hdu10])            
+                    hdul = fits.HDUList([hdu, hdu1, hdu2, hdu3, hdu4, hdu5, hdu6, hdu7, hdu8])            
                 #hdul.info()    
                 hdul.writeto(outfile,overwrite=True) 
                 hdul.close()
@@ -4912,7 +5000,6 @@ class GUI (QMainWindow):
             elif self.specCube.instrument == 'HALPHA':
                 header['NAXIS'] = (3,'Number of axis')
                 header['OBJECT'] = (self.specCube.objname, 'Object Name')
-                header['INSTRUME'] = self.specCube.header['INSTRUME']
                 header['RESTFREQ'] = self.specCube.header['RESTFREQ']
                 header['CTYPE3'] = self.specCube.header['CTYPE3']
                 header['CRPIX3'] = self.specCube.header['CRPIX3']
@@ -4924,6 +5011,32 @@ class GUI (QMainWindow):
                 hdul = fits.HDUList([hdu])
                 hdul.writeto(outfile,overwrite=True) 
                 hdul.close()
+            elif self.specCube.instrument == 'WSRT':
+                header['NAXIS'] = (3,'Number of axis')
+                c = 299792458.0  # speed of light in m/s 
+                header['INSTRUME'] = self.specCube.header['INSTRUME']
+                header['OBJECT'] = (self.specCube.objname, 'Object Name')
+                header['BMAJ'] = self.specCube.header['BMAJ']
+                header['BMIN'] = self.specCube.header['BMIN']
+                header['BUNIT'] = ('Jy/Beam', 'Flux units')
+                header['FREQR'] = self.specCube.header['FREQR']
+                header['CTYPE3'] = ('FREQ', 'PRIMARY AXIS NAME')
+                header['CRPIX3'] = self.specCube.header['CRPIX3']
+                header['CRVAL3'] = self.specCube.header['CRVAL3']
+                header['CDELT3'] = self.specCube.header['CDELT3']
+                header['CUNIT3'] = self.specCube.header['CUNIT3']
+                header['DATE-OBS'] = self.specCube.header['DATE-OBS']
+                header['VELR'] = self.specCube.header['VELR']
+                # Flip the cube before saving to order in frequency
+                if self.specCube.header['CDELT3'] > 0:
+                    flux = np.flip(flux, axis=0) * self.specCube.npix_per_beam
+                else:
+                    flux *= self.specCube.npix_per_beam
+                hdu = fits.PrimaryHDU(flux)
+                hdu.header.extend(header)
+                hdul = fits.HDUList([hdu])
+                hdul.writeto(outfile,overwrite=True) 
+                hdul.close()                
             else:
                 pass  
         
@@ -4963,6 +5076,9 @@ class GUI (QMainWindow):
                 else:
                     t2j = 1
                 w = self.specCube.wave
+                # check model used
+                sc = self.sci[self.spectra.index('Pix')]
+                model = sc.model
                 # Extensions                
                 for i, line in enumerate(self.lines):
                     if len(self.lines) > 1:
@@ -4981,14 +5097,17 @@ class GUI (QMainWindow):
                                 wmin = np.argmin(np.abs(x[iy, ix] - w))
                                 continuum[iy,ix] = self.continuum[wmin, iy, ix] * t2j
                     # Compute FWHM
-                    FWHM = 2 * np.sqrt(2*np.log(2)) * sigma
+                    if model == 'Voigt':
+                        FWHM = 2 * sigma
+                    else:
+                        FWHM = 2 * np.sqrt(2*np.log(2)) * sigma
                     #eFWHM = 2 * np.sqrt(2*np.log(2)) * esigma
                     c = 299792458. # m/s
                     FWHMv = c * FWHM / x / 1000.
                     eFWHMv = FWHMv / sigma * esigma
                     # To check if t2j is required for GREAT ....
                     # Add extensions
-                    hdul.append(self.addExtension(continuum,'CONTINUUM'+istr,'um',header))
+                    hdul.append(self.addExtension(continuum,'CONTINUUM'+istr,'Jy/pix',header))
                     hdul.append(self.addExtension(x,'CENTER'+istr,'um',header))
                     hdul.append(self.addExtension(ex,'ERRCENTER'+istr,'um',header))
                     hdul.append(self.addExtension(FWHMv,'FWHM'+istr,'km/s',header))
@@ -5385,8 +5504,8 @@ class GUI (QMainWindow):
                     ic0.updateScale(cmin,cmax)
                 # mask C0, Mi, v, sv
                 sbands = [self.C0, self.M0, self.v, self.sv,
-                          self.L0, self.L1,self.v0,self.v1,self.d0,self.d1]
-                bands = ['C0','M0','v','sv','L0','L1','v0','v1','d0','d1']
+                          self.L0, self.L1,self.L2,self.v0,self.v1,self.v2,self.d0,self.d1,self.d2]
+                bands = ['C0','M0','v','sv','L0','L1','L2','v0','v1','v2','d0','d1','d2']
                 for b,sb in zip(bands,sbands):
                     if sb is not None:
                         itab = self.bands.index(b)
@@ -5410,7 +5529,7 @@ class GUI (QMainWindow):
         itab = self.itabs.currentIndex()
         band = self.bands[itab]
         if band not in ['Flux','uFlux','Exp','C0','M0','M1','M2','M3','M4',
-                        'v','sv','L0','L1','v0','v1','d0','d1']:
+                        'v','sv','L0','L1','L2','v0','v1','v2','d0','d1','d2']:
             itab = 0
             self.itabs.setCurrentIndex(itab)            
         ic = self.ici[itab]
@@ -5428,7 +5547,7 @@ class GUI (QMainWindow):
         itab = self.itabs.currentIndex()
         band = self.bands[itab]
         if band not in ['Flux','uFlux','Exp','C0','M0','M1','M2','M3','M4',
-                        'v','sv','L0','L1','v0','v1','d0','d1']:
+                        'v','sv','L0','L1','L2','v0','v1','v2','d0','d1','d2']:
             itab = 0
             self.itabs.setCurrentIndex(itab)            
         ic = self.ici[itab]
@@ -5489,8 +5608,11 @@ class GUI (QMainWindow):
                 ic0.updateScale(cmin,cmax)
             # mask C0, Mi, v, sv and lines
             sbands = [self.C0, self.M0,self.v, self.sv,
-                      self.L0,self.v0,self.d0,self.L1,self.v1,self.d1]
-            bands = ['C0','M0','v','sv','L0','v0','d0','L1','v1','d1']
+                      self.L0,self.v0,self.d0,
+                      self.L1,self.v1,self.d1,
+                      self.L2,self.v2,self.d2]
+            bands = ['C0','M0','v','sv',
+                     'L0','v0','d0','L1','v1','d1','L2','v2','d2']
             for b,sb in zip(bands,sbands):
                 try:
                     if sb is not None:
@@ -5697,7 +5819,10 @@ class GUI (QMainWindow):
                 n = - n - 1000
                 # Remove contour from image
                 if n < ncontours:
-                    ic0.axes.collections.remove(ic0.contour.collections[n])
+                    #ic0.axes.collections.remove(ic0.contour.collections[n])
+                    for coll in ic0.axes.collections:
+                        if coll == ic0.contour.collections[n]:
+                            coll.remove()                    
                     # Delete element from contour collection list
                     ic0.contour.collections.pop(n)
                 else:
@@ -5705,7 +5830,10 @@ class GUI (QMainWindow):
             else:
                 # Move level by removing contour and adding it at new level
                 if n < ncontours:
-                    ic0.axes.collections.remove(ic0.contour.collections[n])
+                    for coll in ic0.axes.collections:
+                        if coll == ic0.contour.collections[n]:
+                            coll.remove()
+                    #ic0.axes.collections.remove(ic0.contour.collections[n])
                     new = ic0.axes.contour(ic0.oimage, [ih0.levels[n]], colors=self.colorContour[0])
                     ic0.contour.collections[n] = new.collections[0]
                 else:
@@ -5890,8 +6018,9 @@ class GUI (QMainWindow):
             self.loadFile(filename)
             self.initializeImages()
             self.initializeSpectra()
+            print('Initialize slider ...')
             self.initializeSlider()
-            if self.specCube.instrument in ['GREAT','HI','HALPHA','VLA','ALMA','MUSE','SITELLE','IRAM','CARMA','MMA','PCWI','FOREST']:
+            if self.specCube.instrument in ['GREAT','HI','HALPHA','VLA','ALMA','MUSE','SITELLE','IRAM','CARMA','MMA','PCWI','FOREST','WSRT']:
                 self.specCube.computeExpFromNan()
                 #idx = np.isfinite(self.specCube.flux)
                 #print('No of bad ', np.sum(~idx))
@@ -5906,7 +6035,7 @@ class GUI (QMainWindow):
             self.ncells = 1
             # Load spectral lines
             from sospex.lines import define_lines
-            if self.specCube.instrument in ['MUSE']:
+            if self.specCube.instrument in ['MUSE','HALPHA']:
                 print('Use air lines')
                 self.Lines = define_lines(reference='air')
             else:
@@ -5944,7 +6073,7 @@ class GUI (QMainWindow):
                 print('images initialized ')
                 self.initializeSpectra()
                 print('spectra initialized ')
-                if self.specCube.instrument in ['GREAT','HI','HALPHA','VLA','ALMA','MUSE','SITELLE','IRAM','CARMA','MMA','PCWI','FOREST']:
+                if self.specCube.instrument in ['GREAT','HI','HALPHA','VLA','ALMA','MUSE','SITELLE','IRAM','CARMA','MMA','PCWI','FOREST','WSRT']:
                     #print('compute Exp from Nan')
                     self.specCube.computeExpFromNan()
                 self.all = False
@@ -5957,7 +6086,7 @@ class GUI (QMainWindow):
                     self.slideCube('Exp computed')
                 # Load lines
                 from sospex.lines import define_lines
-                if self.specCube.instrument in ['MUSE']:
+                if self.specCube.instrument in ['MUSE','HALPHA']:
                     self.Lines = define_lines(reference='air')
                     #print('H-alpha', self.Lines['H-alpha 6564'])
                 else:
@@ -5998,7 +6127,8 @@ class GUI (QMainWindow):
             self.extraimages = []
             for itab in reversed(range(len(self.ici))):
                 if self.bands[itab] in ['Flux','uFlux','Exp','M0','M1','M2','M3',
-                                        'v','sv','L0','L1','v0','v1','d0','d1']:
+                                        'v','sv','L0','L1','L2',
+                                        'v0','v1','v2','d0','d1','d2']:
                     pass
                 else:
                     print('tab ',self.bands[itab],' contains auxiliary image')
@@ -6035,7 +6165,7 @@ class GUI (QMainWindow):
         if self.specCube.instrument == 'FIFI-LS':
             self.bands = ['Flux','uFlux','Exp']
             self.spectra = ['All','Pix']
-        elif self.specCube.instrument in ['MUSE','GREAT','HI','HALPHA','VLA','ALMA','SITELLE','IRAM','CARMA','MMA','PCWI','FOREST']: 
+        elif self.specCube.instrument in ['MUSE','GREAT','HI','HALPHA','VLA','ALMA','SITELLE','IRAM','CARMA','MMA','PCWI','FOREST','WSRT']: 
             self.bands = ['Flux']
             self.spectra = ['All','Pix']
         elif self.specCube.instrument in ['FORCAST','PACS','SPIRE']:
@@ -6161,10 +6291,13 @@ class GUI (QMainWindow):
         self.continuum = None
         self.L0 = None
         self.L1 = None
+        self.L2 = None
         self.v0 = None
         self.v1 = None
+        self.v2 = None
         self.d0 = None
         self.d1 = None
+        self.d2 = None
         self.M0 = None
         self.M1 = None
         self.M2 = None
@@ -6215,7 +6348,7 @@ class GUI (QMainWindow):
             spec = Spectrum(s.wave, fluxAll*s.Tb2Jy, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy, 
                             bunit=s.bunit, yunit='Jy/pix', pixscale=s.pixscale)
-        elif s.instrument in ['HI','HALPHA','VLA','ALMA','SITELLE','IRAM','CARMA','MMA','PCWI','FOREST']:
+        elif s.instrument in ['HI','HALPHA','VLA','ALMA','SITELLE','IRAM','CARMA','MMA','PCWI','FOREST','WSRT']:
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0, yunit='Jy/pix', 
                             pixscale=s.pixscale)
@@ -6253,14 +6386,14 @@ class GUI (QMainWindow):
         print('initial spectrum computed')
         self.specZoomlimits = [sc.xlimits, sc.ylimits]
         sc.cid = sc.axes.callbacks.connect('xlim_changed' or 'ylim_changed', self.doZoomSpec)
-        #print('define span selector')
+        print('define span selector')
         sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
-                               rectprops=dict(alpha=0.3, facecolor='LightGreen'))
+                               props=dict(alpha=0.3, facecolor='LightGreen'))
         sc.span.active = False
-        #print('s.n0 ', s.n0, ' len(wave) ', len(s.wave))
+        print('s.n0 ', s.n0, ' len(wave) ', len(s.wave))
         if (s.n0 <= 0) or (s.n0 >= (len(s.wave)-2)):
             s.n0 = len(s.wave)//2
-        #print('s.n0 updated ', s.n0)
+        print('s.n0 updated ', s.n0)
         wave0 = s.wave[s.n0]
         dwave = (s.wave[s.n0+1] - wave0) * 0.5
         sc.regionlimits = wave0 - dwave, wave0 + dwave
@@ -6354,7 +6487,7 @@ class GUI (QMainWindow):
             r = w0/dw
             w0 = c / w0 * 1.e-6
             dw = c / dw * 1.e-6 / np.abs(r * r - 0.25)
-        #print('slider at ',w0,' with width ',dw)
+        print('slider at ',w0,' with width ',dw)
         self.slider = SliderInteractor(sc.axes, w0, dw)
         self.slider.modSignal.connect(self.slideCube)
 
@@ -6371,7 +6504,7 @@ class GUI (QMainWindow):
         n = np.argmin(np.abs(self.specCube.wave - w))
        # Display channel n of the spectral cube
         if self.specCube.instrument in ['GREAT','HI','HALPHA','MUSE',
-                                        'VLA','ALMA','SITELLE','IRAM','CARMA','MMA','PCWI','FOREST']:
+                                        'VLA','ALMA','SITELLE','IRAM','CARMA','MMA','PCWI','FOREST','WSRT']:
             imas = ['Flux']
         elif self.specCube.instrument in ['PACS', 'FORCAST','SPIRE']:
             imas = ['Flux','Exp']
@@ -6494,7 +6627,7 @@ class GUI (QMainWindow):
             spec = Spectrum(s.wave, fluxAll*s.Tb2Jy, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy, 
                             bunit=s.bunit, yunit='Jy',pixscale=s.pixscale)
-        elif s.instrument in ['HI','HALPHA','VLA','ALMA','SITELLE','IRAM','CARMA','MMA','PCWI','FOREST']:
+        elif s.instrument in ['HI','HALPHA','VLA','ALMA','SITELLE','IRAM','CARMA','MMA','PCWI','FOREST','WSRT']:
             spec = Spectrum(s.wave, fluxAll, instrument=s.instrument,
                             redshift=s.redshift, l0=s.l0, yunit='Jy',
                             pixscale=s.pixscale)
@@ -6526,7 +6659,7 @@ class GUI (QMainWindow):
         sc.cid = sc.axes.callbacks.connect('xlim_changed' or 'ylim_changed', self.doZoomSpec)
         # Start the span selector to show only part of the cube
         sc.span = SpanSelector(sc.axes, self.onSelect, 'horizontal', useblit=True,
-                               rectprops=dict(alpha=0.3, facecolor='LightGreen'))
+                               props=dict(alpha=0.3, facecolor='LightGreen'))
         sc.span.active = False
         self.all = True
 
@@ -6604,7 +6737,7 @@ class GUI (QMainWindow):
         indmax = min(len(self.specCube.wave) - 1, indmax)
         sc.regionlimits = [xmin,xmax]
         if self.specCube.instrument in ['GREAT','HI','HALPHA','VLA','ALMA',
-                                        'MUSE','SITELLE','IRAM','CARMA','MMA','PCWI','FOREST']:
+                                        'MUSE','SITELLE','IRAM','CARMA','MMA','PCWI','FOREST','WSRT']:
             imas = ['Flux']
         elif self.specCube.instrument in ['PACS','FORCAST','SPIRE']:
             imas = ['Flux','Exp']
@@ -6705,7 +6838,7 @@ class GUI (QMainWindow):
         if s.instrument in ['GREAT']:
             t2j = self.specCube.Tb2Jy
             sc.updateSpectrum(f=fluxAll*t2j)
-        elif s.instrument in ['HI','HALPHA','VLA','ALMA','SITELLE','IRAM','CARMA','MMA','PCWI','FOREST']:
+        elif s.instrument in ['HI','HALPHA','VLA','ALMA','SITELLE','IRAM','CARMA','MMA','PCWI','FOREST','WSRT']:
             sc.updateSpectrum(f=fluxAll)
         elif s.instrument in ['MUSE']:
             efluxAll = np.sqrt(np.nansum(s.eflux[:, y0:y1, x0:x1]**2, axis=(1, 2)))
@@ -6980,7 +7113,15 @@ class GUI (QMainWindow):
             sc.vaxes.set_ylim(np.nanmin(sc.aflux1), np.nanmax(sc.aflux1))
         # Slightly higher maximum
         sc.ylimits = (ylim0,ylim1*1.1)
-        sc.updateYlim()  
+        sc.updateYlim() 
+        
+    def filterSpectrum(self):
+        # Apply filtering
+        istab = self.stabs.currentIndex()
+        sc = self.sci[istab]
+        sc.filter = not sc.filter
+        sc.updateFilter()
+        sc.fig.canvas.draw_idle()
         
     def repairSpectrum(self):
         """Substitute NaN with interpolated values"""
@@ -7020,7 +7161,11 @@ def main():
     gui.spectralPanel.setMinimumWidth(width*0.35)
     gui.hsplitter.setSizes ([width*0.48,width*0.48])
     gui.dpi = 100
+<<<<<<< HEAD
     gui.width = width * .48 // gui.dpi
+=======
+    gui.width = width * 0.48 // gui.dpi
+>>>>>>> develop
     # Add an icon for the application
     app.setWindowIcon(QIcon(os.path.join(gui.path0,'icons','sospex.png')))
     app.setApplicationName('SOSPEX')

@@ -54,7 +54,7 @@ QToolBar::separator{
 background-color: transparent;
 }
 QToolButton:pressed {
-background-color: LemonChiffon;
+background-color: khaki;
 border-radius: 3px;
 }
 QToolButton:hover {
@@ -66,7 +66,7 @@ background-color: LemonChiffon;
 border-radius: 3px;
 }
 QToolButton:checked {
-background-color: LemonChiffon;
+background-color: khaki;
 border-radius: 3px;
 }
 QToolTip {
@@ -106,15 +106,6 @@ QTabBar::tab:selected, QTabBar::tab:hover {
 QTabBar::tab:selected {
 border-color: #9B9B9B;
 border-bottom-color: khaki; /* same as pane color */
-}
-QTabBar::tab:!selected {
-margin-top: 2px; /* make non-selected tabs look smaller */
-}
-/* make use of negative margins for overlapping tabs */
-QTabBar::tab:selected {
-    /* expand/overlap to the left and right by 4px */
-    margin-left: -4px;
-    margin-right: -4px;
 }
 QTabBar::tab:first:selected {
 margin-left: 0; /* the first selected tab has nothing to overlap with on the left */

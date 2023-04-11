@@ -216,8 +216,8 @@ def exportAperture(self):
                     else:
                         c0, ec0, slope, x, ex, A, eA, sigma, esigma, alpha = apline
                         # Compute FWHM
-                        FWHM = 2 * np.sqrt(2*np.log(2)) * sigma
-                        eFWHM = 2 * np.sqrt(2*np.log(2)) * esigma
+                        FWHM = 2 * sigma
+                        eFWHM = 2 * esigma
                         c = 299792458. # m/s
                         FWHMv = c * FWHM / x / 1000.
                         eFWHMv = FWHMv / sigma * esigma

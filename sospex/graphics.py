@@ -27,6 +27,8 @@ from astropy.wcs.utils import proj_plane_pixel_scales as pixscales
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 
+from scipy.signal import savgol_filter
+
 from PyQt5.QtWidgets import (QVBoxLayout, QHBoxLayout, QLineEdit, QSizePolicy, QInputDialog, 
                              QPushButton,QLabel,QMessageBox,QScrollArea,QWidget)
 from PyQt5.QtGui import QFont
@@ -75,7 +77,7 @@ class ScrollMessageBox(QMessageBox):
 def ds9cmap():
     """Adding DS9 colormap.
     Adapted from http://nbviewer.jupyter.org/gist/adonath/c9a97d2f2d964ae7b9eb"""
-    from matplotlib.cm import register_cmap, cmap_d
+    from matplotlib.cm import register_cmap#, cmap_d
     from matplotlib.colors import LinearSegmentedColormap
     ds9b = {'red': lambda v : 4 * v - 1, 
             'green': lambda v : 4 * v - 2,
@@ -182,11 +184,11 @@ def ds9cmap():
                    'blue': lambda v : np.interp(v, bluept, blue)[::-1]}
     
     
-    # Set aliases, where colormap exists in matplotlib
-    cmap_d['ds9bb'] = cmap_d['afmhot']
-    cmap_d['ds9grey'] = cmap_d['gray']
-    cmap_d['ds9bb_r'] = cmap_d['afmhot_r']
-    cmap_d['ds9grey_r'] = cmap_d['gray_r']    
+    # Set aliases, where colormap exists in matplotlib (does not work in matplotlib >= 3.7)
+    #cmap_d['ds9bb'] = cmap_d['afmhot']
+    #cmap_d['ds9grey'] = cmap_d['gray']
+    #cmap_d['ds9bb_r'] = cmap_d['afmhot_r']
+    #cmap_d['ds9grey_r'] = cmap_d['gray_r']    
     # Register all other colormaps
     register_cmap(cmap=LinearSegmentedColormap('ds9b', ds9b))
     register_cmap(cmap=LinearSegmentedColormap('ds9cool', ds9cool))
@@ -336,14 +338,20 @@ class ImageCanvas(MplCanvas):
                    title = 'I$_0$'
                 elif title == 'L1':
                    title = 'I$_1$'
+                elif title == 'L2':
+                   title = 'I$_2$'
                 elif title == 'v0':
                    title = 'v$_0$'
                 elif title == 'v1':
                    title = 'v$_1$'
+                elif title == 'v2':
+                   title = 'v$_2$'
                 elif title == 'd0':
                    title = 'FWHM$_0$'
                 elif title == 'd1':
                    title = 'FWHM$_1$'
+                elif title == 'd2':
+                   title = 'FWHM$_2$'
                 elif title == 'unknown':
                    title = ''
                 self.fig.suptitle(title)
@@ -474,6 +482,8 @@ from sospex.moments import histoImage
         
 class ImageHistoCanvas(MplCanvas):
     """ Canvas to plot the histogram of image intensity """
+    from matplotlib.lines import Line2D
+    import matplotlib.transforms as transforms
     limSignal = pyqtSignal(str)
     levSignal = pyqtSignal(int)
     showLevels = False
@@ -487,7 +497,7 @@ class ImageHistoCanvas(MplCanvas):
         self.axes.spines['left'].set_visible(False)
         # Start a span selector
         self.span = SpanSelector(self.axes, self.onSelect, 'horizontal', useblit=True,
-                                 rectprops=dict(alpha=0.5, facecolor='LightSalmon'),button=1)
+                                 props=dict(alpha=0.5, facecolor='LightSalmon'),button=1)
         # Initialize contour level vertical lines
         self.lev = []
         self.levels = []
@@ -542,7 +552,9 @@ class ImageHistoCanvas(MplCanvas):
         """ Draw levels as defined in levels"""
         if len(self.levels) > 0:
             for l in self.levels:
-                lev = self.axes.axvline(x=l, animated=True, color='cyan')
+                #lev = self.axes.axvline(x=l, animated=True, color='cyan')
+                trans = transforms.blended_transform_factory(self.axes.transData, self.axes.transAxes)
+                lev = Line2D([l,l],[0,1],color='cyan', animated=True, transform=trans)
                 self.lev.append(lev)
             #self.span.set_visible(False)
             self.span.active = False
@@ -676,8 +688,6 @@ class ImageHistoCanvas(MplCanvas):
             ind = self.get_ind_under_point(event)
             if ind is not None:
                 # Delete contour level
-                self.lev[ind].remove()
-                # Remove level from lists
                 del self.lev[ind]
                 del self.levels[ind]
                 # Emit signal to communicate it to images
@@ -693,7 +703,9 @@ class ImageHistoCanvas(MplCanvas):
                 if x > level:
                     n += 1
             self.levels.insert(n, x)
-            lev = self.axes.axvline(x=x,color='cyan',animated='True')
+            #lev = self.axes.axvline(x=x,color='cyan',animated='True')
+            trans = transforms.blended_transform_factory(self.axes.transData, self.axes.transAxes)
+            lev = Line2D([x,x],[0,1],color='cyan', animated=True, transform=trans)
             self.lev.insert(n, lev)
             # Emit signal to communicate it to images (add 1000 to tell that this is a new level)
             self.levSignal.emit(1000+n)
@@ -763,6 +775,7 @@ class SpectrumCanvas(MplCanvas):
         self.displayExposure = True
         self.displayLines = True
         self.displayAuxFlux1 = False # Auxiliary spectral cube
+        self.displayRefVel = False   # Reference velocity
         self.shade = False
         self.regionlimits = None
         self.xunit = 'um'  # Alternatives are THz or km/s
@@ -781,11 +794,14 @@ class SpectrumCanvas(MplCanvas):
         self.lines = None
         self.dragged = None
         self.auxiliary1 = None
+        self.referenceVelocity = None
         self.moments = False
         self.fittedlines = False
         self.fittedaplines = False
         self.rannotation = None
         self.cannotation = None
+        self.filter = False
+        self.flux = None
         self.r = None # radius of aperture
         
     def compute_initial_spectrum(self, name=None, spectrum=None, xmin=None, xmax=None, lines=None):
@@ -801,7 +817,7 @@ class SpectrumCanvas(MplCanvas):
             print('Define lines for ',self.instrument)
             from sospex.lines import define_lines
             if lines is None:
-                if self.instrument == 'MUSE':
+                if self.instrument in ['MUSE','HALPHA']:
                     self.Lines = define_lines('air')
                 else:
                     self.Lines = define_lines()
@@ -869,7 +885,12 @@ class SpectrumCanvas(MplCanvas):
                 print('Everything is NaN')
             self.efluxLine = self.axes.fill_between(self.x, loflux, hiflux,
                                                     color='blue', alpha=0.2)
-        self.fluxLine = self.axes.step(self.x, s.flux, color='blue', label='F', 
+        self.flux = s.flux
+        if self.filter:
+            flux = savgol_filter(self.flux, 7, 3)
+        else:
+            flux = self.flux
+        self.fluxLine = self.axes.step(self.x, flux, color='blue', label='F', 
                                        where='mid', zorder=10)
         self.fluxLayer, = self.fluxLine
         self.contLine = self.axes.plot(self.x, s.continuum, color='skyblue', 
@@ -902,7 +923,7 @@ class SpectrumCanvas(MplCanvas):
             print('auxiliary l0 ', self.aux1l0)
             print('auxiliary scale ', self.aux1pixscale)
             self.x1lannotation = self.axes.annotate(" $\\lambda_x$ = {:.4f} $\\mu$m".format(self.aux1l0),
-                                              xy=(-0.15,-0.22), picker=5, xycoords='axes fraction', color='cyan')            
+                                              xy=(-0.15,-0.22), picker=5, xycoords='axes fraction', color='cyan')
         # Check if vel is defined and draw velocity axis  
         try:
             vlims = self.computeVelLimits()         
@@ -973,7 +994,7 @@ class SpectrumCanvas(MplCanvas):
                                   direction='in', pad = -25, colors='red')
             else:
                 self.ax2.get_yaxis().set_tick_params(labelright='off',right='off')
-        elif s.instrument in ['GREAT','HI','HALPHA','VLA','ALMA','IRAM','CARMA','MMA','PCWI','MUSE','SITELLE','FOREST']:
+        elif s.instrument in ['GREAT','HI','HALPHA','VLA','ALMA','IRAM','CARMA','MMA','PCWI','MUSE','SITELLE','FOREST','WSRT']:
             self.displayUFlux = False
             self.displayAtran = False
             self.displayExposure = False
@@ -1071,6 +1092,18 @@ class SpectrumCanvas(MplCanvas):
                 visibility.append(self.displayAuxFlux1)
         except:
             print('Auxiliary ref. wavelength not defined') 
+        # Reference velocity
+        try:
+            if self.referenceVelocity:
+                print('Adding reference velocity ....', self.refvel- s.redshift*ckms)
+                self.velocityLine = self.vaxes.axvline(self.refvel - s.redshift*ckms,ls=':',color='purple',zorder=11)
+                #self.velocityLayer, = self.velocityLine
+                #lns += self.velocityLine
+                #print('lns ', lns)
+                #lines.append(self.velocityLayer)
+                visibility.append(self.displayRefVel)
+        except:
+            print('No reference velocity')
 
         # Prepare legend
         #print('Prepare legend ')              
@@ -1239,7 +1272,7 @@ class SpectrumCanvas(MplCanvas):
         return f
 
     def updateSpectrum(self, f=None, ef=None, uf=None, exp=None, cont=None, cslope=None, af=None,
-                       moments=None, noise=None, atran=None, lines=None, aplines=None, ncell=0):
+                       moments=None, noise=None, atran=None, lines=None, aplines=None, ncell=0, refvel=None):
         try:
             # Remove moments
             try:
@@ -1274,7 +1307,12 @@ class SpectrumCanvas(MplCanvas):
                 self.exposureLine[0].set_ydata(exp)
                 self.ax3.draw_artist(self.exposureLine[0])
             if f is not None:
-                self.fluxLine[0].set_ydata(f)
+                self.flux = f
+                if self.filter:
+                    flux = savgol_filter(f, 7, 3)
+                else:
+                    flux = f
+                self.fluxLine[0].set_ydata(flux)
                 self.axes.draw_artist(self.fluxLine[0])
                 ylim0, ylim1 = self.axes.get_ylim()
                 xlim0, xlim1 = self.axes.get_xlim()
@@ -1454,9 +1492,23 @@ class SpectrumCanvas(MplCanvas):
             else:
                 self.aplines = None
                 self.apfit = None
+            if refvel is not None:
+                ckms = 299792.458  # speed of light in km/s
+                v = refvel-self.spectrum.redshift*ckms
+                self.velocityLine.set_xdata([v,v])
+                self.vaxes.draw_artist(self.velocityLine)
         except:
             print('Failed to update spectrum')
             pass
+        
+    def updateFilter(self):
+        # Update the plotted spectrum with filtering or not
+        if self.filter:
+            flux = savgol_filter(self.flux, 7, 3)
+        else:
+            flux = self.flux
+        self.fluxLine[0].set_ydata(flux)
+        
         
     def updateGuess(self, f, ncell):
         if self.guess is not None:
