@@ -713,11 +713,7 @@ class GUI (QMainWindow):
         else:
             self.itabs.addTab(t, b)
         ic = ImageCanvas(t, width=self.width, height=self.width*2/5, dpi=self.dpi)
-<<<<<<< HEAD
-        if b in ['Flux','uFlux','Exp','C0','M0','M1','M2','M3','M4','L0','L1','v0','v1','d0','d1']:
-=======
         if b in ['Flux','uFlux','Exp','C0','M0','M1','M2','M3','M4','L0','L1','L2','v0','v1','v2','d0','d1','d2']:
->>>>>>> develop
             ic.crota2 = self.specCube.crota2
         # No contours available
         ic.contours = None
@@ -7161,11 +7157,7 @@ def main():
     gui.spectralPanel.setMinimumWidth(width*0.35)
     gui.hsplitter.setSizes ([width*0.48,width*0.48])
     gui.dpi = 100
-<<<<<<< HEAD
-    gui.width = width * .48 // gui.dpi
-=======
     gui.width = width * 0.48 // gui.dpi
->>>>>>> develop
     # Add an icon for the application
     app.setWindowIcon(QIcon(os.path.join(gui.path0,'icons','sospex.png')))
     app.setApplicationName('SOSPEX')
