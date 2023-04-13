@@ -1,43 +1,17 @@
-### Install with anaconda
+### Install with anaconda with an environment
 
 To install the code in your computer, you need first to install the anaconda
 python (https://www.anaconda.com/download).
 
-**You will have to use the Python 3.9 distribution.**
+We advise to install the latest anaconda distribution.
 
-If you another version of Python distribution installed, you will have to use an environment (see later).
-
-Check the version installed with:
-
-python --version
-
-**Pay attention that the latest version of anaconda installs Python 3.10**
-
-It is a good practice to update all your installed packages to have the latest versions:
-
-conda update --all -y
-
-The packages *lmfit*, *reproject*, and *fitsio* have to be installed from other channels:
-
-conda install -c conda-forge lmfit  reproject  fitsio -y
-
-Now you are ready to install sospex:
-
-conda install -c darioflute sospex -y
-
-### Using an environment
-
-It is advisable to install sospex inside an environment.
-
-To create it use the command:
-
-conda create -n sospex python=3.9 anaconda
-
-Then activate it:
+conda create -n sospex python=3.10
 
 conda activate sospex
 
-and install sospex by following the installation commands in the previous section.
+conda install -c conda-forge lmfit  reproject  fitsio -y
+
+conda install -c darioflute sospex -y
 
 To exit the environment, type:
 
@@ -45,8 +19,7 @@ conda deactivate
 
 ### Note for windows users
 
-There is currently no distribution available for fitsio for windows.
-It is still possible to install sospex without the fitsio library, since the default to open fits is the astropy library.
+If fitsio is not available for windows, sospex can be still used since it defaults to open fits is the astropy library.
 
 ### Updating with anaconda
 
@@ -64,7 +37,7 @@ conda update sospex
 
 ### Install with pip -e:
 
-The best alternative is to install the package with pip after cloning it.
+An alternative is to install the package with pip after cloning it.
 
 #### A) clone the package
 
