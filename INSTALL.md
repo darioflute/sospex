@@ -9,9 +9,9 @@ conda create -n sospex python=3.10
 
 conda activate sospex
 
-conda install -c conda-forge -y lmfit  reproject  fitsio
+conda install -c conda-forge lmfit  reproject  fitsio
 
-conda install -c darioflute -y sospex
+conda install -c darioflute sospex
 
 To exit the environment, type:
 
