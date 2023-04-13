@@ -7156,10 +7156,11 @@ def main():
     # Adjust geometry to size of the screen
     screen_resolution = app.desktop().screenGeometry()
     width = screen_resolution.width()
-    gui.setGeometry(width*0.005, width*0.005, width*0.99, width*0.5)
-    gui.imagePanel.setMinimumWidth(width*0.35)
-    gui.spectralPanel.setMinimumWidth(width*0.35)
-    gui.hsplitter.setSizes ([width*0.48,width*0.48])
+    gui.setGeometry(int(width*0.005), int(width*0.005),
+                    int(width*0.99), int(width*0.5))
+    gui.imagePanel.setMinimumWidth(int(width*0.35))
+    gui.spectralPanel.setMinimumWidth(int(width*0.35))
+    gui.hsplitter.setSizes ([int(width*0.48),int(width*0.48)])
     gui.dpi = 100
     gui.width = width * 0.48 // gui.dpi
     # Add an icon for the application
