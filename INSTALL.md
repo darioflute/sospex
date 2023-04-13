@@ -19,11 +19,7 @@ conda update --all -y
 
 The packages *lmfit*, *reproject*, and *fitsio* have to be installed from other channels:
 
-conda install -c conda-forge lmfit -y
-
-conda install -c conda-forge reproject -y
-
-conda install -c conda-forge fitsio -y
+conda install -c conda-forge lmfit  reproject  fitsio -y
 
 Now you are ready to install sospex:
 
