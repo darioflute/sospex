@@ -24,6 +24,7 @@ requirements:
     - numpy >=1.23
     - scipy >=1.10
     - astropy >=5.1
+    - pyqt >=5.15
         
 test:
   imports:
