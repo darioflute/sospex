@@ -7,6 +7,12 @@ python (https://www.anaconda.com/download).
 
 If you another version of Python distribution installed, you will have to use an environment (see later).
 
+Check the version installed with:
+
+python --version
+
+**Pay attention that the latest version of anaconda installs Python 3.10**
+
 It is a good practice to update all your installed packages to have the latest versions:
 
 conda update --all -y
@@ -25,7 +31,8 @@ conda install -c darioflute sospex -y
 
 ### Using an environment
 
-It is possible to install it inside an environment.
+It is advisable to install sospex inside an environment.
+
 To create it use the command:
 
 conda create -n sospex python=3.9 anaconda
@@ -35,6 +42,7 @@ Then activate it:
 conda activate sospex
 
 and install sospex by following the installation commands in the previous section.
+
 To exit the environment, type:
 
 conda deactivate
@@ -68,7 +76,7 @@ git clone https://github.com/darioflute/sospex.git
 
 #### B) add the required libraries
 
-conda install -c conda-forge lmfit,reproject,fitsio
+conda install -c conda-forge lmfit reproject fitsio
 
 #### C) pip install
 
