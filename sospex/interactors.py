@@ -747,9 +747,8 @@ class InteractorManager(QObject):
             for interactor in self.interactors:
                 interactor.motion_notify_callback(event)
                 interactor.draw_callback(event)
-        self.canvas.blit(self.ax.bbox)
-        #self.canvas.update()
-        #self.canvas.flush_events()
+            self.canvas.blit(self.ax.bbox)
+        self.canvas.flush_events()
             
     def disconnect(self):
        self.canvas.mpl_disconnect(self.cid_draw)
@@ -915,6 +914,7 @@ class SegmentsInteractor(QObject):
             self.contLevel = y[0]
         self.xy = [(i,j) for (i,j) in zip(x,y)]
         self.computeSlope()        
+        self.line = Line2D(x, y, marker='o', linestyle=None, linewidth=0., markerfacecolor=color, animated=True)                
         self.line1 = Line2D(x[:2],y[:2],color=color,linewidth=2, animated = True)
         self.line2 = Line2D(x[2:],y[2:],color=color,linewidth=2, animated = True)
         trans = transforms.blended_transform_factory(ax.transData, ax.transAxes)
@@ -927,14 +927,17 @@ class SegmentsInteractor(QObject):
         self.xl2b = Line2D([x[3], x[3]], [0, 1], color=color, linewidth=1,
                            animated=True, transform=trans)
         self.canvas = ax.figure.canvas
-        self.line = Line2D(x, y, marker='o', linestyle=None, linewidth=0., markerfacecolor=color, animated=True)                
         self.artists = [self.line1, self.line2, self.xl1a, self.xl1b, self.xl2a, self.xl2b, self.line]
-        for artist in self.artists:
-            self.ax.add_line(artist)
-        self.cid = self.line1.add_callback(self.si_changed)
+        #self.cid = self.line1.add_callback(self.si_changed)
         self._ind = None  # the active vert
+        for artist in self.artists:
+            self.ax.add_artist(artist)
         self.connect()
-
+        
+    def set_visible(self, value=True):
+        for artist in self.artists:
+            artist.set_visible(value)
+        
     def computeSlope(self):
         xg,yg = zip(*self.xy)
         xg = np.array(xg); yg = np.array(yg)
@@ -987,15 +990,16 @@ class SegmentsInteractor(QObject):
         
     def draw_callback(self, event):
         #self.background = self.canvas.copy_from_bbox(self.ax.bbox)
+        fig = self.canvas.figure
         for artist in self.artists:
-            self.ax.draw_artist(artist)
+            fig.draw_artist(artist)
 
-    def si_changed(self, line1):
-        'this method is called whenever the line1 object is called'
-        # only copy the artist props to the line (except visibility)
-        vis = self.line.get_visible()
-        Artist.update_from(self.line, line1)
-        self.line.set_visible(vis)  
+    #def si_changed(self, line1):
+    #    'this method is called whenever the line1 object is called'
+    #    # only copy the artist props to the line (except visibility)
+    #    vis = self.line.get_visible()
+    #    Artist.update_from(self.line, line1)
+    #    self.line.set_visible(vis)  
 
     def get_ind_under_point(self, event):
         'get the index of the point if within epsilon tolerance'
@@ -1037,6 +1041,7 @@ class SegmentsInteractor(QObject):
         if event.button != 1:
             return
         self._ind = self.get_ind_under_point(event)
+        #self.set_visible(False)
 
     def button_release_callback(self, event):
         'whenever a mouse button is released'
@@ -1045,6 +1050,9 @@ class SegmentsInteractor(QObject):
         if event.button != 1:
             return
         self._ind = None
+        self.canvas.draw_idle()
+        #self.set_visible(True)
+
 
     def motion_notify_callback(self, event):
         'on mouse movement'
@@ -1188,11 +1196,12 @@ class LineInteractor(QObject):
         self.computeGaussian()
         self.poly = Polygon(self.verts, animated=True, fill=False, 
                              closed=False, color=self.color)
-        self.ax.add_patch(self.poly)
         x, y = zip(*self.xy)
         self.line = Line2D(x, y, marker='o', markerfacecolor=self.color,
                            linewidth=0., animated=True)
-        self.ax.add_line(self.line)
+        self.artists = [self.poly, self.line]
+        for artist in self.artists:
+            self.ax.add_artist(artist)
 
         self.cid = self.poly.add_callback(self.poly_changed)
         self._ind = None  # the active vert
@@ -1405,7 +1414,8 @@ class PsfInteractor(QObject):
         self.innerCircle = Circle(center, radius, edgecolor='Lime', facecolor='none',
                                    angle=0, fill=False, animated=True)
         self.ax.add_patch(self.innerCircle)
-        self.canvas = self.innerCircle.figure.canvas
+        #self.canvas = self.innerCircle.figure.canvas
+        self.canvas = ax.figure.canvas
         self.outerCircle = Circle(center, radius + annulus, edgecolor='Lime',
                                    facecolor='none', angle=0, fill=False,
                                    linestyle='--', animated=True)

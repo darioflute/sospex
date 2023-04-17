@@ -267,7 +267,7 @@ class EllipseInteractor(QObject):
             self.type = 'Ellipse'
         self.ax = ax
         self.ellipse = Ellipse(center,width,height,edgecolor='Lime',facecolor='none',angle=angle,fill=False,animated=True)
-        self.ax.add_patch(self.ellipse)
+        self.ax.add_artist(self.ellipse)
         self.canvas = self.ellipse.figure.canvas
 
         # Create a line with center, width, and height points
@@ -495,14 +495,17 @@ class RectangleInteractor(QObject):
         else:
             self.type = 'Rectangle'
         self.ax = ax
+        #self.canvas = ax.figure.canvas
         self.angle  = angle/180.*np.pi
         self.width  = width
         self.height = height
-        self.rect = Rectangle(corner,width,height,edgecolor='Lime',facecolor='none',angle=angle,fill=False,animated=True)
-        self.ax.add_patch(self.rect)
+        self.rect = Rectangle(corner,width,height,edgecolor='Lime',facecolor='none',
+                              angle=angle,fill=False,animated=True)
+        self.ax.add_artist(self.rect)
         self.canvas = self.rect.figure.canvas
         x,y = self.compute_markers()
-        self.line = Line2D(x, y, marker='o', linestyle=None, linewidth=0., markerfacecolor='g', animated=True)
+        self.line = Line2D(x, y, marker='o', linestyle=None, linewidth=0., 
+                           markerfacecolor='g', animated=True)
         self.ax.add_line(self.line)
         self.cid = self.rect.add_callback(self.rectangle_changed)
         self._ind = None  # the active point
@@ -592,7 +595,6 @@ class RectangleInteractor(QObject):
         theta0 = self.rect.angle/180*np.pi
         self.press = x0, y0, w0, h0, theta0, event.xdata, event.ydata
         self.xy0 = self.xy
-
         self.lock = "pressed"
 
     def key_press_callback(self, event):
