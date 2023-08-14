@@ -4,7 +4,7 @@ import numpy as np
 from PyQt5.QtWidgets import (QApplication, QWidget, QMainWindow, QTabWidget, 
                              QTabBar,QHBoxLayout, QVBoxLayout, QSizePolicy, 
                              QStatusBar, QSplitter, QToolBar, QAction, 
-                             QFileDialog,  QTableView, QComboBox, 
+                             QFileDialog, QTableView, QComboBox, 
                              QAbstractItemView, QMessageBox, QInputDialog, 
                              QDialog, QLabel, QProxyStyle,QStyle)
 from PyQt5.QtGui import QIcon, QStandardItem, QStandardItemModel, QPixmap, QMovie
@@ -350,6 +350,8 @@ class GUI (QMainWindow):
         file = bar.addMenu("File")
         file.addAction(QAction("Quit",self,shortcut='Ctrl+q',triggered=self.fileQuit))
         file.addAction(QAction("Open cube",self,shortcut='',triggered=self.newFile))
+        file.addAction(QAction("Next cube",self,shortcut='',triggered=self.nextFile))
+        file.addAction(QAction("Previous cube",self,shortcut='',triggered=self.previousFile))
         file.addAction(QAction("Reload cube",self,shortcut='',triggered=self.reloadFile))
         
         io = bar.addMenu("I/O")
@@ -1336,6 +1338,23 @@ class GUI (QMainWindow):
                 sc.spectrum.uflux = ufluxAll
                 sc.spectrum.eflux = efluxAll
                 sc.spectrum.exposure = expAll
+                #ati = np.interp(s.wave, s.watran/(1+s.baryshift),s.uatran)
+                # Clean places with extreme absorption
+                dwave = np.nanmedian(s.wave[1:]-s.wave[:-1]) * 0.5
+                wat = s.watran/(1+s.baryshift)                
+                nz = len(s.wave)
+                for k in range(nz):
+                    idx = np.abs(wat-s.wave[k]) <= dwave
+                    if np.sum(idx) > 0:
+                        if np.nanmin(s.uatran[idx]) <= 0.05:
+                            k0 = k-3
+                            k1 = k+3
+                            if k0 < 0:
+                                k0 = 0
+                            if k1 > nz-1:
+                                k1 = nz-1
+                            fluxAll[k0:k1] = np.nan
+
                 sc.updateSpectrum(f=fluxAll, ef=efluxAll, af=afluxAll,
                                   uf=ufluxAll, exp=expAll,
                                   cont=cont,cslope=cslope, moments=moments,
@@ -1645,6 +1664,10 @@ class GUI (QMainWindow):
                                             'Quit program', 'Ctrl+q',self.fileQuit)
         self.startAction = self.createAction(os.path.join(self.path0,'icons','open.png'),
                                              'Load new observation', 'Ctrl+n',self.newFile)
+        self.nextAction = self.createAction(os.path.join(self.path0,'icons','next.png'),
+                                             'List next group observations', 'Ctrl+n',self.nextFile)
+        self.previousAction = self.createAction(os.path.join(self.path0,'icons','previous.png'),
+                                             'List previous group observations', 'Ctrl+n',self.previousFile)
         self.reloadAction = self.createAction(os.path.join(self.path0,'icons','reload.png'),
                                               'Reload observation', 'Ctrl+R',self.reloadFile)
         self.levelsAction = self.createAction(os.path.join(self.path0,'icons','levels.png'),
@@ -1718,7 +1741,7 @@ class GUI (QMainWindow):
                                              'Ctrl+F',self.fitApLines)
         self.fitContAction =self.createAction(os.path.join(self.path0,'icons','fit.png'),
                                               'Fit continuum/moments/lines',
-                                              'Ctrl+F',self.ContMomLines)
+                                             'Ctrl+F',self.ContMomLines)
         self.compMomAction = self.createAction(os.path.join(self.path0,'icons','computeMoments.png'),
                                                'Compute moments','Ctrl+g',self.chooseComputeMoments)
         self.fitregionAction = self.createAction(os.path.join(self.path0,'icons','fitregion.png'),
@@ -1738,6 +1761,8 @@ class GUI (QMainWindow):
         self.spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.tb.addAction(self.startAction)
         self.tb.addAction(self.reloadAction)
+        self.tb.addAction(self.nextAction)
+        self.tb.addAction(self.previousAction)
         self.tb.addAction(self.helpAction)
         self.tb.addAction(self.issueAction)
         self.tb.addWidget(self.apertureAction)        
@@ -3712,6 +3737,21 @@ class GUI (QMainWindow):
                             redshift=s.redshift, l0=s.l0, yunit='Jy',
                             pixscale=s.pixscale)
         elif s.instrument == 'FIFI-LS':
+            # NaN all pixels around transmission 0
+            dwave = np.nanmedian(s.wave[1:]-s.wave[:-1]) * 0.5
+            wat = s.watran/(1+s.baryshift)
+            nz = len(s.wave)
+            for k in range(nz):
+                idx = np.abs(wat-s.wave[k]) <= dwave
+                if np.sum(idx) > 0:
+                    if np.nanmin(s.uatran[idx]) <= 0.05:
+                        k0 = k-3
+                        k1 = k+3
+                        if k0 < 0:
+                            k0 = 0
+                        if k1 > nz-1:
+                            k1 = nz-1
+                        fluxAll[k0:k1] = np.nan
             ufluxAll = np.nansum(s.uflux[:,yy,xx], axis=1)
             expAll = np.nanmean(s.exposure[:,yy,xx], axis=1)
             efluxAll = np.sqrt(np.nansum(s.eflux[:,yy,xx]**2, axis=1))
@@ -5900,13 +5940,39 @@ class GUI (QMainWindow):
                 #at = self.specCube.atran
                 #idx = np.argmin(np.abs(self.specCube.wave-self.specCube.l0 * (1+self.specCube.redshift)))
                 at = self.specCube.uatran
-                idx = np.argmin(np.abs(self.specCube.watran-self.specCube.l0 * (1+self.specCube.redshift)))
+                idx = np.argmin(np.abs(self.specCube.watran/(1+self.specCube.baryshift)-
+                                       self.specCube.l0 * (1+self.specCube.redshift)))
                 atran = self.specCube.atran*0.+at[idx]
                 #self.specCube.atran[:] = atmed
                 # The uncorrected flux should be interpolated over the corrected flux wavelength
                 # grid after applying the baryshift correction ...
                 self.computeFluxAtm(at[idx])
                 self.specCube.atran = atran
+                # Mask everything under AT = 0.7
+                ati = np.interp(self.specCube.wave, self.specCube.watran/(1+self.specCube.baryshift),self.specCube.uatran)
+                idx = ati < 0.8
+                nz, ny, nx = np.shape(self.specCube.uflux)
+                for i in range(ny):
+                    for j in range(nx):
+                        self.specCube.flux[idx, i, j] = np.nan
+
+                # Clean places with extreme absorption
+                s = self.specCube
+                dwave = np.nanmedian(s.wave[1:]-s.wave[:-1]) * 0.5
+                wat = s.watran/(1+s.baryshift)
+                nz = len(s.wave)
+                for k in range(nz):
+                    idx = np.abs(wat-s.wave[k]) <= dwave
+                    if np.sum(idx) > 0:
+                        if np.nanmin(s.uatran[idx]) <= 0.05:
+                            k0 = k-3
+                            k1 = k+3
+                            if k0 < 0:
+                                k0 = 0
+                            if k1 > nz-1:
+                                k1 = nz-1
+                            self.specCube.flux[k0:k1, i, j] = np.nan
+                                        
                 # self.specCube.flux = self.specCube.uflux/atmed
                 # Redraw the spectrum
                 for istab in range(len(self.stabs)):
@@ -6051,7 +6117,41 @@ class GUI (QMainWindow):
             self.sb.showMessage("ERROR: You have to load a file first", 2000)
             return
         
-    def newFile(self):
+    def nextFile(self):
+        """"Next directory if the directory is a group directory"""
+
+        try:
+            gpath = os.path.basename(os.path.normpath(self.pathFile))
+        except:
+            self.sb.showMessage("ERROR: You have to load a file first", 2000)
+            return
+            
+        if 'g' in gpath:
+            n = int(gpath[1:])
+            self.pathFile = self.pathFile+'/../g'+str(n+1)
+            self.newFile(self.pathFile)
+        else:
+            print('Not possible')
+            pass
+
+    def previousFile(self):
+        """"Previous directory if the directory is a group directory"""
+        
+        try:
+            gpath = os.path.basename(os.path.normpath(self.pathFile))
+        except:
+            self.sb.showMessage("ERROR: You have to load a file first", 2000)
+            return
+
+        if 'g' in gpath:
+            n = int(gpath[1:])
+            self.pathFile = self.pathFile+'/../g'+str(n-1)
+            self.newFile(self.pathFile)
+        else:
+            print('Not possible')
+            pass
+        
+    def newFile(self, path=None):
         """Display a new image."""
         # First remove contours
         try:
@@ -6063,7 +6163,15 @@ class GUI (QMainWindow):
         fd.setNameFilters(["Fits Files (*.fit*)", "WXY fits files (*WXY*.fits*)", "All Files (*)"])
         fd.setOptions(QFileDialog.DontUseNativeDialog)
         fd.setViewMode(QFileDialog.List)
+        #fd.setViewMode(QFileDialog.Detail)
         fd.setFileMode(QFileDialog.ExistingFile)
+        if path:
+            print('path is ', path)
+            try:
+                fd.setDirectory(path)
+            except:
+                pass
+        
         if (fd.exec()):
             fileName= fd.selectedFiles()
             print('Reading file ', fileName[0])

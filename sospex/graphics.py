@@ -854,11 +854,13 @@ class SpectrumCanvas(MplCanvas):
             if s.watran is not None:
                 self.xa = s.watran
             if s.instrument == 'FIFI-LS':
-                self.xr = self.x * (1+s.baryshift)
+                #self.xr = self.x * (1+s.baryshift)
+                self.xr = self.x / (1+s.baryshift)
                 if s.watran is not None:
-                    self.xar = self.xa * (1+s.baryshift)
+                    #self.xar = self.xa * (1+s.baryshift)
+                    self.xar = self.xa / (1+s.baryshift)
             elif s.instrument == 'FORCAST':
-                self.xar = self.xa * (1+s.baryshift)
+                self.xar = self.xa / (1+s.baryshift)
         elif self.xunit == 'THz':
             x0 = s.l0 * (1 + s.redshift)
             sy = self.yunit
@@ -868,9 +870,9 @@ class SpectrumCanvas(MplCanvas):
             if s.watran is not None:
                 self.xa = ckms/s.watran * 1.e-3
             if s.instrument in ['FIFI-LS','FORCAST']:
-                self.xr = self.x / (1 + s.baryshift)             
+                self.xr = self.x * (1 + s.baryshift)             
                 if s.watran is not None:
-                    self.xar = self.xa / (1 + s.baryshift)
+                    self.xar = self.xa * (1 + s.baryshift)
                      
         if s.instrument in ['FIFI-LS', 'PACS', 'FORCAST','SPIRE','MUSE']:
             hiflux = s.flux + 1. * s.eflux  # 1 sigma
@@ -966,7 +968,9 @@ class SpectrumCanvas(MplCanvas):
             if yumax > ymax: ymax=yumax
             if yumin < ymin: ymin=yumin
             self.ax3.set_ylim([0.5,np.nanmax(s.exposure)*1.54])
-            self.ufluxLine = self.ax4.step(self.xr, s.uflux, color='green', where='mid',
+            #self.ufluxLine = self.ax4.step(self.xr, s.uflux, color='green', where='mid',
+            #                               label='F$_{u}$', zorder=14)
+            self.ufluxLine = self.ax4.step(self.x, s.uflux, color='green', where='mid',
                                            label='F$_{u}$', zorder=14)
             self.ax4.set_ylim(self.axes.get_ylim())
             self.ufluxLayer, = self.ufluxLine
@@ -1166,17 +1170,19 @@ class SpectrumCanvas(MplCanvas):
         for line in self.Lines.keys():
             nline = self.Lines[line][0]
             wline = self.Lines[line][1]*(1.+s.redshift)
-            #print("line is ", line, xlim0, xlim1, nline, wline)
             if (wline > xlim0 and wline < xlim1):
                 print('Line ', line)
                 wdiff = abs(s.wave - wline)
                 imin = np.argmin(wdiff)
                 y = s.flux[imin]
+                if not np.isfinite(y):
+                    y = 0
                 y1 = y
                 if (ylim1-(y+0.1*dy)) > ((y-0.1*dy)-ylim0):
                     y2 = y+0.1*dy
                 else:
                     y2 = y-0.1*dy
+                #print("line is ", line, xlim0, xlim1, nline, wline,y)
                 if self.xunit == 'um':
                     xline = wline
                 elif self.xunit == 'THz':
@@ -1250,6 +1256,8 @@ class SpectrumCanvas(MplCanvas):
                  y = s.flux[imin]
               else:
                  y = f[imin]
+              if not np.isfinite(y):
+                  y = 0
               y1 = y
               if (ylim1 - (y + 0.2 * dy)) > ((y - 0.2 * dy) - ylim0):
                  y2 = y + 0.2 * dy
@@ -2011,7 +2019,7 @@ class PsfCanvas(MplCanvas):
                                                   label='FWHM [PSF] = {:2.1f}'.format(self.sigma*2.355))
                         
         # Fit a Moffat function on data
-        Io, alpha, beta, fwhm = self.fitPsf()
+        Io, alpha, beta, fwhm, efwhm = self.fitPsf()
         print('Moffat with I0 ',Io,' alpha ',alpha,' beta ',beta)
         xf = np.arange(0, np.nanmax(self.distance), 0.1)
         yf = Io * (1 + (xf/alpha)**2)**(-beta)
@@ -2031,11 +2039,11 @@ class PsfCanvas(MplCanvas):
             yg = self.unresolved.get_ydata()
             self.unresolved.set_ydata(yg/np.nanmax(yg) * maxflux)
         
-        Io, alpha, beta, fwhm = self.fitPsf()
+        Io, alpha, beta, fwhm, efwhm = self.fitPsf()
         xf = np.arange(0, np.nanmax(self.distance), 0.1)
         yf = Io * (1 + (xf/alpha)**2)**(-beta)
         self.resolved.set_data(xf, yf)
-        self.resolved.set_label('FWHM [Fit] = {:2.1f}'.format(fwhm))
+        self.resolved.set_label('FWHM [Fit] = {:2.1f} $\pm$ {:2.1f}'.format(fwhm, efwhm))
         self.axes.legend()  # Regenerate legend
         # Reset y limits if needed
         ylims = self.axes.get_ylim()
@@ -2102,7 +2110,8 @@ class PsfCanvas(MplCanvas):
     def fitPsf(self):
         '''Fit a Moffat function on data'''
         fit_params = Parameters()
-        fit_params.add('Io', value=np.nanmax(self.flux))
+        Io = np.nanmax(self.flux)
+        fit_params.add('Io', value=Io, min=Io*0.98, max=Io*1.02)
         if self.sigma is None:
             sigmaguess = 2
         else:
@@ -2119,18 +2128,23 @@ class PsfCanvas(MplCanvas):
             if self.pix is None:
                 out = minimize(residualsMoffat, fit_params, args=(self.distance[idx],), kws={'data': self.flux[idx],})
             else:
-                weight =  (self.distance[idx] * self.pix)
+                weight = self.distance[idx] * self.pix
                 out = minimize(residualsMoffat, fit_params, args=(self.distance[idx],),
-                               kws={'data': self.flux[idx], 'err':weight})
+                               kws={'data': self.flux[idx], 'err': weight})
 
             Io = out.params['Io'].value
             alpha = out.params['alpha'].value
             beta = out.params['beta'].value
             fwhm = 2*alpha*np.sqrt(2**(1/beta)-1)
+            if out.params['alpha'].stderr is None:
+                efwhm = np.nan
+            else:
+                efwhm = 2*np.sqrt(2**(1/beta)-1)* out.params['alpha'].stderr
         else:
             Io = np.nan
             alpha = np.nan
             beta = np.nan
             fwhm = np.nan
+            efwhm = np.nan
             print('Not enough good points')
-        return Io, alpha, beta, fwhm
+        return Io, alpha, beta, fwhm, efwhm

@@ -260,7 +260,7 @@ class specCubeAstro(object):
             utran = hdl['UNSMOOTHED_TRANSMISSION'].data
             w = utran[0,:]
             t = utran[1,:]
-            idx = (w > np.nanmin(self.wave)) & (w < np.nanmax(self.wave))
+            idx = (w >= np.nanmin(self.wave)) & (w <= np.nanmax(self.wave))
             print('Atran ', len(idx), len(w))
             self.watran = w[idx]
             self.uatran = t[idx]
@@ -1137,7 +1137,7 @@ class specCube(object):
             utran = hdl['UNSMOOTHED_TRANSMISSION'].read()
             w = utran[0,:]
             t = utran[1,:]
-            idx = (w > np.nanmin(self.wave)) & (w < np.nanmax(self.wave))
+            idx = (w >= np.nanmin(self.wave)) & (w <= np.nanmax(self.wave))
             print('Atran ', len(idx), len(w))
             self.watran = w[idx]
             self.uatran = t[idx]
