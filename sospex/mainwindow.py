@@ -1347,7 +1347,7 @@ class GUI (QMainWindow):
                     idx = np.abs(wat-s.wave[k]) <= dwave
                     if np.sum(idx) > 0:
                         if np.nanmin(s.uatran[idx]) <= 0.05:
-                            k0 = k-3
+                            k0 = k-2
                             k1 = k+3
                             if k0 < 0:
                                 k0 = 0
@@ -3729,7 +3729,7 @@ class GUI (QMainWindow):
         xx,yy = inpoints.T        
         fluxAll = np.nansum(s.flux[:,yy,xx], axis=1)
         if s.instrument == 'GREAT':
-            spec = Spectrum(s.wave, fluxAll*s.Tb2Jy, instrument=s.instrument, 
+            spec = Spectrum(s.wave, Fluxall*s.Tb2Jy, instrument=s.instrument, 
                             redshift=s.redshift, l0=s.l0, Tb2Jy=s.Tb2Jy, 
                             bunit=s.bunit, yunit='Jy',pixscale=s.pixscale)
         elif s.instrument in ['HI','HALPHA','VLA','ALMA','SITELLE','IRAM','CARMA','MMA','PCWI','FOREST','WSRT']:
@@ -3745,7 +3745,7 @@ class GUI (QMainWindow):
                 idx = np.abs(wat-s.wave[k]) <= dwave
                 if np.sum(idx) > 0:
                     if np.nanmin(s.uatran[idx]) <= 0.05:
-                        k0 = k-3
+                        k0 = k-2
                         k1 = k+3
                         if k0 < 0:
                             k0 = 0
@@ -5950,11 +5950,12 @@ class GUI (QMainWindow):
                 self.specCube.atran = atran
                 # Mask everything under AT = 0.7
                 ati = np.interp(self.specCube.wave, self.specCube.watran/(1+self.specCube.baryshift),self.specCube.uatran)
-                idx = ati < 0.8
+                idx = ati < 0.7
                 nz, ny, nx = np.shape(self.specCube.uflux)
                 for i in range(ny):
                     for j in range(nx):
-                        self.specCube.flux[idx, i, j] = np.nan
+                        pass
+                        #self.specCube.flux[idx, i, j] = np.nan
 
                 # Clean places with extreme absorption
                 s = self.specCube
@@ -5965,7 +5966,7 @@ class GUI (QMainWindow):
                     idx = np.abs(wat-s.wave[k]) <= dwave
                     if np.sum(idx) > 0:
                         if np.nanmin(s.uatran[idx]) <= 0.05:
-                            k0 = k-3
+                            k0 = k-2
                             k1 = k+3
                             if k0 < 0:
                                 k0 = 0
